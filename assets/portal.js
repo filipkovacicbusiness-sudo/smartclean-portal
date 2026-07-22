@@ -165,6 +165,8 @@ async function start() {
   $('who').textContent = (profile?.full_name || user.email)
     + (profile?.is_staff ? ' · osebje' : '');
 
+  JAZ = user.id;
+  if ($('usersBtn')) $('usersBtn').classList.toggle('hidden', !profile?.is_staff);
   if (profile?.is_staff) { loadOrgs(); } else { loadCustomer(); }
 }
 
@@ -207,6 +209,159 @@ if ($('changePwForm')) $('changePwForm').addEventListener('submit', async (e) =>
   }
   ['curPw','chPw1','chPw2'].forEach(id => { $(id).value = ''; });
   m.className = 'msg show'; m.textContent = 'Geslo je spremenjeno.';
+});
+
+
+/* ══ PANEL UPORABNIKOV (samo osebje) ══════════════════════════════ */
+let JAZ = null;      // id prijavljenega
+let ORGSEZNAM = [];
+
+function uMsg(txt, slabo) {
+  const m = $('usersMsg');
+  m.className = 'msg ' + (slabo ? 'bad show' : 'show');
+  m.innerHTML = txt;
+}
+
+/* Klic strežniške funkcije. Tajni ključ ostane tam, sem pride le izid. */
+async function klic(telo) {
+  const { data, error } = await sb.functions.invoke('uporabniki', { body: telo });
+  if (!error) return data;
+  try {
+    const j = await error.context.json();
+    return { napaka: j.napaka || error.message };
+  } catch (e) {
+    return { napaka: 'Strežnik ni odgovoril. Poskusite čez trenutek.' };
+  }
+}
+
+if ($('usersBtn')) $('usersBtn').addEventListener('click', () => {
+  const p = $('usersPanel');
+  p.classList.toggle('hidden');
+  if (!p.classList.contains('hidden')) loadUsers();
+});
+
+async function loadUsers() {
+  $('usersList').innerHTML = '<p class="u-sub">Nalagam …</p>';
+
+  if (!ORGSEZNAM.length) {
+    const { data } = await sb.from('orgs').select('id,name').order('name');
+    ORGSEZNAM = data || [];
+    $('nuOrg').innerHTML = '<option value="">— osebje SmartClean —</option>'
+      + ORGSEZNAM.map(o => `<option value="${o.id}">${escape_(o.name)}</option>`).join('');
+  }
+
+  const [{ data: ljudje }, { data: clanstva }] = await Promise.all([
+    sb.from('profiles').select('id,email,full_name,is_staff,active').order('email'),
+    sb.from('memberships').select('user_id,org_id'),
+  ]);
+
+  const orgPo = {}; ORGSEZNAM.forEach(o => { orgPo[o.id] = o.name; });
+  const clanPo = {}; (clanstva || []).forEach(c => { clanPo[c.user_id] = orgPo[c.org_id]; });
+
+  $('usersList').innerHTML = (ljudje || []).map(u => {
+    const jaz = u.id === JAZ;
+    const vloga = u.is_staff ? 'osebje — vidi vse stranke'
+      : (clanPo[u.id] ? 'stranka — ' + escape_(clanPo[u.id]) : 'brez dostopa');
+    return `<div class="u-row ${u.active ? '' : 'u-off'}">
+      <div>
+        <div class="u-mail">${escape_(u.email || u.full_name || '—')}
+          ${jaz ? '<span class="pill">vi</span>' : ''}
+          ${u.active ? '' : '<span class="pill">izklopljen</span>'}</div>
+        <div class="u-sub">${vloga}</div>
+      </div>
+      <div>
+        <select data-org="${u.id}" ${u.is_staff || jaz ? 'disabled' : ''}>
+          <option value="">— brez dostopa —</option>
+          ${ORGSEZNAM.map(o => `<option value="${o.id}"${clanPo[u.id] === o.name ? ' selected' : ''}>${escape_(o.name)}</option>`).join('')}
+        </select>
+      </div>
+      <div class="u-acts">
+        ${jaz ? '' : `<button data-act="staff" data-id="${u.id}" data-v="${u.is_staff ? 0 : 1}">${u.is_staff ? 'v stranko' : 'v osebje'}</button>`}
+        ${jaz ? '' : `<button data-act="active" data-id="${u.id}" data-v="${u.active ? 0 : 1}">${u.active ? 'izklopi' : 'vklopi'}</button>`}
+        <button data-act="pw" data-id="${u.id}">novo geslo</button>
+        ${jaz ? '' : `<button class="danger" data-act="del" data-id="${u.id}" data-m="${escape_(u.email || '')}">izbriši</button>`}
+      </div>
+    </div>`;
+  }).join('') || '<p class="u-sub">Ni uporabnikov.</p>';
+
+  document.querySelectorAll('#usersList select[data-org]').forEach(sel => {
+    sel.addEventListener('change', () => nastaviStranko(sel.dataset.org, sel.value));
+  });
+  document.querySelectorAll('#usersList button[data-act]').forEach(b => {
+    b.addEventListener('click', () => dejanje(b));
+  });
+}
+
+async function nastaviStranko(userId, orgId) {
+  await sb.from('memberships').delete().eq('user_id', userId);
+  if (orgId) {
+    const { error } = await sb.from('memberships')
+      .insert({ user_id: userId, org_id: orgId, role: 'owner' });
+    if (error) { uMsg('Ni uspelo: ' + escape_(error.message), true); return; }
+  }
+  uMsg(orgId ? 'Dostop je dodeljen.' : 'Dostop je odvzet.');
+  loadUsers();
+}
+
+async function dejanje(btn) {
+  const id = btn.dataset.id, act = btn.dataset.act;
+  btn.disabled = true;
+
+  if (act === 'staff') {
+    const { error } = await sb.from('profiles')
+      .update({ is_staff: btn.dataset.v === '1' }).eq('id', id);
+    if (btn.dataset.v === '1') await sb.from('memberships').delete().eq('user_id', id);
+    uMsg(error ? 'Ni uspelo: ' + escape_(error.message) : 'Vloga je spremenjena.', !!error);
+    loadUsers(); return;
+  }
+
+  if (act === 'active') {
+    const { error } = await sb.from('profiles')
+      .update({ active: btn.dataset.v === '1' }).eq('id', id);
+    uMsg(error ? 'Ni uspelo: ' + escape_(error.message)
+       : (btn.dataset.v === '1' ? 'Račun je vklopljen.' : 'Račun je izklopljen — dostopa nima več.'), !!error);
+    loadUsers(); return;
+  }
+
+  if (act === 'pw') {
+    const r = await klic({ dejanje: 'geslo', id });
+    btn.disabled = false;
+    if (r.napaka) { uMsg(escape_(r.napaka), true); return; }
+    uMsg('Novo geslo: <span class="secret">' + escape_(r.geslo)
+       + '</span><br>Zapišite si ga zdaj — drugič ga ne bo mogoče prikazati.');
+    return;
+  }
+
+  if (act === 'del') {
+    if (!confirm('Res izbrisati račun ' + btn.dataset.m + '? Tega ni mogoče razveljaviti.')) {
+      btn.disabled = false; return;
+    }
+    const r = await klic({ dejanje: 'izbrisi', id });
+    if (r.napaka) { btn.disabled = false; uMsg(escape_(r.napaka), true); return; }
+    uMsg('Račun je izbrisan.');
+    loadUsers(); return;
+  }
+}
+
+if ($('addUserForm')) $('addUserForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = $('nuBtn');
+  btn.disabled = true; btn.textContent = 'Ustvarjam …';
+  const orgId = $('nuOrg').value;
+  const r = await klic({
+    dejanje: 'ustvari',
+    email: $('nuEmail').value.trim(),
+    osebje: !orgId,
+    orgId: orgId || null,
+  });
+  btn.disabled = false; btn.textContent = 'Ustvari račun';
+
+  if (r.napaka) { uMsg(escape_(r.napaka), true); return; }
+  $('nuEmail').value = '';
+  uMsg('Račun <b>' + escape_(r.email) + '</b> je ustvarjen.<br>Geslo: <span class="secret">'
+     + escape_(r.geslo) + '</span><br>Sporočite ga osebno ali po telefonu, ne po e-pošti skupaj z naslovom portala. '
+     + 'Drugič ga ne bo mogoče prikazati.');
+  loadUsers();
 });
 
 /* ── pogled stranke ───────────────────────────────────────────────── */

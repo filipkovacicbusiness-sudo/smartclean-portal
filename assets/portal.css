@@ -147,3 +147,40 @@ h3.sec:first-child{margin-top:0;}
 .btn-narrow{width:auto;padding:11px 26px;margin-top:16px;}
 #pwPanel .msg{margin-top:14px;}
 @media(max-width:720px){.pw-grid{grid-template-columns:1fr;}.btn-narrow{width:100%;}}
+
+/* ── panel uporabnikov ───────────────────────────────────────────── */
+.add-row{display:grid;grid-template-columns:1fr 1fr auto;gap:14px;align-items:end;
+  padding-bottom:18px;border-bottom:1px solid var(--line);margin-bottom:18px;}
+.add-row .btn-narrow{margin-top:0;}
+select{width:100%;padding:11px 14px;border:1.5px solid var(--line);border-radius:9px;
+  background:var(--bg);color:var(--ink);}
+select:focus{border-color:var(--green-l);outline:none;}
+.u-row{display:grid;grid-template-columns:1fr 190px auto;gap:14px;align-items:center;
+  padding:12px 0;border-bottom:1px solid var(--line);}
+.u-row:last-child{border-bottom:none;}
+.u-mail{font-weight:500;word-break:break-all;}
+.u-sub{font-size:.78rem;color:var(--mid);}
+.u-acts{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;}
+.u-acts button{font-size:.78rem;padding:5px 11px;border:1px solid var(--line);
+  border-radius:100px;background:none;color:var(--mid);cursor:pointer;transition:all .18s;}
+.u-acts button:hover{border-color:var(--mid);color:var(--ink);}
+.u-acts button.danger:hover{border-color:var(--coral);color:var(--coral);}
+.u-off{opacity:.5;}
+.pill{display:inline-block;font-size:.72rem;padding:2px 9px;border-radius:100px;
+  background:var(--green-m);color:var(--green-t);margin-left:6px;}
+.secret{font-family:ui-monospace,monospace;font-size:1rem;background:var(--green-m);
+  padding:3px 9px;border-radius:6px;user-select:all;}
+@media(max-width:720px){
+  .add-row{grid-template-columns:1fr;}
+  .u-row{grid-template-columns:1fr;gap:8px;}
+  .u-acts{justify-content:flex-start;}
+}
+
+/* ── ozka glava: e-naslov v vrstici ni več prostora ──────────────── */
+@media(max-width:720px){
+  .topbar-in{gap:10px;padding:0 16px;}
+  .tools{gap:9px;}
+  .who{display:none;}
+  .link-btn{font-size:.79rem;}
+  .secret{word-break:break-all;}
+}
