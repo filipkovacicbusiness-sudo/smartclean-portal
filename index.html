@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="sl" data-theme="light">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SmartClean portal</title>
+<meta name="robots" content="noindex,nofollow"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="assets/portal.css"/>
+</head>
+<body>
+
+<!-- ══════════ PRIJAVA ══════════ -->
+<div class="auth" id="auth">
+  <aside class="auth-side">
+    <div class="wordmark">Smart<span>Clean</span></div>
+    <p class="auth-claim">Vaše perilo, <em>vedno pregledno.</em></p>
+    <p class="auth-foot">Portal za stranke in osebje · BSMART d.o.o.</p>
+  </aside>
+
+  <div class="auth-main">
+    <div class="auth-box">
+      <p class="eyebrow">Prijava</p>
+      <h1>Dobrodošli nazaj</h1>
+      <p class="sub">Vpišite se s podatki, ki ste jih prejeli od nas.</p>
+
+      <form id="loginForm" novalidate>
+        <div class="field">
+          <label for="email">E-poštni naslov</label>
+          <input type="email" id="email" name="email" autocomplete="username" required/>
+        </div>
+        <div class="field">
+          <label for="password">Geslo</label>
+          <input type="password" id="password" name="password" autocomplete="current-password" required/>
+        </div>
+        <button type="submit" class="btn" id="loginBtn">Prijavi se</button>
+      </form>
+
+      <div class="msg" id="loginMsg" role="status" aria-live="polite"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ APLIKACIJA ══════════ -->
+<div class="app" id="app">
+  <header class="topbar">
+    <div class="topbar-in">
+      <div class="wordmark">Smart<span>Clean</span></div>
+      <div class="tools">
+        <span class="who" id="who"></span>
+        <button class="icon-btn" id="themeBtn" type="button" aria-label="Preklop teme">
+          <svg class="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.4 1.4M17.6 17.6L19 19M19 5l-1.4 1.4M6.4 17.6L5 19"/></svg>
+          <svg class="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+        </button>
+        <button class="link-btn" id="logoutBtn" type="button">Odjava</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="head">
+      <div>
+        <h2 id="title">Stranke</h2>
+        <p class="count" id="count"></p>
+      </div>
+      <div class="search">
+        <input type="search" id="search" placeholder="Iskanje po nazivu …" aria-label="Iskanje strank"/>
+      </div>
+    </div>
+    <div id="content"></div>
+  </main>
+</div>
+
+<script src="config.js"></script>
+<script src="vendor/supabase.js"></script>
+<script src="assets/portal.js" defer></script>
+</body>
+</html>
