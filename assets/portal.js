@@ -226,12 +226,17 @@ function uMsg(txt, slabo) {
 async function klic(telo) {
   const { data, error } = await sb.functions.invoke('uporabniki', { body: telo });
   if (!error) return data;
+  // Odgovor poskusimo prebrati; če ne gre, povemo vsaj kodo, da se da slediti.
   try {
-    const j = await error.context.json();
-    return { napaka: j.napaka || error.message };
-  } catch (e) {
-    return { napaka: 'Strežnik ni odgovoril. Poskusite čez trenutek.' };
-  }
+    const r = error.context;
+    if (r && typeof r.json === 'function') {
+      const j = await r.json();
+      if (j && j.napaka) return { napaka: j.napaka };
+      return { napaka: 'Strežnik je vrnil ' + (r.status || '?') + ': ' + JSON.stringify(j).slice(0, 140) };
+    }
+    if (r && r.status) return { napaka: 'Strežnik je vrnil kodo ' + r.status + '.' };
+  } catch (e) { /* preberemo, kar se da */ }
+  return { napaka: 'Klic ni uspel (' + (error.name || 'napaka') + '): ' + (error.message || 'brez podrobnosti') };
 }
 
 if ($('usersBtn')) $('usersBtn').addEventListener('click', () => {
