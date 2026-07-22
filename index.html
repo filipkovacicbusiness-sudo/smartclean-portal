@@ -70,6 +70,9 @@
 <div class="app" id="app">
   <header class="topbar">
     <div class="topbar-in">
+      <button class="burger" id="burger" type="button" aria-label="Meni" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
       <div class="wordmark">Smart<span>Clean</span></div>
       <div class="tools">
         <span class="who" id="who"></span>
@@ -77,70 +80,100 @@
           <svg class="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.4 1.4M17.6 17.6L19 19M19 5l-1.4 1.4M6.4 17.6L5 19"/></svg>
           <svg class="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
         </button>
-        <button class="link-btn hidden" id="usersBtn" type="button">Uporabniki</button>
-        <button class="link-btn" id="pwBtn" type="button">Geslo</button>
         <button class="link-btn" id="logoutBtn" type="button">Odjava</button>
       </div>
     </div>
   </header>
 
-  <main>
-    <div class="head">
-      <div>
-        <h2 id="title">Stranke</h2>
-        <p class="count" id="count"></p>
-      </div>
-      <div class="search">
-        <input type="search" id="search" placeholder="Iskanje po nazivu …" aria-label="Iskanje strank"/>
-      </div>
-    </div>
-    <div id="usersPanel" class="panel hidden">
-      <h3 class="sec">Uporabniki</h3>
+  <div class="shell">
+    <nav class="side" id="side" aria-label="Razdelki"></nav>
+    <div class="scrim" id="scrim"></div>
 
-      <form id="addUserForm" class="add-row" novalidate>
-        <div class="field">
-          <label for="nuEmail">E-naslov novega uporabnika</label>
-          <input type="email" id="nuEmail" autocomplete="off" required/>
+    <main class="main">
+
+      <section class="sec" id="sec-domov">
+        <div class="head">
+          <div><h2 id="domovNaslov">Pregled</h2><p class="count" id="domovPod"></p></div>
         </div>
-        <div class="field">
-          <label for="nuOrg">Dostop do</label>
-          <select id="nuOrg"></select>
-        </div>
-        <button type="submit" class="btn btn-narrow" id="nuBtn">Ustvari račun</button>
-      </form>
+        <div id="statGrid" class="stat-grid"></div>
+        <div id="mesecni"></div>
+        <div id="zadnji"></div>
+      </section>
 
-      <div class="msg" id="usersMsg" role="status" aria-live="polite"></div>
-      <div id="usersList"></div>
-    </div>
-
-    <div id="pwPanel" class="panel hidden">
-      <h3 class="sec">Sprememba gesla</h3>
-      <form id="changePwForm" novalidate>
-        <div class="pw-grid">
-          <div class="field">
-            <label for="curPw">Trenutno geslo</label>
-            <input type="password" id="curPw" autocomplete="current-password" required/>
-          </div>
-          <div class="field">
-            <label for="chPw1">Novo geslo</label>
-            <input type="password" id="chPw1" autocomplete="new-password" required/>
-          </div>
-          <div class="field">
-            <label for="chPw2">Ponovi novo geslo</label>
-            <input type="password" id="chPw2" autocomplete="new-password" required/>
+      <section class="sec hidden" id="sec-arhiv">
+        <div class="head">
+          <div><h2>Arhiv spremnih listov</h2><p class="count" id="arhivPod"></p></div>
+          <div class="filtri">
+            <select id="arhivOrg" class="hidden"></select>
+            <input type="search" id="arhivIsci" placeholder="Iskanje po številki …" aria-label="Iskanje"/>
           </div>
         </div>
-        <button type="submit" class="btn btn-narrow" id="chPwBtn">Shrani novo geslo</button>
-      </form>
-      <div class="msg" id="pwMsg" role="status" aria-live="polite"></div>
-    </div>
+        <div id="arhivList"></div>
+      </section>
 
-    <div id="content"></div>
-  </main>
+      <section class="sec hidden" id="sec-stranke">
+        <div class="head">
+          <div><h2>Stranke</h2><p class="count" id="count"></p></div>
+          <div class="filtri"><input type="search" id="search" placeholder="Iskanje po nazivu …" aria-label="Iskanje strank"/></div>
+        </div>
+        <div id="content"></div>
+      </section>
+
+      <section class="sec hidden" id="sec-katalog">
+        <div class="head"><div><h2>Vaš katalog perila</h2><p class="count" id="katalogPod"></p></div></div>
+        <div id="katalogList"></div>
+      </section>
+
+      <section class="sec hidden" id="sec-uporabniki">
+        <div class="head"><div><h2>Uporabniki</h2><p class="count">Računi za osebje in stranke</p></div></div>
+        <div class="panel">
+          <form id="addUserForm" class="add-row" novalidate>
+            <div class="field">
+              <label for="nuEmail">E-naslov novega uporabnika</label>
+              <input type="email" id="nuEmail" autocomplete="off" required/>
+            </div>
+            <div class="field">
+              <label for="nuOrg">Dostop do</label>
+              <select id="nuOrg"></select>
+            </div>
+            <button type="submit" class="btn btn-narrow" id="nuBtn">Ustvari račun</button>
+          </form>
+          <div class="msg" id="usersMsg" role="status" aria-live="polite"></div>
+          <div id="usersList"></div>
+        </div>
+      </section>
+
+      <section class="sec hidden" id="sec-racun">
+        <div class="head"><div><h2>Moj račun</h2><p class="count" id="racunPod"></p></div></div>
+        <div class="panel">
+          <h3 class="sec-h">Sprememba gesla</h3>
+          <form id="changePwForm" novalidate>
+            <div class="pw-grid">
+              <div class="field">
+                <label for="curPw">Trenutno geslo</label>
+                <input type="password" id="curPw" autocomplete="current-password" required/>
+              </div>
+              <div class="field">
+                <label for="chPw1">Novo geslo</label>
+                <input type="password" id="chPw1" autocomplete="new-password" required/>
+              </div>
+              <div class="field">
+                <label for="chPw2">Ponovi novo geslo</label>
+                <input type="password" id="chPw2" autocomplete="new-password" required/>
+              </div>
+            </div>
+            <button type="submit" class="btn btn-narrow" id="chPwBtn">Shrani novo geslo</button>
+          </form>
+          <div class="msg" id="pwMsg" role="status" aria-live="polite"></div>
+        </div>
+      </section>
+
+    </main>
+  </div>
 </div>
 
 <script src="config.js"></script>
 <script src="vendor/supabase.js"></script>
-<script src="assets/portal.js" defer></script>
+<script src="assets/portal.js"></script>
 </body>
 </html>

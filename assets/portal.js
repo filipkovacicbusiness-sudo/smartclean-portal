@@ -1,8 +1,18 @@
-(async function(){
-const createClient = window.supabase.createClient;
+/* SmartClean portal */
+(function () {
+'use strict';
 
 const $ = (id) => document.getElementById(id);
 const cfg = window.SC_CONFIG || {};
+const createClient = window.supabase.createClient;
+
+function escape_(s) {
+  return String(s ?? '').replace(/[&<>"']/g, (c) =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+const stevilo = (n) => Number(n || 0).toLocaleString('sl-SI');
+const datum = (d) => d ? new Date(d + 'T00:00:00').toLocaleDateString('sl-SI',
+  { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
 
 /* ── tema ─────────────────────────────────────────────────────────── */
 try {
@@ -15,14 +25,12 @@ $('themeBtn').addEventListener('click', () => {
   try { localStorage.setItem('sc-portal-theme', next); } catch (e) {}
 });
 
-/* ── povej naravnost, če nastavitve niso izpolnjene ───────────────── */
-// Ključ vzamemo iz config.js; če ga tam ni, iz brskalnikove shrambe.
+/* ── nastavitve ───────────────────────────────────────────────────── */
 let KEY = (cfg.key && !cfg.key.startsWith('TUKAJ')) ? cfg.key : null;
 let URL_ = cfg.url || null;
 if (!KEY) { try { KEY = localStorage.getItem('sc-portal-key'); } catch (e) {} }
 if (!URL_) { try { URL_ = localStorage.getItem('sc-portal-url'); } catch (e) {} }
 
-/* Če ključa ni nikjer, ga vprašamo tu – brez urejanja datotek. */
 if (!KEY || !URL_) {
   $('loginForm').style.display = 'none';
   const box = document.createElement('div');
@@ -34,7 +42,7 @@ if (!KEY || !URL_) {
     '<button type="button" class="btn" id="kSave">Shrani in nadaljuj</button>';
   $('loginForm').parentNode.insertBefore(box, $('loginMsg'));
   document.querySelector('.sub').textContent =
-    'Portal še ne ve, kje je vaša baza. Vpišite podatke iz Supabase → Project Settings → API Keys. Vprašamo samo enkrat.';
+    'Portal še ne ve, kje je vaša baza. Vpišite podatke iz Supabase → Project Settings → API Keys.';
   $('kSave').addEventListener('click', () => {
     const u = document.getElementById('kUrl').value.trim();
     const k = document.getElementById('kKey').value.trim();
@@ -56,58 +64,48 @@ if (!KEY || !URL_) {
 
 const sb = (URL_ && KEY) ? createClient(URL_, KEY) : null;
 
-/* ── prijava ──────────────────────────────────────────────────────── */
+/* ══════════ PRIJAVA ══════════ */
 $('loginForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   if (!sb) return;
-  const m = $('loginMsg');
-  const btn = $('loginBtn');
-  btn.disabled = true;
-  btn.textContent = 'Prijavljam …';
+  const m = $('loginMsg'), btn = $('loginBtn');
+  btn.disabled = true; btn.textContent = 'Prijavljam …';
   m.className = 'msg';
-
   const { error } = await sb.auth.signInWithPassword({
-    email: $('email').value.trim(),
-    password: $('password').value,
+    email: $('email').value.trim(), password: $('password').value,
   });
-
-  btn.disabled = false;
-  btn.textContent = 'Prijavi se';
-
+  btn.disabled = false; btn.textContent = 'Prijavi se';
   if (error) {
     m.className = 'msg bad show';
-    m.textContent = /invalid/i.test(error.message)
-      ? 'E-naslov ali geslo se ne ujemata.'
-      : /confirm/i.test(error.message)
-        ? 'Ta račun še ni potrjen. Javite se administratorju.'
-        : 'Prijava ni uspela: ' + error.message;
+    m.textContent = /invalid/i.test(error.message) ? 'E-naslov ali geslo se ne ujemata.'
+      : /confirm/i.test(error.message) ? 'Ta račun še ni potrjen. Javite se administratorju.'
+      : 'Prijava ni uspela: ' + error.message;
     return;
   }
   start();
 });
 
-/* ── pozabljeno geslo ─────────────────────────────────────────────── */
 function showAuthPane(which) {
-  ['loginForm','resetForm','newPwForm'].forEach(id => {
+  ['loginForm', 'resetForm', 'newPwForm'].forEach((id) => {
     const el = $(id); if (el) el.classList.toggle('hidden', id !== which);
   });
   const f = $('forgotBtn'); if (f) f.classList.toggle('hidden', which !== 'loginForm');
   const m = $('loginMsg'); if (m) m.className = 'msg';
 }
 
-if ($('forgotBtn')) $('forgotBtn').addEventListener('click', () => {
+$('forgotBtn').addEventListener('click', () => {
   $('resetEmail').value = $('email').value.trim();
   showAuthPane('resetForm');
   document.querySelector('.sub').textContent =
     'Vpišite svoj e-naslov in poslali vam bomo povezavo za nastavitev novega gesla.';
 });
 
-if ($('backBtn')) $('backBtn').addEventListener('click', () => {
+$('backBtn').addEventListener('click', () => {
   showAuthPane('loginForm');
   document.querySelector('.sub').textContent = 'Vpišite se s podatki, ki ste jih prejeli od nas.';
 });
 
-if ($('resetForm')) $('resetForm').addEventListener('submit', async (e) => {
+$('resetForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   if (!sb) return;
   const m = $('loginMsg'), btn = $('resetBtn');
@@ -124,14 +122,11 @@ if ($('resetForm')) $('resetForm').addEventListener('submit', async (e) => {
     : 'Če ta e-naslov pri nas obstaja, je povezava na poti. Preverite tudi mapo z neželeno pošto.';
 });
 
-/* ── nastavitev novega gesla po kliku na povezavo iz e-pošte ──────── */
-if ($('newPwForm')) $('newPwForm').addEventListener('submit', async (e) => {
+$('newPwForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const m = $('loginMsg'), btn = $('newPwBtn');
   const p1 = $('newPw1').value, p2 = $('newPw2').value;
-  if (p1 !== p2) {
-    m.className = 'msg bad show'; m.textContent = 'Gesli se ne ujemata.'; return;
-  }
+  if (p1 !== p2) { m.className = 'msg bad show'; m.textContent = 'Gesli se ne ujemata.'; return; }
   btn.disabled = true; btn.textContent = 'Shranjujem …';
   const { error } = await sb.auth.updateUser({ password: p1 });
   btn.disabled = false; btn.textContent = 'Nastavi geslo';
@@ -151,44 +146,320 @@ $('logoutBtn').addEventListener('click', async () => {
   location.reload();
 });
 
-/* ── po prijavi ───────────────────────────────────────────────────── */
+/* ══════════ STANJE ══════════ */
+let JAZ = null, OSEBJE = false, MOJEPODJETJE = null;
+let ORGSEZNAM = [], ORGIME = {}, LISTI = [], VSEHLISTOV = 0;
+
+/* ══════════ ZAGON ══════════ */
 async function start() {
   const { data: { user } } = await sb.auth.getUser();
   if (!user) return;
 
   $('auth').style.display = 'none';
   $('app').classList.add('show');
-
-  const { data: profile } = await sb
-    .from('profiles').select('full_name,is_staff').eq('id', user.id).maybeSingle();
-
-  $('who').textContent = (profile?.full_name || user.email)
-    + (profile?.is_staff ? ' · osebje' : '');
-
   JAZ = user.id;
-  if ($('usersBtn')) $('usersBtn').classList.toggle('hidden', !profile?.is_staff);
-  if (profile?.is_staff) { loadOrgs(); } else { loadCustomer(); }
+
+  const { data: profil } = await sb
+    .from('profiles').select('full_name,is_staff').eq('id', user.id).maybeSingle();
+  OSEBJE = !!profil?.is_staff;
+  $('who').textContent = (profil?.full_name || user.email) + (OSEBJE ? ' · osebje' : '');
+  $('racunPod').textContent = user.email;
+
+  const { data: orgs } = await sb.from('orgs').select('id,name,legal_name,address,vat_id').order('name');
+  ORGSEZNAM = orgs || [];
+  ORGIME = {}; ORGSEZNAM.forEach((o) => { ORGIME[o.id] = o.name; });
+  if (!OSEBJE && ORGSEZNAM.length === 1) MOJEPODJETJE = ORGSEZNAM[0];
+
+  meni();
+  await naloziListe();
+  pojdi('domov');
 }
 
-/* ── sprememba gesla znotraj portala ──────────────────────────────── */
-if ($('pwBtn')) $('pwBtn').addEventListener('click', () => {
-  const p = $('pwPanel');
-  p.classList.toggle('hidden');
-  if (!p.classList.contains('hidden')) $('curPw').focus();
-});
+/* ══════════ STRANSKI MENI ══════════ */
+const IKONE = {
+  domov: '<path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/>',
+  arhiv: '<path d="M4 6.5A1.5 1.5 0 0 1 5.5 5h13A1.5 1.5 0 0 1 20 6.5V20l-4-2-4 2-4-2-4 2Z"/><path d="M8 9.5h8M8 13.5h5"/>',
+  stranke: '<path d="M3 20h18"/><path d="M5 20V6l7-3 7 3v14"/><path d="M9.5 20v-4h5v4"/>',
+  katalog: '<path d="M4 5.5h7v13H4Z"/><path d="M13 5.5h7v13h-7Z"/>',
+  uporabniki: '<circle cx="9" cy="9" r="3.2"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><circle cx="17.5" cy="10" r="2.4"/><path d="M15.5 19a4.5 4.5 0 0 1 5-4.4"/>',
+  racun: '<rect x="4.5" y="10.5" width="15" height="9.5" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/>',
+};
+const ikona = (k) => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+  'stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  IKONE[k] + '</svg>';
 
-if ($('changePwForm')) $('changePwForm').addEventListener('submit', async (e) => {
+function meni() {
+  const deli = OSEBJE
+    ? [['domov', 'Pregled'], ['arhiv', 'Arhiv'], ['stranke', 'Stranke'],
+       ['uporabniki', 'Uporabniki'], ['racun', 'Moj račun']]
+    : [['domov', 'Pregled'], ['arhiv', 'Arhiv'], ['katalog', 'Katalog'], ['racun', 'Moj račun']];
+
+  $('side').innerHTML =
+    '<p class="side-h">' + (OSEBJE ? 'Pralnica' : 'Vaš pregled') + '</p>' +
+    deli.slice(0, deli.length - 1).map(([k, l]) =>
+      `<a data-go="${k}">${ikona(k)}${l}</a>`).join('') +
+    '<p class="side-h">Nastavitve</p>' +
+    `<a data-go="racun">${ikona('racun')}Moj račun</a>`;
+
+  document.querySelectorAll('#side a[data-go]').forEach((a) => {
+    a.addEventListener('click', () => { pojdi(a.dataset.go); zapriMeni(); });
+  });
+}
+
+function zapriMeni() {
+  $('side').classList.remove('on');
+  $('scrim').classList.remove('on');
+  $('burger').classList.remove('open');
+  $('burger').setAttribute('aria-expanded', 'false');
+}
+$('burger').addEventListener('click', () => {
+  const on = $('side').classList.toggle('on');
+  $('scrim').classList.toggle('on', on);
+  $('burger').classList.toggle('open', on);
+  $('burger').setAttribute('aria-expanded', on ? 'true' : 'false');
+});
+$('scrim').addEventListener('click', zapriMeni);
+
+/* ══════════ USMERJANJE ══════════ */
+function pojdi(kam) {
+  document.querySelectorAll('.sec').forEach((s) => {
+    s.classList.toggle('hidden', s.id !== 'sec-' + kam);
+  });
+  document.querySelectorAll('#side a[data-go]').forEach((a) => {
+    a.classList.toggle('on', a.dataset.go === kam);
+  });
+  window.scrollTo(0, 0);
+  if (kam === 'domov') risiPregled();
+  if (kam === 'arhiv') risiArhiv();
+  if (kam === 'stranke') risiStranke();
+  if (kam === 'katalog') risiKatalog();
+  if (kam === 'uporabniki') loadUsers();
+}
+
+/* ══════════ SPREMNI LISTI ══════════ */
+async function naloziListe() {
+  const { data, error } = await sb.from('delivery_notes')
+    .select('id,number,doc_date,total_pieces,weight_kg,org_id,issued_name')
+    .order('doc_date', { ascending: false }).limit(1000);
+  LISTI = error ? [] : (data || []);
+  const { count } = await sb.from('delivery_notes').select('id', { count: 'exact', head: true });
+  VSEHLISTOV = count || 0;
+}
+
+const prazniListi = (kdo) =>
+  '<div class="rows"><div class="empty"><h3>Spremnih listov še ni</h3><p>' +
+  (kdo === 'osebje'
+    ? 'Spremni listi nastajajo na tablici v pralnici. Ko jih bomo prenesli v bazo,<br>se bodo izpisali tukaj.'
+    : 'Ko bomo prevzeli in vrnili perilo, se bo vsak prevzem izpisal tukaj.') +
+  '</p></div></div>';
+
+/* ══════════ PREGLED ══════════ */
+function risiPregled() {
+  $('domovNaslov').textContent = OSEBJE ? 'Pregled' : (MOJEPODJETJE ? MOJEPODJETJE.name : 'Vaš pregled');
+  $('domovPod').textContent = OSEBJE
+    ? ORGSEZNAM.length + ' strank v bazi'
+    : (MOJEPODJETJE ? [MOJEPODJETJE.legal_name, MOJEPODJETJE.address].filter(Boolean).join(' · ') : '');
+
+  const zdaj = new Date();
+  const zacetekMeseca = new Date(zdaj.getFullYear(), zdaj.getMonth(), 1);
+  const vMesecu = LISTI.filter((l) => new Date(l.doc_date) >= zacetekMeseca);
+  const kosovMesec = vMesecu.reduce((s, l) => s + (l.total_pieces || 0), 0);
+  const kosovSkupaj = LISTI.reduce((s, l) => s + (l.total_pieces || 0), 0);
+  const zadnji = LISTI[0];
+
+  const pred90 = new Date(zdaj.getTime() - 90 * 864e5);
+  const aktivnih = new Set(LISTI.filter((l) => new Date(l.doc_date) >= pred90).map((l) => l.org_id)).size;
+
+  const kartice = OSEBJE
+    ? [['Spremnih listov', stevilo(VSEHLISTOV), 'skupaj v bazi'],
+       ['Ta mesec', stevilo(vMesecu.length), stevilo(kosovMesec) + ' kosov'],
+       ['Aktivnih strank', stevilo(aktivnih), 'v zadnjih 90 dneh'],
+       ['Zadnji prevzem', zadnji ? datum(zadnji.doc_date) : '—',
+        zadnji ? (ORGIME[zadnji.org_id] || '') : 'še ni podatkov']]
+    : [['Prevzemov', stevilo(VSEHLISTOV), 'skupaj'],
+       ['Ta mesec', stevilo(vMesecu.length), stevilo(kosovMesec) + ' kosov'],
+       ['Kosov skupaj', stevilo(kosovSkupaj), 'v vseh prevzemih'],
+       ['Zadnji prevzem', zadnji ? datum(zadnji.doc_date) : '—',
+        zadnji ? stevilo(zadnji.total_pieces) + ' kosov' : 'še ni podatkov']];
+
+  $('statGrid').innerHTML = kartice.map(([l, n, s]) =>
+    `<div class="stat"><div class="stat-num">${escape_(n)}</div>
+     <div class="stat-lab">${escape_(l)}</div><div class="stat-sub">${escape_(s)}</div></div>`).join('');
+
+  /* zadnjih šest mesecev */
+  if (!LISTI.length) {
+    $('mesecni').innerHTML = '';
+    $('zadnji').innerHTML = prazniListi(OSEBJE ? 'osebje' : 'stranka');
+    return;
+  }
+
+  const meseci = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(zdaj.getFullYear(), zdaj.getMonth() - i, 1);
+    const konec = new Date(zdaj.getFullYear(), zdaj.getMonth() - i + 1, 1);
+    const kos = LISTI.filter((l) => {
+      const x = new Date(l.doc_date); return x >= d && x < konec;
+    }).reduce((s, l) => s + (l.total_pieces || 0), 0);
+    meseci.push({ ime: d.toLocaleDateString('sl-SI', { month: 'short' }), kos });
+  }
+  const naj = Math.max(...meseci.map((m) => m.kos), 1);
+  $('mesecni').innerHTML =
+    '<div class="bars"><h3 class="sec-h">Kosov po mesecih</h3><div class="bars-row">' +
+    meseci.map((m) => `<div class="bars-col">
+        <span class="bars-val">${m.kos ? stevilo(m.kos) : ''}</span>
+        <div class="bars-bar" style="height:${Math.round(m.kos / naj * 88)}px"></div>
+        <span class="bars-lab">${escape_(m.ime)}</span></div>`).join('') +
+    '</div></div>';
+
+  $('zadnji').innerHTML =
+    '<h3 class="sec-h">Zadnji prevzemi</h3>' + tabelaListov(LISTI.slice(0, 5), false);
+}
+
+/* ══════════ ARHIV ══════════ */
+function tabelaListov(vrstice, klikljivo) {
+  if (!vrstice.length) return prazniListi(OSEBJE ? 'osebje' : 'stranka');
+  return '<div class="rows">' + vrstice.map((l, i) => `
+    <button class="a-row" type="button" data-i="${i}" data-id="${l.id}" aria-expanded="false"
+      ${klikljivo ? '' : 'style="cursor:default"'}>
+      <span class="a-num">${escape_(l.number || '—')}</span>
+      <span class="a-cli">${escape_(OSEBJE ? (ORGIME[l.org_id] || '—') : (l.issued_name || ''))}</span>
+      <span class="num">${datum(l.doc_date)}</span>
+      <span class="num">${stevilo(l.total_pieces)} kos</span>
+      <span class="chev" aria-hidden="true">${klikljivo ? '›' : ''}</span>
+    </button>
+    <div class="a-det" id="det${i}"></div>`).join('') + '</div>';
+}
+
+function risiArhiv() {
+  if (OSEBJE) {
+    const sel = $('arhivOrg');
+    sel.classList.remove('hidden');
+    if (!sel.options.length) {
+      sel.innerHTML = '<option value="">Vse stranke</option>' +
+        ORGSEZNAM.map((o) => `<option value="${o.id}">${escape_(o.name)}</option>`).join('');
+      sel.addEventListener('change', risiArhiv);
+    }
+  }
+  const q = $('arhivIsci').value.trim().toLowerCase();
+  const org = OSEBJE ? $('arhivOrg').value : '';
+  const vrstice = LISTI.filter((l) =>
+    (!org || l.org_id === org) &&
+    (!q || (l.number || '').toLowerCase().includes(q) ||
+      (ORGIME[l.org_id] || '').toLowerCase().includes(q)));
+
+  $('arhivPod').textContent = LISTI.length
+    ? vrstice.length + ' od ' + stevilo(VSEHLISTOV) + ' spremnih listov'
+    : 'v bazi še ni spremnih listov';
+  $('arhivList').innerHTML = tabelaListov(vrstice, true);
+
+  document.querySelectorAll('#arhivList .a-row').forEach((b) => {
+    b.addEventListener('click', () => odpriList(b));
+  });
+}
+$('arhivIsci').addEventListener('input', risiArhiv);
+
+async function odpriList(btn) {
+  const box = $('det' + btn.dataset.i);
+  const odprt = btn.getAttribute('aria-expanded') === 'true';
+  if (odprt) { btn.setAttribute('aria-expanded', 'false'); box.classList.remove('show'); return; }
+  btn.setAttribute('aria-expanded', 'true'); box.classList.add('show');
+  if (box.dataset.loaded) return;
+
+  box.innerHTML = '<p class="u-sub">Nalagam …</p>';
+  const { data, error } = await sb.from('delivery_note_items')
+    .select('article_name,pieces').eq('note_id', btn.dataset.id).order('sort_order');
+  if (error) { box.innerHTML = '<p class="u-sub">Napaka: ' + escape_(error.message) + '</p>'; return; }
+  box.innerHTML = (data && data.length)
+    ? '<ul>' + data.map((p) =>
+        `<li><span>${escape_(p.article_name)}</span><b>${stevilo(p.pieces)}</b></li>`).join('') + '</ul>'
+    : '<p class="u-sub">Ta spremni list nima postavk.</p>';
+  box.dataset.loaded = '1';
+}
+
+/* ══════════ STRANKE (osebje) ══════════ */
+let ARTSTEVILO = {};
+async function risiStranke() {
+  if (!Object.keys(ARTSTEVILO).length) {
+    const { data } = await sb.from('orgs').select('id,articles(count)');
+    (data || []).forEach((o) => { ARTSTEVILO[o.id] = o.articles?.[0]?.count ?? 0; });
+  }
+  render();
+}
+
+function render() {
+  const q = $('search').value.trim().toLowerCase();
+  const list = q
+    ? ORGSEZNAM.filter((o) => (o.name + ' ' + (o.legal_name || '')).toLowerCase().includes(q))
+    : ORGSEZNAM;
+  const skupaj = ORGSEZNAM.reduce((s, o) => s + (ARTSTEVILO[o.id] || 0), 0);
+  $('count').textContent = ORGSEZNAM.length + ' strank · ' + stevilo(skupaj) + ' artiklov v katalogih';
+
+  if (!list.length) {
+    $('content').innerHTML = '<div class="rows"><div class="empty"><h3>Nič se ne ujema</h3>' +
+      '<p>Poskusite z drugim delom naziva.</p></div></div>';
+    return;
+  }
+  const naj = Math.max(...ORGSEZNAM.map((o) => ARTSTEVILO[o.id] || 0), 1);
+  $('content').innerHTML = '<div class="rows">' + list.map((o, i) => {
+    const n = ARTSTEVILO[o.id] || 0;
+    return `<button class="row" type="button" data-id="${o.id}" data-i="${i}" aria-expanded="false">
+      <span><span class="row-name">${escape_(o.name)}</span>
+      ${o.legal_name ? `<br><span class="row-legal">${escape_(o.legal_name)}</span>` : ''}</span>
+      <span class="bar" title="${n} artiklov"><i style="width:${Math.round(n / naj * 100)}%"></i></span>
+      <span class="num">${n} artiklov</span>
+      <span class="chev" aria-hidden="true">›</span>
+    </button><div class="arts" id="a${i}"></div>`;
+  }).join('') + '</div>';
+
+  document.querySelectorAll('#content .row').forEach((b) => b.addEventListener('click', () => toggle(b)));
+}
+$('search').addEventListener('input', render);
+
+async function toggle(btn) {
+  const box = $('a' + btn.dataset.i);
+  const odprt = btn.getAttribute('aria-expanded') === 'true';
+  if (odprt) { btn.setAttribute('aria-expanded', 'false'); box.classList.remove('show'); return; }
+  btn.setAttribute('aria-expanded', 'true'); box.classList.add('show');
+  if (box.dataset.loaded) return;
+  box.innerHTML = '<p class="meta">Nalagam …</p>';
+  const org = ORGSEZNAM.find((o) => o.id === btn.dataset.id);
+  const { data, error } = await sb.from('articles').select('name')
+    .eq('org_id', btn.dataset.id).order('sort_order');
+  if (error) { box.innerHTML = '<p class="meta">Napaka: ' + escape_(error.message) + '</p>'; return; }
+  const meta = [org.vat_id ? 'Davčna <b>' + escape_(org.vat_id) + '</b>' : 'Brez davčne številke',
+                org.address ? escape_(org.address) : 'Brez naslova'].join(' · ');
+  box.innerHTML = '<p class="meta">' + meta + '</p>' + (data?.length
+    ? '<ul>' + data.map((a) => '<li>' + escape_(a.name) + '</li>').join('') + '</ul>'
+    : '<p class="none">Ta stranka še nima artiklov v katalogu.</p>');
+  box.dataset.loaded = '1';
+}
+
+/* ══════════ KATALOG (stranka) ══════════ */
+async function risiKatalog() {
+  if (!MOJEPODJETJE) {
+    $('katalogList').innerHTML = '<div class="rows"><div class="empty">' +
+      '<h3>Tu še ni ničesar za prikaz</h3><p>Vaš račun ni povezan z nobenim podjetjem.<br>' +
+      'Javite se nam in vam ga uredimo.</p></div></div>';
+    return;
+  }
+  $('katalogList').innerHTML = '<div class="rows"><div class="empty">Nalagam …</div></div>';
+  const { data } = await sb.from('articles').select('name')
+    .eq('org_id', MOJEPODJETJE.id).order('sort_order');
+  $('katalogPod').textContent = (data?.length || 0) + ' artiklov';
+  $('katalogList').innerHTML = '<div class="rows"><div class="arts show" style="border:none">' +
+    (data?.length ? '<ul>' + data.map((a) => '<li>' + escape_(a.name) + '</li>').join('') + '</ul>'
+                  : '<p class="none">Katalog še ni izpolnjen.</p>') + '</div></div>';
+}
+
+/* ══════════ MOJ RAČUN ══════════ */
+$('changePwForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const m = $('pwMsg'), btn = $('chPwBtn');
   const cur = $('curPw').value, p1 = $('chPw1').value, p2 = $('chPw2').value;
-
   if (p1 !== p2) { m.className = 'msg bad show'; m.textContent = 'Novi gesli se ne ujemata.'; return; }
   if (p1 === cur) { m.className = 'msg bad show'; m.textContent = 'Novo geslo mora biti drugačno od starega.'; return; }
-
   btn.disabled = true; btn.textContent = 'Shranjujem …';
 
-  // Najprej potrdimo istovetnost s trenutnim geslom. Brez tega bi lahko
-  // kdor koli s tujo odprto sejo zamenjal geslo in lastnika izključil.
   const { data: { user } } = await sb.auth.getUser();
   const check = await sb.auth.signInWithPassword({ email: user.email, password: cur });
   if (check.error) {
@@ -196,10 +467,8 @@ if ($('changePwForm')) $('changePwForm').addEventListener('submit', async (e) =>
     m.className = 'msg bad show'; m.textContent = 'Trenutno geslo ni pravilno.';
     return;
   }
-
   const { error } = await sb.auth.updateUser({ password: p1 });
   btn.disabled = false; btn.textContent = 'Shrani novo geslo';
-
   if (error) {
     m.className = 'msg bad show';
     m.textContent = /weak|short|password/i.test(error.message)
@@ -207,26 +476,20 @@ if ($('changePwForm')) $('changePwForm').addEventListener('submit', async (e) =>
       : 'Ni uspelo: ' + error.message;
     return;
   }
-  ['curPw','chPw1','chPw2'].forEach(id => { $(id).value = ''; });
+  ['curPw', 'chPw1', 'chPw2'].forEach((id) => { $(id).value = ''; });
   m.className = 'msg show'; m.textContent = 'Geslo je spremenjeno.';
 });
 
-
-/* ══ PANEL UPORABNIKOV (samo osebje) ══════════════════════════════ */
-let JAZ = null;      // id prijavljenega
-let ORGSEZNAM = [];
-
+/* ══════════ UPORABNIKI (osebje) ══════════ */
 function uMsg(txt, slabo) {
   const m = $('usersMsg');
   m.className = 'msg ' + (slabo ? 'bad show' : 'show');
   m.innerHTML = txt;
 }
 
-/* Klic strežniške funkcije. Tajni ključ ostane tam, sem pride le izid. */
 async function klic(telo) {
   const { data, error } = await sb.functions.invoke('uporabniki', { body: telo });
   if (!error) return data;
-  // Odgovor poskusimo prebrati; če ne gre, povemo vsaj kodo, da se da slediti.
   try {
     const r = error.context;
     if (r && typeof r.json === 'function') {
@@ -235,35 +498,23 @@ async function klic(telo) {
       return { napaka: 'Strežnik je vrnil ' + (r.status || '?') + ': ' + JSON.stringify(j).slice(0, 140) };
     }
     if (r && r.status) return { napaka: 'Strežnik je vrnil kodo ' + r.status + '.' };
-  } catch (e) { /* preberemo, kar se da */ }
+  } catch (e) {}
   return { napaka: 'Klic ni uspel (' + (error.name || 'napaka') + '): ' + (error.message || 'brez podrobnosti') };
 }
 
-if ($('usersBtn')) $('usersBtn').addEventListener('click', () => {
-  const p = $('usersPanel');
-  p.classList.toggle('hidden');
-  if (!p.classList.contains('hidden')) loadUsers();
-});
-
 async function loadUsers() {
   $('usersList').innerHTML = '<p class="u-sub">Nalagam …</p>';
-
-  if (!ORGSEZNAM.length) {
-    const { data } = await sb.from('orgs').select('id,name').order('name');
-    ORGSEZNAM = data || [];
-    $('nuOrg').innerHTML = '<option value="">— osebje SmartClean —</option>'
-      + ORGSEZNAM.map(o => `<option value="${o.id}">${escape_(o.name)}</option>`).join('');
+  if (!$('nuOrg').options.length) {
+    $('nuOrg').innerHTML = '<option value="">— osebje SmartClean —</option>' +
+      ORGSEZNAM.map((o) => `<option value="${o.id}">${escape_(o.name)}</option>`).join('');
   }
-
   const [{ data: ljudje }, { data: clanstva }] = await Promise.all([
     sb.from('profiles').select('id,email,full_name,is_staff,active').order('email'),
     sb.from('memberships').select('user_id,org_id'),
   ]);
+  const clanPo = {}; (clanstva || []).forEach((c) => { clanPo[c.user_id] = ORGIME[c.org_id]; });
 
-  const orgPo = {}; ORGSEZNAM.forEach(o => { orgPo[o.id] = o.name; });
-  const clanPo = {}; (clanstva || []).forEach(c => { clanPo[c.user_id] = orgPo[c.org_id]; });
-
-  $('usersList').innerHTML = (ljudje || []).map(u => {
+  $('usersList').innerHTML = (ljudje || []).map((u) => {
     const jaz = u.id === JAZ;
     const vloga = u.is_staff ? 'osebje — vidi vse stranke'
       : (clanPo[u.id] ? 'stranka — ' + escape_(clanPo[u.id]) : 'brez dostopa');
@@ -274,12 +525,12 @@ async function loadUsers() {
           ${u.active ? '' : '<span class="pill">izklopljen</span>'}</div>
         <div class="u-sub">${vloga}</div>
       </div>
-      <div>
-        <select data-org="${u.id}" ${u.is_staff || jaz ? 'disabled' : ''}>
-          <option value="">— brez dostopa —</option>
-          ${ORGSEZNAM.map(o => `<option value="${o.id}"${clanPo[u.id] === o.name ? ' selected' : ''}>${escape_(o.name)}</option>`).join('')}
-        </select>
-      </div>
+      <div>${u.is_staff
+        ? '<span class="u-sub">dostop do vseh strank</span>'
+        : `<select data-org="${u.id}" ${jaz ? 'disabled' : ''}>
+             <option value="">— brez dostopa —</option>
+             ${ORGSEZNAM.map((o) => `<option value="${o.id}"${clanPo[u.id] === o.name ? ' selected' : ''}>${escape_(o.name)}</option>`).join('')}
+           </select>`}</div>
       <div class="u-acts">
         ${jaz ? '' : `<button data-act="staff" data-id="${u.id}" data-v="${u.is_staff ? 0 : 1}">${u.is_staff ? 'v stranko' : 'v osebje'}</button>`}
         ${jaz ? '' : `<button data-act="active" data-id="${u.id}" data-v="${u.active ? 0 : 1}">${u.active ? 'izklopi' : 'vklopi'}</button>`}
@@ -289,10 +540,10 @@ async function loadUsers() {
     </div>`;
   }).join('') || '<p class="u-sub">Ni uporabnikov.</p>';
 
-  document.querySelectorAll('#usersList select[data-org]').forEach(sel => {
+  document.querySelectorAll('#usersList select[data-org]').forEach((sel) => {
     sel.addEventListener('change', () => nastaviStranko(sel.dataset.org, sel.value));
   });
-  document.querySelectorAll('#usersList button[data-act]').forEach(b => {
+  document.querySelectorAll('#usersList button[data-act]').forEach((b) => {
     b.addEventListener('click', () => dejanje(b));
   });
 }
@@ -313,30 +564,25 @@ async function dejanje(btn) {
   btn.disabled = true;
 
   if (act === 'staff') {
-    const { error } = await sb.from('profiles')
-      .update({ is_staff: btn.dataset.v === '1' }).eq('id', id);
+    const { error } = await sb.from('profiles').update({ is_staff: btn.dataset.v === '1' }).eq('id', id);
     if (btn.dataset.v === '1') await sb.from('memberships').delete().eq('user_id', id);
     uMsg(error ? 'Ni uspelo: ' + escape_(error.message) : 'Vloga je spremenjena.', !!error);
     loadUsers(); return;
   }
-
   if (act === 'active') {
-    const { error } = await sb.from('profiles')
-      .update({ active: btn.dataset.v === '1' }).eq('id', id);
+    const { error } = await sb.from('profiles').update({ active: btn.dataset.v === '1' }).eq('id', id);
     uMsg(error ? 'Ni uspelo: ' + escape_(error.message)
        : (btn.dataset.v === '1' ? 'Račun je vklopljen.' : 'Račun je izklopljen — dostopa nima več.'), !!error);
     loadUsers(); return;
   }
-
   if (act === 'pw') {
     const r = await klic({ dejanje: 'geslo', id });
     btn.disabled = false;
     if (r.napaka) { uMsg(escape_(r.napaka), true); return; }
-    uMsg('Novo geslo: <span class="secret">' + escape_(r.geslo)
-       + '</span><br>Zapišite si ga zdaj — drugič ga ne bo mogoče prikazati.');
+    uMsg('Novo geslo: <span class="secret">' + escape_(r.geslo) +
+         '</span><br>Zapišite si ga zdaj — drugič ga ne bo mogoče prikazati.');
     return;
   }
-
   if (act === 'del') {
     if (!confirm('Res izbrisati račun ' + btn.dataset.m + '? Tega ni mogoče razveljaviti.')) {
       btn.disabled = false; return;
@@ -348,190 +594,27 @@ async function dejanje(btn) {
   }
 }
 
-if ($('addUserForm')) $('addUserForm').addEventListener('submit', async (e) => {
+$('addUserForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const btn = $('nuBtn');
   btn.disabled = true; btn.textContent = 'Ustvarjam …';
   const orgId = $('nuOrg').value;
   const r = await klic({
-    dejanje: 'ustvari',
-    email: $('nuEmail').value.trim(),
-    osebje: !orgId,
-    orgId: orgId || null,
+    dejanje: 'ustvari', email: $('nuEmail').value.trim(),
+    osebje: !orgId, orgId: orgId || null,
   });
   btn.disabled = false; btn.textContent = 'Ustvari račun';
-
   if (r.napaka) { uMsg(escape_(r.napaka), true); return; }
   $('nuEmail').value = '';
-  uMsg('Račun <b>' + escape_(r.email) + '</b> je ustvarjen.<br>Geslo: <span class="secret">'
-     + escape_(r.geslo) + '</span><br>Sporočite ga osebno ali po telefonu, ne po e-pošti skupaj z naslovom portala. '
-     + 'Drugič ga ne bo mogoče prikazati.');
+  uMsg('Račun <b>' + escape_(r.email) + '</b> je ustvarjen.<br>Geslo: <span class="secret">' +
+       escape_(r.geslo) + '</span><br>Sporočite ga osebno ali po telefonu, ne po e-pošti skupaj ' +
+       'z naslovom portala. Drugič ga ne bo mogoče prikazati.');
   loadUsers();
 });
 
-/* ── pogled stranke ───────────────────────────────────────────────── */
-async function loadCustomer() {
-  $('search').style.display = 'none';
-  $('title').textContent = 'Vaš pregled';
-  $('content').innerHTML = '<div class="rows"><div class="empty">Nalagam …</div></div>';
-
-  // Ista tabela kot pri osebju. Kar stranka sme videti, določa baza, ne ta koda.
-  const { data: orgs, error } = await sb
-    .from('orgs').select('id,name,legal_name,address,vat_id').order('name');
-
-  if (error) {
-    $('content').innerHTML = '<div class="rows"><div class="empty"><h3>Podatkov ni bilo mogoče naložiti</h3><p>'
-      + escape_(error.message) + '</p></div></div>';
-    return;
-  }
-
-  if (!orgs || !orgs.length) {
-    $('count').textContent = '';
-    $('content').innerHTML =
-      '<div class="rows"><div class="empty"><h3>Tu še ni ničesar za prikaz</h3>' +
-      '<p>Vaš račun deluje, ni pa še povezan z nobenim podjetjem.<br>' +
-      'Javite se nam in vam ga uredimo.</p></div></div>';
-    return;
-  }
-
-  // več podjetij na en račun je mogoče, a redko – takrat pokažemo seznam
-  if (orgs.length > 1) {
-    ORGS = orgs.map((o) => ({ ...o, arts: 0 }));
-    $('title').textContent = 'Vaša podjetja';
-    $('search').style.display = '';
-    render();
-    return;
-  }
-
-  const org = orgs[0];
-  const [{ data: arts }, { data: notes }] = await Promise.all([
-    sb.from('articles').select('name').eq('org_id', org.id).order('sort_order'),
-    sb.from('delivery_notes').select('number,doc_date,total_pieces')
-      .eq('org_id', org.id).order('doc_date', { ascending: false }).limit(20),
-  ]);
-
-  $('title').textContent = org.name;
-  $('count').textContent = [org.legal_name, org.address].filter(Boolean).join(' · ');
-
-  const listi = (notes && notes.length)
-    ? '<div class="rows">' + notes.map((n) => `
-        <div class="row" style="cursor:default;grid-template-columns:1fr 120px 92px 26px">
-          <span class="row-name">Spremni list ${escape_(n.number)}</span>
-          <span class="num">${escape_(n.doc_date)}</span>
-          <span class="num">${n.total_pieces} kosov</span><span></span>
-        </div>`).join('') + '</div>'
-    : '<div class="rows"><div class="empty"><h3>Spremnih listov še ni</h3>'
-      + '<p>Ko bomo prevzeli in vrnili perilo, se bo vsak prevzem izpisal tukaj.</p></div></div>';
-
-  $('content').innerHTML =
-    '<h3 class="sec">Zadnji prevzemi</h3>' + listi +
-    '<h3 class="sec">Vaš katalog perila</h3>' +
-    '<div class="rows"><div class="arts show" style="border:none">' +
-      (arts && arts.length
-        ? '<ul>' + arts.map((a) => '<li>' + escape_(a.name) + '</li>').join('') + '</ul>'
-        : '<p class="none">Katalog še ni izpolnjen.</p>') +
-    '</div></div>';
-}
-
-/* ── seznam strank ────────────────────────────────────────────────── */
-let ORGS = [];
-
-async function loadOrgs() {
-  $('content').innerHTML = '<div class="rows"><div class="empty">Nalagam …</div></div>';
-
-  const { data, error } = await sb
-    .from('orgs')
-    .select('id,name,legal_name,address,vat_id,articles(count)')
-    .order('name');
-
-  if (error) {
-    $('content').innerHTML =
-      '<div class="rows"><div class="empty"><h3>Podatkov ni bilo mogoče naložiti</h3><p>'
-      + escape_(error.message) + '</p></div></div>';
-    return;
-  }
-
-  ORGS = (data || []).map((o) => ({ ...o, arts: o.articles?.[0]?.count ?? 0 }));
-  render();
-}
-
-function render() {
-  const q = $('search').value.trim().toLowerCase();
-  const list = q
-    ? ORGS.filter((o) => (o.name + ' ' + (o.legal_name || '')).toLowerCase().includes(q))
-    : ORGS;
-
-  const total = ORGS.reduce((s, o) => s + o.arts, 0);
-  $('count').textContent = ORGS.length + ' strank · ' + total + ' artiklov v katalogih';
-
-  if (!list.length) {
-    $('content').innerHTML =
-      '<div class="rows"><div class="empty"><h3>Nič se ne ujema</h3>'
-      + '<p>Poskusite z drugim delom naziva.</p></div></div>';
-    return;
-  }
-
-  const max = Math.max(...ORGS.map((o) => o.arts), 1);
-
-  $('content').innerHTML = '<div class="rows">' + list.map((o, i) => `
-    <button class="row" type="button" data-id="${o.id}" data-i="${i}" aria-expanded="false">
-      <span>
-        <span class="row-name">${escape_(o.name)}</span>
-        ${o.legal_name ? `<br><span class="row-legal">${escape_(o.legal_name)}</span>` : ''}
-      </span>
-      <span class="bar" title="${o.arts} artiklov"><i style="width:${Math.round(o.arts / max * 100)}%"></i></span>
-      <span class="num">${o.arts} artiklov</span>
-      <span class="chev" aria-hidden="true">›</span>
-    </button>
-    <div class="arts" id="a${i}"></div>`).join('') + '</div>';
-
-  document.querySelectorAll('.row').forEach((btn) => {
-    btn.addEventListener('click', () => toggle(btn));
-  });
-}
-
-async function toggle(btn) {
-  const box = $('a' + btn.dataset.i);
-  const open = btn.getAttribute('aria-expanded') === 'true';
-
-  if (open) {
-    btn.setAttribute('aria-expanded', 'false');
-    box.classList.remove('show');
-    return;
-  }
-  btn.setAttribute('aria-expanded', 'true');
-  box.classList.add('show');
-
-  if (box.dataset.loaded) return;
-  box.innerHTML = '<p class="meta">Nalagam …</p>';
-
-  const org = ORGS.find((o) => o.id === btn.dataset.id);
-  const { data, error } = await sb
-    .from('articles').select('name').eq('org_id', btn.dataset.id)
-    .order('sort_order');
-
-  if (error) { box.innerHTML = '<p class="meta">Napaka: ' + escape_(error.message) + '</p>'; return; }
-
-  const meta = [
-    org.vat_id ? 'Davčna <b>' + escape_(org.vat_id) + '</b>' : 'Brez davčne številke',
-    org.address ? escape_(org.address) : 'Brez naslova',
-  ].join(' · ');
-
-  box.innerHTML = '<p class="meta">' + meta + '</p>' + (data?.length
-    ? '<ul>' + data.map((a) => '<li>' + escape_(a.name) + '</li>').join('') + '</ul>'
-    : '<p class="none">Ta stranka še nima artiklov v katalogu.</p>');
-  box.dataset.loaded = '1';
-}
-
-$('search').addEventListener('input', render);
-
-function escape_(s) {
-  return String(s ?? '').replace(/[&<>"']/g, (c) =>
-    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-}
-
-/* ── obnovi sejo ob osvežitvi ─────────────────────────────────────── */
-if (sb) {
+/* ══════════ OBNOVITEV SEJE ══════════ */
+(async function () {
+  if (!sb) return;
   let recovery = false;
   sb.auth.onAuthStateChange((event) => {
     if (event === 'PASSWORD_RECOVERY') {
@@ -542,5 +625,6 @@ if (sb) {
   });
   const { data: { session } } = await sb.auth.getSession();
   setTimeout(() => { if (session && !recovery) start(); }, 60);
-}
+})();
+
 })();
