@@ -1,116 +1,108 @@
-# Kako spraviti portal v živo
+# Portal v živo — na GitHub Pages
 
-Cilj: `portal.smartclean.si`. Vse skozi brskalnik, brez ukazne vrstice.
-Računaj kakih dvajset minut, od tega polovica čakanja na DNS.
+Cilj: `portal.smartclean.si`. Isti postopek kot pri spletni strani,
+isti GitHub račun. Vercela ne rabiš.
 
 ---
 
-## 1. Nov repozitorij na GitHubu
+## 1. Nov repozitorij
 
-1. Na **github.com** klikni **+** zgoraj desno → *New repository*
-2. Ime: `smartclean-portal`
-3. **Private** — portal ni javna koda
-4. *Create repository*
-5. Na naslednji strani klikni **uploading an existing file**
-6. Povleci vanj **vsebino mape** `portal-web` (ne mape same):
-   `index.html`, `config.js`, `vercel.json`, `robots.txt`,
+Prijavljen kot **filipkovacicbusiness-sudo** (isti račun kot smartclean.si):
+
+1. github.com → **+** zgoraj desno → *New repository*
+2. Ime: `portal.smartclean.si`
+3. **Public** — GitHub Pages na brezplačnem paketu zahteva javni repozitorij
+4. *Create repository* → **uploading an existing file**
+5. Povleci **vsebino** te mape (ne mape same):
+   `index.html`, `config.js`, `robots.txt`, `CNAME`, `.nojekyll`,
    mapi `assets` in `vendor`
-7. Spodaj *Commit changes*
+6. *Commit changes*
+
+`.nojekyll` in `CNAME` sta na Macu skrita — prikažeš ju s `Cmd+Shift+.`
+
+`vercel.json` in `OBJAVA.md` pusti doma, na GitHub Pages nimata učinka.
+
+> Repozitorij je javen, torej bo `config.js` s ključem viden. To je v redu:
+> preverjeno je, da ta ključ sam po sebi vrne 401 na vsaki tabeli. Odpre
+> se šele po prijavi, ko Supabase preklopi na vlogo `authenticated`.
 
 ---
 
-## 2. Vercel
+## 2. Vklopi Pages
 
-1. Na **vercel.com** se prijavi z istim GitHub računom
-2. *Add New…* → *Project*
-3. Poišči `smartclean-portal` → **Import**
-4. Framework Preset naj ostane *Other*, ničesar ne spreminjaj
-5. **Deploy**
+Repozitorij → **Settings** → levo **Pages**:
 
-Čez minuto dobiš naslov v slogu `smartclean-portal-xyz.vercel.app`.
-Odpri ga in preveri, da se prijava naloži.
+- Source: *Deploy from a branch*
+- Branch: `main`, mapa `/ (root)` → **Save**
+
+Pod *Custom domain* se mora sam pojaviti `portal.smartclean.si`
+(prebere ga iz datoteke `CNAME`). Če se ne, ga vpiši ročno.
+
+Ko DNS steče, obkljukaj še **Enforce HTTPS**.
 
 ---
 
-## 3. Domena
+## 3. DNS na domenca.si
 
-**V Vercelu:** projekt → *Settings* → *Domains* → vpiši
-`portal.smartclean.si` → *Add*. Vercel ti izpiše, kateri DNS zapis dodati.
-
-**Pri ponudniku domene** (tam, kjer imaš smartclean.si) dodaj zapis:
+Dodaj **en nov zapis**. Obstoječih se ne dotikaj — spletna stran mora
+delati naprej.
 
 ```
 Tip:      CNAME
 Ime:      portal
-Vrednost: cname.vercel-dns.com
+Vrednost: filipkovacicbusiness-sudo.github.io
 TTL:      privzeti
 ```
 
-Pomembno: **nobenega zapisa za `smartclean.si` ne spreminjaj.** Dodajaš
-samo novega za `portal`. Obstoječa spletna stran ostane nedotaknjena.
+Obstoječi zapisi, ki ostanejo nespremenjeni:
+- `smartclean.si` → A na 185.199.108–111.153
+- `www` → CNAME na filipkovacicbusiness-sudo.github.io
 
-DNS se razširi v nekaj minutah do ure. Vercel potem sam uredi
-varnostni certifikat.
+Razširjanje traja nekaj minut do ure. Certifikat GitHub uredi sam,
+lahko pa traja še dodatnih deset minut.
 
 ---
 
 ## 4. Povej Supabase, kje portal živi
-
-To je korak, ki se ga zlahka pozabi in se maščuje šele pri prvi
-pozabljeni gesli.
 
 Supabase → **Authentication** → **URL Configuration**:
 
 - **Site URL:** `https://portal.smartclean.si`
 - **Redirect URLs:** dodaj `https://portal.smartclean.si/**`
 
-Brez tega bi povezava za ponastavitev gesla vodila v prazno.
+Brez tega povezava za ponastavitev gesla vodi v prazno. To odkriješ
+šele takrat, ko geslo pozabiš — torej v najslabšem možnem trenutku.
 
 ---
 
-## 5. Preveri, da drži
+## 5. Zavaruj svoj račun
 
-Odpri `https://portal.smartclean.si` in se prijavi.
+Prijavna stran bo od zdaj dosegljiva vsakomur na svetu.
 
-Nato v Chromu `Cmd+Option+I` → zavihek **Console**. Če je prazna, so
-varnostne glave v redu. Če vidiš rdeče vrstice s *Content Security
-Policy*, mi jih pošlji.
+Supabase → **Authentication**:
+- **Attack Protection** → vklopi omejevanje poskusov prijave
+- **Multi-Factor** → dodaj drugi faktor za `filip@eflitte.si`
+
+Tvoj račun je edini z `is_staff = true` in vidi vseh 51 strank.
 
 ---
 
-## Kaj je vgrajeno
+## Kaj je in kaj ni zavarovano
 
 Portal je razdeljen na `index.html`, `assets/portal.css` in
-`assets/portal.js`. To ni kozmetika: ker v HTML ni nobene vgrajene
-skripte, sme varnostna politika prepovedati **vse** skripte razen tistih
-z lastnega strežnika. Če bi kdaj kdo uspel podtakniti kodo v vsebino, je
-brskalnik ne bo izvedel.
+`assets/portal.js`. Ker v HTML ni nobene vgrajene skripte, sme varnostna
+politika prepovedati vse skripte razen tistih z lastnega strežnika.
+Ta politika je v `<meta>` oznaki, ker GitHub Pages ne zna pošiljati
+HTTP glav. Preverjeno: nobene kršitve.
 
-`vercel.json` nastavi:
+Česar meta oznaka **ne** zmore, ker je brskalniki tam ne upoštevajo:
 
-| glava | kaj naredi |
-|---|---|
-| Content-Security-Policy | skripte samo z lastnega strežnika, povezave samo na tvoj Supabase |
-| Strict-Transport-Security | vedno HTTPS, nikoli navaden HTTP |
-| X-Frame-Options: DENY | portala ni mogoče vgraditi v tuj okvir |
-| Referrer-Policy: no-referrer | naslovi tvojih strani ne uhajajo tujim stranem |
-| X-Robots-Tag: noindex | Google portala ne indeksira |
+- `frame-ancestors` — zaščita pred tem, da bi kdo portal vgradil v svojo
+  stran in prevaral uporabnika v klik
+- `Strict-Transport-Security` — vsiljena raba HTTPS
 
-Zraven je `robots.txt`, ki iskalnikom pove isto.
-
----
-
-## Takoj po objavi
-
-**Ne pošiljaj še povezave strankam.** Spremnih listov v bazi ni, zato bi
-stranka videla prazen pregled. Objava zdaj je zato, da se postavitev in
-domena uredita, dokler je vseeno, če kaj ne gre — ne zato, da se portal
-razglasi.
-
-Dvoje pa uredi kmalu, ker je prijavna stran odslej dosegljiva vsem na
-internetu:
-
-1. **Supabase → Authentication → Attack Protection** — vklopi omejevanje
-   poskusov prijave
-2. **Dvofaktorska prijava za tvoj račun** — Authentication → Multi-Factor.
-   Tvoj račun vidi vseh 51 strank; geslo samo zanj ni dovolj.
+Za tvojo lastno rabo je to sprejemljivo. **Preden povabiš prvo stranko**,
+gre portal na gostovanje, ki zna pošiljati glave — takrat velja tudi
+`vercel.json`, ki je že napisan in te glave vsebuje. Takrat je čas tudi
+za sejo v piškotku namesto v brskalnikovi shrambi in za samodejni
+odklop po nedejavnosti.
