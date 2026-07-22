@@ -183,6 +183,7 @@ const IKONE = {
   katalog: '<path d="M4 5.5h7v13H4Z"/><path d="M13 5.5h7v13h-7Z"/>',
   uporabniki: '<circle cx="9" cy="9" r="3.2"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><circle cx="17.5" cy="10" r="2.4"/><path d="M15.5 19a4.5 4.5 0 0 1 5-4.4"/>',
   racun: '<rect x="4.5" y="10.5" width="15" height="9.5" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/>',
+  uvoz: '<path d="M12 3v11"/><path d="M8 10.5 12 14.5l4-4"/><path d="M4 16v3.5h16V16"/>',
 };
 const ikona = (k) => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
   'stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
@@ -191,7 +192,7 @@ const ikona = (k) => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
 function meni() {
   const deli = OSEBJE
     ? [['domov', 'Pregled'], ['arhiv', 'Arhiv'], ['stranke', 'Stranke'],
-       ['uporabniki', 'Uporabniki'], ['racun', 'Moj račun']]
+       ['uvoz', 'Uvoz'], ['uporabniki', 'Uporabniki'], ['racun', 'Moj račun']]
     : [['domov', 'Pregled'], ['arhiv', 'Arhiv'], ['katalog', 'Katalog'], ['racun', 'Moj račun']];
 
   $('side').innerHTML =
@@ -450,6 +451,182 @@ async function risiKatalog() {
     (data?.length ? '<ul>' + data.map((a) => '<li>' + escape_(a.name) + '</li>').join('') + '</ul>'
                   : '<p class="none">Katalog še ni izpolnjen.</p>') + '</div></div>';
 }
+
+
+/* ══════════ UVOZ S TABLICE ══════════
+   Aplikacija Pralnica piše JSON v mapo Documents. Tu ga preberemo in
+   prenesemo v bazo. Vsak zapis ima svoj id, ki ga shranimo kot legacy_id,
+   zato ponoven uvoz iste datoteke ne podvaja — le dopolni. */
+let UVOZ_PODATKI = null;
+
+$('uvozFile').addEventListener('change', async () => {
+  const f = $('uvozFile').files[0];
+  const m = $('uvozMsg');
+  $('uvozPor').innerHTML = '';
+  UVOZ_PODATKI = null;
+  $('uvozBtn').disabled = true;
+  if (!f) return;
+
+  try {
+    const txt = await f.text();
+    let d = JSON.parse(txt);
+    if (d && !Array.isArray(d) && Array.isArray(d.entries)) d = d.entries;
+    if (!Array.isArray(d)) throw new Error('oblika');
+    const veljavni = d.filter((e) => e && e.stevilka && e.datum);
+    if (!veljavni.length) throw new Error('prazno');
+    UVOZ_PODATKI = veljavni;
+    $('uvozBtn').disabled = false;
+    m.className = 'msg show';
+    m.textContent = 'Prebrano: ' + veljavni.length + ' spremnih listov iz datoteke ' + f.name +
+      '. Kliknite Uvozi.';
+  } catch (err) {
+    m.className = 'msg bad show';
+    m.textContent = err.message === 'prazno'
+      ? 'V datoteki ni nobenega spremnega lista.'
+      : 'To ni datoteka s spremnimi listi. Na tablici izberite pralnica_entries.json.';
+  }
+});
+
+$('uvozBtn').addEventListener('click', async () => {
+  if (!UVOZ_PODATKI) return;
+  const m = $('uvozMsg'), btn = $('uvozBtn');
+  btn.disabled = true; btn.textContent = 'Uvažam …';
+  m.className = 'msg show'; m.textContent = 'Uvažam, ne zapirajte strani …';
+
+  const por = { listov: 0, posodobljenih: 0, postavk: 0, novihStrank: 0, novihArtiklov: 0, tezav: [] };
+
+  try {
+    /* ── 1. stranke ─────────────────────────────────────────────── */
+    const poLegacy = {}, poImenu = {};
+    const { data: obstojece } = await sb.from('orgs').select('id,name,legacy_id');
+    (obstojece || []).forEach((o) => {
+      if (o.legacy_id) poLegacy[o.legacy_id] = o.id;
+      poImenu[(o.name || '').toLowerCase()] = o.id;
+    });
+
+    for (const e of UVOZ_PODATKI) {
+      const lid = e.strankaId, ime = (e.strankaNaziv || '').trim();
+      if (!lid || poLegacy[lid]) continue;
+      if (ime && poImenu[ime.toLowerCase()]) { poLegacy[lid] = poImenu[ime.toLowerCase()]; continue; }
+      const { data: nova, error } = await sb.from('orgs').insert({
+        name: ime || lid, legal_name: e.strankaPodjetje || null,
+        address: e.strankaNaslov || null, vat_id: e.strankaDavcna || null, legacy_id: lid,
+      }).select('id').single();
+      if (error) { por.tezav.push('stranke ' + ime + ' ni bilo mogoče dodati'); continue; }
+      poLegacy[lid] = nova.id; poImenu[(ime || '').toLowerCase()] = nova.id;
+      por.novihStrank++;
+    }
+
+    /* ── 2. artikli ─────────────────────────────────────────────── */
+    const artPoOrg = {};
+    const { data: vsiArt } = await sb.from('articles').select('id,org_id,name,legacy_id');
+    (vsiArt || []).forEach((a) => {
+      artPoOrg[a.org_id] = artPoOrg[a.org_id] || { legacy: {}, ime: {} };
+      if (a.legacy_id) artPoOrg[a.org_id].legacy[a.legacy_id] = a.id;
+      artPoOrg[a.org_id].ime[(a.name || '').toLowerCase()] = a.id;
+    });
+
+    const manjkajoci = [];
+    for (const e of UVOZ_PODATKI) {
+      const org = poLegacy[e.strankaId];
+      if (!org) continue;
+      artPoOrg[org] = artPoOrg[org] || { legacy: {}, ime: {} };
+      for (const p of (e.postavke || [])) {
+        const ime = (p.naziv || '').trim();
+        if (!ime) continue;
+        const naslo = (p.id && artPoOrg[org].legacy[p.id]) || artPoOrg[org].ime[ime.toLowerCase()];
+        if (!naslo && !manjkajoci.some((x) => x.org_id === org && x.name === ime)) {
+          manjkajoci.push({ org_id: org, name: ime, legacy_id: p.id || null, sort_order: 999 });
+        }
+      }
+    }
+    for (let i = 0; i < manjkajoci.length; i += 200) {
+      const { data, error } = await sb.from('articles').insert(manjkajoci.slice(i, i + 200)).select('id,org_id,name,legacy_id');
+      if (error) { por.tezav.push('nekaj artiklov ni bilo mogoče dodati: ' + error.message); break; }
+      (data || []).forEach((a) => {
+        artPoOrg[a.org_id].ime[(a.name || '').toLowerCase()] = a.id;
+        if (a.legacy_id) artPoOrg[a.org_id].legacy[a.legacy_id] = a.id;
+      });
+      por.novihArtiklov += (data || []).length;
+    }
+
+    /* ── 3. spremni listi ───────────────────────────────────────── */
+    const { data: ze } = await sb.from('delivery_notes').select('id,legacy_id');
+    const zeIma = {}; (ze || []).forEach((n) => { if (n.legacy_id) zeIma[n.legacy_id] = n.id; });
+
+    for (const e of UVOZ_PODATKI) {
+      const org = poLegacy[e.strankaId];
+      if (!org) { por.tezav.push('list ' + e.stevilka + ': stranke ni bilo mogoče najti'); continue; }
+      const del = String(e.stevilka).split('/');
+      const seq = parseInt(del[0], 10);
+      const leto = parseInt(del[1], 10) || new Date(e.datum).getFullYear();
+      if (!seq) { por.tezav.push('list ' + e.stevilka + ': številke ni bilo mogoče razbrati'); continue; }
+
+      const vrstica = {
+        org_id: org, doc_year: leto, doc_seq: seq, doc_date: e.datum,
+        issued_name: e.izdal || null, weight_kg: e.kg || null,
+        source: 'tablet', legacy_id: e.id || (e.stevilka + '@' + e.datum),
+      };
+
+      let noteId = zeIma[vrstica.legacy_id];
+      if (noteId) {
+        const { error } = await sb.from('delivery_notes').update(vrstica).eq('id', noteId);
+        if (error) { por.tezav.push('list ' + e.stevilka + ': ' + error.message); continue; }
+        por.posodobljenih++;
+        await sb.from('delivery_note_items').delete().eq('note_id', noteId);
+      } else {
+        const { data, error } = await sb.from('delivery_notes').insert(vrstica).select('id').single();
+        if (error) {
+          por.tezav.push('list ' + e.stevilka + ': ' +
+            (/duplicate|unique/i.test(error.message)
+              ? 'številka ' + seq + '/' + leto + ' je v bazi že zasedena'
+              : error.message));
+          continue;
+        }
+        noteId = data.id; por.listov++;
+      }
+
+      const post = (e.postavke || []).filter((p) => p && p.naziv).map((p, i) => ({
+        note_id: noteId,
+        article_id: (p.id && artPoOrg[org].legacy[p.id]) ||
+                    artPoOrg[org].ime[(p.naziv || '').trim().toLowerCase()] || null,
+        article_name: p.naziv, pieces: Number(p.kosov) || 0, sort_order: i,
+      }));
+      if (post.length) {
+        const { error } = await sb.from('delivery_note_items').insert(post);
+        if (error) por.tezav.push('list ' + e.stevilka + ': postavk ni bilo mogoče dodati');
+        else por.postavk += post.length;
+      }
+    }
+
+    /* ── 4. poročilo ────────────────────────────────────────────── */
+    m.className = 'msg show';
+    m.textContent = 'Uvoz je končan.';
+    $('uvozPor').innerHTML = '<div class="por">' +
+      [['Novih spremnih listov', por.listov],
+       ['Posodobljenih', por.posodobljenih],
+       ['Postavk', por.postavk],
+       ['Novih strank', por.novihStrank],
+       ['Novih artiklov', por.novihArtiklov]]
+        .map(([k, v]) => `<div class="por-v"><span>${k}</span><b>${stevilo(v)}</b></div>`).join('') +
+      (por.tezav.length
+        ? '<div class="por-op"><b>Preskočeno (' + por.tezav.length + '):</b><br>' +
+          por.tezav.slice(0, 12).map(escape_).join('<br>') +
+          (por.tezav.length > 12 ? '<br>… in še ' + (por.tezav.length - 12) : '') + '</div>'
+        : '<div class="por-op">Brez težav — vsi zapisi so prišli skozi.</div>') +
+      '</div>';
+
+    ARTSTEVILO = {};
+    await naloziListe();
+    const { data: sveze } = await sb.from('orgs').select('id,name,legal_name,address,vat_id').order('name');
+    ORGSEZNAM = sveze || ORGSEZNAM;
+    ORGIME = {}; ORGSEZNAM.forEach((o) => { ORGIME[o.id] = o.name; });
+  } catch (err) {
+    m.className = 'msg bad show';
+    m.textContent = 'Uvoz se je ustavil: ' + (err.message || err);
+  }
+  btn.disabled = false; btn.textContent = 'Uvozi';
+});
 
 /* ══════════ MOJ RAČUN ══════════ */
 $('changePwForm').addEventListener('submit', async (e) => {

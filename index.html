@@ -124,6 +124,22 @@
         <div id="katalogList"></div>
       </section>
 
+      <section class="sec hidden" id="sec-uvoz">
+        <div class="head"><div><h2>Uvoz s tablice</h2>
+          <p class="count">Prenos spremnih listov iz aplikacije Pralnica</p></div></div>
+        <div class="panel">
+          <p class="uvoz-nav">Na tablici odpri <b>Datoteke → Documents</b> in izberi
+            <b>pralnica_entries.json</b>. Isto datoteko lahko izbereš večkrat —
+            uvoz ne podvaja, ampak dopolni.</p>
+          <div class="uvoz-vrsta">
+            <input type="file" id="uvozFile" accept=".json,application/json"/>
+            <button type="button" class="btn btn-narrow" id="uvozBtn" disabled>Uvozi</button>
+          </div>
+          <div class="msg" id="uvozMsg" role="status" aria-live="polite"></div>
+          <div id="uvozPor"></div>
+        </div>
+      </section>
+
       <section class="sec hidden" id="sec-uporabniki">
         <div class="head"><div><h2>Uporabniki</h2><p class="count">Računi za osebje in stranke</p></div></div>
         <div class="panel">
