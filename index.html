@@ -38,6 +38,28 @@
         </div>
         <button type="submit" class="btn" id="loginBtn">Prijavi se</button>
       </form>
+      <p class="under"><button type="button" class="link-btn" id="forgotBtn">Pozabljeno geslo?</button></p>
+
+      <form id="resetForm" class="hidden" novalidate>
+        <div class="field">
+          <label for="resetEmail">E-poštni naslov</label>
+          <input type="email" id="resetEmail" autocomplete="username" required/>
+        </div>
+        <button type="submit" class="btn" id="resetBtn">Pošlji povezavo za ponastavitev</button>
+        <p class="under"><button type="button" class="link-btn" id="backBtn">Nazaj na prijavo</button></p>
+      </form>
+
+      <form id="newPwForm" class="hidden" novalidate>
+        <div class="field">
+          <label for="newPw1">Novo geslo</label>
+          <input type="password" id="newPw1" autocomplete="new-password" required/>
+        </div>
+        <div class="field">
+          <label for="newPw2">Ponovi novo geslo</label>
+          <input type="password" id="newPw2" autocomplete="new-password" required/>
+        </div>
+        <button type="submit" class="btn" id="newPwBtn">Nastavi geslo</button>
+      </form>
 
       <div class="msg" id="loginMsg" role="status" aria-live="polite"></div>
     </div>
@@ -55,6 +77,7 @@
           <svg class="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.4 1.4M17.6 17.6L19 19M19 5l-1.4 1.4M6.4 17.6L5 19"/></svg>
           <svg class="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
         </button>
+        <button class="link-btn" id="pwBtn" type="button">Geslo</button>
         <button class="link-btn" id="logoutBtn" type="button">Odjava</button>
       </div>
     </div>
@@ -70,6 +93,28 @@
         <input type="search" id="search" placeholder="Iskanje po nazivu …" aria-label="Iskanje strank"/>
       </div>
     </div>
+    <div id="pwPanel" class="panel hidden">
+      <h3 class="sec">Sprememba gesla</h3>
+      <form id="changePwForm" novalidate>
+        <div class="pw-grid">
+          <div class="field">
+            <label for="curPw">Trenutno geslo</label>
+            <input type="password" id="curPw" autocomplete="current-password" required/>
+          </div>
+          <div class="field">
+            <label for="chPw1">Novo geslo</label>
+            <input type="password" id="chPw1" autocomplete="new-password" required/>
+          </div>
+          <div class="field">
+            <label for="chPw2">Ponovi novo geslo</label>
+            <input type="password" id="chPw2" autocomplete="new-password" required/>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-narrow" id="chPwBtn">Shrani novo geslo</button>
+      </form>
+      <div class="msg" id="pwMsg" role="status" aria-live="polite"></div>
+    </div>
+
     <div id="content"></div>
   </main>
 </div>

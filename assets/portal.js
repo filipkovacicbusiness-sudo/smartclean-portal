@@ -86,6 +86,66 @@ $('loginForm').addEventListener('submit', async (e) => {
   start();
 });
 
+/* ── pozabljeno geslo ─────────────────────────────────────────────── */
+function showAuthPane(which) {
+  ['loginForm','resetForm','newPwForm'].forEach(id => {
+    const el = $(id); if (el) el.classList.toggle('hidden', id !== which);
+  });
+  const f = $('forgotBtn'); if (f) f.classList.toggle('hidden', which !== 'loginForm');
+  const m = $('loginMsg'); if (m) m.className = 'msg';
+}
+
+if ($('forgotBtn')) $('forgotBtn').addEventListener('click', () => {
+  $('resetEmail').value = $('email').value.trim();
+  showAuthPane('resetForm');
+  document.querySelector('.sub').textContent =
+    'Vpišite svoj e-naslov in poslali vam bomo povezavo za nastavitev novega gesla.';
+});
+
+if ($('backBtn')) $('backBtn').addEventListener('click', () => {
+  showAuthPane('loginForm');
+  document.querySelector('.sub').textContent = 'Vpišite se s podatki, ki ste jih prejeli od nas.';
+});
+
+if ($('resetForm')) $('resetForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (!sb) return;
+  const m = $('loginMsg'), btn = $('resetBtn');
+  btn.disabled = true; btn.textContent = 'Pošiljam …';
+  const { error } = await sb.auth.resetPasswordForEmail($('resetEmail').value.trim(), {
+    redirectTo: location.origin + location.pathname,
+  });
+  btn.disabled = false; btn.textContent = 'Pošlji povezavo za ponastavitev';
+  m.className = error ? 'msg bad show' : 'msg show';
+  m.textContent = error
+    ? (/rate|limit/i.test(error.message)
+        ? 'Preveč poskusov zapored. Počakajte nekaj minut in poskusite znova.'
+        : 'Pošiljanje ni uspelo: ' + error.message)
+    : 'Če ta e-naslov pri nas obstaja, je povezava na poti. Preverite tudi mapo z neželeno pošto.';
+});
+
+/* ── nastavitev novega gesla po kliku na povezavo iz e-pošte ──────── */
+if ($('newPwForm')) $('newPwForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const m = $('loginMsg'), btn = $('newPwBtn');
+  const p1 = $('newPw1').value, p2 = $('newPw2').value;
+  if (p1 !== p2) {
+    m.className = 'msg bad show'; m.textContent = 'Gesli se ne ujemata.'; return;
+  }
+  btn.disabled = true; btn.textContent = 'Shranjujem …';
+  const { error } = await sb.auth.updateUser({ password: p1 });
+  btn.disabled = false; btn.textContent = 'Nastavi geslo';
+  if (error) {
+    m.className = 'msg bad show';
+    m.textContent = /weak|short|password/i.test(error.message)
+      ? 'Geslo je prešibko. Uporabite vsaj 12 znakov, z velikimi in malimi črkami, številko in simbolom.'
+      : 'Ni uspelo: ' + error.message;
+    return;
+  }
+  m.className = 'msg show'; m.textContent = 'Geslo je nastavljeno. Odpiram portal …';
+  setTimeout(start, 900);
+});
+
 $('logoutBtn').addEventListener('click', async () => {
   await sb.auth.signOut();
   location.reload();
@@ -107,6 +167,47 @@ async function start() {
 
   if (profile?.is_staff) { loadOrgs(); } else { loadCustomer(); }
 }
+
+/* ── sprememba gesla znotraj portala ──────────────────────────────── */
+if ($('pwBtn')) $('pwBtn').addEventListener('click', () => {
+  const p = $('pwPanel');
+  p.classList.toggle('hidden');
+  if (!p.classList.contains('hidden')) $('curPw').focus();
+});
+
+if ($('changePwForm')) $('changePwForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const m = $('pwMsg'), btn = $('chPwBtn');
+  const cur = $('curPw').value, p1 = $('chPw1').value, p2 = $('chPw2').value;
+
+  if (p1 !== p2) { m.className = 'msg bad show'; m.textContent = 'Novi gesli se ne ujemata.'; return; }
+  if (p1 === cur) { m.className = 'msg bad show'; m.textContent = 'Novo geslo mora biti drugačno od starega.'; return; }
+
+  btn.disabled = true; btn.textContent = 'Shranjujem …';
+
+  // Najprej potrdimo istovetnost s trenutnim geslom. Brez tega bi lahko
+  // kdor koli s tujo odprto sejo zamenjal geslo in lastnika izključil.
+  const { data: { user } } = await sb.auth.getUser();
+  const check = await sb.auth.signInWithPassword({ email: user.email, password: cur });
+  if (check.error) {
+    btn.disabled = false; btn.textContent = 'Shrani novo geslo';
+    m.className = 'msg bad show'; m.textContent = 'Trenutno geslo ni pravilno.';
+    return;
+  }
+
+  const { error } = await sb.auth.updateUser({ password: p1 });
+  btn.disabled = false; btn.textContent = 'Shrani novo geslo';
+
+  if (error) {
+    m.className = 'msg bad show';
+    m.textContent = /weak|short|password/i.test(error.message)
+      ? 'Geslo je prešibko. Uporabite vsaj 12 znakov, z velikimi in malimi črkami, številko in simbolom.'
+      : 'Ni uspelo: ' + error.message;
+    return;
+  }
+  ['curPw','chPw1','chPw2'].forEach(id => { $(id).value = ''; });
+  m.className = 'msg show'; m.textContent = 'Geslo je spremenjeno.';
+});
 
 /* ── pogled stranke ───────────────────────────────────────────────── */
 async function loadCustomer() {
@@ -271,7 +372,15 @@ function escape_(s) {
 
 /* ── obnovi sejo ob osvežitvi ─────────────────────────────────────── */
 if (sb) {
+  let recovery = false;
+  sb.auth.onAuthStateChange((event) => {
+    if (event === 'PASSWORD_RECOVERY') {
+      recovery = true;
+      showAuthPane('newPwForm');
+      document.querySelector('.sub').textContent = 'Vpišite novo geslo za svoj račun.';
+    }
+  });
   const { data: { session } } = await sb.auth.getSession();
-  if (session) start();
+  setTimeout(() => { if (session && !recovery) start(); }, 60);
 }
 })();

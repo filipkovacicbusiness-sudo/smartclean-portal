@@ -137,3 +137,13 @@ h3.sec:first-child{margin-top:0;}
   .arts ul{columns:1;}
   .head{align-items:stretch;} .search{max-width:none;width:100%;flex:1 1 100%;}
 }
+/* ── ponastavitev in sprememba gesla ─────────────────────────────── */
+.hidden{display:none!important;}
+.under{margin-top:14px;text-align:center;}
+.panel{border:1px solid var(--line);border-radius:var(--radius);
+  background:var(--surface);padding:22px;margin-bottom:26px;}
+.panel h3.sec{margin:0 0 14px;}
+.pw-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+.btn-narrow{width:auto;padding:11px 26px;margin-top:16px;}
+#pwPanel .msg{margin-top:14px;}
+@media(max-width:720px){.pw-grid{grid-template-columns:1fr;}.btn-narrow{width:100%;}}
