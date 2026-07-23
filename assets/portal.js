@@ -213,11 +213,12 @@
     katalog: '<path d="M4 5.5h7v13H4Z"/><path d="M13 5.5h7v13h-7Z"/>',
     uporabniki: '<circle cx="9" cy="9" r="3.2"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><circle cx="17.5" cy="10" r="2.4"/><path d="M15.5 19a4.5 4.5 0 0 1 5-4.4"/>',
     racun: '<rect x="4.5" y="10.5" width="15" height="9.5" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/>',
-    uvoz: '<path d="M12 3v11"/><path d="M8 10.5 12 14.5l4-4"/><path d="M4 16v3.5h16V16"/>'
+    uvoz: '<path d="M12 3v11"/><path d="M8 10.5 12 14.5l4-4"/><path d="M4 16v3.5h16V16"/>',
+    aplikacija: '<rect x="6.5" y="2.5" width="11" height="19" rx="2.5"/><path d="M10.5 5.5h3"/><path d="M12 18.2h.01"/>'
   };
   const ikona = k => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' + 'stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + IKONE[k] + '</svg>';
   function meni() {
-    const deli = OSEBJE ? [['domov', 'Pregled'], ['arhiv', 'Arhiv'], ['stranke', 'Stranke'], ['uvoz', 'Uvoz'], ['uporabniki', 'Uporabniki'], ['racun', 'Moj račun']] : [['domov', 'Pregled'], ['arhiv', 'Arhiv'], ['katalog', 'Katalog'], ['racun', 'Moj račun']];
+    const deli = OSEBJE ? [['domov', 'Pregled'], ['arhiv', 'Arhiv'], ['stranke', 'Stranke'], ['uvoz', 'Uvoz'], ['aplikacija', 'Aplikacija'], ['uporabniki', 'Uporabniki'], ['racun', 'Moj račun']] : [['domov', 'Pregled'], ['arhiv', 'Arhiv'], ['katalog', 'Katalog'], ['racun', 'Moj račun']];
     $('side').innerHTML = '<p class="side-h">' + (OSEBJE ? 'Pralnica' : 'Vaš pregled') + '</p>' + deli.slice(0, deli.length - 1).map(([k, l]) => `<a data-go="${k}">${ikona(k)}${l}</a>`).join('') + '<p class="side-h">Nastavitve</p>' + `<a data-go="racun">${ikona('racun')}Moj račun</a>`;
     document.querySelectorAll('#side a[data-go]').forEach(a => {
       a.addEventListener('click', () => {
@@ -254,6 +255,7 @@
     if (kam === 'stranke') risiStranke();
     if (kam === 'katalog') risiKatalog();
     if (kam === 'uporabniki') loadUsers();
+    if (kam === 'aplikacija') risiAplikacijo();
   }
 
   /* ══════════ SPREMNI LISTI ══════════ */
@@ -677,6 +679,50 @@
     btn.disabled = false;
     btn.textContent = 'Uvozi';
   });
+
+
+  /* ══════════ APLIKACIJA ZA TABLICO ══════════
+     Namestitveni paket leži poleg spletne različice, ne v kodi portala.
+     Če ga še ni, to tu tudi piše — namesto strani 404. */
+  var APK_POT = 'tablica/Pralnica-sync.apk';
+
+  function risiAplikacijo() {
+    var p = document.getElementById('apkPanel');
+    if (!p) return;
+    p.innerHTML = '<p class="u-sub">Preverjam \u2026</p>';
+    var url = new URL(APK_POT, location.href).href;
+
+    fetch(url, { method: 'HEAD' }).then(function (r) {
+      if (!r.ok) throw new Error('ni ga');
+      var mb = Number(r.headers.get('content-length') || 0) / 1048576;
+      p.innerHTML =
+        '<h3 class="sec-h">Namestitev na tablico</h3>' +
+        '<p class="uvoz-nav">Odprite to stran <b>na tablici</b> in tapnite gumb. ' +
+        'Android bo vprašal za dovoljenje za namestitev \u2014 dovolite ga.</p>' +
+        '<p><a class="btn btn-narrow" href="' + escape_(url) + '" download>Prenesi aplikacijo' +
+        (mb ? ' (' + mb.toFixed(1) + ' MB)' : '') + '</a></p>' +
+        '<div class="por" style="margin-top:18px"><div class="por-op">' +
+        '<b>Po namestitvi:</b> prijava s kodo 9999 \u2192 Admin \u2192 Portal \u2014 povezava. ' +
+        'Vpišite naslov projekta, javni ključ ter e-naslov in geslo naprave, nato Poveži.<br><br>' +
+        'Spremni listi se od takrat sami stekajo v Arhiv. Za prenos vseh naenkrat je ' +
+        'v aplikaciji Admin \u203a Portal \u203a Sinhroniziraj.</div></div>' +
+        '<p class="u-sub" style="margin-top:16px">Brez nameščanja deluje tudi ' +
+        '<a href="tablica/" style="text-decoration:underline">spletna različica</a>, ' +
+        'ki pa ne zna tiskati in ne shranjuje PDF-jev.</p>';
+    }).catch(function () {
+      p.innerHTML =
+        '<h3 class="sec-h">Namestitvenega paketa še ni</h3>' +
+        '<div class="msg bad show">Datoteke <b>' + escape_(APK_POT) + '</b> ni na strežniku.</div>' +
+        '<div class="por" style="margin-top:16px"><div class="por-op">' +
+        'Naložite jo v repozitorij <b>smartclean-portal</b>: odprite mapo <b>tablica</b>, ' +
+        'znotraj nje <b>Add file \u2192 Upload files</b>, povlecite <b>Pralnica-sync.apk</b> ' +
+        'in potrdite.<br><br>Vstop v mapo je pomemben \u2014 sicer datoteka pristane v korenu.' +
+        '</div></div>' +
+        '<p class="u-sub" style="margin-top:16px">Medtem deluje ' +
+        '<a href="tablica/" style="text-decoration:underline">spletna različica</a>, ' +
+        'ki je ni treba nameščati.</p>';
+    });
+  }
 
   /* ══════════ MOJ RAČUN ══════════ */
   $('changePwForm').addEventListener('submit', async e => {
