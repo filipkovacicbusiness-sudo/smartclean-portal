@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="assets/portal.v6.css"/>
+<link rel="stylesheet" href="assets/portal.v7.css"/>
 </head>
 <body>
 
@@ -105,6 +105,13 @@
           <div><h2>Arhiv spremnih listov</h2><p class="count" id="arhivPod"></p></div>
           <div class="filtri">
             <select id="arhivOrg" class="hidden"></select>
+            <select id="arhivSort" aria-label="Razvrsti">
+              <option value="datum">Najnovejši</option>
+              <option value="st_desc">Št. ↓</option>
+              <option value="st_asc">Št. ↑</option>
+              <option value="stranka_az">Stranka A–Ž</option>
+              <option value="stranka_za">Stranka Ž–A</option>
+            </select>
             <input type="search" id="arhivIsci" placeholder="Iskanje po številki …" aria-label="Iskanje"/>
           </div>
         </div>
@@ -197,6 +204,6 @@
 <script src="assets/start.js"></script>
 <script src="config.js"></script>
 <script src="vendor/supabase.js"></script>
-<script src="assets/portal.v6.js"></script>
+<script src="assets/portal.v7.js"></script>
 </body>
 </html>
