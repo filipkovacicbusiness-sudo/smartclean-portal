@@ -370,13 +370,147 @@
     const {
       data,
       error
-    } = await sb.from('delivery_note_items').select('article_name,pieces').eq('note_id', btn.dataset.id).order('sort_order');
+    } = await sb.from('delivery_note_items').select('article_name,pieces,sort_order').eq('note_id', btn.dataset.id).order('sort_order');
     if (error) {
       box.innerHTML = '<p class="u-sub">Napaka: ' + escape_(error.message) + '</p>';
       return;
     }
-    box.innerHTML = data && data.length ? '<ul>' + data.map(p => `<li><span>${escape_(p.article_name)}</span><b>${stevilo(p.pieces)}</b></li>`).join('') + '</ul>' : '<p class="u-sub">Ta spremni list nima postavk.</p>';
+    box._id = btn.dataset.id;
+    box._note = LISTI.find(l => l.id === btn.dataset.id) || {};
+    box._items = (data || []).map(p => ({ naziv: p.article_name, kosov: p.pieces }));
+    risiListDetajl(box);
     box.dataset.loaded = '1';
+  }
+
+  /* prikaz postavk + (samo osebje) gumbi Uredi / Izbriši */
+  function risiListDetajl(box) {
+    const items = box._items || [];
+    const seznam = items.length ? '<ul>' + items.map(p => `<li><span>${escape_(p.naziv)}</span><b>${stevilo(p.kosov)}</b></li>`).join('') + '</ul>' : '<p class="u-sub">Ta spremni list nima postavk.</p>';
+    const gumbi = OSEBJE ? `<div class="u-acts" style="margin-top:12px"><button type="button" data-uredi>Uredi</button><button type="button" class="danger" data-izbrisi>Izbriši</button></div>` : '';
+    box.innerHTML = seznam + gumbi;
+    if (OSEBJE) {
+      box.querySelector('[data-uredi]').addEventListener('click', () => urediList(box));
+      box.querySelector('[data-izbrisi]').addEventListener('click', () => izbrisiList(box));
+    }
+  }
+
+  function razcleniStevilko(s) {
+    const d = String(s || '').split(/[\/\-]/).map(x => parseInt(x, 10)).filter(x => !isNaN(x));
+    const letos = new Date().getFullYear();
+    let seq, leto;
+    if (d.length >= 2) {
+      if (d[0] >= 2000 && d[1] < 2000) { leto = d[0]; seq = d[1]; } else { seq = d[0]; leto = d[1]; }
+    } else { seq = d[0] || ''; leto = letos; }
+    return { seq: seq || '', leto: leto || letos };
+  }
+
+  async function izbrisiList(box) {
+    if (!confirm('Izbrisati spremni list ' + (box._note.number || '') + '?\nTega ni mogoče razveljaviti.')) return;
+    box.innerHTML = '<p class="u-sub">Brišem …</p>';
+    try {
+      let r = await sb.from('delivery_note_items').delete().eq('note_id', box._id);
+      if (r.error) throw r.error;
+      r = await sb.from('delivery_notes').delete().eq('id', box._id);
+      if (r.error) throw r.error;
+      toast('Spremni list izbrisan');
+      await naloziListe();
+      risiArhiv();
+    } catch (e) {
+      box.innerHTML = '<p class="u-sub">Napaka pri brisanju: ' + escape_(e.message || e) + '</p>';
+    }
+  }
+
+  function urediList(box) {
+    const n = box._note;
+    const st = razcleniStevilko(n.number);
+    const dnes = n.doc_date || new Date().toISOString().slice(0, 10);
+    const orgOpt = ORGSEZNAM.map(o => `<option value="${o.id}"${o.id === n.org_id ? ' selected' : ''}>${escape_(o.name)}</option>`).join('');
+    box.innerHTML = `<div class="ur-form">
+      <label class="ur-f"><span>Stranka</span><select data-org>${orgOpt}</select></label>
+      <div class="ur-grid">
+        <label class="ur-f"><span>Št.</span><input type="number" data-seq value="${st.seq}"></label>
+        <label class="ur-f"><span>Leto</span><input type="number" data-leto value="${st.leto}"></label>
+        <label class="ur-f"><span>Datum</span><input type="date" data-datum value="${escape_(dnes)}"></label>
+        <label class="ur-f"><span>Teža (kg)</span><input type="number" step="0.1" data-teza value="${n.weight_kg != null ? n.weight_kg : ''}"></label>
+      </div>
+      <label class="ur-f"><span>Izdal</span><input type="text" data-izdal value="${escape_(n.issued_name || '')}"></label>
+      <p class="u-sub" style="margin:10px 0 4px">Postavke</p>
+      <div data-postavke></div>
+      <button type="button" class="ur-add" data-dodaj>+ Dodaj postavko</button>
+      <div class="u-acts" style="margin-top:14px"><button type="button" class="ur-save" data-shrani>Shrani</button><button type="button" data-preklici>Prekliči</button></div>
+      <p class="u-sub ur-msg" data-msg></p></div>`;
+    const pBox = box.querySelector('[data-postavke]');
+    const dodajVrstico = (naziv = '', kosov = '') => {
+      const row = document.createElement('div');
+      row.className = 'ur-post';
+      row.innerHTML = `<input type="text" data-pn placeholder="artikel" value="${escape_(naziv)}"><input type="number" data-pk placeholder="kos" value="${kosov}"><button type="button" class="ur-del" data-del title="odstrani">×</button>`;
+      row.querySelector('[data-del]').addEventListener('click', () => row.remove());
+      pBox.appendChild(row);
+    };
+    (box._items || []).forEach(p => dodajVrstico(p.naziv, p.kosov));
+    if (!(box._items || []).length) dodajVrstico();
+    box.querySelector('[data-dodaj]').addEventListener('click', () => dodajVrstico());
+    box.querySelector('[data-preklici]').addEventListener('click', () => risiListDetajl(box));
+    box.querySelector('[data-shrani]').addEventListener('click', () => shraniList(box));
+  }
+
+  async function shraniList(box) {
+    const q = s => box.querySelector(s);
+    const msg = q('[data-msg]');
+    const org_id = q('[data-org]').value;
+    const seq = parseInt(q('[data-seq]').value, 10);
+    const leto = parseInt(q('[data-leto]').value, 10);
+    const doc_date = q('[data-datum]').value;
+    const tezaRaw = q('[data-teza]').value;
+    const issued_name = q('[data-izdal]').value.trim() || null;
+    if (!org_id) { msg.textContent = 'Izberi stranko.'; return; }
+    if (!seq || !leto) { msg.textContent = 'Vpiši številko in leto.'; return; }
+    if (!doc_date) { msg.textContent = 'Vpiši datum.'; return; }
+    const postavke = [...box.querySelectorAll('.ur-post')].map(r => ({
+      naziv: r.querySelector('[data-pn]').value.trim(),
+      kosov: parseInt(r.querySelector('[data-pk]').value, 10) || 0
+    })).filter(p => p.naziv);
+    msg.textContent = 'Shranjujem …';
+    try {
+      const { data: arts } = await sb.from('articles').select('id,name').eq('org_id', org_id);
+      const poImenu = {};
+      (arts || []).forEach(a => { poImenu[(a.name || '').trim().toLowerCase()] = a.id; });
+      let r = await sb.from('delivery_notes').update({
+        org_id, doc_seq: seq, doc_year: leto, doc_date,
+        weight_kg: tezaRaw === '' ? null : Number(tezaRaw),
+        issued_name
+      }).eq('id', box._id);
+      if (r.error) throw r.error;
+      r = await sb.from('delivery_note_items').delete().eq('note_id', box._id);
+      if (r.error) throw r.error;
+      if (postavke.length) {
+        const rows = postavke.map((p, i) => ({
+          note_id: box._id, article_name: p.naziv,
+          article_id: poImenu[p.naziv.toLowerCase()] || null,
+          pieces: p.kosov, sort_order: i
+        }));
+        r = await sb.from('delivery_note_items').insert(rows);
+        if (r.error) throw r.error;
+      }
+      toast('Spremni list shranjen');
+      await naloziListe();
+      risiArhiv();
+    } catch (e) {
+      msg.textContent = 'Napaka: ' + (e.message || e);
+    }
+  }
+
+  let _toastEl = null;
+  function toast(t) {
+    if (!_toastEl) {
+      _toastEl = document.createElement('div');
+      _toastEl.className = 'sc-toast';
+      document.body.appendChild(_toastEl);
+    }
+    _toastEl.textContent = t;
+    _toastEl.classList.add('show');
+    clearTimeout(_toastEl._h);
+    _toastEl._h = setTimeout(() => _toastEl.classList.remove('show'), 2600);
   }
 
   /* ══════════ STRANKE (osebje) ══════════ */
