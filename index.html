@@ -5,11 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>SmartClean portal</title>
 <meta name="robots" content="noindex,nofollow"/>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230a0a0a'/%3E%3Ctext x='32' y='44' font-family='Arial,Helvetica,sans-serif' font-size='38' font-weight='700' fill='%23ffffff' text-anchor='middle'%3ESC%3C/text%3E%3C/svg%3E"/>
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://anrhtgbckxrccnafcmsz.supabase.co wss://anrhtgbckxrccnafcmsz.supabase.co; base-uri 'none'; form-action 'none'; object-src 'none'"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="assets/portal.v15.css"/>
+<link rel="stylesheet" href="assets/portal.v17.css"/>
 </head>
 <body>
 
@@ -149,10 +150,19 @@
         <div id="katalogList"></div>
       </section>
 
-      <section class="sec hidden" id="sec-uvoz">
-        <div class="head"><div><h2>Uvoz s tablice</h2>
-          <p class="count">Prenos spremnih listov iz aplikacije Pralnica</p></div></div>
+      <section class="sec hidden" id="sec-nastavitve">
+        <div class="head"><div><h2>Nastavitve</h2><p class="count">Videz portala in uvoz s tablice</p></div></div>
         <div class="panel">
+          <h3 class="sec-h">Videz</h3>
+          <p class="u-sub" style="margin-bottom:14px">Izberi temo portala. »Samodejno« sledi uri — temno zvečer, svetlo podnevi.</p>
+          <div class="tema-izbira">
+            <button type="button" class="tema-b" data-tema="light"><span class="tema-p tema-p-l"></span>Svetlo</button>
+            <button type="button" class="tema-b" data-tema="dark"><span class="tema-p tema-p-d"></span>Temno</button>
+            <button type="button" class="tema-b" data-tema="auto"><span class="tema-p tema-p-a"></span>Samodejno</button>
+          </div>
+        </div>
+        <div class="panel">
+          <h3 class="sec-h">Uvoz s tablice</h3>
           <p class="uvoz-nav">Na tablici odpri <b>Datoteke → Documents</b> in izberi
             <b>pralnica_entries.json</b>. Isto datoteko lahko izbereš večkrat —
             uvoz ne podvaja, ampak dopolni.</p>
@@ -190,11 +200,6 @@
         </div>
       </section>
 
-      <section class="sec hidden" id="sec-prijave">
-        <div class="head"><div><h2>Dnevnik prijav</h2><p class="count" id="prijavePod"></p></div></div>
-        <div id="prijaveList"></div>
-      </section>
-
       <section class="sec hidden" id="sec-racun">
         <div class="head"><div><h2>Moj račun</h2><p class="count" id="racunPod"></p></div></div>
         <div class="panel">
@@ -227,6 +232,6 @@
 <script src="assets/start.js"></script>
 <script src="config.js"></script>
 <script src="vendor/supabase.js"></script>
-<script src="assets/portal.v15.js"></script>
+<script src="assets/portal.v17.js"></script>
 </body>
 </html>
