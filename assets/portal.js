@@ -250,7 +250,7 @@
       nast = [['racun', 'Moj račun']];
     }
     const veja = ([k, l]) => `<a data-go="${k}">${ikona(k)}${l}</a>`;
-    $('side').innerHTML = glavni.map(veja).join('') + '<p class="side-h">Nastavitve</p>' + nast.map(veja).join('');
+    $('side').innerHTML = glavni.map(veja).join('') + '<div class="side-sep"></div>' + nast.map(veja).join('');
     document.querySelectorAll('#side a[data-go]').forEach(a => {
       a.addEventListener('click', () => {
         pojdi(a.dataset.go);
