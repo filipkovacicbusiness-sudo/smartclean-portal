@@ -317,7 +317,7 @@
     const zadnji = LISTI[0];
     const pred90 = new Date(zdaj.getTime() - 90 * 864e5);
     const aktivnih = new Set(LISTI.filter(l => new Date(l.doc_date) >= pred90).map(l => l.org_id)).size;
-    const kartice = OSEBJE ? [['Kg ta mesec', fmtKg(kgMesec), 'oprano ta mesec'], ['Kg skupaj', fmtKg(kgSkupaj), 'vse doslej'], ['Dostav ta mesec', stevilo(vMesecu.length), 'spremnih listov'], ['Kosov opranih', stevilo(kosovSkupaj), 'skupaj v bazi']] : [['Prevzemov', stevilo(VSEHLISTOV), 'skupaj'], ['Ta mesec', stevilo(vMesecu.length), stevilo(kosovMesec) + ' kosov'], ['Kosov skupaj', stevilo(kosovSkupaj), 'v vseh prevzemih'], ['Zadnji prevzem', zadnji ? datum(zadnji.doc_date) : '—', zadnji ? stevilo(zadnji.total_pieces) + ' kosov' : 'še ni podatkov']];
+    const kartice = OSEBJE ? [['Ta mesec', fmtTona(kgMesec), 'opranega perila'], ['Skupaj', fmtTona(kgSkupaj), 'vse doslej'], ['Dostav ta mesec', stevilo(vMesecu.length), 'spremnih listov'], ['Kosov opranih', stevilo(kosovSkupaj), 'skupaj v bazi']] : [['Prevzemov', stevilo(VSEHLISTOV), 'skupaj'], ['Ta mesec', stevilo(vMesecu.length), stevilo(kosovMesec) + ' kosov'], ['Kosov skupaj', stevilo(kosovSkupaj), 'v vseh prevzemih'], ['Zadnji prevzem', zadnji ? datum(zadnji.doc_date) : '—', zadnji ? stevilo(zadnji.total_pieces) + ' kosov' : 'še ni podatkov']];
     $('statGrid').innerHTML = kartice.map(([l, n, s]) => `<div class="stat"><div class="stat-num">${escape_(n)}</div>
      <div class="stat-lab">${escape_(l)}</div><div class="stat-sub">${escape_(s)}</div></div>`).join('');
 
@@ -358,7 +358,7 @@
       ${klikljivo ? '' : 'style="cursor:default"'}>
       <span class="a-num">${escape_(l.number || '—')}</span>
       <span class="a-cli">${escape_(OSEBJE ? ORGIME[l.org_id] || '—' : l.issued_name || '')}</span>
-      <span class="num">${datum(l.doc_date)}</span>
+      <span class="num a-date">${datum(l.doc_date)}</span>
       <span class="num">${stevilo(l.total_pieces)} kos</span>
       <span class="chev" aria-hidden="true">${klikljivo ? '›' : ''}</span>
     </button>
@@ -781,19 +781,21 @@
     });
     const skupine = Object.values(poOrg).sort((a, b) => (ORGIME[a.org_id] || '').localeCompare(ORGIME[b.org_id] || '', 'sl', { sensitivity: 'base' }));
     FAK_ZADNJI = { od, doo, skupine };
-    $('fakPod').textContent = skupine.length ? (stevilo(notes.length) + ' spremnih listov · ' + skupine.length + ' strank · ' + datum(od) + ' – ' + datum(doo)) : 'V izbranem obdobju ni spremnih listov';
+    $('fakPod').textContent = skupine.length ? '' : 'V izbranem obdobju ni spremnih listov';
     if (!skupine.length) { list.innerHTML = '<div class="panel"><p class="u-sub">V izbranem obdobju ni spremnih listov.</p></div>'; return; }
-    list.innerHTML = skupine.map((g, gi) => fakKartica(g, gi)).join('');
+    list.innerHTML = '<div class="fak-grid">' + skupine.map((g, gi) => fakKartica(g, gi)).join('') + '</div>';
     list.querySelectorAll('[data-fakprint]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); natisniFakturo(parseInt(b.dataset.fakprint, 10)); }));
     list.querySelectorAll('[data-faktoggle]').forEach(h => h.addEventListener('click', () => {
       const gi = h.dataset.faktoggle, body = document.getElementById('fakbody' + gi);
       const willOpen = !h.classList.contains('open');
       list.querySelectorAll('[data-faktoggle].open').forEach(o => {
         o.classList.remove('open');
+        const oc = o.closest('.fak-card'); if (oc) oc.classList.remove('open');
         const b = document.getElementById('fakbody' + o.dataset.faktoggle);
         if (b) b.classList.remove('show');
       });
       h.classList.toggle('open', willOpen);
+      const card = h.closest('.fak-card'); if (card) card.classList.toggle('open', willOpen);
       if (body) body.classList.toggle('show', willOpen);
     }));
   }
@@ -887,6 +889,7 @@
   /* ══════════ STRANKE (osebje) ══════════ */
   let ARTSTEVILO = {};
   function fmtKg(kg) { return (Math.round((kg || 0) * 10) / 10).toLocaleString('sl-SI') + ' kg'; }
+  function fmtTona(kg) { return (Math.round((kg || 0) / 100) / 10).toLocaleString('sl-SI', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' t'; }
   function kgPoStrankiMesec() {
     const z = new Date(), y = z.getFullYear(), m = z.getMonth(), map = {};
     LISTI.forEach(l => {

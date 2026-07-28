@@ -11,7 +11,7 @@
   --serif:'Instrument Sans',system-ui,-apple-system,sans-serif;
   --sans:'Instrument Sans',system-ui,-apple-system,sans-serif;
   --mono:'Geist Mono',ui-monospace,monospace;
-  --wm:'Georgia','Times New Roman',serif;
+  --wm:'Instrument Serif','Georgia',serif;
   --wm-blue:#2f66cc;
   --radius:14px;
   --shadow:0 10px 40px rgba(0,0,0,.08);
@@ -44,7 +44,7 @@ button,input{font:inherit;color:inherit;}
   border-radius:50%;border:1px solid rgba(255,255,255,.14);}
 .auth-side::before{content:'';position:absolute;right:-60px;bottom:-60px;width:260px;height:260px;
   border-radius:50%;border:1px solid rgba(255,255,255,.08);}
-.wordmark{font-family:var(--wm);font-size:1.7rem;font-weight:700;letter-spacing:-.005em;}
+.wordmark{font-family:var(--wm);font-size:1.95rem;font-weight:400;letter-spacing:0;line-height:1;}
 .wordmark span{color:var(--wm-blue);}
 .auth-claim{font-family:var(--serif);font-size:clamp(1.9rem,3.4vw,2.7rem);line-height:1.12;
   font-weight:700;max-width:12ch;position:relative;}
@@ -80,7 +80,7 @@ input:focus{border-color:var(--green-l);background:var(--surface);outline:none;}
   border-bottom:1px solid var(--line);}
 .topbar-in{max-width:1100px;margin:0 auto;padding:0 24px;height:64px;
   display:flex;align-items:center;justify-content:space-between;gap:16px;}
-.topbar .wordmark{font-size:1.15rem;color:var(--ink);}
+.topbar .wordmark{font-size:1.5rem;color:var(--ink);}
 .tools{display:flex;align-items:center;gap:12px;}
 .who{font-size:.82rem;color:var(--mid);}
 .icon-btn{width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;
@@ -263,15 +263,21 @@ h3.sec-h{font-family:var(--serif);font-size:1.05rem;font-weight:700;margin:0 0 1
   .burger{display:flex;}
   .main{padding:24px 18px 80px;}
   .stat-grid{grid-template-columns:repeat(2,1fr);}
-  .a-row{grid-template-columns:1fr 78px 22px;}
-  .a-row .a-cli,.a-row .a-w{display:none;}
+}
+@media(max-width:760px){
+  .filtri{flex-direction:column;align-items:stretch;width:100%;}
+  .filtri input,.filtri select,.fak-lab input{max-width:none;width:100%;}
+  .fak-lab{width:100%;}
+  .a-row{grid-template-columns:100px 1fr auto 20px;gap:10px;}
+  .a-row .a-cli{display:none;}
+  .a-row .num{white-space:nowrap;font-size:.8rem;}
   .a-det ul{columns:1;}
   .a-det li{max-width:none;}
 }
 @media(max-width:520px){
   .stat-grid{grid-template-columns:1fr;}
-  .filtri{flex-direction:column;align-items:stretch;width:100%;}
-  .filtri input,.filtri select{max-width:none;}
+  .a-row{grid-template-columns:1fr auto 20px;}
+  .a-row .a-date{display:none;}
 }
 
 /* ══════════ POPRAVEK POSTAVITVE ══════════ */
@@ -342,14 +348,22 @@ html[data-theme="dark"] .ur-ustvarjeno{background:#14311f;color:#7fd3a0}
 
 /* ══════════ FAKTURE ══════════ */
 .fak-lab{display:flex;align-items:center;gap:6px;font-size:.8rem;color:var(--mid);white-space:nowrap;}
-.fak-lab input{width:auto;padding:9px 11px;}
+.fak-lab input{width:auto;padding:9px 13px;border:1.5px solid var(--line);border-radius:9px;
+  background:var(--bg);color:var(--ink);font-size:.9rem;}
+.fak-lab input:focus{border-color:var(--green-l);outline:none;}
 .fak-hitri{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 18px;}
 .fak-chip{padding:7px 13px;border:1px solid var(--line);border-radius:999px;background:var(--surface);
   color:var(--mid);font-size:.78rem;cursor:pointer;text-transform:capitalize;transition:.15s;}
 .fak-chip:hover{border-color:var(--green-l);color:var(--ink);background:var(--green-m);}
+.fak-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;align-items:start;}
+.fak-grid .fak-card{margin-bottom:0;}
+.fak-grid .fak-card.open{grid-column:1 / -1;}
+@media(max-width:900px){ .fak-grid{grid-template-columns:1fr;} }
 .fak-card{border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);
   padding:18px 20px;margin-bottom:16px;}
-.fak-card-h{display:flex;align-items:center;gap:12px;cursor:pointer;}
+.fak-card-h{display:flex;align-items:flex-start;gap:12px;cursor:pointer;}
+.fak-card-h .fak-chev{margin-top:2px;}
+.fak-card-h .fak-print{margin-top:1px;}
 .fak-card-info{flex:1;min-width:0;}
 .fak-print{flex:0 0 auto;}
 .fak-chev{flex:0 0 auto;color:var(--mid);font-size:20px;line-height:1;transition:transform .2s;}
