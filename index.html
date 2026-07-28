@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="assets/portal.v9.css"/>
+<link rel="stylesheet" href="assets/portal.v11.css"/>
 </head>
 <body>
 
@@ -106,8 +106,8 @@
           <div class="filtri">
             <select id="arhivOrg" class="hidden"></select>
             <select id="arhivSort" aria-label="Razvrsti">
+              <option value="st_desc" selected>Št. ↓</option>
               <option value="datum">Najnovejši</option>
-              <option value="st_desc">Št. ↓</option>
               <option value="st_asc">Št. ↑</option>
               <option value="stranka_az">Stranka A–Ž</option>
               <option value="stranka_za">Stranka Ž–A</option>
@@ -118,6 +118,20 @@
         <button type="button" id="arhivNovBtn" class="btn btn-narrow hidden" style="margin-bottom:16px">+ Nov spremni list</button>
         <div id="novListBox"></div>
         <div id="arhivList"></div>
+      </section>
+
+      <section class="sec hidden" id="sec-fakture">
+        <div class="head">
+          <div><h2>Fakture</h2><p class="count" id="fakPod">Osnova za račun — seštevek artiklov in teže po strankah</p></div>
+          <div class="filtri">
+            <label class="fak-lab">Od <input type="date" id="fakOd"/></label>
+            <label class="fak-lab">Do <input type="date" id="fakDo"/></label>
+            <select id="fakOrg" aria-label="Stranka"><option value="">Vse stranke</option></select>
+            <button type="button" id="fakBtn" class="btn btn-narrow">Prikaži</button>
+          </div>
+        </div>
+        <div class="fak-hitri" id="fakHitri"></div>
+        <div id="fakList"></div>
       </section>
 
       <section class="sec hidden" id="sec-stranke">
@@ -206,6 +220,6 @@
 <script src="assets/start.js"></script>
 <script src="config.js"></script>
 <script src="vendor/supabase.js"></script>
-<script src="assets/portal.v9.js"></script>
+<script src="assets/portal.v11.js"></script>
 </body>
 </html>
