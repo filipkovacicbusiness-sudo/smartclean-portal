@@ -11,8 +11,9 @@
   --serif:'Instrument Sans',system-ui,-apple-system,sans-serif;
   --sans:'Instrument Sans',system-ui,-apple-system,sans-serif;
   --mono:'Geist Mono',ui-monospace,monospace;
-  --wm:'Instrument Serif','Georgia',serif;
+  --wm:'Playfair Display','Georgia',serif;
   --wm-blue:#2f66cc;
+  --wm-ink:#0d1f17; --wm-green:#1a6644;
   --radius:14px;
   --shadow:0 10px 40px rgba(0,0,0,.08);
   color-scheme:light;
@@ -25,6 +26,7 @@
   --ink:#ffffff; --mid:rgba(255,255,255,.52); --bg:#0a0a0a; --surface:#111112;
   --band:#0a0a0a; --brand-rgb:255,255,255; --line:rgba(255,255,255,.12);
   --wm-blue:#6098f5;
+  --wm-ink:#e8f1eb; --wm-green:#6ed3a1;
   --shadow:0 20px 50px rgba(0,0,0,.5);
   color-scheme:dark;
 }
@@ -44,11 +46,13 @@ button,input{font:inherit;color:inherit;}
   border-radius:50%;border:1px solid rgba(255,255,255,.14);}
 .auth-side::before{content:'';position:absolute;right:-60px;bottom:-60px;width:260px;height:260px;
   border-radius:50%;border:1px solid rgba(255,255,255,.08);}
-.wordmark{font-family:var(--wm);font-size:1.95rem;font-weight:400;letter-spacing:0;line-height:1;}
-.wordmark span{color:var(--wm-blue);}
+.wordmark{font-family:var(--wm);font-size:1.55rem;font-weight:700;letter-spacing:-.03em;line-height:1;color:var(--wm-ink);}
+.wordmark span{color:var(--wm-green);}
+.auth-side .wordmark{font-size:1.9rem;color:#e8f1eb;}
+.auth-side .wordmark span{color:#6ed3a1;}
 .auth-claim{font-family:var(--serif);font-size:clamp(1.9rem,3.4vw,2.7rem);line-height:1.12;
   font-weight:700;max-width:12ch;position:relative;}
-.auth-claim em{font-style:normal;color:var(--wm-blue);}
+.auth-claim em{font-style:normal;color:#6ed3a1;}
 .auth-foot{font-size:.82rem;color:rgba(255,255,255,.5);position:relative;}
 
 .auth-main{display:flex;align-items:center;justify-content:center;padding:40px 28px;}
@@ -79,8 +83,9 @@ input:focus{border-color:var(--green-l);background:var(--surface);outline:none;}
 .topbar{position:sticky;top:0;z-index:20;background:var(--surface);
   border-bottom:1px solid var(--line);}
 .topbar-in{max-width:1100px;margin:0 auto;padding:0 24px;height:64px;
-  display:flex;align-items:center;justify-content:space-between;gap:16px;}
-.topbar .wordmark{font-size:1.5rem;color:var(--ink);}
+  display:flex;align-items:center;justify-content:flex-start;gap:16px;}
+.tools{margin-left:auto;}
+.topbar .wordmark{font-size:1.55rem;color:var(--wm-ink);}
 .tools{display:flex;align-items:center;gap:12px;}
 .who{font-size:.82rem;color:var(--mid);}
 .icon-btn{width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;
@@ -292,7 +297,7 @@ html{scrollbar-gutter:stable;}
 .topbar-in{max-width:none;margin:0;padding:0 25px;}
 
 /* Ostanek stare postavitve: element main je še vedno vlekel svojo širino. */
-main.main{max-width:1180px;margin:0;padding:30px 30px 90px;}
+main.main{max-width:1500px;margin:0 auto;padding:30px 34px 90px;}
 
 @media(max-width:900px){
   .shell{grid-template-columns:1fr;}
