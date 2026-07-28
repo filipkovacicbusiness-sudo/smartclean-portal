@@ -179,6 +179,13 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   const JE_LASTNIK = () => (JAZMAIL || '').trim().toLowerCase() === 'filip@eflitte.si';
+  function prvoIme() {
+    let n = (JAZIME || '').trim();
+    if (!n) return 'ekipa';
+    if (n.indexOf('@') >= 0 && n.indexOf(' ') < 0) n = n.split('@')[0];
+    n = n.split(/\s+/)[0].replace(/[._-]+/g, ' ').split(' ')[0];
+    return n ? n.charAt(0).toUpperCase() + n.slice(1) : 'ekipa';
+  }
   let ORGSEZNAM = [],
     ORGIME = {},
     LISTI = [],
@@ -281,6 +288,7 @@
     if (kam === 'katalog') risiKatalog();
     if (kam === 'uporabniki') loadUsers();
     if (kam === 'nastavitve') risiNastavitve();
+    if (kam === 'racun') { const mi = $('mojeIme'); if (mi) mi.value = (JAZIME && JAZIME.indexOf('@') < 0) ? JAZIME : ''; }
     if (kam === 'aplikacija') risiAplikacijo();
   }
 
@@ -305,7 +313,7 @@
 
   /* ══════════ PREGLED ══════════ */
   function risiPregled() {
-    $('domovNaslov').textContent = OSEBJE ? 'Pregled' : MOJEPODJETJE ? MOJEPODJETJE.name : 'Vaš pregled';
+    $('domovNaslov').textContent = OSEBJE ? ('Pozdravljen/a, ' + prvoIme()) : MOJEPODJETJE ? MOJEPODJETJE.name : 'Vaš pregled';
     $('domovPod').textContent = OSEBJE ? ORGSEZNAM.length + ' strank v bazi' : MOJEPODJETJE ? [MOJEPODJETJE.legal_name, MOJEPODJETJE.address].filter(Boolean).join(' · ') : '';
     const zdaj = new Date();
     const zacetekMeseca = new Date(zdaj.getFullYear(), zdaj.getMonth(), 1);
@@ -317,7 +325,7 @@
     const zadnji = LISTI[0];
     const pred90 = new Date(zdaj.getTime() - 90 * 864e5);
     const aktivnih = new Set(LISTI.filter(l => new Date(l.doc_date) >= pred90).map(l => l.org_id)).size;
-    const kartice = OSEBJE ? [['Ta mesec', fmtTona(kgMesec), 'opranega perila'], ['Skupaj', fmtTona(kgSkupaj), 'vse doslej'], ['Dostav ta mesec', stevilo(vMesecu.length), 'spremnih listov'], ['Kosov opranih', stevilo(kosovSkupaj), 'skupaj v bazi']] : [['Prevzemov', stevilo(VSEHLISTOV), 'skupaj'], ['Ta mesec', stevilo(vMesecu.length), stevilo(kosovMesec) + ' kosov'], ['Kosov skupaj', stevilo(kosovSkupaj), 'v vseh prevzemih'], ['Zadnji prevzem', zadnji ? datum(zadnji.doc_date) : '—', zadnji ? stevilo(zadnji.total_pieces) + ' kosov' : 'še ni podatkov']];
+    const kartice = OSEBJE ? [['Ta mesec', fmtTona(kgMesec), ''], ['Skupaj', fmtTona(kgSkupaj), ''], ['Dostav ta mesec', stevilo(vMesecu.length), ''], ['Kosov opranih', stevilo(kosovSkupaj), '']] : [['Prevzemov', stevilo(VSEHLISTOV), 'skupaj'], ['Ta mesec', stevilo(vMesecu.length), stevilo(kosovMesec) + ' kosov'], ['Kosov skupaj', stevilo(kosovSkupaj), 'v vseh prevzemih'], ['Zadnji prevzem', zadnji ? datum(zadnji.doc_date) : '—', zadnji ? stevilo(zadnji.total_pieces) + ' kosov' : 'še ni podatkov']];
     $('statGrid').innerHTML = kartice.map(([l, n, s]) => `<div class="stat"><div class="stat-num">${escape_(n)}</div>
      <div class="stat-lab">${escape_(l)}</div><div class="stat-sub">${escape_(s)}</div></div>`).join('');
 
@@ -1357,6 +1365,21 @@
   }
 
   /* ══════════ MOJ RAČUN ══════════ */
+  { const _if = $('imeForm'); if (_if) _if.addEventListener('submit', async e => {
+    e.preventDefault();
+    const m = $('imeMsg'), btn = $('imeBtn');
+    const ime = $('mojeIme').value.trim();
+    if (!ime) { m.className = 'msg bad show'; m.textContent = 'Vpiši ime.'; return; }
+    btn.disabled = true; btn.textContent = 'Shranjujem …';
+    const { error } = await sb.from('profiles').update({ full_name: ime }).eq('id', JAZ);
+    btn.disabled = false; btn.textContent = 'Shrani ime';
+    if (error) { m.className = 'msg bad show'; m.textContent = 'Napaka: ' + error.message; return; }
+    JAZIME = ime;
+    $('who').textContent = ime + (OSEBJE ? ' · osebje' : '');
+    if ($('domovNaslov') && !$('sec-domov').classList.contains('hidden')) $('domovNaslov').textContent = OSEBJE ? ('Pozdravljen/a, ' + prvoIme()) : $('domovNaslov').textContent;
+    m.className = 'msg show'; m.textContent = 'Ime shranjeno.';
+  }); }
+
   $('changePwForm').addEventListener('submit', async e => {
     e.preventDefault();
     const m = $('pwMsg'),
@@ -1568,9 +1591,12 @@
     btn.disabled = true;
     btn.textContent = 'Ustvarjam …';
     const orgId = $('nuOrg').value;
+    const ime = ($('nuIme') ? $('nuIme').value.trim() : '');
     const r = await klic({
       dejanje: 'ustvari',
       email: $('nuEmail').value.trim(),
+      ime: ime || null,
+      full_name: ime || null,
       osebje: !orgId,
       orgId: orgId || null
     });
@@ -1580,7 +1606,9 @@
       uMsg(escape_(r.napaka), true);
       return;
     }
+    if (ime && r.email) { try { await sb.from('profiles').update({ full_name: ime }).eq('email', r.email); } catch (e) {} }
     $('nuEmail').value = '';
+    if ($('nuIme')) $('nuIme').value = '';
     uMsg('Račun <b>' + escape_(r.email) + '</b> je ustvarjen.<br>Geslo: <span class="secret">' + escape_(r.geslo) + '</span><br>Sporočite ga osebno ali po telefonu, ne po e-pošti skupaj ' + 'z naslovom portala. Drugič ga ne bo mogoče prikazati.');
     loadUsers();
   });

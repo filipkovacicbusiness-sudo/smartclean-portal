@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>SmartClean portal</title>
+<title>SmartClean Portal</title>
 <meta name="robots" content="noindex,nofollow"/>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230a0a0a'/%3E%3Ctext x='32' y='44' font-family='Arial,Helvetica,sans-serif' font-size='38' font-weight='700' fill='%23ffffff' text-anchor='middle'%3ESC%3C/text%3E%3C/svg%3E"/>
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://anrhtgbckxrccnafcmsz.supabase.co wss://anrhtgbckxrccnafcmsz.supabase.co; base-uri 'none'; form-action 'none'; object-src 'none'"/>
@@ -186,6 +186,10 @@
         <div class="panel">
           <form id="addUserForm" class="add-row" novalidate>
             <div class="field">
+              <label for="nuIme">Ime in priimek</label>
+              <input type="text" id="nuIme" autocomplete="off" placeholder="npr. Filip Novak"/>
+            </div>
+            <div class="field">
               <label for="nuEmail">E-naslov novega uporabnika</label>
               <input type="email" id="nuEmail" autocomplete="off" required/>
             </div>
@@ -202,6 +206,17 @@
 
       <section class="sec hidden" id="sec-racun">
         <div class="head"><div><h2>Moj račun</h2><p class="count" id="racunPod"></p></div></div>
+        <div class="panel">
+          <h3 class="sec-h">Ime in priimek</h3>
+          <form id="imeForm" class="add-row" novalidate>
+            <div class="field">
+              <label for="mojeIme">Prikazano ime</label>
+              <input type="text" id="mojeIme" autocomplete="name" placeholder="npr. Filip Novak"/>
+            </div>
+            <button type="submit" class="btn btn-narrow" id="imeBtn">Shrani ime</button>
+          </form>
+          <div class="msg" id="imeMsg" role="status" aria-live="polite"></div>
+        </div>
         <div class="panel">
           <h3 class="sec-h">Sprememba gesla</h3>
           <form id="changePwForm" novalidate>
