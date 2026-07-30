@@ -3,12 +3,12 @@
    Statične (verzionirane) datoteke: cache-first (varno, ker ime nosi verzijo). */
 var CACHE = 'sc-portal-v18';
 var SHELL = [
-  './assets/portal.v18.css',
-  './assets/portal.v18.js',
-  './assets/start.js',
-  './assets/icon-192.png',
-  './assets/icon-512.png',
-  './vendor/supabase.js'
+  './portal.v18.css',
+  './portal.v18.js',
+  './start.js',
+  './icon-192.png',
+  './icon-512.png',
+  './supabase.js'
 ];
 self.addEventListener('install', function (e) {
   e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(SHELL).catch(function(){}); }).then(function () { return self.skipWaiting(); }));
