@@ -1139,7 +1139,8 @@
         if (e.target.closest('.cgrp-sub')) return;
         var k = h.dataset.cgrp; var willOpen = !h.classList.contains('open');
         _cenikOpen[k] = willOpen; h.classList.toggle('open', willOpen);
-        var b = h.nextElementSibling; if (b) b.classList.toggle('show', willOpen);
+        var g = h.closest('.cgrp'); var b = g ? g.querySelector('.cgrp-body') : null;
+        if (b) b.classList.toggle('show', willOpen);
       });
     });
     box.querySelectorAll('[data-cedit]').forEach(bn => bn.addEventListener('click', e => { e.stopPropagation(); cenikUredi(bn); }));
