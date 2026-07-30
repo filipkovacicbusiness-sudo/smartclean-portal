@@ -1,11 +1,326 @@
-// ═══════════════════════════════════════════════════════════════════
-//  Nastavitve portala – že izpolnjene, ni treba ničesar spreminjati.
-//
-//  Tu sme stati SAMO Publishable key (sb_publishable_…).
-//  Secret key (sb_secret_…) v brskalnik ne sme nikoli.
-// ═══════════════════════════════════════════════════════════════════
+<!DOCTYPE html>
+<html lang="sl" data-theme="dark">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover"/>
+<title>SmartClean Portal</title>
+<meta name="robots" content="noindex,nofollow"/>
+<link rel="manifest" href="manifest.json"/>
+<meta name="theme-color" content="#0a0a0a"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="SmartClean"/>
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png"/>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230a0a0a'/%3E%3Ctext x='32' y='44' font-family='Arial,Helvetica,sans-serif' font-size='38' font-weight='700' fill='%23ffffff' text-anchor='middle'%3ESC%3C/text%3E%3C/svg%3E"/>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://anrhtgbckxrccnafcmsz.supabase.co wss://anrhtgbckxrccnafcmsz.supabase.co; base-uri 'none'; form-action 'none'; object-src 'none'"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Playfair+Display:wght@700;900&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="assets/portal.v18.css"/>
+<style id="hexfx">
+.sc-hex{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;opacity:1}
+.auth,.app{position:relative;z-index:1}
+html[data-theme="light"] .sc-hex{opacity:.5}
+.sc-hex .hexsvg{position:absolute;inset:0;width:100%;height:100%;display:block;overflow:visible}
+.sc-hex .hexwave{fill:none;stroke-opacity:0;stroke-linejoin:round;shape-rendering:geometricPrecision;animation-delay:-7s}
+@keyframes hw0{0.0%{stroke-opacity:0}39.5%{stroke-opacity:0}42.5%{stroke-opacity:0.1723}45.0%{stroke-opacity:0}84.5%{stroke-opacity:0}87.5%{stroke-opacity:0.1723}90.0%{stroke-opacity:0}100.0%{stroke-opacity:0}}
+@keyframes hw1{0.0%{stroke-opacity:0}36.5%{stroke-opacity:0}39.5%{stroke-opacity:0.2251}42.0%{stroke-opacity:0}81.5%{stroke-opacity:0}84.5%{stroke-opacity:0.2251}87.0%{stroke-opacity:0}100.0%{stroke-opacity:0}}
+@keyframes hw2{0.0%{stroke-opacity:0}33.5%{stroke-opacity:0}36.5%{stroke-opacity:0.2251}39.0%{stroke-opacity:0}78.5%{stroke-opacity:0}81.5%{stroke-opacity:0.2251}84.0%{stroke-opacity:0}100.0%{stroke-opacity:0}}
+@keyframes hw3{0.0%{stroke-opacity:0}39.1%{stroke-opacity:0}42.1%{stroke-opacity:0.3}44.6%{stroke-opacity:0}84.1%{stroke-opacity:0}87.1%{stroke-opacity:0.3}89.6%{stroke-opacity:0}100.0%{stroke-opacity:0}}
+@keyframes hw4{0.0%{stroke-opacity:0}36.1%{stroke-opacity:0}39.1%{stroke-opacity:0.3}41.6%{stroke-opacity:0}81.1%{stroke-opacity:0}84.1%{stroke-opacity:0.3}86.6%{stroke-opacity:0}100.0%{stroke-opacity:0}}
+@keyframes hw5{0.0%{stroke-opacity:0}33.1%{stroke-opacity:0}36.1%{stroke-opacity:0.2085}38.6%{stroke-opacity:0}78.1%{stroke-opacity:0}81.1%{stroke-opacity:0.2085}83.6%{stroke-opacity:0}100.0%{stroke-opacity:0}}
+@keyframes hw6{0.0%{stroke-opacity:0}41.6%{stroke-opacity:0}44.6%{stroke-opacity:0.1723}47.1%{stroke-opacity:0}86.6%{stroke-opacity:0}89.6%{stroke-opacity:0.1723}92.1%{stroke-opacity:0}100.0%{stroke-opacity:0}}
+@keyframes hw7{0.0%{stroke-opacity:0}38.6%{stroke-opacity:0}41.6%{stroke-opacity:0.3}44.1%{stroke-opacity:0}83.6%{stroke-opacity:0}86.6%{stroke-opacity:0.3}89.1%{stroke-opacity:0}100.0%{stroke-opacity:0}}
+@keyframes hw8{0.0%{stroke-opacity:0}35.6%{stroke-opacity:0}38.6%{stroke-opacity:0.3}41.1%{stroke-opacity:0}80.6%{stroke-opacity:0}83.6%{stroke-opacity:0.3}86.1%{stroke-opacity:0}100.0%{stroke-opacity:0}}
+@keyframes hw9{0.0%{stroke-opacity:0}41.2%{stroke-opacity:0}44.2%{stroke-opacity:0.3}46.7%{stroke-opacity:0}86.2%{stroke-opacity:0}89.2%{stroke-opacity:0.3}91.7%{stroke-opacity:0}100.0%{stroke-opacity:0}}
+@keyframes hw10{0.0%{stroke-opacity:0}38.2%{stroke-opacity:0}41.2%{stroke-opacity:0.3}43.7%{stroke-opacity:0}83.2%{stroke-opacity:0}86.2%{stroke-opacity:0.3}88.7%{stroke-opacity:0}100.0%{stroke-opacity:0}}
+@keyframes hw11{0.0%{stroke-opacity:0}35.2%{stroke-opacity:0}38.2%{stroke-opacity:0.2085}40.7%{stroke-opacity:0}80.2%{stroke-opacity:0}83.2%{stroke-opacity:0.2085}85.7%{stroke-opacity:0}100.0%{stroke-opacity:0}}
+@keyframes hw12{0.0%{stroke-opacity:0}43.8%{stroke-opacity:0}46.8%{stroke-opacity:0.1723}49.3%{stroke-opacity:0}88.8%{stroke-opacity:0}91.8%{stroke-opacity:0.1723}94.3%{stroke-opacity:0}100.0%{stroke-opacity:0}}
+@keyframes hw13{0.0%{stroke-opacity:0}40.8%{stroke-opacity:0}43.8%{stroke-opacity:0.3}46.3%{stroke-opacity:0}85.8%{stroke-opacity:0}88.8%{stroke-opacity:0.3}91.3%{stroke-opacity:0}100.0%{stroke-opacity:0}}
+@keyframes hw14{0.0%{stroke-opacity:0}37.8%{stroke-opacity:0}40.8%{stroke-opacity:0.3}43.3%{stroke-opacity:0}82.8%{stroke-opacity:0}85.8%{stroke-opacity:0.3}88.3%{stroke-opacity:0}100.0%{stroke-opacity:0}}
+@keyframes hw15{0.0%{stroke-opacity:0}43.4%{stroke-opacity:0}46.4%{stroke-opacity:0.3}48.9%{stroke-opacity:0}88.4%{stroke-opacity:0}91.4%{stroke-opacity:0.3}93.9%{stroke-opacity:0}100.0%{stroke-opacity:0}}
+@keyframes hw16{0.0%{stroke-opacity:0}40.4%{stroke-opacity:0}43.4%{stroke-opacity:0.3}45.9%{stroke-opacity:0}85.4%{stroke-opacity:0}88.4%{stroke-opacity:0.3}90.9%{stroke-opacity:0}100.0%{stroke-opacity:0}}
+@keyframes hw17{0.0%{stroke-opacity:0}37.4%{stroke-opacity:0}40.4%{stroke-opacity:0.2085}42.9%{stroke-opacity:0}82.4%{stroke-opacity:0}85.4%{stroke-opacity:0.2085}87.9%{stroke-opacity:0}100.0%{stroke-opacity:0}}
+@keyframes hw18{0.0%{stroke-opacity:0}45.9%{stroke-opacity:0}48.9%{stroke-opacity:0.1723}51.4%{stroke-opacity:0}90.9%{stroke-opacity:0}93.9%{stroke-opacity:0.1723}96.4%{stroke-opacity:0}100.0%{stroke-opacity:0}}
+@keyframes hw19{0.0%{stroke-opacity:0}42.9%{stroke-opacity:0}45.9%{stroke-opacity:0.2983}48.4%{stroke-opacity:0}87.9%{stroke-opacity:0}90.9%{stroke-opacity:0.2983}93.4%{stroke-opacity:0}100.0%{stroke-opacity:0}}
+@keyframes hw20{0.0%{stroke-opacity:0}39.9%{stroke-opacity:0}42.9%{stroke-opacity:0.2983}45.4%{stroke-opacity:0}84.9%{stroke-opacity:0}87.9%{stroke-opacity:0.2983}90.4%{stroke-opacity:0}100.0%{stroke-opacity:0}}
+@keyframes hw21{0.0%{stroke-opacity:0}45.5%{stroke-opacity:0}48.5%{stroke-opacity:0.2046}51.0%{stroke-opacity:0}90.5%{stroke-opacity:0}93.5%{stroke-opacity:0.2046}96.0%{stroke-opacity:0}100.0%{stroke-opacity:0}}
+@keyframes hw22{0.0%{stroke-opacity:0}42.5%{stroke-opacity:0}45.5%{stroke-opacity:0.2046}48.0%{stroke-opacity:0}87.5%{stroke-opacity:0}90.5%{stroke-opacity:0.2046}93.0%{stroke-opacity:0}100.0%{stroke-opacity:0}}
+@keyframes hw23{0.0%{stroke-opacity:0}39.5%{stroke-opacity:0}42.5%{stroke-opacity:0.2046}45.0%{stroke-opacity:0}84.5%{stroke-opacity:0}87.5%{stroke-opacity:0.2046}90.0%{stroke-opacity:0}100.0%{stroke-opacity:0}}
+.sc-hex .hw0{animation:hw0 20s ease-out infinite}
+.sc-hex .hw1{animation:hw1 20s ease-out infinite}
+.sc-hex .hw2{animation:hw2 20s ease-out infinite}
+.sc-hex .hw3{animation:hw3 20s ease-out infinite}
+.sc-hex .hw4{animation:hw4 20s ease-out infinite}
+.sc-hex .hw5{animation:hw5 20s ease-out infinite}
+.sc-hex .hw6{animation:hw6 20s ease-out infinite}
+.sc-hex .hw7{animation:hw7 20s ease-out infinite}
+.sc-hex .hw8{animation:hw8 20s ease-out infinite}
+.sc-hex .hw9{animation:hw9 20s ease-out infinite}
+.sc-hex .hw10{animation:hw10 20s ease-out infinite}
+.sc-hex .hw11{animation:hw11 20s ease-out infinite}
+.sc-hex .hw12{animation:hw12 20s ease-out infinite}
+.sc-hex .hw13{animation:hw13 20s ease-out infinite}
+.sc-hex .hw14{animation:hw14 20s ease-out infinite}
+.sc-hex .hw15{animation:hw15 20s ease-out infinite}
+.sc-hex .hw16{animation:hw16 20s ease-out infinite}
+.sc-hex .hw17{animation:hw17 20s ease-out infinite}
+.sc-hex .hw18{animation:hw18 20s ease-out infinite}
+.sc-hex .hw19{animation:hw19 20s ease-out infinite}
+.sc-hex .hw20{animation:hw20 20s ease-out infinite}
+.sc-hex .hw21{animation:hw21 20s ease-out infinite}
+.sc-hex .hw22{animation:hw22 20s ease-out infinite}
+.sc-hex .hw23{animation:hw23 20s ease-out infinite}
+@media (prefers-reduced-motion:reduce){.sc-hex [class*="hw"]{animation:none;opacity:0}}
+</style>
+</head>
+<body>
+<div class="sc-hex" aria-hidden="true"><svg class="hexsvg" aria-hidden="true" preserveAspectRatio="xMidYMid slice" shape-rendering="geometricPrecision" xmlns="http://www.w3.org/2000/svg" viewBox="-100 -260 1200 900"><path class="hexwave hw0" d="M-69.0 -119.5 L-138.0 0.0 L-276.0 0.0 L-345.0 -119.5 L-276.0 -239.0 L-138.0 -239.0 Z" fill="none" stroke="#7c60eb" stroke-width="1.25" vector-effect="non-scaling-stroke"/><path class="hexwave hw1" d="M-69.0 119.5 L-138.0 239.0 L-276.0 239.0 L-345.0 119.5 L-276.0 0.0 L-138.0 0.0 Z" fill="none" stroke="#905ce2" stroke-width="1.25" vector-effect="non-scaling-stroke"/><path class="hexwave hw2" d="M-69.0 358.5 L-138.0 478.0 L-276.0 478.0 L-345.0 358.5 L-276.0 239.0 L-138.0 239.0 Z" fill="none" stroke="#b158cf" stroke-width="1.25" vector-effect="non-scaling-stroke"/><path class="hexwave hw3" d="M138.0 0.0 L69.0 119.5 L-69.0 119.5 L-138.0 0.0 L-69.0 -119.5 L69.0 -119.5 Z" fill="none" stroke="#895ee5" stroke-width="1.25" vector-effect="non-scaling-stroke"/><path class="hexwave hw4" d="M138.0 239.0 L69.0 358.5 L-69.0 358.5 L-138.0 239.0 L-69.0 119.5 L69.0 119.5 Z" fill="none" stroke="#ab58d6" stroke-width="1.25" vector-effect="non-scaling-stroke"/><path class="hexwave hw5" d="M138.0 478.0 L69.0 597.6 L-69.0 597.6 L-138.0 478.0 L-69.0 358.5 L69.0 358.5 Z" fill="none" stroke="#d86472" stroke-width="1.25" vector-effect="non-scaling-stroke"/><path class="hexwave hw6" d="M345.0 -119.5 L276.0 0.0 L138.0 0.0 L69.0 -119.5 L138.0 -239.0 L276.0 -239.0 Z" fill="none" stroke="#835fe8" stroke-width="1.25" vector-effect="non-scaling-stroke"/><path class="hexwave hw7" d="M345.0 119.5 L276.0 239.0 L138.0 239.0 L69.0 119.5 L138.0 0.0 L276.0 0.0 Z" fill="none" stroke="#a459d9" stroke-width="1.25" vector-effect="non-scaling-stroke"/><path class="hexwave hw8" d="M345.0 358.5 L276.0 478.0 L138.0 478.0 L69.0 358.5 L138.0 239.0 L276.0 239.0 Z" fill="none" stroke="#d26281" stroke-width="1.25" vector-effect="non-scaling-stroke"/><path class="hexwave hw9" d="M552.0 0.0 L483.0 119.5 L345.0 119.5 L276.0 0.0 L345.0 -119.5 L483.0 -119.5 Z" fill="none" stroke="#9d5adc" stroke-width="1.25" vector-effect="non-scaling-stroke"/><path class="hexwave hw10" d="M552.0 239.0 L483.0 358.5 L345.0 358.5 L276.0 239.0 L345.0 119.5 L483.0 119.5 Z" fill="none" stroke="#cb6091" stroke-width="1.25" vector-effect="non-scaling-stroke"/><path class="hexwave hw11" d="M552.0 478.0 L483.0 597.6 L345.0 597.6 L276.0 478.0 L345.0 358.5 L483.0 358.5 Z" fill="none" stroke="#e3774a" stroke-width="1.25" vector-effect="non-scaling-stroke"/><path class="hexwave hw12" d="M759.0 -119.5 L690.0 0.0 L552.0 0.0 L483.0 -119.5 L552.0 -239.0 L690.0 -239.0 Z" fill="none" stroke="#975bdf" stroke-width="1.25" vector-effect="non-scaling-stroke"/><path class="hexwave hw13" d="M759.0 119.5 L690.0 239.0 L552.0 239.0 L483.0 119.5 L552.0 0.0 L690.0 0.0 Z" fill="none" stroke="#c55ea0" stroke-width="1.25" vector-effect="non-scaling-stroke"/><path class="hexwave hw14" d="M759.0 358.5 L690.0 478.0 L552.0 478.0 L483.0 358.5 L552.0 239.0 L690.0 239.0 Z" fill="none" stroke="#e3724f" stroke-width="1.25" vector-effect="non-scaling-stroke"/><path class="hexwave hw15" d="M966.0 0.0 L897.0 119.5 L759.0 119.5 L690.0 0.0 L759.0 -119.5 L897.0 -119.5 Z" fill="none" stroke="#be5cb0" stroke-width="1.25" vector-effect="non-scaling-stroke"/><path class="hexwave hw16" d="M966.0 239.0 L897.0 358.5 L759.0 358.5 L690.0 239.0 L759.0 119.5 L897.0 119.5 Z" fill="none" stroke="#e26e55" stroke-width="1.25" vector-effect="non-scaling-stroke"/><path class="hexwave hw17" d="M966.0 478.0 L897.0 597.6 L759.0 597.6 L690.0 478.0 L759.0 358.5 L897.0 358.5 Z" fill="none" stroke="#e5843b" stroke-width="1.25" vector-effect="non-scaling-stroke"/><path class="hexwave hw18" d="M1173.0 -119.5 L1104.0 0.0 L966.0 0.0 L897.0 -119.5 L966.0 -239.0 L1104.0 -239.0 Z" fill="none" stroke="#b85abf" stroke-width="1.25" vector-effect="non-scaling-stroke"/><path class="hexwave hw19" d="M1173.0 119.5 L1104.0 239.0 L966.0 239.0 L897.0 119.5 L966.0 0.0 L1104.0 0.0 Z" fill="none" stroke="#e16a5a" stroke-width="1.25" vector-effect="non-scaling-stroke"/><path class="hexwave hw20" d="M1173.0 358.5 L1104.0 478.0 L966.0 478.0 L897.0 358.5 L966.0 239.0 L1104.0 239.0 Z" fill="none" stroke="#e57f40" stroke-width="1.25" vector-effect="non-scaling-stroke"/><path class="hexwave hw21" d="M1380.0 0.0 L1311.0 119.5 L1173.0 119.5 L1104.0 0.0 L1173.0 -119.5 L1311.0 -119.5 Z" fill="none" stroke="#df6662" stroke-width="1.25" vector-effect="non-scaling-stroke"/><path class="hexwave hw22" d="M1380.0 239.0 L1311.0 358.5 L1173.0 358.5 L1104.0 239.0 L1173.0 119.5 L1311.0 119.5 Z" fill="none" stroke="#e47b45" stroke-width="1.25" vector-effect="non-scaling-stroke"/><path class="hexwave hw23" d="M1380.0 478.0 L1311.0 597.6 L1173.0 597.6 L1104.0 478.0 L1173.0 358.5 L1311.0 358.5 Z" fill="none" stroke="#e68836" stroke-width="1.25" vector-effect="non-scaling-stroke"/></svg></div>
 
-window.SC_CONFIG = {
-  url: "https://anrhtgbckxrccnafcmsz.supabase.co",
-  key: "sb_publishable_LYMbUOYW2IFz4NxgvjXLOg_PJ2-qpS4",
-};
+<!-- ══════════ PRIJAVA ══════════ -->
+<div class="auth" id="auth">
+  <aside class="auth-side">
+    <div class="wordmark">Smart<span>Clean</span></div>
+    <p class="auth-claim">Vaše perilo, <em>vedno pregledno.</em></p>
+    <p class="auth-foot">Portal za stranke in osebje · BSMART d.o.o.</p>
+  </aside>
+
+  <div class="auth-main">
+    <div class="auth-box">
+      <p class="eyebrow">Prijava</p>
+      <h1>Dobrodošli nazaj</h1>
+      <p class="sub">Vpišite se s podatki, ki ste jih prejeli od nas.</p>
+
+      <form id="loginForm" novalidate>
+        <div class="field">
+          <label for="email">E-poštni naslov</label>
+          <input type="email" id="email" name="email" autocomplete="username" required/>
+        </div>
+        <div class="field">
+          <label for="password">Geslo</label>
+          <input type="password" id="password" name="password" autocomplete="current-password" required/>
+        </div>
+        <div class="field auto-field">
+          <label>Samodejna prijava</label>
+          <div class="seg auto-seg" id="autoSeg" role="group" aria-label="Samodejna prijava">
+            <button type="button" class="seg-b on" data-auto="1">Vklopljena</button>
+            <button type="button" class="seg-b" data-auto="0">Izklopljena</button>
+          </div>
+        </div>
+        <button type="submit" class="btn" id="loginBtn">Prijavi se</button>
+      </form>
+      <p class="under"><button type="button" class="link-btn" id="forgotBtn">Pozabljeno geslo?</button></p>
+
+      <form id="resetForm" class="hidden" novalidate>
+        <div class="field">
+          <label for="resetEmail">E-poštni naslov</label>
+          <input type="email" id="resetEmail" autocomplete="username" required/>
+        </div>
+        <button type="submit" class="btn" id="resetBtn">Pošlji povezavo za ponastavitev</button>
+        <p class="under"><button type="button" class="link-btn" id="backBtn">Nazaj na prijavo</button></p>
+      </form>
+
+      <form id="newPwForm" class="hidden" novalidate>
+        <div class="field">
+          <label for="newPw1">Novo geslo</label>
+          <input type="password" id="newPw1" autocomplete="new-password" required/>
+        </div>
+        <div class="field">
+          <label for="newPw2">Ponovi novo geslo</label>
+          <input type="password" id="newPw2" autocomplete="new-password" required/>
+        </div>
+        <button type="submit" class="btn" id="newPwBtn">Nastavi geslo</button>
+      </form>
+
+      <div class="msg" id="loginMsg" role="status" aria-live="polite"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ APLIKACIJA ══════════ -->
+<div class="app" id="app">
+  <header class="topbar">
+    <div class="topbar-in">
+      <button class="burger" id="burger" type="button" aria-label="Meni" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+      <div class="wordmark">Smart<span>Clean</span></div>
+      <div class="tools">
+        <span class="who" id="who"></span>
+        <button class="icon-btn" id="themeBtn" type="button" aria-label="Preklop teme">
+          <svg class="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.4 1.4M17.6 17.6L19 19M19 5l-1.4 1.4M6.4 17.6L5 19"/></svg>
+          <svg class="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+        </button>
+        <button class="link-btn" id="logoutBtn" type="button">Odjava</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="shell">
+    <nav class="side" id="side" aria-label="Razdelki"></nav>
+    <div class="scrim" id="scrim"></div>
+
+    <main class="main">
+
+      <section class="sec" id="sec-domov">
+        <div class="head">
+          <div><h2 id="domovNaslov">Pregled</h2><p class="count" id="domovPod"></p></div>
+        </div>
+        <div id="statGrid" class="stat-grid"></div>
+        <div id="mesecni"></div>
+        <div id="zadnji"></div>
+      </section>
+
+      <section class="sec hidden" id="sec-arhiv">
+        <div class="head">
+          <div><h2>Arhiv spremnih listov</h2><p class="count" id="arhivPod"></p></div>
+          <div class="filtri">
+            <select id="arhivOrg" class="hidden"></select>
+            <select id="arhivSort" aria-label="Razvrsti">
+              <option value="st_desc" selected>Št. ↓</option>
+              <option value="datum">Najnovejši</option>
+              <option value="st_asc">Št. ↑</option>
+              <option value="stranka_az">Stranka A–Ž</option>
+              <option value="stranka_za">Stranka Ž–A</option>
+            </select>
+            <input type="search" id="arhivIsci" placeholder="Iskanje po številki …" aria-label="Iskanje"/>
+          </div>
+        </div>
+        <button type="button" id="arhivNovBtn" class="btn btn-narrow hidden" style="margin-bottom:16px">+ Nov spremni list</button>
+        <div id="novListBox"></div>
+        <div id="arhivList"></div>
+      </section>
+
+      <section class="sec hidden" id="sec-fakture">
+        <div class="head">
+          <div><h2>Fakture</h2><p class="count" id="fakPod">Osnova za račun — seštevek artiklov in teže po strankah</p></div>
+          <div class="filtri">
+            <label class="fak-lab">Od <input type="date" id="fakOd"/></label>
+            <label class="fak-lab">Do <input type="date" id="fakDo"/></label>
+            <select id="fakOrg" aria-label="Stranka"><option value="">Vse stranke</option></select>
+            <button type="button" id="fakBtn" class="btn btn-narrow">Prikaži</button>
+          </div>
+        </div>
+        <div class="fak-hitri" id="fakHitri"></div>
+        <div id="fakList"></div>
+      </section>
+
+      <section class="sec hidden" id="sec-stranke">
+        <div class="head">
+          <div><h2>Stranke</h2><p class="count" id="count"></p></div>
+          <div class="filtri"><input type="search" id="search" placeholder="Iskanje po nazivu …" aria-label="Iskanje strank"/></div>
+        </div>
+        <button type="button" id="novaStrankaBtn" class="btn btn-narrow hidden" style="margin-bottom:16px">+ Nova stranka</button>
+        <div id="novaStrankaBox"></div>
+        <div id="content"></div>
+      </section>
+
+      <section class="sec hidden" id="sec-katalog">
+        <div class="head"><div><h2>Vaš katalog perila</h2><p class="count" id="katalogPod"></p></div></div>
+        <div id="katalogList"></div>
+      </section>
+
+      <section class="sec hidden" id="sec-nastavitve">
+        <div class="head"><div><h2>Nastavitve</h2><p class="count">Videz portala</p></div></div>
+        <div class="panel">
+          <h3 class="sec-h">Videz</h3>
+          <p class="u-sub" style="margin-bottom:14px">Izberi temo portala. »Samodejno« sledi uri — temno zvečer, svetlo podnevi.</p>
+          <div class="tema-izbira">
+            <button type="button" class="tema-b" data-tema="light"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.4 1.4M17.6 17.6L19 19M19 5l-1.4 1.4M6.4 17.6L5 19"/></svg>Svetlo</button>
+            <button type="button" class="tema-b" data-tema="dark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>Temno</button>
+            <button type="button" class="tema-b" data-tema="auto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor" stroke="none"/></svg>Samodejno</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="sec hidden" id="sec-aplikacija">
+        <div class="head"><div><h2>Aplikacije</h2>
+          <p class="count">Pralnica za tablico in namestitev portala na telefon</p></div></div>
+        <div id="apkPanel"></div>
+      </section>
+
+      <section class="sec hidden" id="sec-statistika">
+        <div class="head"><div><h2>Statistika</h2><p class="count">Analitika prevzemov, količin in strank</p></div></div>
+        <div class="empty"><h3>V pripravi</h3><p>Ta razdelek bova še dodelala.</p></div>
+      </section>
+
+      <section class="sec hidden" id="sec-ceniki">
+        <div class="head"><div><h2>Ceniki</h2><p class="count">Cene artiklov in prevozov po strankah</p></div></div>
+        <div class="empty"><h3>V pripravi</h3><p>Ta razdelek bova še dodelala.</p></div>
+      </section>
+
+      <section class="sec hidden" id="sec-uporabniki">
+        <div class="head"><div><h2>Uporabniki</h2><p class="count">Računi za osebje in stranke</p></div></div>
+        <div class="panel">
+          <h3 class="sec-h">Vsi uporabniki</h3>
+          <div id="usersList"></div>
+        </div>
+        <div class="panel">
+          <h3 class="sec-h">Ustvari novega uporabnika</h3>
+          <form id="addUserForm" class="add-row" novalidate>
+            <div class="field">
+              <label for="nuIme">Ime in priimek</label>
+              <input type="text" id="nuIme" autocomplete="off" placeholder="npr. Filip Novak"/>
+            </div>
+            <div class="field">
+              <label for="nuEmail">E-naslov novega uporabnika</label>
+              <input type="email" id="nuEmail" autocomplete="off" required/>
+            </div>
+            <div class="field">
+              <label for="nuOrg">Dostop do</label>
+              <select id="nuOrg"></select>
+            </div>
+            <button type="submit" class="btn btn-narrow" id="nuBtn">Ustvari račun</button>
+          </form>
+          <div class="msg" id="usersMsg" role="status" aria-live="polite"></div>
+        </div>
+      </section>
+
+      <section class="sec hidden" id="sec-racun">
+        <div class="head"><div><h2>Moj račun</h2><p class="count" id="racunPod"></p></div></div>
+        <div class="panel">
+          <h3 class="sec-h">Ime in priimek</h3>
+          <form id="imeForm" novalidate>
+            <div class="field">
+              <label for="mojeIme">Prikazano ime</label>
+              <input type="text" id="mojeIme" autocomplete="name" placeholder="npr. Filip Novak"/>
+            </div>
+            <button type="submit" class="btn btn-narrow" id="imeBtn">Shrani ime</button>
+          </form>
+          <div class="msg" id="imeMsg" role="status" aria-live="polite"></div>
+        </div>
+        <div class="panel">
+          <h3 class="sec-h">Sprememba gesla</h3>
+          <form id="changePwForm" novalidate>
+            <div class="pw-grid">
+              <div class="field">
+                <label for="curPw">Trenutno geslo</label>
+                <input type="password" id="curPw" autocomplete="current-password" required/>
+              </div>
+              <div class="field">
+                <label for="chPw1">Novo geslo</label>
+                <input type="password" id="chPw1" autocomplete="new-password" required/>
+              </div>
+              <div class="field">
+                <label for="chPw2">Ponovi novo geslo</label>
+                <input type="password" id="chPw2" autocomplete="new-password" required/>
+              </div>
+            </div>
+            <button type="submit" class="btn btn-narrow" id="chPwBtn">Shrani novo geslo</button>
+          </form>
+          <div class="msg" id="pwMsg" role="status" aria-live="polite"></div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<a class="sc-foot" href="https://eflitte.si" target="_blank" rel="noopener">Izdelava <b>Eflitte</b></a>
+<script src="assets/start.js"></script>
+<script src="config.js"></script>
+<script src="vendor/supabase.js"></script>
+<script src="assets/portal.v18.js"></script>
+</body>
+</html>
