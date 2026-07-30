@@ -250,13 +250,23 @@
       nast = [['racun', 'Moj račun']];
     }
     const veja = ([k, l]) => `<a data-go="${k}">${ikona(k)}${l}</a>`;
-    $('side').innerHTML = glavni.map(veja).join('') + '<div class="side-sep"></div>' + nast.map(veja).join('');
-    document.querySelectorAll('#side a[data-go]').forEach(a => {
-      a.addEventListener('click', () => {
-        pojdi(a.dataset.go);
-        zapriMeni();
-      });
+    $('side').innerHTML = '<span class="side-slider" aria-hidden="true"></span>' + glavni.map(veja).join('') + '<div class="side-sep"></div>' + nast.map(veja).join('');
+    const _side = $('side');
+    const _sl = _side.querySelector('.side-slider');
+    const premakniDrsnik = a => {
+      if (!_sl || !a) return;
+      _sl.style.transform = 'translateY(' + a.offsetTop + 'px)';
+      _sl.style.left = a.offsetLeft + 'px';
+      _sl.style.width = a.offsetWidth + 'px';
+      _sl.style.height = a.offsetHeight + 'px';
+      _side.classList.add('sl-on');
+    };
+    meni._drsnik = () => { premakniDrsnik(_side.querySelector('a.on')); };
+    _side.querySelectorAll('a[data-go]').forEach(a => {
+      a.addEventListener('click', () => { pojdi(a.dataset.go); zapriMeni(); });
+      a.addEventListener('mouseenter', () => premakniDrsnik(a));
     });
+    _side.addEventListener('mouseleave', () => meni._drsnik());
   }
   function zapriMeni() {
     $('side').classList.remove('on');
@@ -280,6 +290,7 @@
     document.querySelectorAll('#side a[data-go]').forEach(a => {
       a.classList.toggle('on', a.dataset.go === kam);
     });
+    if (meni._drsnik) meni._drsnik();
     window.scrollTo(0, 0);
     if (kam === 'domov') risiPregled();
     if (kam === 'arhiv') risiArhiv();
@@ -355,7 +366,9 @@
         <span class="bars-val">${m.kos ? stevilo(m.kos) : ''}</span>
         <div class="bars-bar" style="height:${Math.round(m.kos / naj * 88)}px"></div>
         <span class="bars-lab">${escape_(m.ime)}</span></div>`).join('') + '</div></div>';
-    $('zadnji').innerHTML = '<h3 class="sec-h">Zadnji prevzemi</h3>' + tabelaListov(LISTI.slice(0, 5), false);
+    const stKljuc = l => { const d = String(l.number || '').split('/'); return (parseInt(d[1], 10) || 0) * 1e7 + (parseInt(d[0], 10) || 0); };
+    const zadnjiListi = LISTI.slice().sort((a, b) => stKljuc(b) - stKljuc(a)).slice(0, 5);
+    $('zadnji').innerHTML = '<h3 class="sec-h">Zadnji prevzemi</h3>' + tabelaListov(zadnjiListi, false);
   }
 
   /* ══════════ ARHIV ══════════ */

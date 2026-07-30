@@ -64,7 +64,7 @@ h1{font-family:var(--serif);font-size:1.75rem;font-weight:700;line-height:1.2;ma
 label{display:block;font-size:.78rem;font-weight:500;color:var(--mid);
   margin-bottom:6px;letter-spacing:.02em;}
 .field{margin-bottom:16px;}
-input[type=email],input[type=password],input[type=search]{
+input[type=email],input[type=password],input[type=search],.field input[type=text]{
   width:100%;padding:11px 14px;border:1.5px solid var(--line);border-radius:9px;
   background:var(--bg);transition:border-color .18s,background .18s;}
 input:focus{border-color:var(--green-l);background:var(--surface);outline:none;}
@@ -206,11 +206,17 @@ select:focus{border-color:var(--green-l);outline:none;}
 .side-h{font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;color:var(--mid);
   margin:14px 10px 6px;}
 .side-h:first-child{margin-top:0;}
-.side a{display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:9px;
-  font-size:.92rem;color:var(--mid);cursor:pointer;transition:background .16s,color .16s;}
-.side a:hover{background:var(--green-m);color:var(--ink);}
-.side a.on{background:var(--green-m);color:var(--green-t);font-weight:500;}
+.side a{position:relative;z-index:1;display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:9px;
+  font-size:.92rem;color:var(--mid);cursor:pointer;transition:color .22s cubic-bezier(.4,0,.2,1);}
+.side a:hover{color:var(--ink);}
+.side a.on{color:var(--green-t);font-weight:500;}
 .side a svg{width:17px;height:17px;flex-shrink:0;}
+/* drseči poudarek (kot eflitte nav) */
+.side-slider{position:absolute;top:0;left:0;width:0;height:0;border-radius:9px;background:var(--green-m);
+  opacity:0;pointer-events:none;z-index:0;
+  transition:transform .32s cubic-bezier(.4,0,.2,1),width .3s cubic-bezier(.4,0,.2,1),
+    height .3s cubic-bezier(.4,0,.2,1),opacity .22s ease;}
+.side.sl-on .side-slider{opacity:1;}
 .main{padding:30px 26px 90px;min-width:0;}
 .main .head{margin-bottom:20px;}
 .filtri{display:flex;gap:10px;align-items:center;}
@@ -430,16 +436,13 @@ html[data-theme="dark"] .ur-ustvarjeno{background:#14311f;color:#7fd3a0}
 .prevoz-znak.izr{color:var(--wm-blue);border-color:var(--wm-blue);}
 
 /* ══════════ NASTAVITVE — izbira teme ══════════ */
-.tema-izbira{display:flex;gap:12px;flex-wrap:wrap;}
-.tema-b{display:flex;align-items:center;gap:10px;padding:12px 18px;border:1.5px solid var(--line);
-  border-radius:12px;background:var(--bg);color:var(--ink);font-size:.92rem;font-weight:500;
+.tema-izbira{display:flex;gap:10px;flex-wrap:wrap;}
+.tema-b{display:inline-flex;align-items:center;gap:9px;padding:9px 15px;border:1px solid var(--line);
+  border-radius:10px;background:var(--surface);color:var(--ink);font-size:.88rem;font-weight:500;
   cursor:pointer;transition:border-color .15s,background .15s;}
-.tema-b:hover{border-color:var(--green-l);background:var(--green-m);}
+.tema-b:hover{border-color:var(--mid);}
 .tema-b.on{border-color:var(--ink);background:var(--green-m);}
-.tema-p{width:20px;height:20px;border-radius:6px;border:1px solid var(--line);flex:0 0 auto;}
-.tema-p-l{background:#ffffff;}
-.tema-p-d{background:#0a0a0a;}
-.tema-p-a{background:linear-gradient(135deg,#ffffff 0 50%,#0a0a0a 50% 100%);}
+.tema-b svg{width:17px;height:17px;flex:0 0 auto;}
 
 /* ══════════ poravnava fakturnih filtrov ══════════ */
 .filtri input,.filtri select,.filtri .btn,.filtri .btn-narrow{height:44px;}
@@ -462,3 +465,12 @@ body,.topbar,.side,.main,.panel,.row,.a-row,.arts,.a-det,.fak-card,.fak-tot,.sta
 .sc-foot:hover{opacity:1;}
 .sc-foot b{font-weight:600;color:var(--ink);}
 @media(max-width:560px){.sc-foot{right:10px;bottom:7px;font-size:.58rem;}}
+
+/* ══════════ ENOTEN HOVER PREHOD (kot eflitte nav) ══════════ */
+.row,.a-row,.arts,.a-det,.fak-card,.stat,.btn,.btn-narrow,.btn-mini,.fak-print,
+.tema-b,.seg-b,.icon-btn,.fak-chip,.link-btn,.u-acts button,.tb-btn,.ur-save,
+input[type=email],input[type=password],input[type=search],.field input[type=text],select{
+  transition:background-color .24s cubic-bezier(.4,0,.2,1),border-color .24s cubic-bezier(.4,0,.2,1),
+    color .22s cubic-bezier(.4,0,.2,1),box-shadow .22s cubic-bezier(.4,0,.2,1),
+    transform .18s cubic-bezier(.4,0,.2,1);
+}
