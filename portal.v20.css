@@ -575,3 +575,40 @@ input[type=email],input[type=password],input[type=search],.field input[type=text
   .fak-head-m,.fak-lines-m .fak-line{grid-template-columns:1fr 50px 30px 78px;gap:5px;font-size:.8rem;}
   .fak-head-m span,.fak-l-c,.fak-l-q,.fak-l-z{font-size:.77rem;}
 }
+
+/* ── ceniki: master katalog (povezave, urejanje, koš) ── */
+.cenik-bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;}
+.cenik-bar .btn-narrow{margin-top:0;}
+.btn.ghost{background:var(--surface);color:var(--ink);border:1px solid var(--line);}
+.btn.ghost:hover:not(:disabled){background:var(--green-m);border-color:var(--green-l);}
+.cgrp-name{display:flex;flex-direction:column;gap:2px;}
+.cgrp-sub{font-size:.72rem;color:var(--mid);font-weight:400;line-height:1.35;}
+.cgrp-bar{display:flex;gap:8px;flex-wrap:wrap;padding:10px 14px;border-bottom:1px solid var(--line);background:var(--bg);}
+.cgrp-btn{font-size:.78rem;padding:6px 13px;border:1px solid var(--line);border-radius:100px;background:var(--green);color:var(--btn-ink);cursor:pointer;font-weight:500;}
+.cgrp-btn:hover{opacity:.9;}
+.cgrp-btn.ghost{background:none;color:var(--mid);}
+.cgrp-btn.ghost:hover{border-color:var(--mid);color:var(--ink);opacity:1;}
+.cenik-acts{display:inline-flex;gap:4px;flex:0 0 auto;}
+.cenik-mv,.cenik-del{border:1px solid var(--line);background:var(--surface);color:var(--mid);width:26px;height:26px;border-radius:7px;cursor:pointer;font-size:13px;line-height:1;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;}
+.cenik-mv:hover{border-color:var(--mid);color:var(--ink);}
+.cenik-del:hover{border-color:#c0392b;color:#c0392b;}
+.cenik-x{border:1px solid var(--line);background:var(--surface);color:var(--mid);width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:16px;line-height:1;flex:0 0 auto;}
+.cenik-x:hover{border-color:var(--mid);color:var(--ink);}
+.cenik-edit-form,.cenik-nov{grid-column:1 / -1;display:flex;flex-direction:column;gap:8px;width:100%;padding:4px 0;}
+.cenik-nov{padding:12px 14px;border-bottom:1px solid var(--line);background:var(--green-m);}
+.cenik-nm-in,.cenik-nov-nm{width:100%;padding:8px 11px;border:1.5px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font-size:16px;}
+.cenik-edit-r,.cenik-nov-r{display:flex;gap:8px;align-items:center;}
+.cenik-edit-r .cenik-in,.cenik-nov-r .cenik-nov-c{width:110px;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font-size:16px;text-align:right;font-variant-numeric:tabular-nums;}
+.cenik-nm-in:focus,.cenik-nov-nm:focus,.cenik-edit-r .cenik-in:focus,.cenik-nov-r .cenik-nov-c:focus{border-color:var(--green-l);outline:none;}
+.cenik-edit-r .btn-mini,.cenik-nov-r .btn-mini{flex:1;}
+.cenik-orgpick{grid-column:1 / -1;display:flex;flex-direction:column;gap:8px;padding:12px 14px;border-bottom:1px solid var(--line);background:var(--green-m);}
+.cenik-org-in{width:100%;padding:8px 11px;border:1.5px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font-size:16px;}
+.cenik-org-in:focus{border-color:var(--green-l);outline:none;}
+.cenik-org-list{max-height:240px;overflow:auto;border:1px solid var(--line);border-radius:9px;background:var(--surface);}
+.cenik-org-item{display:flex;flex-direction:column;gap:1px;width:100%;padding:8px 12px;background:none;border:none;border-bottom:1px solid var(--line);cursor:pointer;text-align:left;color:var(--ink);}
+.cenik-org-item:last-child{border-bottom:none;}
+.cenik-org-item:hover{background:var(--green-m);}
+.cenik-org-item span{font-size:.9rem;font-weight:500;}
+.cenik-org-item small{font-size:.72rem;color:var(--mid);}
+.cenik-restore{white-space:nowrap;}
+.cenik-orgpick .cgrp-bar{background:none;border:none;padding:0;}

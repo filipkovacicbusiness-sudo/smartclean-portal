@@ -970,15 +970,42 @@
   /* ══════════ CENIKI ══════════ */
   let CENIK = null;
   let CENIKMAP = null;
+  let _cenikPreCount = {};
+  let _cenikOpen = {};
   const DDV_STOPNJA = 0.22;
   function cenaFmt(n) { return (Number(n) || 0).toLocaleString('sl-SI', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'; }
-  function zgradiCenikMap() { CENIKMAP = {}; (CENIK || []).forEach(x => { CENIKMAP[x.sifra] = x; }); }
+  var CENIK_RX = /^([A-ZČŠŽĐ][A-ZČŠŽĐ0-9.\s]*?)\s*-\s+\S/;
+  function cenikSkupina(naziv) { var m = (naziv || '').match(CENIK_RX); return m ? m[1].trim() : null; }
+  function zgradiCenikMap() {
+    CENIKMAP = {}; _cenikPreCount = {};
+    (CENIK || []).forEach(function (x) {
+      CENIKMAP[x.sifra] = x;
+      if (!(x.org_id && ORGIME[x.org_id])) { var p = cenikSkupina(x.naziv); if (p) _cenikPreCount[p] = (_cenikPreCount[p] || 0) + 1; }
+    });
+  }
+  function cenikGroupKey(x) {
+    if (x.org_id && ORGIME[x.org_id]) return 'org:' + x.org_id;
+    var p = cenikSkupina(x.naziv);
+    if (p && _cenikPreCount[p] >= 2) return 'pre:' + p;
+    return 'splosno';
+  }
+  function cenikSort(a, b) {
+    var sa = a.sort_order, sb2 = b.sort_order;
+    if (sa != null && sb2 != null && sa !== sb2) return sa - sb2;
+    if (sa != null && sb2 == null) return -1;
+    if (sa == null && sb2 != null) return 1;
+    return (a.naziv || '').localeCompare(b.naziv || '', 'sl');
+  }
   async function nalozicenik(force) {
-    if (CENIK && CENIKMAP && !force) return CENIK;
-    const { data, error } = await sb.from('pricelist').select('sifra,koda,naziv,em,cena1,cena2').order('naziv');
-    if (error) { CENIK = CENIK || []; CENIKMAP = CENIKMAP || {}; return CENIK; }
-    CENIK = data || []; zgradiCenikMap();
-    return CENIK;
+    if (CENIK && CENIKMAP && !force) return { ok: true };
+    var r = await sb.from('pricelist').select('sifra,koda,naziv,em,cena1,cena2,org_id,sort_order,deleted_at').is('deleted_at', null).order('naziv');
+    if (r.error) {
+      var r2 = await sb.from('pricelist').select('sifra,koda,naziv,em,cena1,cena2').order('naziv');
+      if (r2.error) return { ok: false, missing: true };
+      CENIK = (r2.data || []).map(function (x) { return Object.assign({ org_id: null, sort_order: null }, x); });
+      zgradiCenikMap(); return { ok: true, noext: true };
+    }
+    CENIK = r.data || []; zgradiCenikMap(); return { ok: true };
   }
   async function naloziArtMap(orgFilter) {
     let q = sb.from('articles').select('org_id,name,cena_sifra');
@@ -989,33 +1016,35 @@
     return map;
   }
   function cenaZaArtikel(sifra) { return (sifra != null && CENIKMAP && CENIKMAP[sifra]) ? CENIKMAP[sifra].cena1 : null; }
+  function orgPodatki(orgId) {
+    var o = ORGSEZNAM.find(function (x) { return x.id === orgId; }); if (!o) return '';
+    return [o.legal_name, o.vat_id ? ('ID DDV: ' + o.vat_id) : '', o.address].filter(Boolean).map(escape_).join(' · ');
+  }
   async function risiCeniki() {
     const box = $('cenikList'); if (!box) return;
     if (!risiCeniki._wired) {
       const si = $('cenikIsci'); if (si) si.addEventListener('input', () => cenikRender());
       const ib = $('cenikUvoz'); if (ib) ib.addEventListener('click', () => uvoziCenik());
+      const kb = $('cenikKos'); if (kb) kb.addEventListener('click', () => risiKos());
       risiCeniki._wired = true;
     }
     box.innerHTML = '<p class="u-sub">Nalagam cenik …</p>';
-    const { data, error } = await sb.from('pricelist').select('sifra,koda,naziv,em,cena1,cena2').order('naziv');
-    if (error) {
+    const res = await nalozicenik(true);
+    if (!res.ok) {
       CENIK = null;
       box.innerHTML = '<div class="msg bad show">Tabele cenika (pricelist) še ni v bazi. Zaženi priloženo migracijo v Supabase → SQL Editor, nato klikni »Uvozi cenik iz PDF-ja«.</div>';
       if ($('cenikPod')) $('cenikPod').textContent = 'Cenik še ni pripravljen';
       return;
     }
-    CENIK = data || []; zgradiCenikMap();
     cenikRender();
   }
-  var CENIK_RX = /^([A-ZČŠŽĐ][A-ZČŠŽĐ0-9.\s]*?)\s*-\s+\S/;
-  function cenikSkupina(naziv) { var m = (naziv || '').match(CENIK_RX); return m ? m[1].trim() : null; }
   function cenikVrsticaHtml(x, striped) {
     var nm = x.naziv || '';
     if (striped) { var m = nm.match(CENIK_RX); if (m) { var t = nm.slice(m[1].length).replace(/^\s*-\s*/, '').trim(); if (t) nm = t; } }
-    return '<div class="cenik-row"><div class="cenik-nm">' + escape_(nm) + '</div>' +
-      '<div class="cenik-meta">' + escape_(x.koda || '') + ' · ' + escape_(x.em || 'kos') + '</div>' +
+    return '<div class="cenik-row" data-s="' + x.sifra + '"><div class="cenik-nm">' + escape_(nm) + '</div>' +
+      '<div class="cenik-meta">#' + x.sifra + (x.koda ? ' · ' + escape_(x.koda) : '') + ' · ' + escape_(x.em || 'kos') + '</div>' +
       '<div class="cenik-cena"><span class="cenik-val">' + cenaFmt(x.cena1) + '</span>' +
-      (OSEBJE ? '<button type="button" class="cenik-edit" data-cedit="' + x.sifra + '" title="uredi ceno" aria-label="uredi ceno">✎</button>' : '') +
+      (OSEBJE ? '<span class="cenik-acts"><button type="button" class="cenik-mv" data-up="' + x.sifra + '" title="gor" aria-label="gor">↑</button><button type="button" class="cenik-mv" data-down="' + x.sifra + '" title="dol" aria-label="dol">↓</button><button type="button" class="cenik-edit" data-cedit="' + x.sifra + '" title="uredi" aria-label="uredi">✎</button><button type="button" class="cenik-del" data-cdel="' + x.sifra + '" title="izbriši" aria-label="izbriši">×</button></span>' : '') +
       '</div></div>';
   }
   function cenikRender() {
@@ -1027,49 +1056,204 @@
       return;
     }
     let items = CENIK;
-    if (q) items = CENIK.filter(x => (x.naziv || '').toLowerCase().includes(q) || (x.koda || '').toLowerCase().includes(q));
+    if (q) items = CENIK.filter(x => (x.naziv || '').toLowerCase().includes(q) || (x.koda || '').toLowerCase().includes(q) || String(x.sifra) === q);
     if (!items.length) { box.innerHTML = '<div class="empty"><h3>Ni zadetkov</h3></div>'; return; }
-    var cnt = {};
-    items.forEach(function (x) { var p = cenikSkupina(x.naziv); if (p) cnt[p] = (cnt[p] || 0) + 1; });
     var grupe = {};
-    items.forEach(function (x) { var p = cenikSkupina(x.naziv); if (!p || cnt[p] < 2) p = 'Splošno'; (grupe[p] = grupe[p] || []).push(x); });
-    var keys = Object.keys(grupe).sort(function (a, b) { if (a === 'Splošno') return 1; if (b === 'Splošno') return -1; return a.localeCompare(b, 'sl'); });
-    var odpri = !!q;
-    box.innerHTML = keys.map(function (k) {
-      var arr = grupe[k].slice().sort(function (a, b) { return (a.naziv || '').localeCompare(b.naziv || '', 'sl'); });
-      var striped = k !== 'Splošno';
-      var rows = arr.map(function (x) { return cenikVrsticaHtml(x, striped); }).join('');
-      return '<div class="cgrp"><button type="button" class="cgrp-h' + (odpri ? ' open' : '') + '" data-cgrp>' +
-        '<span class="cgrp-chev" aria-hidden="true">›</span><span class="cgrp-name">' + escape_(k) + '</span>' +
-        '<span class="cgrp-count">' + stevilo(arr.length) + ' art.</span></button>' +
-        '<div class="cgrp-body' + (odpri ? ' show' : '') + '">' + rows + '</div></div>';
+    items.forEach(function (x) {
+      var k = cenikGroupKey(x);
+      if (!grupe[k]) {
+        var meta = { key: k, items: [] };
+        if (k.indexOf('org:') === 0) { meta.type = 'org'; meta.org_id = k.slice(4); meta.label = ORGIME[meta.org_id] || 'stranka'; }
+        else if (k.indexOf('pre:') === 0) { meta.type = 'pre'; meta.prefix = k.slice(4); meta.label = meta.prefix; }
+        else { meta.type = 'splosno'; meta.label = 'Splošno'; }
+        grupe[k] = meta;
+      }
+      grupe[k].items.push(x);
+    });
+    var arr = Object.keys(grupe).map(function (k) { return grupe[k]; });
+    arr.sort(function (a, b) { function rank(g) { return g.type === 'org' ? 0 : g.type === 'pre' ? 1 : 2; } if (rank(a) !== rank(b)) return rank(a) - rank(b); return a.label.localeCompare(b.label, 'sl'); });
+    box.innerHTML = arr.map(function (g) {
+      var list = g.items.slice().sort(cenikSort);
+      var striped = g.type !== 'splosno';
+      var rows = list.map(function (x) { return cenikVrsticaHtml(x, striped); }).join('');
+      var open = !!q || _cenikOpen[g.key];
+      var sub = '';
+      if (g.type === 'org') { var pod = orgPodatki(g.org_id); if (pod) sub = '<span class="cgrp-sub">' + pod + '</span>'; }
+      var bar = '';
+      if (OSEBJE) {
+        if (g.type === 'pre') bar = '<div class="cgrp-bar"><button type="button" class="cgrp-btn" data-linkpre="' + escape_(g.prefix) + '">Poveži s stranko</button></div>';
+        else if (g.type === 'org') bar = '<div class="cgrp-bar"><button type="button" class="cgrp-btn" data-neworg="' + g.org_id + '">+ Nov artikel</button><button type="button" class="cgrp-btn ghost" data-unlink="' + g.org_id + '">Prekliči povezavo</button></div>';
+        else bar = '<div class="cgrp-bar"><button type="button" class="cgrp-btn" data-newsplos="1">+ Nov artikel</button></div>';
+      }
+      return '<div class="cgrp" data-key="' + escape_(g.key) + '"><button type="button" class="cgrp-h' + (open ? ' open' : '') + '" data-cgrp="' + escape_(g.key) + '">' +
+        '<span class="cgrp-chev" aria-hidden="true">›</span><span class="cgrp-name">' + escape_(g.label) + sub + '</span>' +
+        '<span class="cgrp-count">' + stevilo(list.length) + ' art.</span></button>' +
+        '<div class="cgrp-body' + (open ? ' show' : '') + '">' + bar + rows + '</div></div>';
     }).join('');
     box.querySelectorAll('[data-cgrp]').forEach(function (h) {
-      h.addEventListener('click', function () { h.classList.toggle('open'); var b = h.nextElementSibling; if (b) b.classList.toggle('show'); });
+      h.addEventListener('click', function (e) {
+        if (e.target.closest('.cgrp-sub')) return;
+        var k = h.dataset.cgrp; var willOpen = !h.classList.contains('open');
+        _cenikOpen[k] = willOpen; h.classList.toggle('open', willOpen);
+        var b = h.nextElementSibling; if (b) b.classList.toggle('show', willOpen);
+      });
     });
-    box.querySelectorAll('[data-cedit]').forEach(bn => bn.addEventListener('click', () => cenikUredi(bn)));
-  }
-  function cenikCelica(cell, rec) {
-    cell.innerHTML = '<span class="cenik-val">' + cenaFmt(rec.cena1) + '</span>' +
-      (OSEBJE ? '<button type="button" class="cenik-edit" data-cedit="' + rec.sifra + '" title="uredi ceno" aria-label="uredi ceno">✎</button>' : '');
-    var b = cell.querySelector('[data-cedit]'); if (b) b.addEventListener('click', function () { cenikUredi(b); });
+    box.querySelectorAll('[data-cedit]').forEach(bn => bn.addEventListener('click', e => { e.stopPropagation(); cenikUredi(bn); }));
+    box.querySelectorAll('[data-cdel]').forEach(bn => bn.addEventListener('click', e => { e.stopPropagation(); cenikIzbrisi(parseInt(bn.dataset.cdel, 10)); }));
+    box.querySelectorAll('[data-up]').forEach(bn => bn.addEventListener('click', e => { e.stopPropagation(); cenikPremakni(parseInt(bn.dataset.up, 10), -1); }));
+    box.querySelectorAll('[data-down]').forEach(bn => bn.addEventListener('click', e => { e.stopPropagation(); cenikPremakni(parseInt(bn.dataset.down, 10), 1); }));
+    box.querySelectorAll('[data-linkpre]').forEach(bn => bn.addEventListener('click', e => { e.stopPropagation(); cenikPoveziPrefix(bn.dataset.linkpre, bn); }));
+    box.querySelectorAll('[data-unlink]').forEach(bn => bn.addEventListener('click', e => { e.stopPropagation(); cenikOdvezi(bn.dataset.unlink); }));
+    box.querySelectorAll('[data-neworg]').forEach(bn => bn.addEventListener('click', e => { e.stopPropagation(); cenikNov(bn.dataset.neworg, bn); }));
+    box.querySelectorAll('[data-newsplos]').forEach(bn => bn.addEventListener('click', e => { e.stopPropagation(); cenikNov(null, bn); }));
   }
   function cenikUredi(btn) {
     const s = parseInt(btn.dataset.cedit, 10);
-    const rec = (CENIK || []).find(r => r.sifra === s); if (!rec) return;
-    const cell = btn.closest('.cenik-cena');
-    cell.innerHTML = '<input type="text" class="cenik-in" inputmode="decimal"><button type="button" class="btn-mini cenik-save">Shrani</button>';
-    const inp = cell.querySelector('.cenik-in');
-    inp.value = String(rec.cena1).replace('.', ','); inp.focus(); inp.select();
+    const rec = CENIKMAP[s]; if (!rec) return;
+    const row = btn.closest('.cenik-row');
+    row.innerHTML = '<div class="cenik-edit-form"><input type="text" class="cenik-nm-in" placeholder="Naziv artikla"><div class="cenik-edit-r"><input type="text" class="cenik-in" inputmode="decimal" placeholder="Cena"><button type="button" class="btn-mini cenik-save">Shrani</button><button type="button" class="cenik-x cenik-cancel" title="prekliči">×</button></div></div>';
+    const nmIn = row.querySelector('.cenik-nm-in'), cIn = row.querySelector('.cenik-in');
+    nmIn.value = rec.naziv || ''; cIn.value = String(rec.cena1).replace('.', ',');
+    nmIn.focus();
+    [nmIn, cIn].forEach(el => el.addEventListener('click', e => e.stopPropagation()));
     const shrani = async () => {
-      const v = parseFloat(String(inp.value).replace(',', '.'));
+      const nm = nmIn.value.trim(); const v = parseFloat(String(cIn.value).replace(',', '.'));
+      if (!nm) { toast('Vpiši naziv'); return; }
       if (isNaN(v) || v < 0) { toast('Neveljavna cena'); return; }
-      const { error } = await sb.from('pricelist').update({ cena1: v, updated_at: new Date().toISOString() }).eq('sifra', s);
+      const { error } = await sb.from('pricelist').update({ naziv: nm, cena1: v, updated_at: new Date().toISOString() }).eq('sifra', s);
       if (error) { toast('Napaka: ' + error.message); return; }
-      rec.cena1 = v; toast('Cena shranjena'); cenikCelica(cell, rec);
+      let preime = 0;
+      if (nm !== rec.naziv) {
+        const rr = await sb.from('articles').update({ name: nm }).eq('cena_sifra', s).select('id');
+        if (!rr.error && rr.data) preime = rr.data.length;
+      }
+      rec.naziv = nm; rec.cena1 = v; zgradiCenikMap();
+      toast('Shranjeno' + (preime ? ' · preimenovano tudi v ' + preime + ' artiklih' : ''));
+      cenikRender();
     };
-    cell.querySelector('.cenik-save').addEventListener('click', shrani);
-    inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); shrani(); } else if (e.key === 'Escape') { cenikCelica(cell, rec); } });
+    row.querySelector('.cenik-save').addEventListener('click', e => { e.stopPropagation(); shrani(); });
+    row.querySelector('.cenik-cancel').addEventListener('click', e => { e.stopPropagation(); cenikRender(); });
+    cIn.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); shrani(); } else if (e.key === 'Escape') { cenikRender(); } });
+    nmIn.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); cIn.focus(); } });
+  }
+  async function cenikIzbrisi(s) {
+    const rec = CENIKMAP[s]; if (!rec) return;
+    const { error } = await sb.from('pricelist').update({ deleted_at: new Date().toISOString() }).eq('sifra', s);
+    if (error) { toast('Napaka: ' + error.message); return; }
+    CENIK = CENIK.filter(x => x.sifra !== s); zgradiCenikMap();
+    toast('Premaknjeno v nedavno brisane (obnovljivo 30 dni)');
+    cenikRender();
+  }
+  async function cenikPremakni(s, dir) {
+    const rec = CENIKMAP[s]; if (!rec) return;
+    const key = cenikGroupKey(rec);
+    const sibs = CENIK.filter(x => cenikGroupKey(x) === key).sort(cenikSort);
+    const idx = sibs.findIndex(x => x.sifra === s);
+    const j = idx + dir;
+    if (idx < 0 || j < 0 || j >= sibs.length) return;
+    const moved = sibs.splice(idx, 1)[0]; sibs.splice(j, 0, moved);
+    const updates = sibs.map((x, i) => ({ sifra: x.sifra, sort_order: i }));
+    sibs.forEach((x, i) => { x.sort_order = i; });
+    _cenikOpen[key] = true;
+    cenikRender();
+    const { error } = await sb.from('pricelist').upsert(updates, { onConflict: 'sifra' });
+    if (error) toast('Razvrščanje ni shranjeno: ' + error.message);
+  }
+  function cenikNov(orgId, btn) {
+    const bar = btn.closest('.cgrp-bar');
+    if (bar.nextElementSibling && bar.nextElementSibling.classList && bar.nextElementSibling.classList.contains('cenik-nov')) { cenikRender(); return; }
+    bar.insertAdjacentHTML('afterend', '<div class="cenik-nov"><input type="text" class="cenik-nov-nm" placeholder="Naziv novega artikla"><div class="cenik-nov-r"><input type="text" class="cenik-nov-c" inputmode="decimal" placeholder="Cena €"><button type="button" class="btn-mini cenik-nov-save">Ustvari</button><button type="button" class="cenik-x cenik-nov-cancel">×</button></div></div>');
+    const wrap = bar.nextElementSibling;
+    const nmIn = wrap.querySelector('.cenik-nov-nm'), cIn = wrap.querySelector('.cenik-nov-c');
+    nmIn.focus();
+    [nmIn, cIn].forEach(el => el.addEventListener('click', e => e.stopPropagation()));
+    const ustvari = async () => {
+      const nm = nmIn.value.trim(); const v = parseFloat(String(cIn.value).replace(',', '.')) || 0;
+      if (!nm) { toast('Vpiši naziv'); return; }
+      let maxS = 900000; CENIK.forEach(x => { if (x.sifra > maxS) maxS = x.sifra; });
+      const nova = maxS + 1;
+      const key = orgId ? ('org:' + orgId) : 'splosno';
+      const sibs = CENIK.filter(x => cenikGroupKey(x) === key);
+      const so = sibs.reduce((m, x) => Math.max(m, x.sort_order != null ? x.sort_order : 0), 0) + 1;
+      const novaRec = { sifra: nova, koda: '', naziv: nm, em: 'kos', cena1: v, cena2: 0, org_id: orgId || null, sort_order: so };
+      const { error } = await sb.from('pricelist').insert(novaRec);
+      if (error) { toast('Napaka: ' + error.message); return; }
+      if (orgId) {
+        const { data: maxd } = await sb.from('articles').select('sort_order').eq('org_id', orgId).order('sort_order', { ascending: false }).limit(1);
+        const aOrder = ((maxd && maxd[0] && maxd[0].sort_order) || 0) + 1;
+        await sb.from('articles').insert({ org_id: orgId, name: nm, sort_order: aOrder, cena_sifra: nova });
+      }
+      CENIK.push(novaRec); zgradiCenikMap();
+      _cenikOpen[key] = true;
+      toast(orgId ? 'Artikel ustvarjen in povezan s stranko' : 'Artikel ustvarjen');
+      cenikRender();
+    };
+    wrap.querySelector('.cenik-nov-save').addEventListener('click', e => { e.stopPropagation(); ustvari(); });
+    wrap.querySelector('.cenik-nov-cancel').addEventListener('click', e => { e.stopPropagation(); cenikRender(); });
+    cIn.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); ustvari(); } });
+    nmIn.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); cIn.focus(); } });
+  }
+  function cenikPoveziPrefix(prefix, btn) {
+    const bar = btn.closest('.cgrp-bar');
+    if (bar.nextElementSibling && bar.nextElementSibling.classList && bar.nextElementSibling.classList.contains('cenik-orgpick')) { cenikRender(); return; }
+    bar.insertAdjacentHTML('afterend', '<div class="cenik-orgpick"><input type="text" class="cenik-org-in" placeholder="Iskanje stranke …"><div class="cenik-org-list"></div><div class="cgrp-bar"><button type="button" class="cgrp-btn ghost cenik-org-cancel">Prekliči</button></div></div>');
+    const wrap = bar.nextElementSibling;
+    const inp = wrap.querySelector('.cenik-org-in'), listEl = wrap.querySelector('.cenik-org-list');
+    inp.focus(); inp.addEventListener('click', e => e.stopPropagation());
+    function render() {
+      const qq = inp.value.trim().toLowerCase();
+      let orgs = ORGSEZNAM.filter(o => !qq || (o.name || '').toLowerCase().includes(qq) || (o.legal_name || '').toLowerCase().includes(qq));
+      orgs = orgs.slice(0, 40);
+      listEl.innerHTML = orgs.length ? orgs.map(o => '<button type="button" class="cenik-org-item" data-o="' + o.id + '"><span>' + escape_(o.name) + '</span><small>' + escape_(o.legal_name || '') + '</small></button>').join('') : '<p class="u-sub" style="padding:10px 4px">Ni strank.</p>';
+      listEl.querySelectorAll('.cenik-org-item').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); izberi(b.dataset.o); }));
+    }
+    async function izberi(orgId) {
+      const sifre = CENIK.filter(x => !x.org_id && cenikSkupina(x.naziv) === prefix).map(x => x.sifra);
+      if (!sifre.length) { toast('Ni artiklov za povezavo'); return; }
+      const { error } = await sb.from('pricelist').update({ org_id: orgId }).in('sifra', sifre);
+      if (error) { toast('Napaka: ' + error.message); return; }
+      CENIK.forEach(x => { if (sifre.indexOf(x.sifra) >= 0) x.org_id = orgId; }); zgradiCenikMap();
+      _cenikOpen['org:' + orgId] = true;
+      toast('Povezano z ' + (ORGIME[orgId] || 'stranko') + ' (' + sifre.length + ' art.)');
+      cenikRender();
+    }
+    wrap.querySelector('.cenik-org-cancel').addEventListener('click', e => { e.stopPropagation(); cenikRender(); });
+    inp.addEventListener('input', render);
+    render();
+  }
+  async function cenikOdvezi(orgId) {
+    const sifre = CENIK.filter(x => x.org_id === orgId).map(x => x.sifra);
+    if (!sifre.length) return;
+    const { error } = await sb.from('pricelist').update({ org_id: null }).in('sifra', sifre);
+    if (error) { toast('Napaka: ' + error.message); return; }
+    CENIK.forEach(x => { if (x.org_id === orgId) x.org_id = null; }); zgradiCenikMap();
+    toast('Povezava s stranko preklicana');
+    cenikRender();
+  }
+  async function risiKos() {
+    const box = $('cenikList'); if (!box) return;
+    box.innerHTML = '<p class="u-sub">Nalagam …</p>';
+    if ($('cenikPod')) $('cenikPod').textContent = 'Nedavno brisani — obnovljivi 30 dni';
+    const mejnik = new Date(Date.now() - 30 * 864e5).toISOString();
+    const { data, error } = await sb.from('pricelist').select('sifra,koda,naziv,em,cena1,deleted_at').not('deleted_at', 'is', null).gte('deleted_at', mejnik).order('deleted_at', { ascending: false });
+    if (error) { box.innerHTML = '<div class="cgrp-bar"><button type="button" class="cgrp-btn" id="kosNazaj">← Nazaj na cenik</button></div><div class="msg bad show">Napaka: ' + escape_(error.message) + '</div>'; var nz0 = document.getElementById('kosNazaj'); if (nz0) nz0.addEventListener('click', () => risiCeniki()); return; }
+    const arr = data || [];
+    let html = '<div class="cgrp-bar"><button type="button" class="cgrp-btn" id="kosNazaj">← Nazaj na cenik</button></div>';
+    if (!arr.length) html += '<div class="empty"><h3>Koš je prazen</h3><p>Zadnjih 30 dni ni brisanih artiklov.</p></div>';
+    else html += '<div class="cenik">' + arr.map(function (x) {
+      return '<div class="cenik-row"><div class="cenik-nm">' + escape_(x.naziv) + '</div>' +
+        '<div class="cenik-meta">#' + x.sifra + ' · izbrisan ' + datumcas(x.deleted_at) + '</div>' +
+        '<div class="cenik-cena"><span class="cenik-val">' + cenaFmt(x.cena1) + '</span><button type="button" class="btn-mini cenik-restore" data-restore="' + x.sifra + '">Obnovi</button></div></div>';
+    }).join('') + '</div>';
+    box.innerHTML = html;
+    var nz = document.getElementById('kosNazaj'); if (nz) nz.addEventListener('click', () => risiCeniki());
+    box.querySelectorAll('[data-restore]').forEach(bn => bn.addEventListener('click', () => cenikObnovi(parseInt(bn.dataset.restore, 10))));
+  }
+  async function cenikObnovi(s) {
+    const { error } = await sb.from('pricelist').update({ deleted_at: null }).eq('sifra', s);
+    if (error) { toast('Napaka: ' + error.message); return; }
+    toast('Artikel obnovljen'); CENIK = null; CENIKMAP = null;
+    risiKos();
   }
   async function uvoziCenik() {
     const b = $('cenikUvoz'); if (!b) return;
@@ -1217,15 +1401,19 @@
       (curS != null ? '<button type="button" class="art-pick-clear">Odveži</button>' : '') +
       '<button type="button" class="art-pick-cancel">Prekliči</button></div></div>';
     const inp = li.querySelector('.art-pick-in'), listEl = li.querySelector('.art-pick-list');
-    inp.value = String(org.name || '').split(/\s+/)[0].toLowerCase();
     inp.addEventListener('click', e => e.stopPropagation());
     inp.focus();
+    // artikli te stranke iz cenika (org_id) — »manj stvari«; iskanje pa gre čez cel cenik
+    const lastni = CENIK.filter(x => x.org_id === orgId);
+    const imaLastne = lastni.length > 0;
     function render() {
       const q = inp.value.trim().toLowerCase();
-      let items = CENIK;
-      if (q) items = CENIK.filter(x => (x.naziv || '').toLowerCase().includes(q) || (x.koda || '').toLowerCase().includes(q));
-      items = items.slice(0, 40);
-      listEl.innerHTML = items.length ? items.map(x => '<button type="button" class="art-pick-item' + (x.sifra === curS ? ' on' : '') + '" data-s="' + x.sifra + '"><span>' + escape_(x.naziv) + '</span><b>' + cenaFmt(x.cena1) + '</b></button>').join('') : '<p class="u-sub" style="padding:10px 4px">Ni zadetkov.</p>';
+      let items;
+      if (q) items = CENIK.filter(x => (x.naziv || '').toLowerCase().includes(q) || (x.koda || '').toLowerCase().includes(q) || String(x.sifra) === q);
+      else items = imaLastne ? lastni : CENIK;
+      items = items.slice(0, 60);
+      const hint = (!q && !imaLastne) ? '<p class="u-sub" style="padding:6px 4px">Ta stranka v ceniku še nima svojih artiklov — poveži cenik s stranko v razdelku Ceniki, ali išči po celotnem ceniku.</p>' : '';
+      listEl.innerHTML = hint + (items.length ? items.map(x => '<button type="button" class="art-pick-item' + (x.sifra === curS ? ' on' : '') + '" data-s="' + x.sifra + '"><span>' + escape_(x.naziv) + '</span><b>' + cenaFmt(x.cena1) + '</b></button>').join('') : '<p class="u-sub" style="padding:10px 4px">Ni zadetkov.</p>');
       listEl.querySelectorAll('.art-pick-item').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); izberi(parseInt(b.dataset.s, 10)); }));
     }
     async function izberi(sifra) {
