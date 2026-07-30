@@ -11,6 +11,62 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Playfair+Display:wght@700;900&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="assets/portal.v17.css"/>
+<style id="hexfx">
+.sc-hex{position:fixed;inset:0;z-index:-1;pointer-events:none;overflow:hidden;opacity:1}
+html[data-theme="light"] .sc-hex{opacity:.7}
+.sc-hex .hexsvg{position:absolute;inset:0;width:100%;height:100%;display:block;overflow:visible}
+.sc-hex .hexwave{fill:none;stroke-opacity:.14;stroke-width:1.8;stroke-linejoin:round;shape-rendering:geometricPrecision;animation-delay:-7s}
+@keyframes hw0{0.0%{stroke-opacity:0.14}39.5%{stroke-opacity:0.14}42.5%{stroke-opacity:0.448}45.0%{stroke-opacity:0.14}84.5%{stroke-opacity:0.14}87.5%{stroke-opacity:0.448}90.0%{stroke-opacity:0.14}100.0%{stroke-opacity:0.14}}
+@keyframes hw1{0.0%{stroke-opacity:0.14}36.5%{stroke-opacity:0.14}39.5%{stroke-opacity:0.585}42.0%{stroke-opacity:0.14}81.5%{stroke-opacity:0.14}84.5%{stroke-opacity:0.585}87.0%{stroke-opacity:0.14}100.0%{stroke-opacity:0.14}}
+@keyframes hw2{0.0%{stroke-opacity:0.14}33.5%{stroke-opacity:0.14}36.5%{stroke-opacity:0.585}39.0%{stroke-opacity:0.14}78.5%{stroke-opacity:0.14}81.5%{stroke-opacity:0.585}84.0%{stroke-opacity:0.14}100.0%{stroke-opacity:0.14}}
+@keyframes hw3{0.0%{stroke-opacity:0.14}39.1%{stroke-opacity:0.14}42.1%{stroke-opacity:0.7}44.6%{stroke-opacity:0.14}84.1%{stroke-opacity:0.14}87.1%{stroke-opacity:0.7}89.6%{stroke-opacity:0.14}100.0%{stroke-opacity:0.14}}
+@keyframes hw4{0.0%{stroke-opacity:0.14}36.1%{stroke-opacity:0.14}39.1%{stroke-opacity:0.7}41.6%{stroke-opacity:0.14}81.1%{stroke-opacity:0.14}84.1%{stroke-opacity:0.7}86.6%{stroke-opacity:0.14}100.0%{stroke-opacity:0.14}}
+@keyframes hw5{0.0%{stroke-opacity:0.14}33.1%{stroke-opacity:0.14}36.1%{stroke-opacity:0.542}38.6%{stroke-opacity:0.14}78.1%{stroke-opacity:0.14}81.1%{stroke-opacity:0.542}83.6%{stroke-opacity:0.14}100.0%{stroke-opacity:0.14}}
+@keyframes hw6{0.0%{stroke-opacity:0.14}41.6%{stroke-opacity:0.14}44.6%{stroke-opacity:0.448}47.1%{stroke-opacity:0.14}86.6%{stroke-opacity:0.14}89.6%{stroke-opacity:0.448}92.1%{stroke-opacity:0.14}100.0%{stroke-opacity:0.14}}
+@keyframes hw7{0.0%{stroke-opacity:0.14}38.6%{stroke-opacity:0.14}41.6%{stroke-opacity:0.7}44.1%{stroke-opacity:0.14}83.6%{stroke-opacity:0.14}86.6%{stroke-opacity:0.7}89.1%{stroke-opacity:0.14}100.0%{stroke-opacity:0.14}}
+@keyframes hw8{0.0%{stroke-opacity:0.14}35.6%{stroke-opacity:0.14}38.6%{stroke-opacity:0.7}41.1%{stroke-opacity:0.14}80.6%{stroke-opacity:0.14}83.6%{stroke-opacity:0.7}86.1%{stroke-opacity:0.14}100.0%{stroke-opacity:0.14}}
+@keyframes hw9{0.0%{stroke-opacity:0.14}41.2%{stroke-opacity:0.14}44.2%{stroke-opacity:0.7}46.7%{stroke-opacity:0.14}86.2%{stroke-opacity:0.14}89.2%{stroke-opacity:0.7}91.7%{stroke-opacity:0.14}100.0%{stroke-opacity:0.14}}
+@keyframes hw10{0.0%{stroke-opacity:0.14}38.2%{stroke-opacity:0.14}41.2%{stroke-opacity:0.7}43.7%{stroke-opacity:0.14}83.2%{stroke-opacity:0.14}86.2%{stroke-opacity:0.7}88.7%{stroke-opacity:0.14}100.0%{stroke-opacity:0.14}}
+@keyframes hw11{0.0%{stroke-opacity:0.14}35.2%{stroke-opacity:0.14}38.2%{stroke-opacity:0.542}40.7%{stroke-opacity:0.14}80.2%{stroke-opacity:0.14}83.2%{stroke-opacity:0.542}85.7%{stroke-opacity:0.14}100.0%{stroke-opacity:0.14}}
+@keyframes hw12{0.0%{stroke-opacity:0.14}43.8%{stroke-opacity:0.14}46.8%{stroke-opacity:0.448}49.3%{stroke-opacity:0.14}88.8%{stroke-opacity:0.14}91.8%{stroke-opacity:0.448}94.3%{stroke-opacity:0.14}100.0%{stroke-opacity:0.14}}
+@keyframes hw13{0.0%{stroke-opacity:0.14}40.8%{stroke-opacity:0.14}43.8%{stroke-opacity:0.7}46.3%{stroke-opacity:0.14}85.8%{stroke-opacity:0.14}88.8%{stroke-opacity:0.7}91.3%{stroke-opacity:0.14}100.0%{stroke-opacity:0.14}}
+@keyframes hw14{0.0%{stroke-opacity:0.14}37.8%{stroke-opacity:0.14}40.8%{stroke-opacity:0.7}43.3%{stroke-opacity:0.14}82.8%{stroke-opacity:0.14}85.8%{stroke-opacity:0.7}88.3%{stroke-opacity:0.14}100.0%{stroke-opacity:0.14}}
+@keyframes hw15{0.0%{stroke-opacity:0.14}43.4%{stroke-opacity:0.14}46.4%{stroke-opacity:0.7}48.9%{stroke-opacity:0.14}88.4%{stroke-opacity:0.14}91.4%{stroke-opacity:0.7}93.9%{stroke-opacity:0.14}100.0%{stroke-opacity:0.14}}
+@keyframes hw16{0.0%{stroke-opacity:0.14}40.4%{stroke-opacity:0.14}43.4%{stroke-opacity:0.7}45.9%{stroke-opacity:0.14}85.4%{stroke-opacity:0.14}88.4%{stroke-opacity:0.7}90.9%{stroke-opacity:0.14}100.0%{stroke-opacity:0.14}}
+@keyframes hw17{0.0%{stroke-opacity:0.14}37.4%{stroke-opacity:0.14}40.4%{stroke-opacity:0.542}42.9%{stroke-opacity:0.14}82.4%{stroke-opacity:0.14}85.4%{stroke-opacity:0.542}87.9%{stroke-opacity:0.14}100.0%{stroke-opacity:0.14}}
+@keyframes hw18{0.0%{stroke-opacity:0.14}45.9%{stroke-opacity:0.14}48.9%{stroke-opacity:0.448}51.4%{stroke-opacity:0.14}90.9%{stroke-opacity:0.14}93.9%{stroke-opacity:0.448}96.4%{stroke-opacity:0.14}100.0%{stroke-opacity:0.14}}
+@keyframes hw19{0.0%{stroke-opacity:0.14}42.9%{stroke-opacity:0.14}45.9%{stroke-opacity:0.7}48.4%{stroke-opacity:0.14}87.9%{stroke-opacity:0.14}90.9%{stroke-opacity:0.7}93.4%{stroke-opacity:0.14}100.0%{stroke-opacity:0.14}}
+@keyframes hw20{0.0%{stroke-opacity:0.14}39.9%{stroke-opacity:0.14}42.9%{stroke-opacity:0.7}45.4%{stroke-opacity:0.14}84.9%{stroke-opacity:0.14}87.9%{stroke-opacity:0.7}90.4%{stroke-opacity:0.14}100.0%{stroke-opacity:0.14}}
+@keyframes hw21{0.0%{stroke-opacity:0.14}45.5%{stroke-opacity:0.14}48.5%{stroke-opacity:0.532}51.0%{stroke-opacity:0.14}90.5%{stroke-opacity:0.14}93.5%{stroke-opacity:0.532}96.0%{stroke-opacity:0.14}100.0%{stroke-opacity:0.14}}
+@keyframes hw22{0.0%{stroke-opacity:0.14}42.5%{stroke-opacity:0.14}45.5%{stroke-opacity:0.532}48.0%{stroke-opacity:0.14}87.5%{stroke-opacity:0.14}90.5%{stroke-opacity:0.532}93.0%{stroke-opacity:0.14}100.0%{stroke-opacity:0.14}}
+@keyframes hw23{0.0%{stroke-opacity:0.14}39.5%{stroke-opacity:0.14}42.5%{stroke-opacity:0.532}45.0%{stroke-opacity:0.14}84.5%{stroke-opacity:0.14}87.5%{stroke-opacity:0.532}90.0%{stroke-opacity:0.14}100.0%{stroke-opacity:0.14}}
+.sc-hex .hw0{animation:hw0 20s ease-out infinite}
+.sc-hex .hw1{animation:hw1 20s ease-out infinite}
+.sc-hex .hw2{animation:hw2 20s ease-out infinite}
+.sc-hex .hw3{animation:hw3 20s ease-out infinite}
+.sc-hex .hw4{animation:hw4 20s ease-out infinite}
+.sc-hex .hw5{animation:hw5 20s ease-out infinite}
+.sc-hex .hw6{animation:hw6 20s ease-out infinite}
+.sc-hex .hw7{animation:hw7 20s ease-out infinite}
+.sc-hex .hw8{animation:hw8 20s ease-out infinite}
+.sc-hex .hw9{animation:hw9 20s ease-out infinite}
+.sc-hex .hw10{animation:hw10 20s ease-out infinite}
+.sc-hex .hw11{animation:hw11 20s ease-out infinite}
+.sc-hex .hw12{animation:hw12 20s ease-out infinite}
+.sc-hex .hw13{animation:hw13 20s ease-out infinite}
+.sc-hex .hw14{animation:hw14 20s ease-out infinite}
+.sc-hex .hw15{animation:hw15 20s ease-out infinite}
+.sc-hex .hw16{animation:hw16 20s ease-out infinite}
+.sc-hex .hw17{animation:hw17 20s ease-out infinite}
+.sc-hex .hw18{animation:hw18 20s ease-out infinite}
+.sc-hex .hw19{animation:hw19 20s ease-out infinite}
+.sc-hex .hw20{animation:hw20 20s ease-out infinite}
+.sc-hex .hw21{animation:hw21 20s ease-out infinite}
+.sc-hex .hw22{animation:hw22 20s ease-out infinite}
+.sc-hex .hw23{animation:hw23 20s ease-out infinite}
+@media (prefers-reduced-motion:reduce){.sc-hex [class*="hw"]{animation:none;stroke-opacity:.12}}
+@media(max-width:640px){.sc-hex .hexwave{stroke-width:1.4}}
+</style>
 </head>
 <body>
 <div class="sc-hex" aria-hidden="true"><svg class="hexsvg" aria-hidden="true" preserveAspectRatio="xMidYMid slice" shape-rendering="geometricPrecision" xmlns="http://www.w3.org/2000/svg" viewBox="-100 -260 1200 900"><path class="hexwave hw0" d="M-69.0 -119.5 L-138.0 0.0 L-276.0 0.0 L-345.0 -119.5 L-276.0 -239.0 L-138.0 -239.0 Z" fill="none" stroke="#7c60eb" stroke-width="1.25" vector-effect="non-scaling-stroke"/><path class="hexwave hw1" d="M-69.0 119.5 L-138.0 239.0 L-276.0 239.0 L-345.0 119.5 L-276.0 0.0 L-138.0 0.0 Z" fill="none" stroke="#905ce2" stroke-width="1.25" vector-effect="non-scaling-stroke"/><path class="hexwave hw2" d="M-69.0 358.5 L-138.0 478.0 L-276.0 478.0 L-345.0 358.5 L-276.0 239.0 L-138.0 239.0 Z" fill="none" stroke="#b158cf" stroke-width="1.25" vector-effect="non-scaling-stroke"/><path class="hexwave hw3" d="M138.0 0.0 L69.0 119.5 L-69.0 119.5 L-138.0 0.0 L-69.0 -119.5 L69.0 -119.5 Z" fill="none" stroke="#895ee5" stroke-width="1.25" vector-effect="non-scaling-stroke"/><path class="hexwave hw4" d="M138.0 239.0 L69.0 358.5 L-69.0 358.5 L-138.0 239.0 L-69.0 119.5 L69.0 119.5 Z" fill="none" stroke="#ab58d6" stroke-width="1.25" vector-effect="non-scaling-stroke"/><path class="hexwave hw5" d="M138.0 478.0 L69.0 597.6 L-69.0 597.6 L-138.0 478.0 L-69.0 358.5 L69.0 358.5 Z" fill="none" stroke="#d86472" stroke-width="1.25" vector-effect="non-scaling-stroke"/><path class="hexwave hw6" d="M345.0 -119.5 L276.0 0.0 L138.0 0.0 L69.0 -119.5 L138.0 -239.0 L276.0 -239.0 Z" fill="none" stroke="#835fe8" stroke-width="1.25" vector-effect="non-scaling-stroke"/><path class="hexwave hw7" d="M345.0 119.5 L276.0 239.0 L138.0 239.0 L69.0 119.5 L138.0 0.0 L276.0 0.0 Z" fill="none" stroke="#a459d9" stroke-width="1.25" vector-effect="non-scaling-stroke"/><path class="hexwave hw8" d="M345.0 358.5 L276.0 478.0 L138.0 478.0 L69.0 358.5 L138.0 239.0 L276.0 239.0 Z" fill="none" stroke="#d26281" stroke-width="1.25" vector-effect="non-scaling-stroke"/><path class="hexwave hw9" d="M552.0 0.0 L483.0 119.5 L345.0 119.5 L276.0 0.0 L345.0 -119.5 L483.0 -119.5 Z" fill="none" stroke="#9d5adc" stroke-width="1.25" vector-effect="non-scaling-stroke"/><path class="hexwave hw10" d="M552.0 239.0 L483.0 358.5 L345.0 358.5 L276.0 239.0 L345.0 119.5 L483.0 119.5 Z" fill="none" stroke="#cb6091" stroke-width="1.25" vector-effect="non-scaling-stroke"/><path class="hexwave hw11" d="M552.0 478.0 L483.0 597.6 L345.0 597.6 L276.0 478.0 L345.0 358.5 L483.0 358.5 Z" fill="none" stroke="#e3774a" stroke-width="1.25" vector-effect="non-scaling-stroke"/><path class="hexwave hw12" d="M759.0 -119.5 L690.0 0.0 L552.0 0.0 L483.0 -119.5 L552.0 -239.0 L690.0 -239.0 Z" fill="none" stroke="#975bdf" stroke-width="1.25" vector-effect="non-scaling-stroke"/><path class="hexwave hw13" d="M759.0 119.5 L690.0 239.0 L552.0 239.0 L483.0 119.5 L552.0 0.0 L690.0 0.0 Z" fill="none" stroke="#c55ea0" stroke-width="1.25" vector-effect="non-scaling-stroke"/><path class="hexwave hw14" d="M759.0 358.5 L690.0 478.0 L552.0 478.0 L483.0 358.5 L552.0 239.0 L690.0 239.0 Z" fill="none" stroke="#e3724f" stroke-width="1.25" vector-effect="non-scaling-stroke"/><path class="hexwave hw15" d="M966.0 0.0 L897.0 119.5 L759.0 119.5 L690.0 0.0 L759.0 -119.5 L897.0 -119.5 Z" fill="none" stroke="#be5cb0" stroke-width="1.25" vector-effect="non-scaling-stroke"/><path class="hexwave hw16" d="M966.0 239.0 L897.0 358.5 L759.0 358.5 L690.0 239.0 L759.0 119.5 L897.0 119.5 Z" fill="none" stroke="#e26e55" stroke-width="1.25" vector-effect="non-scaling-stroke"/><path class="hexwave hw17" d="M966.0 478.0 L897.0 597.6 L759.0 597.6 L690.0 478.0 L759.0 358.5 L897.0 358.5 Z" fill="none" stroke="#e5843b" stroke-width="1.25" vector-effect="non-scaling-stroke"/><path class="hexwave hw18" d="M1173.0 -119.5 L1104.0 0.0 L966.0 0.0 L897.0 -119.5 L966.0 -239.0 L1104.0 -239.0 Z" fill="none" stroke="#b85abf" stroke-width="1.25" vector-effect="non-scaling-stroke"/><path class="hexwave hw19" d="M1173.0 119.5 L1104.0 239.0 L966.0 239.0 L897.0 119.5 L966.0 0.0 L1104.0 0.0 Z" fill="none" stroke="#e16a5a" stroke-width="1.25" vector-effect="non-scaling-stroke"/><path class="hexwave hw20" d="M1173.0 358.5 L1104.0 478.0 L966.0 478.0 L897.0 358.5 L966.0 239.0 L1104.0 239.0 Z" fill="none" stroke="#e57f40" stroke-width="1.25" vector-effect="non-scaling-stroke"/><path class="hexwave hw21" d="M1380.0 0.0 L1311.0 119.5 L1173.0 119.5 L1104.0 0.0 L1173.0 -119.5 L1311.0 -119.5 Z" fill="none" stroke="#df6662" stroke-width="1.25" vector-effect="non-scaling-stroke"/><path class="hexwave hw22" d="M1380.0 239.0 L1311.0 358.5 L1173.0 358.5 L1104.0 239.0 L1173.0 119.5 L1311.0 119.5 Z" fill="none" stroke="#e47b45" stroke-width="1.25" vector-effect="non-scaling-stroke"/><path class="hexwave hw23" d="M1380.0 478.0 L1311.0 597.6 L1173.0 597.6 L1104.0 478.0 L1173.0 358.5 L1311.0 358.5 Z" fill="none" stroke="#e68836" stroke-width="1.25" vector-effect="non-scaling-stroke"/></svg></div>
