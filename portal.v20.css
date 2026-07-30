@@ -647,3 +647,34 @@ html[data-theme="dark"] .cenik-delconf{background:rgba(255,138,122,.08);}
 .str-delconf{padding:8px 2px;}
 .str-delconf .cenik-warn{margin-bottom:12px;}
 .str-delconf .u-acts{justify-content:flex-start;}
+
+/* ══════════ POGLED: seznam / mreža ══════════ */
+/* privzeto (seznam): ovojnica je nevidna, postavitev kot doslej */
+.lcell{display:contents;}
+
+/* MREŽA — več stolpcev na širših zaslonih (Stranke, Arhiv) */
+html[data-view="grid"] .rows{display:grid;grid-template-columns:repeat(auto-fill,minmax(165px,1fr));gap:12px;align-items:start;}
+html[data-view="grid"] .lcell{display:block;}
+html[data-view="grid"] .lcell .row,
+html[data-view="grid"] .lcell .a-row{grid-template-columns:1fr;gap:5px;margin-bottom:0;align-items:start;}
+html[data-view="grid"] .lcell .row .chev,
+html[data-view="grid"] .lcell .a-row .chev{display:none;}
+html[data-view="grid"] .lcell .row-pct{text-align:left;}
+html[data-view="grid"] .lcell .a-row .num,
+html[data-view="grid"] .lcell .a-row .a-cli,
+html[data-view="grid"] .lcell .a-row .a-date{display:block;text-align:left;}
+html[data-view="grid"] .lcell .arts,
+html[data-view="grid"] .lcell .a-det{margin-bottom:0;}
+html[data-view="grid"] .lcell .row[aria-expanded="true"],
+html[data-view="grid"] .lcell .a-row[aria-expanded="true"]{border-bottom-left-radius:0;border-bottom-right-radius:0;}
+
+/* Fakture: mreža = samodejni stolpci, seznam = en stolpec */
+html[data-view="grid"] .fak-grid{grid-template-columns:repeat(auto-fill,minmax(230px,1fr));}
+html[data-view="list"] .fak-grid{grid-template-columns:1fr;}
+
+/* Ceniki: skupine v več stolpcih na širokih zaslonih */
+html[data-view="grid"] #cenikList{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;align-items:start;}
+html[data-view="grid"] #cenikList .cgrp{margin-bottom:0;}
+/* v mreži skrij ročaj za vlečenje skupin (razvrščanje strank delaj v seznamu) */
+html[data-view="grid"] #cenikList .cgrp-ghandle{display:none;}
+html[data-view="grid"] #cenikList .cgrp-head-row .cgrp-h{padding-left:16px;}

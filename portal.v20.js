@@ -73,6 +73,19 @@
     osveziAutoSege();
   })();
 
+  /* ── pogled: seznam / mreža (Arhiv, Fakture, Ceniki, Stranke) ─────── */
+  function pogledPref() { try { return localStorage.getItem('sc-view') === 'grid' ? 'grid' : 'list'; } catch (e) { return 'list'; } }
+  function uporabiPogled() { document.documentElement.dataset.view = pogledPref(); }
+  function osveziPogledSege() {
+    const v = pogledPref();
+    document.querySelectorAll('.pogled-seg').forEach(seg => seg.querySelectorAll('.seg-b').forEach(b => b.classList.toggle('on', b.dataset.view === v)));
+  }
+  function nastaviPogled(v) { try { localStorage.setItem('sc-view', v === 'grid' ? 'grid' : 'list'); } catch (e) {} uporabiPogled(); osveziPogledSege(); }
+  (function initPogled() {
+    document.querySelectorAll('.pogled-seg .seg-b').forEach(b => b.addEventListener('click', () => nastaviPogled(b.dataset.view)));
+    uporabiPogled(); osveziPogledSege();
+  })();
+
   /* ── nastavitve ───────────────────────────────────────────────────── */
   let KEY = cfg.key && !cfg.key.startsWith('TUKAJ') ? cfg.key : null;
   let URL_ = cfg.url || null;
@@ -452,7 +465,7 @@
   /* ══════════ ARHIV ══════════ */
   function tabelaListov(vrstice, klikljivo) {
     if (!vrstice.length) return prazniListi(OSEBJE ? 'osebje' : 'stranka');
-    return '<div class="rows">' + vrstice.map((l, i) => `
+    return '<div class="rows">' + vrstice.map((l, i) => `<div class="lcell">
     <button class="a-row" type="button" data-i="${i}" data-id="${l.id}" aria-expanded="false"
       ${klikljivo ? '' : 'style="cursor:default"'}>
       <span class="a-num">${escape_(l.number || '—')}</span>
@@ -461,7 +474,7 @@
       <span class="num">${stevilo(l.total_pieces)} kos</span>
       <span class="chev" aria-hidden="true">${klikljivo ? '›' : ''}</span>
     </button>
-    <div class="a-det" id="det${i}"></div>`).join('') + '</div>';
+    <div class="a-det" id="det${i}"></div></div>`).join('') + '</div>';
   }
   function risiArhiv() {
     if (OSEBJE) {
@@ -1449,13 +1462,13 @@
     const naj = Math.max(...ORGSEZNAM.map(o => kgm[o.id] || 0), 1);
     $('content').innerHTML = '<div class="rows">' + list.map((o, i) => {
       const kg = kgm[o.id] || 0;
-      return `<button class="row" type="button" data-id="${o.id}" data-i="${i}" aria-expanded="false">
+      return `<div class="lcell"><button class="row" type="button" data-id="${o.id}" data-i="${i}" aria-expanded="false">
       <span><span class="row-name">${escape_(o.name)}</span>
       ${o.legal_name ? `<br><span class="row-legal">${escape_(o.legal_name)}</span>` : ''}</span>
       <span class="row-pct" title="delež vseh količin ta mesec">${skupajKg ? (Math.round(kg / skupajKg * 1000) / 10).toLocaleString('sl-SI') + ' %' : '—'}</span>
       <span class="num">${fmtKg(kg)}</span>
       <span class="chev" aria-hidden="true">›</span>
-    </button><div class="arts" id="a${i}"></div>`;
+    </button><div class="arts" id="a${i}"></div></div>`;
     }).join('') + '</div>';
     document.querySelectorAll('#content .row').forEach(b => b.addEventListener('click', () => toggle(b)));
   }
