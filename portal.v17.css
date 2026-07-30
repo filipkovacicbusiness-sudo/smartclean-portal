@@ -37,9 +37,38 @@
   }
   function nastaviTemo(pref) { try { localStorage.setItem('sc-portal-theme', pref); } catch (e) {} uporabiTemo(); oznaciTemo(); }
   uporabiTemo();
+
+  /* ── PWA namestitev ──────────────────────────────────────────────── */
+  let _pwaPrompt = null;
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    _pwaPrompt = e;
+    const b = $('pwaInstall');
+    if (b) b.style.display = '';
+  });
+  window.addEventListener('appinstalled', () => {
+    _pwaPrompt = null;
+    const b = $('pwaInstall'); if (b) b.style.display = 'none';
+    const h = $('pwaHint'); if (h) h.textContent = 'Aplikacija je nameščena. ✓';
+  });
+
   $('themeBtn').addEventListener('click', () => {
     nastaviTemo(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
   });
+
+  /* ── samodejna prijava (segment kot redni/izredni na tablici) ─────── */
+  function autoLoginOn() { try { return localStorage.getItem('sc-autologin') !== '0'; } catch (e) { return true; } }
+  function nastaviAuto(on) { try { localStorage.setItem('sc-autologin', on ? '1' : '0'); } catch (e) {} }
+  (function initAutoSeg() {
+    const seg = document.getElementById('autoSeg');
+    if (!seg) return;
+    const on = autoLoginOn();
+    seg.querySelectorAll('.seg-b').forEach(b => b.classList.toggle('on', (b.dataset.auto === '1') === on));
+    seg.querySelectorAll('.seg-b').forEach(b => b.addEventListener('click', () => {
+      nastaviAuto(b.dataset.auto === '1');
+      seg.querySelectorAll('.seg-b').forEach(x => x.classList.toggle('on', x === b));
+    }));
+  })();
 
   /* ── nastavitve ───────────────────────────────────────────────────── */
   let KEY = cfg.key && !cfg.key.startsWith('TUKAJ') ? cfg.key : null;
@@ -179,6 +208,9 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   const JE_LASTNIK = () => (JAZMAIL || '').trim().toLowerCase() === 'filip@eflitte.si';
+  function nastaviWho(ime) {
+    $('who').innerHTML = '<span class="who-name">' + escape_(ime || '') + '</span>' + (OSEBJE ? '<span class="who-role">osebje</span>' : '');
+  }
   function prvoIme() {
     let n = (JAZIME || '').trim();
     if (!n) return 'ekipa';
@@ -199,17 +231,19 @@
       }
     } = await sb.auth.getUser();
     if (!user) return;
-    $('auth').style.display = 'none';
-    $('app').classList.add('show');
     JAZ = user.id;
     const {
       data: profil
     } = await sb.from('profiles').select('full_name,is_staff').eq('id', user.id).maybeSingle();
     OSEBJE = !!(profil !== null && profil !== void 0 && profil.is_staff);
-    $('who').textContent = ((profil === null || profil === void 0 ? void 0 : profil.full_name) || user.email) + (OSEBJE ? ' · osebje' : '');
+    nastaviWho((profil && profil.full_name) || user.email);
     JAZIME = (profil && profil.full_name) || user.email;
     JAZMAIL = user.email || '';
     $('racunPod').textContent = user.email;
+    /* Naslov nastavimo že pred prikazom, da za trenutek ne utripne »Pregled«. */
+    if ($('domovNaslov')) $('domovNaslov').textContent = OSEBJE ? ('Pozdravljen/a, ' + prvoIme()) : 'Vaš pregled';
+    $('auth').style.display = 'none';
+    $('app').classList.add('show');
     const {
       data: orgs
     } = await sb.from('orgs').select('id,name,legal_name,address,vat_id').order('name');
@@ -234,15 +268,17 @@
     racun: '<rect x="4.5" y="10.5" width="15" height="9.5" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/>',
     uvoz: '<path d="M12 3v11"/><path d="M8 10.5 12 14.5l4-4"/><path d="M4 16v3.5h16V16"/>',
     fakture: '<path d="M6 3h9l3 3v15l-2.5-1.5L13 22l-2.5-1.5L8 22l-2-1.5L6 3Z"/><path d="M9 8h6M9 12h6M9 16h4"/>',
+    statistika: '<path d="M3 3v18h18"/><rect x="7" y="11" width="3" height="7" rx="1"/><rect x="12" y="7" width="3" height="11" rx="1"/><rect x="17" y="14" width="3" height="4" rx="1"/>',
+    ceniki: '<path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0l-7.2-7.2A2 2 0 0 1 3 12V4a1 1 0 0 1 1-1h8a2 2 0 0 1 1.4.6l7.2 7.2a2 2 0 0 1 0 2.6Z"/><circle cx="7.5" cy="7.5" r="1.4"/>',
     prijave: '<circle cx="12" cy="8" r="3.4"/><path d="M5.5 20a6.5 6.5 0 0 1 13 0"/><path d="M12 8v0"/>',
     aplikacija: '<rect x="6.5" y="2.5" width="11" height="19" rx="2.5"/><path d="M10.5 5.5h3"/><path d="M12 18.2h.01"/>',
-    nastavitve: '<circle cx="12" cy="12" r="3"/><path d="M12 2.5v2.2M12 19.3v2.2M4.6 4.6l1.6 1.6M17.8 17.8l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.6 19.4l1.6-1.6M17.8 6.2l1.6-1.6"/>'
+    nastavitve: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>'
   };
   const ikona = k => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' + 'stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + IKONE[k] + '</svg>';
   function meni() {
     let glavni, nast;
     if (OSEBJE) {
-      glavni = [['domov', 'Pregled'], ['arhiv', 'Arhiv'], ['fakture', 'Fakture'], ['stranke', 'Stranke'], ['aplikacija', 'Aplikacija']];
+      glavni = [['domov', 'Pregled'], ['statistika', 'Statistika'], ['arhiv', 'Arhiv'], ['fakture', 'Fakture'], ['ceniki', 'Ceniki'], ['stranke', 'Stranke'], ['aplikacija', 'Aplikacija']];
       if (JE_LASTNIK()) glavni.push(['uporabniki', 'Uporabniki']);
       nast = [['nastavitve', 'Nastavitve'], ['racun', 'Moj račun']];
     } else {
@@ -250,13 +286,23 @@
       nast = [['racun', 'Moj račun']];
     }
     const veja = ([k, l]) => `<a data-go="${k}">${ikona(k)}${l}</a>`;
-    $('side').innerHTML = glavni.map(veja).join('') + '<div class="side-sep"></div>' + nast.map(veja).join('');
-    document.querySelectorAll('#side a[data-go]').forEach(a => {
-      a.addEventListener('click', () => {
-        pojdi(a.dataset.go);
-        zapriMeni();
-      });
+    $('side').innerHTML = '<span class="side-slider" aria-hidden="true"></span>' + glavni.map(veja).join('') + '<div class="side-sep"></div>' + nast.map(veja).join('');
+    const _side = $('side');
+    const _sl = _side.querySelector('.side-slider');
+    const premakniDrsnik = a => {
+      if (!_sl || !a) return;
+      _sl.style.transform = 'translateY(' + a.offsetTop + 'px)';
+      _sl.style.left = a.offsetLeft + 'px';
+      _sl.style.width = a.offsetWidth + 'px';
+      _sl.style.height = a.offsetHeight + 'px';
+      _side.classList.add('sl-on');
+    };
+    meni._drsnik = () => { premakniDrsnik(_side.querySelector('a.on')); };
+    _side.querySelectorAll('a[data-go]').forEach(a => {
+      a.addEventListener('click', () => { pojdi(a.dataset.go); zapriMeni(); });
+      a.addEventListener('mouseenter', () => premakniDrsnik(a));
     });
+    _side.addEventListener('mouseleave', () => meni._drsnik());
   }
   function zapriMeni() {
     $('side').classList.remove('on');
@@ -280,6 +326,7 @@
     document.querySelectorAll('#side a[data-go]').forEach(a => {
       a.classList.toggle('on', a.dataset.go === kam);
     });
+    if (meni._drsnik) meni._drsnik();
     window.scrollTo(0, 0);
     if (kam === 'domov') risiPregled();
     if (kam === 'arhiv') risiArhiv();
@@ -355,7 +402,9 @@
         <span class="bars-val">${m.kos ? stevilo(m.kos) : ''}</span>
         <div class="bars-bar" style="height:${Math.round(m.kos / naj * 88)}px"></div>
         <span class="bars-lab">${escape_(m.ime)}</span></div>`).join('') + '</div></div>';
-    $('zadnji').innerHTML = '<h3 class="sec-h">Zadnji prevzemi</h3>' + tabelaListov(LISTI.slice(0, 5), false);
+    const stKljuc = l => { const d = String(l.number || '').split('/'); return (parseInt(d[1], 10) || 0) * 1e7 + (parseInt(d[0], 10) || 0); };
+    const zadnjiListi = LISTI.slice().sort((a, b) => stKljuc(b) - stKljuc(a)).slice(0, 5);
+    $('zadnji').innerHTML = '<h3 class="sec-h">Zadnji prevzemi</h3>' + tabelaListov(zadnjiListi, false);
   }
 
   /* ══════════ ARHIV ══════════ */
@@ -574,11 +623,12 @@
     const popr = n.popravljeno_at ? `<div class="popr">✎ Popravljeno v portalu · ${escape_(n.popravil || 'osebje')} · ${datumcas(n.popravljeno_at)}</div>` : '';
     const ustv = n.source === 'portal' ? `<div class="popr" style="background:#eaf4ee;color:#1f6b3b">✚ Ustvarjeno v portalu${n.issued_name ? ' · ' + escape_(n.issued_name) : ''}</div>` : '';
     const html = `<!DOCTYPE html><html lang="sl"><head><meta charset="utf-8"><title>Spremni list ${escape_(n.number || '')}</title><style>
+      @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&display=swap');
       @page{size:A4;margin:14mm}
       *{box-sizing:border-box;font-family:-apple-system,'Segoe UI',Roboto,Arial,sans-serif;color:#16202b}
       body{margin:0;font-size:13px}
-      .head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #16202b;padding-bottom:10px;margin-bottom:18px}
-      .wm{font-size:23px;font-weight:800}.wm span{color:#2AA5B8}
+      .head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #1a6644;padding-bottom:11px;margin-bottom:18px}
+      .wm{font-family:'Playfair Display',Georgia,'Times New Roman',serif;font-size:27px;font-weight:700;letter-spacing:-.02em;color:#0d1f17}.wm span{color:#1a6644}
       .biz{font-size:11px;text-align:right;color:#5c6873;line-height:1.5}
       .num{font-size:15px;margin:4px 0 14px}
       .client{display:flex;justify-content:space-between;border:1px solid #dce2e0;border-radius:8px;padding:12px 14px;margin-bottom:14px}
@@ -841,11 +891,12 @@
     const arts = Object.entries(g.artikli).sort((a, b) => a[0].localeCompare(b[0], 'sl', { sensitivity: 'base' }));
     const rows = arts.length ? arts.map(([nm, q]) => `<tr><td>${escape_(nm)}</td><td class="q">${stevilo(q)}</td></tr>`).join('') : '<tr><td colspan="2" style="color:#888">Ni postavk</td></tr>';
     const html = `<!DOCTYPE html><html lang="sl"><head><meta charset="utf-8"><title>Osnova za račun · ${escape_(naziv)}</title><style>
+      @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&display=swap');
       @page{size:A4;margin:14mm}
       *{box-sizing:border-box;font-family:-apple-system,'Segoe UI',Roboto,Arial,sans-serif;color:#16202b}
       body{margin:0;font-size:13px}
-      .head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #16202b;padding-bottom:10px;margin-bottom:18px}
-      .wm{font-size:23px;font-weight:800}.wm span{color:#2AA5B8}
+      .head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #1a6644;padding-bottom:11px;margin-bottom:18px}
+      .wm{font-family:'Playfair Display',Georgia,'Times New Roman',serif;font-size:27px;font-weight:700;letter-spacing:-.02em;color:#0d1f17}.wm span{color:#1a6644}
       .biz{font-size:11px;text-align:right;color:#5c6873;line-height:1.5}
       .num{font-size:15px;margin:4px 0 6px}
       .client{border:1px solid #dce2e0;border-radius:8px;padding:12px 14px;margin:12px 0 14px}
@@ -1326,41 +1377,56 @@
      Če ga še ni, to tu tudi piše — namesto strani 404. */
   var APK_POT = 'tablica/Pralnica-sync.apk';
 
+  function wirePwa(scope) {
+    var pb = (scope || document).querySelector('#pwaInstall');
+    if (!pb) return;
+    if (_pwaPrompt) pb.style.display = '';
+    pb.addEventListener('click', async function () {
+      if (!_pwaPrompt) return;
+      _pwaPrompt.prompt();
+      try { await _pwaPrompt.userChoice; } catch (e) {}
+      _pwaPrompt = null;
+      pb.style.display = 'none';
+    });
+  }
   function risiAplikacijo() {
     var p = document.getElementById('apkPanel');
     if (!p) return;
-    p.innerHTML = '<p class="u-sub">Preverjam \u2026</p>';
     var url = new URL(APK_POT, location.href).href;
+
+    var portalPanel =
+      '<div class="panel">' +
+        '<h3 class="sec-h">Namesti portal na telefon</h3>' +
+        '<p class="uvoz-nav">Portal lahko dodaš na začetni zaslon telefona — odpre se čez cel zaslon, z ikono, kot prava aplikacija.</p>' +
+        '<button type="button" class="btn btn-narrow" id="pwaInstall" style="display:none;margin-bottom:12px">Namesti aplikacijo</button>' +
+        '<div class="por"><div class="por-op" id="pwaHint">' +
+          '<b>Android:</b> tapni gumb »Namesti aplikacijo« zgoraj — ali meni brskalnika (⋮) → »Namesti aplikacijo«.<br><br>' +
+          '<b>iPhone / iPad (Safari):</b> tapni gumb <b>Deli</b> (kvadratek s puščico) → podrsaj do <b>»Dodaj na začetni zaslon«</b> → <b>Dodaj</b>.' +
+        '</div></div>' +
+      '</div>';
+
+    var tabletPanel = '<div class="panel" id="apkTablet"><h3 class="sec-h">Pralnica za tablico (Android)</h3><p class="u-sub">Preverjam …</p></div>';
+
+    p.innerHTML = portalPanel + tabletPanel;
+    wirePwa(p);
 
     fetch(url, { method: 'HEAD' }).then(function (r) {
       if (!r.ok) throw new Error('ni ga');
       var mb = Number(r.headers.get('content-length') || 0) / 1048576;
-      p.innerHTML =
-        '<h3 class="sec-h">Namestitev na tablico</h3>' +
-        '<p class="uvoz-nav">Odprite to stran <b>na tablici</b> in tapnite gumb. ' +
-        'Android bo vprašal za dovoljenje za namestitev — dovolite ga.</p>' +
+      var t = document.getElementById('apkTablet');
+      if (t) t.innerHTML =
+        '<h3 class="sec-h">Pralnica za tablico (Android)</h3>' +
+        '<p class="uvoz-nav">Za vnos in tiskanje spremnih listov. <b>To stran odpri na tablici</b> in tapni gumb — Android bo vprašal za dovoljenje za namestitev, dovoli ga.</p>' +
         '<p><a class="btn btn-narrow" href="' + escape_(url) + '" download>Prenesi aplikacijo' +
         (mb ? ' (' + mb.toFixed(1) + ' MB)' : '') + '</a></p>' +
-        '<div class="por" style="margin-top:18px"><div class="por-op">' +
-        '<b>Po namestitvi:</b> prijava s kodo 9999 \u2192 Admin \u2192 Portal — povezava. ' +
-        'Vpišite naslov projekta, javni ključ ter e-naslov in geslo naprave, nato Poveži.<br><br>' +
-        'Spremni listi se od takrat sami stekajo v Arhiv. Za prenos vseh naenkrat je ' +
-        'v aplikaciji Admin \u203a Portal \u203a Sinhroniziraj.</div></div>' +
-        '<p class="u-sub" style="margin-top:16px">Brez nameščanja deluje tudi ' +
-        '<a href="tablica/" style="text-decoration:underline">spletna različica</a>, ' +
-        'ki pa ne zna tiskati in ne shranjuje PDF-jev.</p>';
+        '<p class="u-sub" style="margin-top:14px">Po namestitvi: koda 9999 → Admin → Portal — povezava. ' +
+        'Brez nameščanja deluje tudi <a href="tablica/" style="text-decoration:underline">spletna različica</a> (ne tiska in ne shranjuje PDF-jev).</p>';
     }).catch(function () {
-      p.innerHTML =
-        '<h3 class="sec-h">Namestitvenega paketa še ni</h3>' +
-        '<div class="msg bad show">Datoteke <b>' + escape_(APK_POT) + '</b> ni na strežniku.</div>' +
-        '<div class="por" style="margin-top:16px"><div class="por-op">' +
-        'Naložite jo v repozitorij <b>smartclean-portal</b>: odprite mapo <b>tablica</b>, ' +
-        'znotraj nje <b>Add file \u2192 Upload files</b>, povlecite <b>Pralnica-sync.apk</b> ' +
-        'in potrdite.<br><br>Vstop v mapo je pomemben — sicer datoteka pristane v korenu.' +
-        '</div></div>' +
-        '<p class="u-sub" style="margin-top:16px">Medtem deluje ' +
-        '<a href="tablica/" style="text-decoration:underline">spletna različica</a>, ' +
-        'ki je ni treba nameščati.</p>';
+      var t = document.getElementById('apkTablet');
+      if (t) t.innerHTML =
+        '<h3 class="sec-h">Pralnica za tablico (Android)</h3>' +
+        '<div class="msg bad show">Namestitvenega paketa (<b>' + escape_(APK_POT) + '</b>) še ni na strežniku.</div>' +
+        '<p class="u-sub" style="margin-top:12px">Medtem deluje <a href="tablica/" style="text-decoration:underline">spletna različica</a>, ki je ni treba nameščati.</p>';
     });
   }
 
@@ -1375,7 +1441,7 @@
     btn.disabled = false; btn.textContent = 'Shrani ime';
     if (error) { m.className = 'msg bad show'; m.textContent = 'Napaka: ' + error.message; return; }
     JAZIME = ime;
-    $('who').textContent = ime + (OSEBJE ? ' · osebje' : '');
+    nastaviWho(ime);
     if ($('domovNaslov') && !$('sec-domov').classList.contains('hidden')) $('domovNaslov').textContent = OSEBJE ? ('Pozdravljen/a, ' + prvoIme()) : $('domovNaslov').textContent;
     m.className = 'msg show'; m.textContent = 'Ime shranjeno.';
   }); }
@@ -1486,16 +1552,17 @@
       const vloga = u.is_staff ? 'osebje — vidi vse stranke' : clanPo[u.id] ? 'stranka — ' + escape_(clanPo[u.id]) : 'brez dostopa';
       return `<div class="u-row ${u.active ? '' : 'u-off'}">
       <div>
-        <div class="u-mail">${escape_(u.email || u.full_name || '—')}
+        <div class="u-mail">${escape_(u.full_name || u.email || '—')}
           ${jaz ? '<span class="pill">vi</span>' : ''}
           ${u.active ? '' : '<span class="pill">izklopljen</span>'}</div>
-        <div class="u-sub">${vloga}</div>
+        <div class="u-sub">${u.full_name ? escape_(u.email) + ' · ' : ''}${vloga}</div>
       </div>
       <div>${u.is_staff ? '<span class="u-sub">dostop do vseh strank</span>' : `<select data-org="${u.id}" ${jaz ? 'disabled' : ''}>
              <option value="">— brez dostopa —</option>
              ${ORGSEZNAM.map(o => `<option value="${o.id}"${clanPo[u.id] === o.name ? ' selected' : ''}>${escape_(o.name)}</option>`).join('')}
            </select>`}</div>
       <div class="u-acts">
+        <button data-act="ime" data-id="${u.id}" data-ime="${escape_(u.full_name || '')}">preimenuj</button>
         ${jaz ? '' : `<button data-act="staff" data-id="${u.id}" data-v="${u.is_staff ? 0 : 1}">${u.is_staff ? 'v stranko' : 'v osebje'}</button>`}
         ${jaz ? '' : `<button data-act="active" data-id="${u.id}" data-v="${u.active ? 0 : 1}">${u.active ? 'izklopi' : 'vklopi'}</button>`}
         <button data-act="pw" data-id="${u.id}">novo geslo</button>
@@ -1532,6 +1599,17 @@
     const id = btn.dataset.id,
       act = btn.dataset.act;
     btn.disabled = true;
+    if (act === 'ime') {
+      const novo = window.prompt('Ime in priimek uporabnika:', btn.dataset.ime || '');
+      btn.disabled = false;
+      if (novo === null) return;
+      const ime = novo.trim();
+      const { error } = await sb.from('profiles').update({ full_name: ime || null }).eq('id', id);
+      if (!error && id === JAZ) { JAZIME = ime || JAZMAIL; nastaviWho(JAZIME); }
+      uMsg(error ? 'Ni uspelo: ' + escape_(error.message) : 'Ime shranjeno.', !!error);
+      loadUsers();
+      return;
+    }
     if (act === 'staff') {
       const {
         error
@@ -1630,7 +1708,7 @@
       }
     } = await sb.auth.getSession();
     setTimeout(() => {
-      if (session && !recovery) start();
+      if (session && !recovery && autoLoginOn()) start();
     }, 60);
   })();
 

@@ -101,6 +101,14 @@ html[data-theme="light"] .sc-hex{opacity:.5}
           <label for="password">Geslo</label>
           <input type="password" id="password" name="password" autocomplete="current-password" required/>
         </div>
+        <div class="field auto-field">
+          <label>Samodejna prijava</label>
+          <div class="seg auto-seg" id="autoSeg" role="group" aria-label="Samodejna prijava">
+            <button type="button" class="seg-b" data-auto="1">Vklopljena</button>
+            <button type="button" class="seg-b" data-auto="0">Izklopljena</button>
+          </div>
+          <p class="auto-hint">Ko je vklopljena, te portal ob naslednjem obisku samodejno spusti naprej. Če je izklopljena, se moraš vsakič prijaviti.</p>
+        </div>
         <button type="submit" class="btn" id="loginBtn">Prijavi se</button>
       </form>
       <p class="under"><button type="button" class="link-btn" id="forgotBtn">Pozabljeno geslo?</button></p>
@@ -226,12 +234,6 @@ html[data-theme="light"] .sc-hex{opacity:.5}
           </div>
         </div>
         <div class="panel">
-          <h3 class="sec-h">Namesti na telefon</h3>
-          <p class="u-sub" style="margin-bottom:12px">Portal lahko namestiš kot aplikacijo na začetni zaslon — odpira se čez cel zaslon, z ikono.</p>
-          <button type="button" class="btn btn-narrow" id="pwaInstall" style="display:none;margin-bottom:10px">Namesti aplikacijo</button>
-          <p class="u-sub" id="pwaHint"><b>Android:</b> meni brskalnika (⋮) → »Namesti aplikacijo« / »Dodaj na začetni zaslon«.<br><b>iPhone (Safari):</b> gumb Deli → »Dodaj na začetni zaslon«.</p>
-        </div>
-        <div class="panel">
           <h3 class="sec-h">Uvoz s tablice</h3>
           <p class="uvoz-nav">Na tablici odpri <b>Datoteke → Documents</b> in izberi
             <b>pralnica_entries.json</b>. Isto datoteko lahko izbereš večkrat —
@@ -246,9 +248,19 @@ html[data-theme="light"] .sc-hex{opacity:.5}
       </section>
 
       <section class="sec hidden" id="sec-aplikacija">
-        <div class="head"><div><h2>Aplikacija za tablico</h2>
-          <p class="count">Pralnica — vnos in tiskanje spremnih listov</p></div></div>
-        <div class="panel" id="apkPanel"></div>
+        <div class="head"><div><h2>Aplikacije</h2>
+          <p class="count">Pralnica za tablico in namestitev portala na telefon</p></div></div>
+        <div id="apkPanel"></div>
+      </section>
+
+      <section class="sec hidden" id="sec-statistika">
+        <div class="head"><div><h2>Statistika</h2><p class="count">Analitika prevzemov, količin in strank</p></div></div>
+        <div class="empty"><h3>V pripravi</h3><p>Ta razdelek bova še dodelala.</p></div>
+      </section>
+
+      <section class="sec hidden" id="sec-ceniki">
+        <div class="head"><div><h2>Ceniki</h2><p class="count">Cene artiklov in prevozov po strankah</p></div></div>
+        <div class="empty"><h3>V pripravi</h3><p>Ta razdelek bova še dodelala.</p></div>
       </section>
 
       <section class="sec hidden" id="sec-uporabniki">
