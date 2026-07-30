@@ -840,6 +840,22 @@
       });
     });
     const skupine = Object.values(poOrg).sort((a, b) => (ORGIME[a.org_id] || '').localeCompare(ORGIME[b.org_id] || '', 'sl', { sensitivity: 'base' }));
+    // ── cene: poveži postavke s cenikom (prek povezave artikel → cenik) ──
+    await nalozicenik();
+    const artmap = await naloziArtMap(orgFilter);
+    const cenikOn = !!(CENIK && CENIK.length);
+    skupine.forEach(g => {
+      g.postavke = Object.entries(g.artikli).map(([nm, q]) => {
+        const s = artmap[g.org_id + '|' + nm.trim().toLowerCase()];
+        const cena = cenaZaArtikel(s);
+        return { nm, q, cena, znesek: cena != null ? Math.round(cena * q * 100) / 100 : null };
+      }).sort((a, b) => a.nm.localeCompare(b.nm, 'sl', { sensitivity: 'base' }));
+      g.cenikOn = cenikOn;
+      g.neto = Math.round(g.postavke.reduce((sm, p) => sm + (p.znesek || 0), 0) * 100) / 100;
+      g.brezCene = g.postavke.filter(p => p.cena == null).length;
+      g.ddv = Math.round(g.neto * DDV_STOPNJA * 100) / 100;
+      g.bruto = Math.round((g.neto + g.ddv) * 100) / 100;
+    });
     FAK_ZADNJI = { od, doo, skupine };
     $('fakPod').textContent = skupine.length ? '' : 'V izbranem obdobju ni spremnih listov';
     if (!skupine.length) { list.innerHTML = '<div class="panel"><p class="u-sub">V izbranem obdobju ni spremnih listov.</p></div>'; return; }
@@ -862,23 +878,39 @@
   function fakKg(kg) { return kg ? (Math.round(kg * 100) / 100).toLocaleString('sl-SI') + ' kg' : '—'; }
   function fakKartica(g, gi) {
     const ime = ORGIME[g.org_id] || '—';
-    const arts = Object.entries(g.artikli).sort((a, b) => a[0].localeCompare(b[0], 'sl', { sensitivity: 'base' }));
-    const rows = arts.length ? arts.map(([nm, q]) => `<div class="fak-line"><span>${escape_(nm)}</span><b>${stevilo(q)}</b></div>`).join('') : '<div class="fak-line fak-line-empty"><span class="u-sub">Brez postavk</span></div>';
+    const post = g.postavke || Object.entries(g.artikli).map(([nm, q]) => ({ nm, q, cena: null, znesek: null }));
+    const money = !!g.cenikOn;
+    const rows = post.length ? post.map(p =>
+      `<div class="fak-line"><span class="fak-l-nm">${escape_(p.nm)}</span>` +
+      (money ? `<span class="fak-l-c">${p.cena != null ? cenaFmt(p.cena) : '—'}</span>` : '') +
+      `<b class="fak-l-q">${stevilo(p.q)}</b>` +
+      (money ? `<b class="fak-l-z">${p.znesek != null ? cenaFmt(p.znesek) : '—'}</b>` : '') +
+      `</div>`).join('') : '<div class="fak-line fak-line-empty"><span class="u-sub">Brez postavk</span></div>';
     const prevoz = `<div class="fak-tot-r"><span>Prevozi</span><b>${stevilo(g.redni)} redni${g.izredni ? ' · ' + stevilo(g.izredni) + ' izredni' : ''}</b></div>`;
+    const head = money
+      ? `<div class="fak-head fak-head-m"><span>Artikel</span><span>Cena</span><span>Kol.</span><span>Znesek</span></div>`
+      : `<div class="fak-head"><span>Artikel</span><span>Količina</span></div>`;
+    const denar = money ? `
+            <div class="fak-tot-r"><span>Neto skupaj</span><b>${cenaFmt(g.neto)}</b></div>
+            <div class="fak-tot-r"><span>DDV (22 %)</span><b>${cenaFmt(g.ddv)}</b></div>
+            <div class="fak-tot-r fak-tot-bruto"><span>Za plačilo (z DDV)</span><b>${cenaFmt(g.bruto)}</b></div>
+            ${g.brezCene ? `<div class="fak-tot-r"><span class="fak-warn">${stevilo(g.brezCene)} artiklov brez cene — poveži jih v Strankah</span><b></b></div>` : ''}` : '';
+    const povzetek = money && g.neto ? ` · <b>${cenaFmt(g.bruto)}</b> z DDV` : '';
     return `<div class="fak-card">
       <div class="fak-card-h" data-faktoggle="${gi}">
         <span class="fak-chev" aria-hidden="true">›</span>
-        <div class="fak-card-info"><h3>${escape_(ime)}</h3><p class="u-sub">${stevilo(g.listov)} spremnih listov · ${stevilo(g.kosov)} kosov · ${fakKg(g.kg)}${g.izredni ? ' · ' + stevilo(g.izredni) + '× izredni prevoz' : ''}</p></div>
+        <div class="fak-card-info"><h3>${escape_(ime)}</h3><p class="u-sub">${stevilo(g.listov)} spremnih listov · ${stevilo(g.kosov)} kosov · ${fakKg(g.kg)}${g.izredni ? ' · ' + stevilo(g.izredni) + '× izredni prevoz' : ''}${povzetek}</p></div>
         <button type="button" class="btn-mini fak-print" data-fakprint="${gi}">Natisni</button>
       </div>
       <div class="fak-body" id="fakbody${gi}">
         <div class="fak-inner">
-          <div class="fak-head"><span>Artikel</span><span>Količina</span></div>
-          <div class="fak-lines">${rows}</div>
+          ${head}
+          <div class="fak-lines${money ? ' fak-lines-m' : ''}">${rows}</div>
           <div class="fak-tot">
             <div class="fak-tot-r"><span>Skupaj kosov</span><b>${stevilo(g.kosov)}</b></div>
             <div class="fak-tot-r"><span>Skupaj teža perila</span><b>${fakKg(g.kg)}</b></div>
             ${prevoz}
+            ${denar}
           </div>
         </div>
       </div>
@@ -890,8 +922,12 @@
     const org = ORGSEZNAM.find(o => o.id === g.org_id) || {};
     const naziv = org.legal_name || org.name || ORGIME[g.org_id] || '—';
     const naslov = [org.address, org.vat_id ? 'ID za DDV: ' + org.vat_id : ''].filter(Boolean).join(' · ');
-    const arts = Object.entries(g.artikli).sort((a, b) => a[0].localeCompare(b[0], 'sl', { sensitivity: 'base' }));
-    const rows = arts.length ? arts.map(([nm, q]) => `<tr><td>${escape_(nm)}</td><td class="q">${stevilo(q)}</td></tr>`).join('') : '<tr><td colspan="2" style="color:#888">Ni postavk</td></tr>';
+    const money = !!g.cenikOn;
+    const post = g.postavke || Object.entries(g.artikli).map(([nm, q]) => ({ nm, q, cena: null, znesek: null }));
+    const kolonc = money ? 4 : 2;
+    const rows = post.length ? post.map(p => money
+      ? `<tr><td>${escape_(p.nm)}</td><td class="q">${p.cena != null ? cenaFmt(p.cena) : '—'}</td><td class="q">${stevilo(p.q)}</td><td class="q">${p.znesek != null ? cenaFmt(p.znesek) : '—'}</td></tr>`
+      : `<tr><td>${escape_(p.nm)}</td><td class="q">${stevilo(p.q)}</td></tr>`).join('') : `<tr><td colspan="${kolonc}" style="color:#888">Ni postavk</td></tr>`;
     const html = `<!DOCTYPE html><html lang="sl"><head><meta charset="utf-8"><title>Osnova za račun · ${escape_(naziv)}</title><style>
       @page{size:A4;margin:14mm}
       *{box-sizing:border-box;font-family:-apple-system,'Segoe UI',Roboto,Arial,sans-serif;color:#16202b}
@@ -906,15 +942,23 @@
       th,td{text-align:left;padding:7px 8px;border-bottom:1px solid #e6ebe9}
       th{background:#f2f5f4;text-transform:uppercase;font-size:11px;letter-spacing:.04em}
       td.q,th.q{text-align:right;font-variant-numeric:tabular-nums;width:120px}
-      tfoot td{font-weight:700;border-top:2px solid #16202b}
-      .sign{margin-top:30px;color:#5c6873}
+      tfoot td{font-weight:700;border-top:1px solid #e6ebe9}
+      tfoot tr.bruto td{border-top:2px solid #1a6644;font-size:14px}
+      .sign{margin-top:22px;color:#5c6873;font-size:11px}
     </style></head><body>
       <div class="head"><img class="wm" alt="SmartClean" src="${SC_LOGO}"><div class="biz">BSMART d.o.o.<br>Luče 87, 3334 Luče<br>+386 41 209 676</div></div>
       <div class="num"><b>Osnova za račun</b></div>
       <div class="client"><b>Naročnik storitve:</b> ${escape_(naziv)}${naslov ? '<br>' + escape_(naslov) : ''}<div class="dates">Obdobje: ${datum(FAK_ZADNJI.od)} – ${datum(FAK_ZADNJI.doo)} · ${stevilo(g.listov)} spremnih listov · ${stevilo(g.redni)} redni${g.izredni ? ' · ' + stevilo(g.izredni) + ' izredni prevoz' : ''}</div></div>
-      <table><thead><tr><th>Naziv artikla</th><th class="q">Količina (kos)</th></tr></thead><tbody>${rows}</tbody>
-        <tfoot><tr><td>Skupaj kosov</td><td class="q">${stevilo(g.kosov)}</td></tr><tr><td>Skupaj teža perila</td><td class="q">${fakKg(g.kg)}</td></tr></tfoot></table>
-      <div class="sign">Cene artiklov se dodajo iz cenika (v pripravi).</div>
+      <table><thead>${money
+        ? '<tr><th>Naziv artikla</th><th class="q">Cena/kos</th><th class="q">Količina</th><th class="q">Znesek</th></tr>'
+        : '<tr><th>Naziv artikla</th><th class="q">Količina (kos)</th></tr>'}</thead><tbody>${rows}</tbody>
+        <tfoot>${money ? `
+          <tr><td colspan="3">Skupaj kosov</td><td class="q">${stevilo(g.kosov)}</td></tr>
+          <tr><td colspan="3">Neto skupaj</td><td class="q">${cenaFmt(g.neto)}</td></tr>
+          <tr><td colspan="3">DDV (22 %)</td><td class="q">${cenaFmt(g.ddv)}</td></tr>
+          <tr class="bruto"><td colspan="3">Za plačilo (z DDV)</td><td class="q">${cenaFmt(g.bruto)}</td></tr>`
+        : `<tr><td>Skupaj kosov</td><td class="q">${stevilo(g.kosov)}</td></tr><tr><td>Skupaj teža perila</td><td class="q">${fakKg(g.kg)}</td></tr>`}</tfoot></table>
+      ${money && g.brezCene ? `<div class="sign">Opomba: ${stevilo(g.brezCene)} artiklov še nima cene (poveži jih v razdelku Stranke). Ti niso vključeni v znesek.</div>` : ''}
     </body></html>`;
     const w = window.open('', '_blank');
     if (!w) { toast('Za tiskanje dovoli pojavna okna.'); return; }
@@ -925,7 +969,26 @@
   /* ══════════ NASTAVITVE ══════════ */
   /* ══════════ CENIKI ══════════ */
   let CENIK = null;
+  let CENIKMAP = null;
+  const DDV_STOPNJA = 0.22;
   function cenaFmt(n) { return (Number(n) || 0).toLocaleString('sl-SI', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'; }
+  function zgradiCenikMap() { CENIKMAP = {}; (CENIK || []).forEach(x => { CENIKMAP[x.sifra] = x; }); }
+  async function nalozicenik(force) {
+    if (CENIK && CENIKMAP && !force) return CENIK;
+    const { data, error } = await sb.from('pricelist').select('sifra,koda,naziv,em,cena1,cena2').order('naziv');
+    if (error) { CENIK = CENIK || []; CENIKMAP = CENIKMAP || {}; return CENIK; }
+    CENIK = data || []; zgradiCenikMap();
+    return CENIK;
+  }
+  async function naloziArtMap(orgFilter) {
+    let q = sb.from('articles').select('org_id,name,cena_sifra');
+    if (orgFilter) q = q.eq('org_id', orgFilter);
+    const { data, error } = await q;
+    const map = {};
+    if (!error) (data || []).forEach(a => { if (a.cena_sifra != null) map[a.org_id + '|' + String(a.name || '').trim().toLowerCase()] = a.cena_sifra; });
+    return map;
+  }
+  function cenaZaArtikel(sifra) { return (sifra != null && CENIKMAP && CENIKMAP[sifra]) ? CENIKMAP[sifra].cena1 : null; }
   async function risiCeniki() {
     const box = $('cenikList'); if (!box) return;
     if (!risiCeniki._wired) {
@@ -941,7 +1004,7 @@
       if ($('cenikPod')) $('cenikPod').textContent = 'Cenik še ni pripravljen';
       return;
     }
-    CENIK = data || [];
+    CENIK = data || []; zgradiCenikMap();
     cenikRender();
   }
   var CENIK_RX = /^([A-ZČŠŽĐ][A-ZČŠŽĐ0-9.\s]*?)\s*-\s+\S/;
@@ -1110,14 +1173,24 @@
   async function risiArtikleBox(box, orgId) {
     box.innerHTML = '<p class="meta">Nalagam …</p>';
     const org = ORGSEZNAM.find(o => o.id === orgId) || {};
-    const { data, error } = await sb.from('articles').select('id,name').eq('org_id', orgId).order('sort_order');
-    if (error) { box.innerHTML = '<p class="meta">Napaka: ' + escape_(error.message) + '</p>'; return; }
+    await nalozicenik();
+    let arts;
+    const r = await sb.from('articles').select('id,name,cena_sifra').eq('org_id', orgId).order('sort_order');
+    if (r.error) {
+      const r2 = await sb.from('articles').select('id,name').eq('org_id', orgId).order('sort_order');
+      if (r2.error) { box.innerHTML = '<p class="meta">Napaka: ' + escape_(r2.error.message) + '</p>'; return; }
+      arts = r2.data || [];
+    } else arts = r.data || [];
     const meta = [org.vat_id ? 'Davčna <b>' + escape_(org.vat_id) + '</b>' : 'Brez davčne številke', org.address ? escape_(org.address) : 'Brez naslova'].join(' · ');
-    const arts = data || [];
     let html = '<p class="meta">' + meta + '</p>';
     if (OSEBJE) html += `<div class="u-acts" style="margin:2px 0 10px"><button type="button" class="str-edit">Uredi podatke stranke</button></div>`;
+    function cenaOznaka(a) {
+      const c = cenaZaArtikel(a.cena_sifra);
+      if (c != null) return '<span class="art-cena on" title="' + escape_((CENIKMAP[a.cena_sifra] && CENIKMAP[a.cena_sifra].naziv) || '') + '">' + cenaFmt(c) + '</span>';
+      return '<span class="art-cena">ni cene</span>';
+    }
     html += arts.length
-      ? '<ul class="art-ur">' + arts.map(a => `<li><span class="art-nm">${escape_(a.name)}</span>${OSEBJE ? `<span class="art-acts"><button type="button" class="art-ren" data-art="${a.id}" data-nm="${escape_(a.name)}" title="preimenuj" aria-label="preimenuj">✎</button><button type="button" class="art-del" data-art="${a.id}" title="odstrani" aria-label="odstrani">×</button></span>` : ''}</li>`).join('') + '</ul>'
+      ? '<ul class="art-ur">' + arts.map(a => `<li><div class="art-main"><span class="art-nm">${escape_(a.name)}</span>${cenaOznaka(a)}</div>${OSEBJE ? `<span class="art-acts"><button type="button" class="art-link" data-art="${a.id}" data-s="${a.cena_sifra != null ? a.cena_sifra : ''}" title="poveži s cenikom" aria-label="poveži s cenikom">€</button><button type="button" class="art-ren" data-art="${a.id}" data-nm="${escape_(a.name)}" title="preimenuj" aria-label="preimenuj">✎</button><button type="button" class="art-del" data-art="${a.id}" title="odstrani" aria-label="odstrani">×</button></span>` : ''}</li>`).join('') + '</ul>'
       : '<p class="none">Ta stranka še nima artiklov v katalogu.</p>';
     if (OSEBJE) html += `<div class="art-add"><input type="text" class="art-new" placeholder="nov artikel"><button type="button" class="btn btn-narrow art-add-btn">+ Dodaj</button></div>`;
     box.innerHTML = html;
@@ -1125,12 +1198,46 @@
       { const eb = box.querySelector('.str-edit'); if (eb) eb.addEventListener('click', e => { e.stopPropagation(); urediStranko(box, orgId); }); }
       box.querySelectorAll('.art-del').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); izbrisiArtikel(b.dataset.art, box, orgId); }));
       box.querySelectorAll('.art-ren').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); preimenujArtikel(b, box, orgId); }));
+      box.querySelectorAll('.art-link').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); poveziArtikel(b, box, orgId); }));
       const inp = box.querySelector('.art-new'), addb = box.querySelector('.art-add-btn');
       const dodaj = () => { const nm = inp.value.trim(); if (nm) dodajArtikel(orgId, nm, box); };
       addb.addEventListener('click', e => { e.stopPropagation(); dodaj(); });
       inp.addEventListener('click', e => e.stopPropagation());
       inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); dodaj(); } });
     }
+  }
+  function poveziArtikel(btn, box, orgId) {
+    const li = btn.closest('li');
+    const artId = btn.dataset.art;
+    const curS = btn.dataset.s !== '' ? parseInt(btn.dataset.s, 10) : null;
+    const org = ORGSEZNAM.find(o => o.id === orgId) || {};
+    if (!CENIK || !CENIK.length) { toast('Najprej uvozi cenik (razdelek Ceniki).'); return; }
+    li.innerHTML = '<div class="art-pick"><input type="text" class="art-pick-in" placeholder="Iskanje po ceniku …">' +
+      '<div class="art-pick-list"></div><div class="art-pick-acts">' +
+      (curS != null ? '<button type="button" class="art-pick-clear">Odveži</button>' : '') +
+      '<button type="button" class="art-pick-cancel">Prekliči</button></div></div>';
+    const inp = li.querySelector('.art-pick-in'), listEl = li.querySelector('.art-pick-list');
+    inp.value = String(org.name || '').split(/\s+/)[0].toLowerCase();
+    inp.addEventListener('click', e => e.stopPropagation());
+    inp.focus();
+    function render() {
+      const q = inp.value.trim().toLowerCase();
+      let items = CENIK;
+      if (q) items = CENIK.filter(x => (x.naziv || '').toLowerCase().includes(q) || (x.koda || '').toLowerCase().includes(q));
+      items = items.slice(0, 40);
+      listEl.innerHTML = items.length ? items.map(x => '<button type="button" class="art-pick-item' + (x.sifra === curS ? ' on' : '') + '" data-s="' + x.sifra + '"><span>' + escape_(x.naziv) + '</span><b>' + cenaFmt(x.cena1) + '</b></button>').join('') : '<p class="u-sub" style="padding:10px 4px">Ni zadetkov.</p>';
+      listEl.querySelectorAll('.art-pick-item').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); izberi(parseInt(b.dataset.s, 10)); }));
+    }
+    async function izberi(sifra) {
+      const { error } = await sb.from('articles').update({ cena_sifra: sifra }).eq('id', artId);
+      if (error) { toast('Napaka: ' + error.message); return; }
+      toast('Cena povezana'); risiArtikleBox(box, orgId);
+    }
+    li.querySelector('.art-pick-cancel').addEventListener('click', e => { e.stopPropagation(); risiArtikleBox(box, orgId); });
+    const clr = li.querySelector('.art-pick-clear');
+    if (clr) clr.addEventListener('click', async e => { e.stopPropagation(); const { error } = await sb.from('articles').update({ cena_sifra: null }).eq('id', artId); if (error) { toast('Napaka: ' + error.message); return; } toast('Odvezano'); risiArtikleBox(box, orgId); });
+    inp.addEventListener('input', render);
+    render();
   }
   async function dodajArtikel(orgId, name, box) {
     const { data: maxd } = await sb.from('articles').select('sort_order').eq('org_id', orgId).order('sort_order', { ascending: false }).limit(1);
