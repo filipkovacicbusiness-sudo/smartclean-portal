@@ -236,7 +236,7 @@
     fakture: '<path d="M6 3h9l3 3v15l-2.5-1.5L13 22l-2.5-1.5L8 22l-2-1.5L6 3Z"/><path d="M9 8h6M9 12h6M9 16h4"/>',
     prijave: '<circle cx="12" cy="8" r="3.4"/><path d="M5.5 20a6.5 6.5 0 0 1 13 0"/><path d="M12 8v0"/>',
     aplikacija: '<rect x="6.5" y="2.5" width="11" height="19" rx="2.5"/><path d="M10.5 5.5h3"/><path d="M12 18.2h.01"/>',
-    nastavitve: '<circle cx="12" cy="12" r="3"/><path d="M12 2.5v2.2M12 19.3v2.2M4.6 4.6l1.6 1.6M17.8 17.8l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.6 19.4l1.6-1.6M17.8 6.2l1.6-1.6"/>'
+    nastavitve: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>'
   };
   const ikona = k => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' + 'stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + IKONE[k] + '</svg>';
   function meni() {
@@ -1486,16 +1486,17 @@
       const vloga = u.is_staff ? 'osebje — vidi vse stranke' : clanPo[u.id] ? 'stranka — ' + escape_(clanPo[u.id]) : 'brez dostopa';
       return `<div class="u-row ${u.active ? '' : 'u-off'}">
       <div>
-        <div class="u-mail">${escape_(u.email || u.full_name || '—')}
+        <div class="u-mail">${escape_(u.full_name || u.email || '—')}
           ${jaz ? '<span class="pill">vi</span>' : ''}
           ${u.active ? '' : '<span class="pill">izklopljen</span>'}</div>
-        <div class="u-sub">${vloga}</div>
+        <div class="u-sub">${u.full_name ? escape_(u.email) + ' · ' : ''}${vloga}</div>
       </div>
       <div>${u.is_staff ? '<span class="u-sub">dostop do vseh strank</span>' : `<select data-org="${u.id}" ${jaz ? 'disabled' : ''}>
              <option value="">— brez dostopa —</option>
              ${ORGSEZNAM.map(o => `<option value="${o.id}"${clanPo[u.id] === o.name ? ' selected' : ''}>${escape_(o.name)}</option>`).join('')}
            </select>`}</div>
       <div class="u-acts">
+        <button data-act="ime" data-id="${u.id}" data-ime="${escape_(u.full_name || '')}">preimenuj</button>
         ${jaz ? '' : `<button data-act="staff" data-id="${u.id}" data-v="${u.is_staff ? 0 : 1}">${u.is_staff ? 'v stranko' : 'v osebje'}</button>`}
         ${jaz ? '' : `<button data-act="active" data-id="${u.id}" data-v="${u.active ? 0 : 1}">${u.active ? 'izklopi' : 'vklopi'}</button>`}
         <button data-act="pw" data-id="${u.id}">novo geslo</button>
@@ -1532,6 +1533,17 @@
     const id = btn.dataset.id,
       act = btn.dataset.act;
     btn.disabled = true;
+    if (act === 'ime') {
+      const novo = window.prompt('Ime in priimek uporabnika:', btn.dataset.ime || '');
+      btn.disabled = false;
+      if (novo === null) return;
+      const ime = novo.trim();
+      const { error } = await sb.from('profiles').update({ full_name: ime || null }).eq('id', id);
+      if (!error && id === JAZ) { JAZIME = ime || JAZMAIL; $('who').textContent = JAZIME + (OSEBJE ? ' · osebje' : ''); }
+      uMsg(error ? 'Ni uspelo: ' + escape_(error.message) : 'Ime shranjeno.', !!error);
+      loadUsers();
+      return;
+    }
     if (act === 'staff') {
       const {
         error

@@ -455,3 +455,10 @@ body,.topbar,.side,.main,.panel,.row,.a-row,.arts,.a-det,.fak-card,.fak-tot,.sta
 @media (prefers-reduced-motion:reduce){*{transition:none!important;}}
 
 .side-sep{height:1px;background:var(--line);margin:14px 10px 10px;}
+
+/* ══════════ FOOTER (vedno viden) ══════════ */
+.sc-foot{position:fixed;right:14px;bottom:9px;z-index:6;font-size:.62rem;letter-spacing:.03em;
+  color:var(--mid);text-decoration:none;opacity:.72;transition:opacity .15s;pointer-events:auto;}
+.sc-foot:hover{opacity:1;}
+.sc-foot b{font-weight:600;color:var(--ink);}
+@media(max-width:560px){.sc-foot{right:10px;bottom:7px;font-size:.58rem;}}
