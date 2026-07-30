@@ -35,33 +35,12 @@
   }
 })();
 
-/* Počisti service worker, ki je ostal iz napačne objave.
-   Bil je nastavljen tako, da streže iz predpomnilnika in nikoli ne
-   preveri strežnika — zato je tablica dobivala stare datoteke.
-   Pisano v stari skladnji, da se izvede tudi na starejših brskalnikih. */
+/* PWA: registriraj service worker (namestljiv portal na Androidu/iPhonu).
+   Nov SW je network-first za HTML, zato posodobitve niso zaklenjene v predpomnilnik.
+   Stara napačna registracija se ob tem posodobi z novo (isti obseg). */
 (function () {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.getRegistrations().then(function (rs) {
-    var tuji = [];
-    for (var i = 0; i < rs.length; i++) {
-      if (rs[i].scope.indexOf('/tablica/') === -1) tuji.push(rs[i]);
-    }
-    if (!tuji.length) return;
-    var koraki = [];
-    for (var j = 0; j < tuji.length; j++) koraki.push(tuji[j].unregister());
-    return Promise.all(koraki).then(function () {
-      if (!window.caches || !caches.keys) return;
-      return caches.keys().then(function (ks) {
-        var d = [];
-        for (var k = 0; k < ks.length; k++) d.push(caches.delete(ks[k]));
-        return Promise.all(d);
-      });
-    }).then(function () {
-      var ze = false;
-      try { ze = sessionStorage.getItem('sc-sw') === '1'; } catch (e) {}
-      if (ze) return;                       /* samo enkrat, brez zanke */
-      try { sessionStorage.setItem('sc-sw', '1'); } catch (e) {}
-      location.reload();
-    });
-  }).catch(function () {});
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('sw.js').catch(function () {});
+  });
 })();

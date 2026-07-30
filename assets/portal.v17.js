@@ -37,6 +37,21 @@
   }
   function nastaviTemo(pref) { try { localStorage.setItem('sc-portal-theme', pref); } catch (e) {} uporabiTemo(); oznaciTemo(); }
   uporabiTemo();
+
+  /* ── PWA namestitev ──────────────────────────────────────────────── */
+  let _pwaPrompt = null;
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    _pwaPrompt = e;
+    const b = $('pwaInstall');
+    if (b) b.style.display = '';
+  });
+  window.addEventListener('appinstalled', () => {
+    _pwaPrompt = null;
+    const b = $('pwaInstall'); if (b) b.style.display = 'none';
+    const h = $('pwaHint'); if (h) h.textContent = 'Aplikacija je nameščena. ✓';
+  });
+
   $('themeBtn').addEventListener('click', () => {
     nastaviTemo(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
   });
@@ -179,6 +194,9 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   const JE_LASTNIK = () => (JAZMAIL || '').trim().toLowerCase() === 'filip@eflitte.si';
+  function nastaviWho(ime) {
+    $('who').innerHTML = '<span class="who-name">' + escape_(ime || '') + '</span>' + (OSEBJE ? '<span class="who-role">osebje</span>' : '');
+  }
   function prvoIme() {
     let n = (JAZIME || '').trim();
     if (!n) return 'ekipa';
@@ -206,7 +224,7 @@
       data: profil
     } = await sb.from('profiles').select('full_name,is_staff').eq('id', user.id).maybeSingle();
     OSEBJE = !!(profil !== null && profil !== void 0 && profil.is_staff);
-    $('who').textContent = ((profil === null || profil === void 0 ? void 0 : profil.full_name) || user.email) + (OSEBJE ? ' · osebje' : '');
+    nastaviWho((profil && profil.full_name) || user.email);
     JAZIME = (profil && profil.full_name) || user.email;
     JAZMAIL = user.email || '';
     $('racunPod').textContent = user.email;
@@ -890,6 +908,14 @@
       document.querySelectorAll('#sec-nastavitve [data-tema]').forEach(b => {
         b.addEventListener('click', () => nastaviTemo(b.dataset.tema));
       });
+      const pb = $('pwaInstall');
+      if (pb) pb.addEventListener('click', async () => {
+        if (!_pwaPrompt) return;
+        _pwaPrompt.prompt();
+        try { await _pwaPrompt.userChoice; } catch (e) {}
+        _pwaPrompt = null;
+        pb.style.display = 'none';
+      });
       risiNastavitve._wired = true;
     }
   }
@@ -1388,7 +1414,7 @@
     btn.disabled = false; btn.textContent = 'Shrani ime';
     if (error) { m.className = 'msg bad show'; m.textContent = 'Napaka: ' + error.message; return; }
     JAZIME = ime;
-    $('who').textContent = ime + (OSEBJE ? ' · osebje' : '');
+    nastaviWho(ime);
     if ($('domovNaslov') && !$('sec-domov').classList.contains('hidden')) $('domovNaslov').textContent = OSEBJE ? ('Pozdravljen/a, ' + prvoIme()) : $('domovNaslov').textContent;
     m.className = 'msg show'; m.textContent = 'Ime shranjeno.';
   }); }
@@ -1552,7 +1578,7 @@
       if (novo === null) return;
       const ime = novo.trim();
       const { error } = await sb.from('profiles').update({ full_name: ime || null }).eq('id', id);
-      if (!error && id === JAZ) { JAZIME = ime || JAZMAIL; $('who').textContent = JAZIME + (OSEBJE ? ' · osebje' : ''); }
+      if (!error && id === JAZ) { JAZIME = ime || JAZMAIL; nastaviWho(JAZIME); }
       uMsg(error ? 'Ni uspelo: ' + escape_(error.message) : 'Ime shranjeno.', !!error);
       loadUsers();
       return;

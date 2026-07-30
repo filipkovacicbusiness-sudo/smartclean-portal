@@ -5,6 +5,7 @@
   --accent:rgba(10,10,10,.55); --gold:#0a0a0a; --gold-m:rgba(10,10,10,.06);
   --btn-ink:#ffffff;
   --ink:#0a0a0a; --mid:rgba(10,10,10,.55); --bg:#ffffff; --surface:#ffffff;
+  --topbar-bg:rgba(255,255,255,.72);
   --band:#0a0a0a; --white:#fff;
   --brand-rgb:10,10,10;
   --line:rgba(10,10,10,.12);
@@ -24,6 +25,7 @@
   --green-m:rgba(255,255,255,.06); --gold:#ffffff; --gold-m:rgba(255,255,255,.06);
   --accent:rgba(255,255,255,.72); --btn-ink:#0a0a0a;
   --ink:#ffffff; --mid:rgba(255,255,255,.52); --bg:#0a0a0a; --surface:#111112;
+  --topbar-bg:rgba(12,12,13,.68);
   --band:#0a0a0a; --brand-rgb:255,255,255; --line:rgba(255,255,255,.12);
   --wm-blue:#6098f5;
   --wm-ink:#e8f1eb; --wm-green:#6ed3a1;
@@ -80,14 +82,17 @@ input:focus{border-color:var(--green-l);background:var(--surface);outline:none;}
 /* ══ APLIKACIJA ══ */
 .app{display:none;min-height:100dvh;flex-direction:column;}
 .app.show{display:flex;}
-.topbar{position:sticky;top:0;z-index:20;background:var(--surface);
+.topbar{position:sticky;top:0;z-index:20;background:var(--topbar-bg);
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
   border-bottom:1px solid var(--line);}
 .topbar-in{max-width:1100px;margin:0 auto;padding:0 24px;height:64px;
   display:flex;align-items:center;justify-content:flex-start;gap:16px;}
 .tools{margin-left:auto;}
 .topbar .wordmark{font-size:1.55rem;color:var(--wm-ink);}
 .tools{display:flex;align-items:center;gap:12px;}
-.who{font-size:.82rem;color:var(--mid);}
+.who{display:inline-flex;flex-direction:column;align-items:flex-end;line-height:1.15;gap:1px;}
+.who-name{font-size:.95rem;font-weight:600;color:var(--ink);}
+.who-role{font-size:.7rem;color:var(--mid);}
 .icon-btn{width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;
   border:1px solid var(--line);border-radius:9px;background:none;cursor:pointer;
   transition:border-color .18s;flex:none;}
