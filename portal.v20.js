@@ -1127,7 +1127,7 @@
       if (g.type === 'org') { var pod = orgPodatki(g.org_id); if (pod) sub = '<span class="cgrp-sub">' + pod + '</span>'; }
       var bar = '';
       if (OSEBJE) {
-        if (g.type === 'pre') bar = '<div class="cgrp-bar"><button type="button" class="cgrp-btn" data-linkpre="' + escape_(g.prefix) + '">Poveži s stranko</button></div>';
+        if (g.type === 'pre') bar = '<div class="cgrp-bar"><button type="button" class="cgrp-btn" data-linkpre="' + escape_(g.prefix) + '">Poveži s stranko</button><button type="button" class="cgrp-btn danger" data-delgrp="' + escape_(g.prefix) + '">Izbriši skupino</button></div>';
         else if (g.type === 'org') bar = '<div class="cgrp-bar"><button type="button" class="cgrp-btn" data-neworg="' + g.org_id + '">+ Nov artikel</button><button type="button" class="cgrp-btn ghost" data-unlink="' + g.org_id + '">Prekliči povezavo</button><button type="button" class="cgrp-btn danger" data-delorg="' + g.org_id + '">Izbriši stranko</button></div>';
         else bar = '<div class="cgrp-bar"><button type="button" class="cgrp-btn" data-newsplos="1">+ Nov artikel</button></div>';
       }
@@ -1153,6 +1153,7 @@
       dndSort(body, '.cenik-row', '.cenik-grip', function () { cenikShraniVrstniRed(body); });
     });
     box.querySelectorAll('[data-linkpre]').forEach(bn => bn.addEventListener('click', e => { e.stopPropagation(); cenikPoveziPrefix(bn.dataset.linkpre, bn); }));
+    box.querySelectorAll('[data-delgrp]').forEach(bn => bn.addEventListener('click', e => { e.stopPropagation(); izbrisiSkupino(bn.dataset.delgrp, bn); }));
     box.querySelectorAll('[data-unlink]').forEach(bn => bn.addEventListener('click', e => { e.stopPropagation(); cenikOdvezi(bn.dataset.unlink); }));
     box.querySelectorAll('[data-neworg]').forEach(bn => bn.addEventListener('click', e => { e.stopPropagation(); cenikNov(bn.dataset.neworg, bn); }));
     box.querySelectorAll('[data-newsplos]').forEach(bn => bn.addEventListener('click', e => { e.stopPropagation(); cenikNov(null, bn); }));
@@ -1190,6 +1191,23 @@
     const res = await Promise.all(updates.map(u => sb.from('orgs').update({ sort_order: u.sort_order }).eq('id', u.id)));
     if (res.some(r => r.error)) toast('Vrstni red strank morda ni v celoti shranjen.');
     else toast('Vrstni red strank shranjen');
+  }
+  function izbrisiSkupino(prefix, btn) {
+    const bar = btn.closest('.cgrp-bar');
+    if (bar.nextElementSibling && bar.nextElementSibling.classList && bar.nextElementSibling.classList.contains('cenik-delconf')) { cenikRender(); return; }
+    const sifre = CENIK.filter(x => !x.org_id && cenikSkupina(x.naziv) === prefix).map(x => x.sifra);
+    bar.insertAdjacentHTML('afterend', '<div class="cenik-delconf"><p class="cenik-warn">⚠ Izbrišem celotno skupino <b>' + escape_(prefix) + '</b> (' + sifre.length + ' artiklov)? Gredo v koš — obnoviš jih lahko 30 dni v »Nedavno brisani«.</p><div class="cgrp-bar"><button type="button" class="cgrp-btn danger cenik-delconf-yes">Da, izbriši ' + sifre.length + ' art.</button><button type="button" class="cgrp-btn ghost cenik-delconf-no">Prekliči</button></div></div>');
+    const wrap = bar.nextElementSibling;
+    wrap.querySelector('.cenik-delconf-no').addEventListener('click', e => { e.stopPropagation(); cenikRender(); });
+    wrap.querySelector('.cenik-delconf-yes').addEventListener('click', async e => {
+      e.stopPropagation();
+      if (!sifre.length) { cenikRender(); return; }
+      const { error } = await sb.from('pricelist').update({ deleted_at: new Date().toISOString() }).in('sifra', sifre);
+      if (error) { toast('Napaka: ' + error.message); return; }
+      CENIK = CENIK.filter(x => sifre.indexOf(x.sifra) < 0); zgradiCenikMap();
+      toast('Skupina izbrisana (' + sifre.length + ' art., obnovljivo 30 dni)');
+      cenikRender();
+    });
   }
   function cenikUredi(btn) {
     const s = parseInt(btn.dataset.cedit, 10);
