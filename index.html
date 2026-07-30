@@ -232,6 +232,14 @@ html[data-theme="light"] .sc-hex{opacity:.5}
             <button type="button" class="tema-b" data-tema="auto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor" stroke="none"/></svg>Samodejno</button>
           </div>
         </div>
+        <div class="panel">
+          <h3 class="sec-h">Samodejna prijava</h3>
+          <p class="u-sub" style="margin-bottom:14px">Ko je vklopljena, te portal na tej napravi ob naslednjem obisku samodejno spusti naprej. Izklopi, če se želiš vsakič prijaviti sam.</p>
+          <div class="seg auto-seg" id="autoSeg2" role="group" aria-label="Samodejna prijava">
+            <button type="button" class="seg-b" data-auto="1">Vklopljena</button>
+            <button type="button" class="seg-b" data-auto="0">Izklopljena</button>
+          </div>
+        </div>
       </section>
 
       <section class="sec hidden" id="sec-aplikacija">
@@ -249,7 +257,7 @@ html[data-theme="light"] .sc-hex{opacity:.5}
         <div class="head"><div><h2>Ceniki</h2><p class="count" id="cenikPod">Cene artiklov (neto, na kos)</p></div>
           <div class="filtri"><input type="search" id="cenikIsci" placeholder="Iskanje po nazivu ali kodi …" aria-label="Iskanje po ceniku"/></div>
         </div>
-        <button type="button" id="cenikUvoz" class="btn btn-narrow" style="margin-bottom:16px">Uvozi cenik iz PDF-ja</button>
+        <div class="cenik-bar"><button type="button" id="cenikKos" class="btn btn-narrow ghost">Nedavno brisani</button></div>
         <div id="cenikList"></div>
       </section>
 

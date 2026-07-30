@@ -59,15 +59,18 @@
   /* ── samodejna prijava (segment kot redni/izredni na tablici) ─────── */
   function autoLoginOn() { try { return localStorage.getItem('sc-autologin') !== '0'; } catch (e) { return true; } }
   function nastaviAuto(on) { try { localStorage.setItem('sc-autologin', on ? '1' : '0'); } catch (e) {} }
-  (function initAutoSeg() {
-    const seg = document.getElementById('autoSeg');
-    if (!seg) return;
+  function osveziAutoSege() {
     const on = autoLoginOn();
-    seg.querySelectorAll('.seg-b').forEach(b => b.classList.toggle('on', (b.dataset.auto === '1') === on));
-    seg.querySelectorAll('.seg-b').forEach(b => b.addEventListener('click', () => {
+    document.querySelectorAll('.auto-seg').forEach(seg => {
+      seg.querySelectorAll('.seg-b').forEach(b => b.classList.toggle('on', (b.dataset.auto === '1') === on));
+    });
+  }
+  (function initAutoSeg() {
+    document.querySelectorAll('.auto-seg .seg-b').forEach(b => b.addEventListener('click', () => {
       nastaviAuto(b.dataset.auto === '1');
-      seg.querySelectorAll('.seg-b').forEach(x => x.classList.toggle('on', x === b));
+      osveziAutoSege();
     }));
+    osveziAutoSege();
   })();
 
   /* ── nastavitve ───────────────────────────────────────────────────── */
@@ -1135,8 +1138,7 @@
         '<div class="cgrp-body' + (open ? ' show' : '') + '">' + bar + rows + '</div></div>';
     }).join('');
     box.querySelectorAll('[data-cgrp]').forEach(function (h) {
-      h.addEventListener('click', function (e) {
-        if (e.target.closest('.cgrp-sub')) return;
+      h.addEventListener('click', function () {
         var k = h.dataset.cgrp; var willOpen = !h.classList.contains('open');
         _cenikOpen[k] = willOpen; h.classList.toggle('open', willOpen);
         var g = h.closest('.cgrp'); var b = g ? g.querySelector('.cgrp-body') : null;
