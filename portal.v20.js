@@ -944,6 +944,17 @@
     CENIK = data || [];
     cenikRender();
   }
+  var CENIK_RX = /^([A-ZČŠŽĐ][A-ZČŠŽĐ0-9.\s]*?)\s*-\s+\S/;
+  function cenikSkupina(naziv) { var m = (naziv || '').match(CENIK_RX); return m ? m[1].trim() : null; }
+  function cenikVrsticaHtml(x, striped) {
+    var nm = x.naziv || '';
+    if (striped) { var m = nm.match(CENIK_RX); if (m) { var t = nm.slice(m[1].length).replace(/^\s*-\s*/, '').trim(); if (t) nm = t; } }
+    return '<div class="cenik-row"><div class="cenik-nm">' + escape_(nm) + '</div>' +
+      '<div class="cenik-meta">' + escape_(x.koda || '') + ' · ' + escape_(x.em || 'kos') + '</div>' +
+      '<div class="cenik-cena"><span class="cenik-val">' + cenaFmt(x.cena1) + '</span>' +
+      (OSEBJE ? '<button type="button" class="cenik-edit" data-cedit="' + x.sifra + '" title="uredi ceno" aria-label="uredi ceno">✎</button>' : '') +
+      '</div></div>';
+  }
   function cenikRender() {
     const box = $('cenikList'); if (!box) return;
     const q = (($('cenikIsci') && $('cenikIsci').value) || '').trim().toLowerCase();
@@ -955,13 +966,30 @@
     let items = CENIK;
     if (q) items = CENIK.filter(x => (x.naziv || '').toLowerCase().includes(q) || (x.koda || '').toLowerCase().includes(q));
     if (!items.length) { box.innerHTML = '<div class="empty"><h3>Ni zadetkov</h3></div>'; return; }
-    box.innerHTML = '<div class="cenik">' + items.map(x =>
-      `<div class="cenik-row"><div class="cenik-nm">${escape_(x.naziv)}</div>` +
-      `<div class="cenik-meta">${escape_(x.koda || '')} · ${escape_(x.em || 'kos')}</div>` +
-      `<div class="cenik-cena"><span class="cenik-val">${cenaFmt(x.cena1)}</span>` +
-      (OSEBJE ? `<button type="button" class="cenik-edit" data-cedit="${x.sifra}" title="uredi ceno" aria-label="uredi ceno">✎</button>` : '') +
-      `</div></div>`).join('') + '</div>';
+    var cnt = {};
+    items.forEach(function (x) { var p = cenikSkupina(x.naziv); if (p) cnt[p] = (cnt[p] || 0) + 1; });
+    var grupe = {};
+    items.forEach(function (x) { var p = cenikSkupina(x.naziv); if (!p || cnt[p] < 2) p = 'Splošno'; (grupe[p] = grupe[p] || []).push(x); });
+    var keys = Object.keys(grupe).sort(function (a, b) { if (a === 'Splošno') return 1; if (b === 'Splošno') return -1; return a.localeCompare(b, 'sl'); });
+    var odpri = !!q;
+    box.innerHTML = keys.map(function (k) {
+      var arr = grupe[k].slice().sort(function (a, b) { return (a.naziv || '').localeCompare(b.naziv || '', 'sl'); });
+      var striped = k !== 'Splošno';
+      var rows = arr.map(function (x) { return cenikVrsticaHtml(x, striped); }).join('');
+      return '<div class="cgrp"><button type="button" class="cgrp-h' + (odpri ? ' open' : '') + '" data-cgrp>' +
+        '<span class="cgrp-chev" aria-hidden="true">›</span><span class="cgrp-name">' + escape_(k) + '</span>' +
+        '<span class="cgrp-count">' + stevilo(arr.length) + ' art.</span></button>' +
+        '<div class="cgrp-body' + (odpri ? ' show' : '') + '">' + rows + '</div></div>';
+    }).join('');
+    box.querySelectorAll('[data-cgrp]').forEach(function (h) {
+      h.addEventListener('click', function () { h.classList.toggle('open'); var b = h.nextElementSibling; if (b) b.classList.toggle('show'); });
+    });
     box.querySelectorAll('[data-cedit]').forEach(bn => bn.addEventListener('click', () => cenikUredi(bn)));
+  }
+  function cenikCelica(cell, rec) {
+    cell.innerHTML = '<span class="cenik-val">' + cenaFmt(rec.cena1) + '</span>' +
+      (OSEBJE ? '<button type="button" class="cenik-edit" data-cedit="' + rec.sifra + '" title="uredi ceno" aria-label="uredi ceno">✎</button>' : '');
+    var b = cell.querySelector('[data-cedit]'); if (b) b.addEventListener('click', function () { cenikUredi(b); });
   }
   function cenikUredi(btn) {
     const s = parseInt(btn.dataset.cedit, 10);
@@ -975,10 +1003,10 @@
       if (isNaN(v) || v < 0) { toast('Neveljavna cena'); return; }
       const { error } = await sb.from('pricelist').update({ cena1: v, updated_at: new Date().toISOString() }).eq('sifra', s);
       if (error) { toast('Napaka: ' + error.message); return; }
-      rec.cena1 = v; toast('Cena shranjena'); cenikRender();
+      rec.cena1 = v; toast('Cena shranjena'); cenikCelica(cell, rec);
     };
     cell.querySelector('.cenik-save').addEventListener('click', shrani);
-    inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); shrani(); } else if (e.key === 'Escape') { cenikRender(); } });
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); shrani(); } else if (e.key === 'Escape') { cenikCelica(cell, rec); } });
   }
   async function uvoziCenik() {
     const b = $('cenikUvoz'); if (!b) return;
