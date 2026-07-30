@@ -529,3 +529,15 @@ input[type=email],input[type=password],input[type=search],.field input[type=text
 .cenik-edit:hover{border-color:var(--mid);color:var(--ink);}
 .cenik-in{width:92px;padding:6px 9px;border:1.5px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font-size:16px;text-align:right;font-variant-numeric:tabular-nums;}
 .cenik-in:focus{border-color:var(--green-l);outline:none;}
+
+/* ceniki — skupine po strankah (accordion) */
+.cgrp{border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);margin-bottom:10px;overflow:hidden;}
+.cgrp-h{width:100%;display:flex;align-items:center;gap:12px;padding:13px 16px;background:none;border:none;cursor:pointer;text-align:left;color:var(--ink);-webkit-tap-highlight-color:transparent;}
+.cgrp-h:hover{background:var(--green-m);}
+.cgrp-chev{color:var(--mid);font-size:19px;line-height:1;transition:transform .2s;flex:0 0 auto;}
+.cgrp-h.open .cgrp-chev{transform:rotate(90deg);}
+.cgrp-name{font-weight:600;font-size:.98rem;flex:1;min-width:0;overflow-wrap:anywhere;}
+.cgrp-count{font-size:.76rem;color:var(--mid);font-family:var(--mono);flex:0 0 auto;}
+.cgrp-body{display:none;border-top:1px solid var(--line);}
+.cgrp-body.show{display:block;}
+.cgrp-body .cenik-row:last-child{border-bottom:none;}
