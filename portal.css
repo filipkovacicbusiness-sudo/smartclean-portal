@@ -755,3 +755,18 @@ html[data-view="list"] .fak-grid .fak-card:not(.open){display:flex;flex-directio
 html[data-theme="dark"] .pill-on{background:rgba(52,199,110,.16);color:#4fd07f;}
 .dot-on{width:7px;height:7px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 0 rgba(34,197,94,.6);animation:dotpulse 2s ease-out infinite;}
 @keyframes dotpulse{0%{box-shadow:0 0 0 0 rgba(34,197,94,.5)}70%{box-shadow:0 0 0 6px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}
+
+/* ── Poenotenje glav in puščic ────────────────────────────────────── */
+/* prazno pod naslovi (brez opisov) na vseh podstraneh */
+.head .count{display:none;}
+/* puščica za razširitev v Fakturah na desni in navpično centrirana */
+.fak-card-h{align-items:center;}
+.fak-card-h .fak-chev{margin-top:0;}
+.fak-card-h .fak-print{margin-top:0;}
+.fak-card-h .fak-chev{margin-left:2px;}
+/* hitri meseci (julij/junij …) naj zavzamejo enak pas kot gumbi drugod,
+   da se seznam začne na isti višini kot pri ostalih podstraneh */
+.fak-hitri{min-height:46px;align-items:center;margin:0 0 18px;}
+
+/* enotna višina vrstice s filtri (da se seznam začne na isti višini povsod) */
+@media(min-width:721px){ .head .filtri{height:44px;} }

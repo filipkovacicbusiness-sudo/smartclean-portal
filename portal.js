@@ -979,9 +979,9 @@
     const povzetek = money && g.neto ? ` · <b>${cenaFmt(g.bruto)}</b> z DDV` : '';
     return `<div class="fak-card">
       <div class="fak-card-h" data-faktoggle="${gi}">
-        <span class="fak-chev" aria-hidden="true">›</span>
         <div class="fak-card-info"><h3>${escape_(ime)}</h3><p class="u-sub">${stevilo(g.listov)} spremnih listov · ${stevilo(g.kosov)} kosov · ${fakKg(g.kg)}${g.izredni ? ' · ' + stevilo(g.izredni) + '× izredni prevoz' : ''}${povzetek}</p></div>
         <button type="button" class="btn-mini fak-print" data-fakprint="${gi}">Natisni</button>
+        <span class="fak-chev" aria-hidden="true">›</span>
       </div>
       <div class="fak-body" id="fakbody${gi}">
         <div class="fak-inner">
@@ -1189,8 +1189,8 @@
       }
       var ghandle = '';
       return '<div class="cgrp" data-key="' + escape_(g.key) + '"><div class="cgrp-head-row">' + ghandle + '<button type="button" class="cgrp-h' + (open ? ' open' : '') + '" data-cgrp="' + escape_(g.key) + '">' +
-        '<span class="cgrp-chev" aria-hidden="true">›</span><span class="cgrp-name">' + escape_(g.label) + sub + '</span>' +
-        '<span class="cgrp-count">' + stevilo(list.length) + ' art.</span></button></div>' +
+        '<span class="cgrp-name">' + escape_(g.label) + sub + '</span>' +
+        '<span class="cgrp-count">' + stevilo(list.length) + ' art.</span><span class="cgrp-chev" aria-hidden="true">›</span></button></div>' +
         '<div class="cgrp-body' + (open ? ' show' : '') + '">' + bar + rows + '</div></div>';
     }).join('');
     box.querySelectorAll('[data-cgrp]').forEach(function (h) {
