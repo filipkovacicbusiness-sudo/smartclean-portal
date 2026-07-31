@@ -291,18 +291,60 @@
       handle.addEventListener('pointerdown', function (e) {
         var item = handle.closest(itemSel); if (!item) return;
         e.preventDefault(); e.stopPropagation();
-        item.classList.add('dnd-drag'); var moved = false;
-        function after(y) {
-          var els = [].slice.call(container.querySelectorAll(itemSel + ':not(.dnd-drag)'));
-          var res = null, closest = -Infinity;
-          els.forEach(function (el) { var b = el.getBoundingClientRect(); var off = y - b.top - b.height / 2; if (off < 0 && off > closest) { closest = off; res = el; } });
-          return res;
+        if (item.setPointerCapture) { try { item.setPointerCapture(e.pointerId); } catch (er) {} }
+        var startY = e.clientY;
+        var rect = item.getBoundingClientRect();
+        var cs = getComputedStyle(item);
+        // rezervni prostor (placeholder) na mestu elementa
+        var ph = document.createElement(item.tagName);
+        ph.className = 'dnd-ph';
+        ph.style.height = rect.height + 'px';
+        ph.style.margin = cs.margin;
+        item.parentNode.insertBefore(ph, item);
+        // dvigni element, da sledi kazalcu (brez preračunavanja postavitve seznama)
+        item.classList.add('dnd-lift');
+        item.style.width = rect.width + 'px';
+        item.style.height = rect.height + 'px';
+        item.style.position = 'fixed';
+        item.style.left = rect.left + 'px';
+        item.style.top = rect.top + 'px';
+        item.style.margin = '0';
+        var moved = false;
+        function reals() {
+          return [].slice.call(container.querySelectorAll(itemSel)).filter(function (el) { return el !== item && !el.classList.contains('dnd-ph'); });
         }
-        function move(ev) { moved = true; ev.preventDefault(); var a = after(ev.clientY); if (a == null) container.appendChild(item); else if (a !== item) container.insertBefore(item, a); }
+        function move(ev) {
+          moved = true; if (ev.cancelable) ev.preventDefault();
+          var dy = ev.clientY - startY;
+          item.style.transform = 'translateY(' + dy + 'px)';
+          // kam pripada placeholder (glede na sredino kazalca)
+          var y = ev.clientY, target = null, list = reals();
+          for (var i = 0; i < list.length; i++) { var b = list[i].getBoundingClientRect(); if (y < b.top + b.height / 2) { target = list[i]; break; } }
+          if (target === ph.nextElementSibling && target) return; // brez sprememb
+          // FLIP: zabeleži pozicije, premakni placeholder, animiraj razliko
+          var before = list.map(function (el) { return el.getBoundingClientRect().top; });
+          if (target) container.insertBefore(ph, target); else container.appendChild(ph);
+          list.forEach(function (el, idx) {
+            var d = before[idx] - el.getBoundingClientRect().top;
+            if (d) { el.style.transition = 'none'; el.style.transform = 'translateY(' + d + 'px)';
+              requestAnimationFrame(function () { el.style.transition = 'transform .16s cubic-bezier(.2,0,0,1)'; el.style.transform = ''; }); }
+          });
+        }
         function up() {
           document.removeEventListener('pointermove', move); document.removeEventListener('pointerup', up); document.removeEventListener('pointercancel', up);
-          item.classList.remove('dnd-drag');
-          if (moved && onDrop) onDrop([].slice.call(container.querySelectorAll(itemSel)));
+          // posedi element na mesto placeholderja (z mehkim doskokom)
+          var endRect = ph.getBoundingClientRect();
+          item.style.transition = 'transform .16s cubic-bezier(.2,0,0,1)';
+          item.style.transform = 'translateY(' + (endRect.top - rect.top) + 'px)';
+          var done = function () {
+            if (ph.parentNode) ph.parentNode.insertBefore(item, ph);
+            if (ph.parentNode) ph.parentNode.removeChild(ph);
+            item.classList.remove('dnd-lift');
+            item.style.position = ''; item.style.left = ''; item.style.top = ''; item.style.width = '';
+            item.style.height = ''; item.style.margin = ''; item.style.transform = ''; item.style.transition = '';
+            if (moved && onDrop) onDrop([].slice.call(container.querySelectorAll(itemSel)));
+          };
+          if (moved) setTimeout(done, 160); else done();
         }
         document.addEventListener('pointermove', move, { passive: false }); document.addEventListener('pointerup', up); document.addEventListener('pointercancel', up);
       });

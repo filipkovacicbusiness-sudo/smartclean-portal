@@ -628,7 +628,11 @@ html[data-theme="dark"] .cenik-delconf{background:rgba(255,138,122,.08);}
 .dnd-handle:active{cursor:grabbing;}
 .dnd-handle svg{fill:var(--mid);pointer-events:none;}
 .dnd-handle:hover svg{fill:var(--ink);}
-.dnd-drag{opacity:.7;background:var(--green-m)!important;box-shadow:0 8px 24px rgba(0,0,0,.18);border-radius:10px;}
+/* dvignjen element sledi kazalcu — gladko */
+.dnd-lift{z-index:999;pointer-events:none;box-shadow:0 14px 34px rgba(0,0,0,.32);background:var(--surface);border-radius:12px;cursor:grabbing;will-change:transform;}
+html[data-theme="dark"] .dnd-lift{box-shadow:0 16px 40px rgba(0,0,0,.55);}
+/* prostor, kamor bo element padel */
+.dnd-ph{border:1.5px dashed var(--green-l);border-radius:12px;background:var(--green-m);box-sizing:border-box;list-style:none;}
 .cenik-grip,.art-grip{border:1px solid var(--line);background:var(--surface);width:26px;height:28px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;padding:0;}
 .cenik-grip:hover,.art-grip:hover{border-color:var(--mid);}
 .art-grip{width:30px;height:30px;margin-right:2px;align-self:center;}
