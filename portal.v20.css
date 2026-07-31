@@ -656,13 +656,19 @@ html[data-theme="dark"] .cenik-delconf{background:rgba(255,138,122,.08);}
 html[data-view="grid"] .rows{display:grid;grid-template-columns:repeat(auto-fill,minmax(165px,1fr));gap:12px;align-items:start;}
 html[data-view="grid"] .lcell{display:block;}
 html[data-view="grid"] .lcell .row,
-html[data-view="grid"] .lcell .a-row{grid-template-columns:1fr;gap:5px;margin-bottom:0;align-items:start;}
+html[data-view="grid"] .lcell .a-row{grid-template-columns:1fr;gap:6px;margin-bottom:0;align-content:start;}
 html[data-view="grid"] .lcell .row .chev,
 html[data-view="grid"] .lcell .a-row .chev{display:none;}
-html[data-view="grid"] .lcell .row-pct{text-align:left;}
+html[data-view="grid"] .lcell .row-pct{display:none;}
+html[data-view="grid"] .row-name{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.35;}
+html[data-view="grid"] .row-legal{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.35;}
+/* rezerviraj natanko 2 vrstici za naziv+podjetje, da so vse kartice enako visoke */
+html[data-view="grid"] .lcell .row > span:first-child{display:block;height:2.7em;overflow:hidden;}
+html[data-view="grid"] .lcell .row > span:first-child br{display:none;}
 html[data-view="grid"] .lcell .a-row .num,
 html[data-view="grid"] .lcell .a-row .a-cli,
 html[data-view="grid"] .lcell .a-row .a-date{display:block;text-align:left;}
+html[data-view="grid"] .lcell .a-row .a-cli{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 html[data-view="grid"] .lcell .arts,
 html[data-view="grid"] .lcell .a-det{margin-bottom:0;}
 html[data-view="grid"] .lcell .row[aria-expanded="true"],
@@ -678,3 +684,15 @@ html[data-view="grid"] #cenikList .cgrp{margin-bottom:0;}
 /* v mreži skrij ročaj za vlečenje skupin (razvrščanje strank delaj v seznamu) */
 html[data-view="grid"] #cenikList .cgrp-ghandle{display:none;}
 html[data-view="grid"] #cenikList .cgrp-head-row .cgrp-h{padding-left:16px;}
+
+/* enakomerna višina nezaprtih fakturnih kartic v mreži */
+html[data-view="grid"] .fak-grid{align-items:start;}
+html[data-view="grid"] .fak-grid .fak-card:not(.open){height:132px;overflow:hidden;}
+html[data-view="grid"] .fak-grid .fak-card:not(.open) h3{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.22;}
+html[data-view="grid"] .fak-grid .fak-card:not(.open) .u-sub{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.35;}
+
+/* enakomerna višina cenikovih skupin v mreži */
+html[data-view="grid"] #cenikList .cgrp{height:92px;}
+html[data-view="grid"] #cenikList .cgrp-head-row{height:100%;}
+html[data-view="grid"] #cenikList .cgrp-h{align-items:center;}
+html[data-view="grid"] #cenikList .cgrp-sub{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
