@@ -770,3 +770,16 @@ html[data-theme="dark"] .pill-on{background:rgba(52,199,110,.16);color:#4fd07f;}
 
 /* enotna višina vrstice s filtri (da se seznam začne na isti višini povsod) */
 @media(min-width:721px){ .head .filtri{height:44px;} }
+
+/* ── Enoten hover efekt kot pri Arhivu (Ceniki + Fakture) ─────────── */
+.cgrp{transition:background .15s,border-color .15s;}
+.cgrp:hover{background:var(--green-m);border-color:var(--green-l);}
+.cgrp-h:hover{background:transparent;}
+.fak-card{transition:background .15s,border-color .15s;}
+.fak-card:not(.open):hover{background:var(--green-m);border-color:var(--green-l);}
+/* poravnaj besedilo v Ceniku z besedilom pri Strankah (isti levi rob) */
+.cgrp-h{padding:15px 18px;}
+
+/* ── Več zraka: naslov malo nižje in več prostora pod njim ─────────── */
+main.main{padding-top:44px;}
+.main .head{margin-bottom:30px;}
