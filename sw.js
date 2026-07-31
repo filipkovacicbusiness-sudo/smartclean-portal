@@ -1,8 +1,8 @@
 /* SmartClean Portal — service worker (PWA)
    Koda (HTML/JS/CSS/JSON): network-first → posodobitve so vidne takoj, ko si na spletu.
    Slike/pisave/APK: cache-first (redko se menjajo). */
-var CACHE = 'sc-portal-v23';
-var PRECACHE = ['./portal.v23.css','./portal.v23.js','./start.js','./supabase.js','./index.html'];
+var CACHE = 'sc-portal-v24';
+var PRECACHE = ['./portal.v24.css','./portal.v24.js','./start.js','./supabase.js','./index.html'];
 self.addEventListener('install', function (e) {
   e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(PRECACHE).catch(function(){}); }).then(function () { return self.skipWaiting(); }));
 });

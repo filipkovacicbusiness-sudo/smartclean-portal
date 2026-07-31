@@ -17,7 +17,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Playfair+Display:wght@700;900&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="portal.v23.css"/>
+<link rel="stylesheet" href="portal.v24.css"/>
 <style id="hexfx">
 .sc-hex{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;opacity:1}
 .auth,.app{position:relative;z-index:1}
@@ -209,7 +209,10 @@ html[data-theme="light"] .sc-hex{opacity:.5}
       <section class="sec hidden" id="sec-stranke">
         <div class="head">
           <div><h2>Stranke</h2><p class="count" id="count"></p></div>
-          <div class="filtri"><input type="search" id="search" placeholder="Iskanje po nazivu …" aria-label="Iskanje strank"/></div>
+          <div class="filtri"><select id="strankeSort" aria-label="Razvrsti stranke">
+              <option value="promet" selected>Po prometu</option>
+              <option value="abeceda">Abecedno</option>
+            </select><input type="search" id="search" placeholder="Iskanje po nazivu …" aria-label="Iskanje strank"/></div>
         </div>
         <button type="button" id="novaStrankaBtn" class="btn btn-narrow hidden" style="margin-bottom:16px">+ Nova stranka</button>
         <div id="novaStrankaBox"></div>
@@ -263,7 +266,11 @@ html[data-theme="light"] .sc-hex{opacity:.5}
 
       <section class="sec hidden" id="sec-ceniki">
         <div class="head"><div><h2>Ceniki</h2><p class="count" id="cenikPod">Cene artiklov (neto, na kos)</p></div>
-          <div class="filtri"><input type="search" id="cenikIsci" placeholder="Iskanje po nazivu ali kodi …" aria-label="Iskanje po ceniku"/></div>
+          <div class="filtri"><select id="cenikSort2" aria-label="Razvrsti cenik">
+              <option value="sledi" selected>Kot pri strankah</option>
+              <option value="abeceda">Abecedno</option>
+              <option value="promet">Po prometu</option>
+            </select><input type="search" id="cenikIsci" placeholder="Iskanje po nazivu ali kodi …" aria-label="Iskanje po ceniku"/></div>
         </div>
         <div class="cenik-bar"><button type="button" id="cenikKos" class="btn btn-narrow ghost">Nedavno brisani</button></div>
         <div id="cenikList"></div>
@@ -340,6 +347,6 @@ html[data-theme="light"] .sc-hex{opacity:.5}
 <script src="start.js"></script>
 <script src="config.js"></script>
 <script src="supabase.js"></script>
-<script src="portal.v23.js"></script>
+<script src="portal.v24.js"></script>
 </body>
 </html>
