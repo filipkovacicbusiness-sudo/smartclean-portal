@@ -850,3 +850,19 @@ html[data-view="grid"] #cenikList .cgrp.open{height:auto;overflow:visible;grid-c
 html[data-view="grid"] .rows .lcell.open{grid-column:1 / -1;}
 html[data-view="grid"] .lcell.open .row{height:auto;}
 html[data-view="grid"] .lcell.open .row > span:first-child{height:auto;}
+
+/* Stranke/Arhiv v mreži: vsebino kartice navpično centriraj (kot pri Ceniku) */
+html[data-view="grid"] .lcell:not(.open) .row,
+html[data-view="grid"] .lcell:not(.open) .a-row{align-content:center;}
+
+/* ── Splošni cenik: značka + izoliran videz kartice ────────────── */
+.sc-tag{display:inline-block;margin-left:8px;padding:1px 8px;border-radius:100px;
+  font-size:.62rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
+  vertical-align:middle;white-space:nowrap;
+  background:rgba(var(--brand-rgb),.10);color:var(--ink);
+  border:1px solid rgba(var(--brand-rgb),.30);}
+.cgrp.splosni{border:1px solid rgba(var(--brand-rgb),.38);
+  background:rgba(var(--brand-rgb),.035);}
+.cgrp.splosni .cgrp-name{font-weight:700;}
+.art-splbar{margin-top:6px;}
+.art-splbar .art-spl-btn{width:100%;justify-content:center;}
