@@ -834,3 +834,6 @@ main.main{padding-top:44px;}
 .cenik-pick-item .pk-id{font-family:var(--mono);font-size:.74rem;color:var(--mid);border:1px solid var(--line);border-radius:6px;padding:1px 6px;white-space:nowrap;}
 .cenik-pick-item .pk-nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .cenik-pick-item .pk-c{font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--mid);}
+
+/* v mreži naj se odprta skupina razširi (drugače je vsebina odrezana zaradi fiksne višine) */
+html[data-view="grid"] #cenikList .cgrp.open{height:auto;overflow:visible;grid-column:1 / -1;}

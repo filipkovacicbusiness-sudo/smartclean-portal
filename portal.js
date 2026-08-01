@@ -1251,7 +1251,7 @@
       var open = !!q || _cenikOpen[g.key];
       var sub = ''; var pod = orgPodatki(g.org_id); if (pod) sub = '<span class="cgrp-sub">' + pod + '</span>';
       var bar = OSEBJE ? '<div class="cgrp-bar"><button type="button" class="cgrp-btn" data-neworg="' + g.org_id + '">+ Nov artikel</button><button type="button" class="cgrp-btn ghost" data-addexist="' + g.org_id + '">+ Obstoječ</button><button type="button" class="cgrp-btn ghost" data-izvozorg="' + g.org_id + '">Izvozi</button><button type="button" class="cgrp-btn ghost" data-uvozorg="' + g.org_id + '">Uvozi</button></div>' : '';
-      return '<div class="cgrp" data-key="' + escape_(g.key) + '" data-org="' + escape_(g.org_id) + '"><div class="cgrp-head-row"><button type="button" class="cgrp-h' + (open ? ' open' : '') + '" data-cgrp="' + escape_(g.key) + '">' +
+      return '<div class="cgrp' + (open ? ' open' : '') + '" data-key="' + escape_(g.key) + '" data-org="' + escape_(g.org_id) + '"><div class="cgrp-head-row"><button type="button" class="cgrp-h' + (open ? ' open' : '') + '" data-cgrp="' + escape_(g.key) + '">' +
         '<span class="cgrp-name">' + escape_(g.label) + sub + '</span>' +
         '<span class="cgrp-count">' + stevilo(list.length) + ' art.</span><span class="cgrp-chev" aria-hidden="true">›</span></button></div>' +
         '<div class="cgrp-body' + (open ? ' show' : '') + '">' + bar + rows + '</div></div>';
@@ -1260,7 +1260,8 @@
       h.addEventListener('click', function () {
         var k = h.dataset.cgrp; var willOpen = !h.classList.contains('open');
         _cenikOpen[k] = willOpen; h.classList.toggle('open', willOpen);
-        var g = h.closest('.cgrp'); var b = g ? g.querySelector('.cgrp-body') : null;
+        var g = h.closest('.cgrp'); if (g) g.classList.toggle('open', willOpen);
+        var b = g ? g.querySelector('.cgrp-body') : null;
         if (b) b.classList.toggle('show', willOpen);
       });
     });
