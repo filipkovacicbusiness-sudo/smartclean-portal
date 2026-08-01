@@ -815,3 +815,22 @@ main.main{padding-top:44px;}
 .art-edit-r{display:flex;gap:8px;align-items:center;}
 .art-edit-r .art-id-in{flex:1;min-width:0;padding:8px 11px;border:1.5px solid var(--line);border-radius:8px;background:var(--bg);font-family:var(--mono);text-transform:uppercase;}
 .art-edit .art-ren-in:focus,.art-edit-r .art-id-in:focus{border-color:var(--green-l);outline:none;}
+
+/* ID pill z določenim ID-jem rahlo obarvan (privzeta bela/črna); »brez ID« ostane kot je */
+.art-id:not(.art-id-none){
+  background:rgba(var(--brand-rgb),.08);
+  border-color:rgba(var(--brand-rgb),.38);
+  color:var(--ink);
+}
+
+/* ── Izbirnik obstoječih artiklov (deljeni katalog) ───────────────── */
+.cenik-pick{padding:10px 14px;border-bottom:1px solid var(--line);background:var(--bg);}
+.cenik-pick-in{width:100%;padding:9px 12px;border:1.5px solid var(--line);border-radius:9px;background:var(--surface);margin-bottom:8px;}
+.cenik-pick-in:focus{border-color:var(--green-l);outline:none;}
+.cenik-pick-list{max-height:260px;overflow:auto;display:flex;flex-direction:column;gap:4px;}
+.cenik-pick-item{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;width:100%;text-align:left;
+  padding:9px 11px;border:1px solid var(--line);border-radius:9px;background:var(--surface);cursor:pointer;transition:.12s;}
+.cenik-pick-item:hover{border-color:var(--green-l);background:var(--green-m);}
+.cenik-pick-item .pk-id{font-family:var(--mono);font-size:.74rem;color:var(--mid);border:1px solid var(--line);border-radius:6px;padding:1px 6px;white-space:nowrap;}
+.cenik-pick-item .pk-nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cenik-pick-item .pk-c{font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--mid);}
