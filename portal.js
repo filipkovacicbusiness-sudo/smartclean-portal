@@ -1205,7 +1205,7 @@
     var nm = x.naziv || '';
     if (striped) { var m = nm.match(CENIK_RX); if (m) { var t = nm.slice(m[1].length).replace(/^\s*-\s*/, '').trim(); if (t) nm = t; } }
     return '<div class="cenik-row" data-s="' + x.sifra + '"><div class="cenik-nm">' + escape_(nm) + '</div>' +
-      '<div class="cenik-meta">#' + x.sifra + (x.koda ? ' · ' + escape_(x.koda) : '') + ' · ' + escape_(x.em || 'kos') + '</div>' +
+      '<div class="cenik-meta">' + (x.koda ? escape_(normId(x.koda)) : 'brez ID') + ' · ' + escape_(x.em || 'kos') + '</div>' +
       '<div class="cenik-cena"><span class="cenik-val">' + cenaFmt(x.cena1) + '</span>' +
       (OSEBJE ? '<span class="cenik-acts"><button type="button" class="cenik-grip dnd-handle" title="povleci za razvrščanje" aria-label="razvrsti">' + DND_ICON + '</button><button type="button" class="cenik-edit" data-cedit="' + x.sifra + '" title="uredi" aria-label="uredi">✎</button><button type="button" class="cenik-del" data-cdel="' + x.sifra + '" title="izbriši" aria-label="izbriši">×</button></span>' : '') +
       '</div></div>';
@@ -1340,46 +1340,39 @@
     const rec = CENIKMAP[s]; if (!rec) return;
     const row = btn.closest('.cenik-row');
     row.innerHTML = '<div class="cenik-edit-form"><input type="text" class="cenik-nm-in" placeholder="Naziv artikla">' +
-      '<div class="cenik-edit-r"><label class="cenik-mini-lab">Šifra<input type="text" class="cenik-sif-in" inputmode="numeric" placeholder="ID"></label>' +
+      '<div class="cenik-edit-r"><label class="cenik-mini-lab">ID<input type="text" class="cenik-id-in" maxlength="5" placeholder="PV001"></label>' +
       '<label class="cenik-mini-lab">Cena €<input type="text" class="cenik-in" inputmode="decimal" placeholder="0,00"></label>' +
       '<button type="button" class="btn-mini cenik-save">Shrani</button><button type="button" class="cenik-x cenik-cancel" title="prekliči">×</button></div></div>';
-    const nmIn = row.querySelector('.cenik-nm-in'), cIn = row.querySelector('.cenik-in'), sifIn = row.querySelector('.cenik-sif-in');
-    nmIn.value = rec.naziv || ''; cIn.value = String(rec.cena1).replace('.', ','); sifIn.value = String(rec.sifra);
+    const nmIn = row.querySelector('.cenik-nm-in'), cIn = row.querySelector('.cenik-in'), idIn = row.querySelector('.cenik-id-in');
+    nmIn.value = rec.naziv || ''; cIn.value = String(rec.cena1).replace('.', ','); idIn.value = normId(rec.koda);
     nmIn.focus();
-    [nmIn, cIn, sifIn].forEach(el => el.addEventListener('click', e => e.stopPropagation()));
+    [nmIn, cIn, idIn].forEach(el => el.addEventListener('click', e => e.stopPropagation()));
     const shrani = async () => {
       const nm = nmIn.value.trim();
       const v = parseFloat(String(cIn.value).replace(',', '.'));
-      const novaSif = parseInt(String(sifIn.value).replace(/[^0-9]/g, ''), 10);
+      const novId = normId(idIn.value);
+      const curId = normId(rec.koda);
       if (!nm) { toast('Vpiši naziv'); return; }
       if (isNaN(v) || v < 0) { toast('Neveljavna cena'); return; }
-      if (isNaN(novaSif) || novaSif <= 0) { toast('Neveljavna šifra'); return; }
-      const sifChanged = novaSif !== s;
-      if (sifChanged) {
-        const chk = await sb.from('pricelist').select('sifra').eq('sifra', novaSif).maybeSingle();
-        if (chk.data) { toast('Šifra ' + novaSif + ' je že v uporabi.'); return; }
-      }
+      if (novId && !veljavenId(novId)) { toast('ID mora biti 2 črki + 3 številke (npr. PV001).'); idIn.focus(); return; }
+      if (novId && novId !== curId) { const z = idZaseden(novId, s); if (z) { toast('ID ' + novId + ' že uporablja: ' + (z.naziv || '#' + z.sifra)); idIn.focus(); return; } }
       const patch = { naziv: nm, cena1: v, updated_at: new Date().toISOString() };
-      if (sifChanged) patch.sifra = novaSif;
+      if (novId !== curId) patch.koda = novId;
       const { error } = await sb.from('pricelist').update(patch).eq('sifra', s);
       if (error) { toast('Napaka: ' + error.message); return; }
       let preime = 0;
-      if (nm !== rec.naziv || sifChanged) {
-        const artPatch = {};
-        if (nm !== rec.naziv) artPatch.name = nm;
-        if (sifChanged) artPatch.cena_sifra = novaSif;
-        const rr = await sb.from('articles').update(artPatch).eq('cena_sifra', s).select('id');
+      if (nm !== rec.naziv) {
+        const rr = await sb.from('articles').update({ name: nm }).eq('cena_sifra', s).select('id');
         if (!rr.error && rr.data) preime = rr.data.length;
       }
-      if (sifChanged) { delete CENIKMAP[s]; rec.sifra = novaSif; }
-      rec.naziv = nm; rec.cena1 = v; zgradiCenikMap();
+      rec.naziv = nm; rec.cena1 = v; if (novId !== curId) rec.koda = novId; zgradiCenikMap();
       toast('Shranjeno' + (preime ? ' · posodobljeno v ' + preime + ' artiklih' : ''));
       cenikRender();
     };
     row.querySelector('.cenik-save').addEventListener('click', e => { e.stopPropagation(); shrani(); });
     row.querySelector('.cenik-cancel').addEventListener('click', e => { e.stopPropagation(); cenikRender(); });
     cIn.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); shrani(); } else if (e.key === 'Escape') { cenikRender(); } });
-    sifIn.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); shrani(); } });
+    idIn.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); shrani(); } });
     nmIn.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); cIn.focus(); } });
   }
   async function cenikIzbrisi(s) {
@@ -1482,7 +1475,7 @@
     else if (!arr.length) html += '<div class="empty"><h3>Ni brisanih artiklov</h3><p>Zadnjih 30 dni ni brisanih artiklov.</p></div>';
     else html += '<div class="cenik">' + arr.map(function (x) {
       return '<div class="cenik-row"><div class="cenik-nm">' + escape_(x.naziv) + '</div>' +
-        '<div class="cenik-meta">#' + x.sifra + ' · izbrisan ' + datumcas(x.deleted_at) + '</div>' +
+        '<div class="cenik-meta">' + (x.koda ? escape_(normId(x.koda)) + ' · ' : '') + 'izbrisan ' + datumcas(x.deleted_at) + '</div>' +
         '<div class="cenik-cena"><span class="cenik-val">' + cenaFmt(x.cena1) + '</span><button type="button" class="btn-mini cenik-restore" data-restore="' + x.sifra + '">Obnovi</button></div></div>';
     }).join('') + '</div>';
     box.innerHTML = html;
