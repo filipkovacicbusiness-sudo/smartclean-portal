@@ -837,3 +837,16 @@ main.main{padding-top:44px;}
 
 /* v mreži naj se odprta skupina razširi (drugače je vsebina odrezana zaradi fiksne višine) */
 html[data-view="grid"] #cenikList .cgrp.open{height:auto;overflow:visible;grid-column:1 / -1;}
+
+/* ── Ura in datum na sredini glave ────────────────────────────────── */
+.topbar-in{position:relative;}
+.clock{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  display:flex;flex-direction:column;align-items:center;line-height:1.1;pointer-events:none;text-align:center;}
+.clock .clk-time{font-family:var(--mono);font-size:1rem;font-weight:600;font-variant-numeric:tabular-nums;color:var(--ink);letter-spacing:.02em;}
+.clock .clk-date{font-size:.7rem;color:var(--mid);text-transform:capitalize;margin-top:1px;}
+@media(max-width:680px){ .clock{display:none;} }
+
+/* v mreži naj se odprta stranka razširi čez celo širino (drugače je vsebina stisnjena/odrezana) */
+html[data-view="grid"] .rows .lcell.open{grid-column:1 / -1;}
+html[data-view="grid"] .lcell.open .row{height:auto;}
+html[data-view="grid"] .lcell.open .row > span:first-child{height:auto;}
