@@ -787,3 +787,31 @@ html[data-theme="dark"] .pill-on{background:rgba(52,199,110,.16);color:#4fd07f;}
 /* ── Več zraka: naslov malo nižje in več prostora pod njim ─────────── */
 main.main{padding-top:44px;}
 .main .head{margin-bottom:30px;}
+
+/* ── Artikli stranke: mreža 3 v vrsti (levo→desno), enako visoke kartice ── */
+.arts .art-ur{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;columns:auto;margin:12px 0 0;}
+.arts .art-ur li{display:flex;align-items:flex-start;justify-content:flex-start;gap:8px;
+  padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface);
+  min-height:98px;box-sizing:border-box;transition:border-color .15s,background .15s;}
+.arts .art-ur li:last-child{border-bottom:1px solid var(--line);}
+.arts .art-ur li:hover{border-color:var(--green-l);background:var(--green-m);}
+.art-ur li .art-main{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1;}
+.art-ur li .art-nm{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-weight:500;line-height:1.3;}
+@media(max-width:900px){ .arts .art-ur{grid-template-columns:repeat(2,1fr);} }
+@media(max-width:600px){ .arts .art-ur{grid-template-columns:1fr;} }
+
+/* ── ID artiklov (2 črki + 3 številke) ────────────────────────────── */
+.art-sub{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.art-id{font-family:var(--mono);font-size:.72rem;letter-spacing:.03em;color:var(--mid);
+  border:1px solid var(--line);border-radius:6px;padding:1px 7px;white-space:nowrap;}
+.art-id-none{border-style:dashed;opacity:.7;}
+.art-add .art-id-new{flex:0 0 128px;width:128px;padding:9px 12px;border:1.5px solid var(--line);border-radius:9px;
+  background:var(--bg);font-family:var(--mono);text-transform:uppercase;}
+.art-add .art-id-new:focus{border-color:var(--green-l);outline:none;}
+@media(max-width:600px){ .art-add .art-id-new{flex:1 1 auto;width:auto;} }
+/* urejanje artikla (naziv + ID) */
+.art-edit{display:flex;flex-direction:column;gap:8px;width:100%;}
+.art-edit .art-ren-in{width:100%;padding:8px 11px;border:1.5px solid var(--line);border-radius:8px;background:var(--bg);}
+.art-edit-r{display:flex;gap:8px;align-items:center;}
+.art-edit-r .art-id-in{flex:1;min-width:0;padding:8px 11px;border:1.5px solid var(--line);border-radius:8px;background:var(--bg);font-family:var(--mono);text-transform:uppercase;}
+.art-edit .art-ren-in:focus,.art-edit-r .art-id-in:focus{border-color:var(--green-l);outline:none;}
