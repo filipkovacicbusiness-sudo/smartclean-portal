@@ -1170,6 +1170,14 @@
     var num = best.num + 1, pref = best.pref; if (num > 999) { num = 1; pref = nextPref(pref); }
     return pref + pad3(num);
   }
+  // Naslednja prosta šifra (PK) v ceniku — upošteva TUDI mehko izbrisane vrstice, da ne pride do trka.
+  async function naslednjaSifra() {
+    var maxS = 900000;
+    try { var r = await sb.from('pricelist').select('sifra').order('sifra', { ascending: false }).limit(1);
+      if (!r.error && r.data && r.data[0] && typeof r.data[0].sifra === 'number') maxS = Math.max(maxS, r.data[0].sifra); } catch (e) {}
+    (CENIK || []).forEach(function (x) { if (x.sifra > maxS) maxS = x.sifra; });
+    return maxS + 1;
+  }
   function orgPodatki(orgId) {
     var o = ORGSEZNAM.find(function (x) { return x.id === orgId; }); if (!o) return '';
     return [o.legal_name, o.vat_id ? ('ID DDV: ' + o.vat_id) : '', o.address].filter(Boolean).map(escape_).join(' · ');
@@ -1393,8 +1401,7 @@
     const ustvari = async () => {
       const nm = nmIn.value.trim(); const v = parseFloat(String(cIn.value).replace(',', '.')) || 0;
       if (!nm) { toast('Vpiši naziv'); return; }
-      let maxS = 900000; CENIK.forEach(x => { if (x.sifra > maxS) maxS = x.sifra; });
-      const nova = maxS + 1;
+      const nova = await naslednjaSifra();
       const key = orgId ? ('org:' + orgId) : 'splosno';
       const sibs = CENIK.filter(x => cenikGroupKey(x) === key);
       const so = sibs.reduce((m, x) => Math.max(m, x.sort_order != null ? x.sort_order : 0), 0) + 1;
@@ -1712,8 +1719,7 @@
     // Ustvari tudi zapis v ceniku (pricelist), da je artikel viden v razdelku Ceniki, kjer se doda cena.
     var novaSif = null;
     if (CENIK) {
-      var maxS = 900000; CENIK.forEach(function (x) { if (x.sifra > maxS) maxS = x.sifra; });
-      novaSif = maxS + 1;
+      novaSif = await naslednjaSifra();
       var sibs = CENIK.filter(function (x) { return x.org_id === orgId; });
       var so = sibs.reduce(function (m, x) { return Math.max(m, x.sort_order != null ? x.sort_order : 0); }, 0) + 1;
       var novaRec = { sifra: novaSif, koda: (id || ''), naziv: name, em: 'kos', cena1: 0, cena2: 0, org_id: orgId, sort_order: so };
@@ -1768,8 +1774,8 @@
         const e1 = (await sb.from('articles').update({ name: nm }).eq('id', id)).error;
         if (e1) { toast('Napaka: ' + e1.message); return; }
       }
-      // posodobi cenik (naziv + koda/ID) za lastno ceno te stranke
       if (sif != null && CENIKMAP && CENIKMAP[sif] && CENIKMAP[sif].org_id === orgId) {
+        // artikel že ima svoj zapis v ceniku → posodobi naziv + ID
         const patch = {}; if (nm !== cur) patch.naziv = nm; if (novId !== curId) patch.koda = novId;
         if (Object.keys(patch).length) {
           const e2 = (await sb.from('pricelist').update(patch).eq('sifra', sif)).error;
@@ -1777,6 +1783,26 @@
           if (patch.naziv != null) CENIKMAP[sif].naziv = patch.naziv;
           if (patch.koda != null) CENIKMAP[sif].koda = patch.koda;
         }
+      } else if (novId) {
+        // artikel še nima zapisa v ceniku → ustvari ga, da lahko nosi ID (in ceno)
+        await nalozicenik();
+        var sibs = (CENIK || []).filter(function (x) { return x.org_id === orgId; });
+        var so = sibs.reduce(function (m, x) { return Math.max(m, x.sort_order != null ? x.sort_order : 0); }, 0) + 1;
+        var rec = null, e3 = null;
+        for (var t = 0; t < 4; t++) {
+          var newSif = (await naslednjaSifra()) + t;
+          rec = { sifra: newSif, koda: novId, naziv: nm, em: 'kos', cena1: 0, cena2: 0, org_id: orgId, sort_order: so };
+          e3 = (await sb.from('pricelist').insert(rec)).error;
+          if (!e3) break;
+          if (!/duplicat|unique|primary|already exists/i.test(e3.message || '')) break; // druga napaka → ne ponavljaj
+        }
+        if (e3) { toast('ID ni bilo mogoče shraniti: ' + e3.message); return; }
+        const e4 = (await sb.from('articles').update({ cena_sifra: rec.sifra }).eq('id', id)).error;
+        if (e4) { toast('Napaka pri povezovanju: ' + e4.message); return; }
+        if (CENIK) { CENIK.push(rec); zgradiCenikMap(); }
+        toast('ID ' + novId + ' shranjen');
+        await konec();
+        return;
       }
       toast('Artikel shranjen');
       await konec();
