@@ -328,43 +328,51 @@
         function move(ev) {
           moved = true; if (ev.cancelable) ev.preventDefault();
           item.style.transform = 'translate(' + (ev.clientX - startX) + 'px,' + (ev.clientY - startY) + 'px)';
-          // kam pripada placeholder — zaznaj navpičen seznam vs. mrežo
-          var x = ev.clientX, y = ev.clientY, list = reals();
-          var rects = list.map(function (el) { return el.getBoundingClientRect(); });
-          var isGrid = rects.length > 1 && Math.abs(rects[0].top - rects[1].top) < rects[0].height / 2;
+          var list = reals(); if (!list.length) return;
+          // ZAZNAVA cilja iz POSTAVITVE (offset*), ne iz getBoundingClientRect —
+          // ker transformi med FLIP-animacijo NE vplivajo na offset, se cilj ne trese.
+          var op = ph.offsetParent || container;
+          var opr = op.getBoundingClientRect();
+          var px = ev.clientX - opr.left + op.scrollLeft;
+          var py = ev.clientY - opr.top + op.scrollTop;
+          var boxes = list.map(function (el) { return { el: el, L: el.offsetLeft, T: el.offsetTop, W: el.offsetWidth, H: el.offsetHeight }; });
+          var isGrid = boxes.length > 1 && Math.abs(boxes[0].T - boxes[1].T) < boxes[0].H / 2;
           var target = null;
-          for (var i = 0; i < list.length; i++) {
-            var b = rects[i], cy = b.top + b.height / 2, cx = b.left + b.width / 2;
-            var after;
-            if (!isGrid) { after = y < cy; }
-            else { after = (cy > y + b.height / 2) || (Math.abs(cy - y) <= b.height / 2 && cx > x); }
-            if (after) { target = list[i]; break; }
+          for (var i = 0; i < boxes.length; i++) {
+            var b = boxes[i], cy = b.T + b.H / 2, cx = b.L + b.W / 2, after;
+            if (!isGrid) { after = py < cy; }
+            else { after = (b.T > py + 1) || (Math.abs(cy - py) <= b.H / 2 && cx > px); }
+            if (after) { target = b.el; break; }
           }
-          if (target === ph) return; // že na mestu
-          // FLIP: zabeleži pozicije, premakni placeholder, animiraj razliko
+          // če je rezervni prostor že na pravem mestu, ne premikaj (prepreči utripanje)
+          var refNow = ph.nextElementSibling; while (refNow === item) { refNow = refNow ? refNow.nextElementSibling : null; }
+          if (refNow === (target || null)) return;
+          // FLIP: zabeleži prikazane pozicije, premakni placeholder, animiraj razliko
           var before = list.map(function (el) { return el.getBoundingClientRect(); });
           if (target) container.insertBefore(ph, target); else container.appendChild(ph);
           list.forEach(function (el, idx) {
             var nb = el.getBoundingClientRect(); var dX = before[idx].left - nb.left, dY = before[idx].top - nb.top;
             if (dX || dY) { el.style.transition = 'none'; el.style.transform = 'translate(' + dX + 'px,' + dY + 'px)';
-              requestAnimationFrame(function () { el.style.transition = 'transform .16s cubic-bezier(.2,0,0,1)'; el.style.transform = ''; }); }
+              requestAnimationFrame(function () { el.style.transition = 'transform .18s cubic-bezier(.2,0,0,1)'; el.style.transform = ''; }); }
           });
         }
         function up() {
           document.removeEventListener('pointermove', move); document.removeEventListener('pointerup', up); document.removeEventListener('pointercancel', up);
-          // posedi element na mesto placeholderja (z mehkim doskokom)
+          // posedi element na mesto placeholderja (mehak doskok — X in Y, tudi v mreži)
           var endRect = ph.getBoundingClientRect();
-          item.style.transition = 'transform .16s cubic-bezier(.2,0,0,1)';
-          item.style.transform = 'translateY(' + (endRect.top - rect.top) + 'px)';
+          item.style.transition = 'transform .18s cubic-bezier(.2,0,0,1)';
+          item.style.transform = 'translate(' + (endRect.left - rect.left) + 'px,' + (endRect.top - rect.top) + 'px)';
           var done = function () {
             if (ph.parentNode) ph.parentNode.insertBefore(item, ph);
             if (ph.parentNode) ph.parentNode.removeChild(ph);
             item.classList.remove('dnd-lift');
             item.style.position = ''; item.style.left = ''; item.style.top = ''; item.style.width = '';
             item.style.height = ''; item.style.margin = ''; item.style.transform = ''; item.style.transition = '';
+            // počisti morebitne preostale prehode/transforme na sosedih
+            reals().forEach(function (el) { el.style.transition = ''; el.style.transform = ''; });
             if (moved && onDrop) onDrop([].slice.call(container.querySelectorAll(itemSel)));
           };
-          if (moved) setTimeout(done, 160); else done();
+          if (moved) setTimeout(done, 180); else done();
         }
         document.addEventListener('pointermove', move, { passive: false }); document.addEventListener('pointerup', up); document.addEventListener('pointercancel', up);
       });
@@ -592,6 +600,7 @@
     document.querySelectorAll('#arhivList .a-row').forEach(b => {
       b.addEventListener('click', () => odpriList(b));
     });
+    pripniDrsnik('arhivList', '.a-row');
   }
   $('arhivIsci').addEventListener('input', risiArhiv);
   { const ss = $('arhivSort'); if (ss) ss.addEventListener('change', risiArhiv); }
@@ -1188,6 +1197,29 @@
     return priced.every(function (a) { var p = CENIKMAP[a.cena_sifra]; return p && jeSc(p.koda); });
   }
   var SC_TAG = '<span class="sc-tag" title="Ta stranka uporablja splošni cenik">Splošni cenik</span>';
+  // Drseči poudarek v seznamih (isti občutek kot levi meni). Deleguje na stabilnem vsebniku,
+  // zato preživi ponovni izris otrok. Poudarek »zdrsi« od enega okvirčka do drugega.
+  function pripniDrsnik(contId, sel) {
+    var cont = $(contId); if (!cont || cont._slPripet) return; cont._slPripet = true;
+    cont.classList.add('sl-host');
+    var sl = document.createElement('span'); sl.className = 'list-slider'; sl.setAttribute('aria-hidden', 'true');
+    cont.insertBefore(sl, cont.firstChild);
+    var prvi = true;
+    function premakni(el) {
+      if (!el) return;
+      var cr = cont.getBoundingClientRect(), er = el.getBoundingClientRect();
+      var x = er.left - cr.left + cont.scrollLeft, y = er.top - cr.top + cont.scrollTop;
+      if (prvi) { sl.style.transition = 'none'; }
+      sl.style.transform = 'translate(' + x + 'px,' + y + 'px)';
+      sl.style.width = er.width + 'px'; sl.style.height = er.height + 'px';
+      if (prvi) { void sl.offsetWidth; sl.style.transition = ''; prvi = false; }
+      cont.classList.add('sl-on');
+    }
+    cont.addEventListener('mouseover', function (e) {
+      var el = e.target.closest(sel); if (el && cont.contains(el) && el !== sl) premakni(el);
+    });
+    cont.addEventListener('mouseleave', function () { cont.classList.remove('sl-on'); prvi = true; });
+  }
   function veljavenId(s) { return /^[A-ZČŠŽ]{2}[0-9]{3}$/.test(normId(s)); }
   function idZaseden(id, exceptSifra) { id = normId(id); if (!id || !CENIK) return null; var hit = CENIK.find(function (x) { return x.sifra !== exceptSifra && normId(x.koda) === id; }); return hit || null; }
   function pad3(n) { n = String(n); while (n.length < 3) n = '0' + n; return n; }
@@ -1307,6 +1339,7 @@
     box.querySelectorAll('[data-addexist]').forEach(bn => bn.addEventListener('click', e => { e.stopPropagation(); dodajObstojec(bn.dataset.addexist, bn); }));
     box.querySelectorAll('[data-izvozorg]').forEach(bn => bn.addEventListener('click', e => { e.stopPropagation(); izvoziCenik(bn.dataset.izvozorg); }));
     box.querySelectorAll('[data-uvozorg]').forEach(bn => bn.addEventListener('click', e => { e.stopPropagation(); uvoziVStranko(bn.dataset.uvozorg); }));
+    pripniDrsnik('cenikList', '.cgrp');
     requestAnimationFrame(function () { window.scrollTo(0, _sy); });
   }
   function izvoziCenik(orgId) {
@@ -1786,6 +1819,7 @@
     </button><div class="arts" id="a${i}"></div></div>`;
     }).join('') + '</div>';
     document.querySelectorAll('#content .row').forEach(b => b.addEventListener('click', () => toggle(b)));
+    pripniDrsnik('content', '.row');
     requestAnimationFrame(function () { window.scrollTo(0, _sy); });
   }
   $('search').addEventListener('input', render);

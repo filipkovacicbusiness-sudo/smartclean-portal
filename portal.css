@@ -856,7 +856,7 @@ html[data-view="grid"] .lcell:not(.open) .row,
 html[data-view="grid"] .lcell:not(.open) .a-row{align-content:center;}
 
 /* ── Splošni cenik: značka + izoliran videz kartice ────────────── */
-.sc-tag{display:inline-block;margin-left:8px;padding:1px 8px;border-radius:100px;
+.sc-tag{display:inline-block;align-self:flex-start;max-width:max-content;margin-left:8px;padding:1px 8px;border-radius:100px;
   font-size:.62rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
   vertical-align:middle;white-space:nowrap;
   background:rgba(var(--brand-rgb),.10);color:var(--ink);
@@ -866,3 +866,17 @@ html[data-view="grid"] .lcell:not(.open) .a-row{align-content:center;}
 .cgrp.splosni .cgrp-name{font-weight:700;}
 .art-splbar{margin-top:6px;}
 .art-splbar .art-spl-btn{width:100%;justify-content:center;}
+
+/* ── Drseči poudarek v seznamih (kot levi meni) ────────────────── */
+.sl-host{position:relative;}
+.list-slider{position:absolute;top:0;left:0;width:0;height:0;
+  border-radius:var(--radius);background:var(--green-m);
+  opacity:0;pointer-events:none;z-index:4;
+  transition:transform .3s cubic-bezier(.4,0,.2,1),width .28s cubic-bezier(.4,0,.2,1),
+    height .28s cubic-bezier(.4,0,.2,1),opacity .2s ease;}
+.sl-host.sl-on .list-slider{opacity:1;}
+/* poudarek zdaj zagotavlja drsnik → utišaj hipni :hover na okvirčkih */
+.sl-host .row:hover,.sl-host .a-row:hover{background:var(--surface);border-color:var(--line);}
+.sl-host .cgrp:hover{background:var(--surface);border-color:var(--line);}
+.sl-host .cgrp.splosni:hover{background:rgba(var(--brand-rgb),.035);border-color:rgba(var(--brand-rgb),.38);}
+.sl-host .cgrp-h:hover{background:transparent;}
