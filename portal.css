@@ -280,6 +280,7 @@ h3.sec-h{font-family:var(--serif);font-size:1.05rem;font-weight:700;margin:0 0 1
 .a-row:hover{background:var(--green-m);border-color:var(--green-l);}
 .a-row[aria-expanded="true"]{margin-bottom:0;border-bottom-left-radius:0;border-bottom-right-radius:0;}
 .a-num{font-weight:500;font-variant-numeric:tabular-nums;}
+.a-foot{display:contents;}
 .a-det{display:none;padding:6px 18px 18px;border:1px solid var(--line);border-top:none;
   border-radius:0 0 var(--radius) var(--radius);background:var(--surface);margin-bottom:10px;}
 .a-det.show{display:block;}
@@ -384,7 +385,7 @@ html[data-theme="dark"] .ur-popravek{background:#3a2e14;color:#e6b86b}
 html[data-theme="dark"] .ur-ustvarjeno{background:#14311f;color:#7fd3a0}
 
 /* ══════════ FAKTURE ══════════ */
-.fak-lab{display:flex;align-items:center;gap:6px;font-size:.8rem;color:var(--mid);white-space:nowrap;}
+.fak-lab{display:flex;align-items:center;gap:6px;font-size:.8rem;color:var(--mid);white-space:nowrap;margin:0;}
 .fak-lab input{width:auto;padding:9px 13px;border:1.5px solid var(--line);border-radius:9px;
   background:var(--bg);color:var(--ink);font-size:.9rem;}
 .fak-lab input:focus{border-color:var(--green-l);outline:none;}
@@ -983,9 +984,54 @@ html[data-view="grid"] #cenikList .cgrp .sc-tag{margin-top:2px;}
 /* ── Mreža: kot ⌄ v spodnjem desnem kotu; v Ceniki št. artiklov spodaj levo ── */
 html[data-view="grid"] .lcell:not(.open) .row{position:relative;}
 html[data-view="grid"] .lcell:not(.open) .row .chev{display:block;position:absolute;right:14px;bottom:12px;justify-self:auto;}
-html[data-view="grid"] #cenikList .cgrp{position:relative;}
-html[data-view="grid"] #cenikList .cgrp-count{position:absolute;left:16px;bottom:12px;z-index:2;}
-html[data-view="grid"] #cenikList .cgrp-chev{position:absolute;right:14px;bottom:12px;z-index:2;}
+html[data-view="grid"] #cenikList .cgrp:not(.open){position:relative;}
+html[data-view="grid"] #cenikList .cgrp:not(.open) .cgrp-count{position:absolute;left:16px;bottom:12px;z-index:2;}
+html[data-view="grid"] #cenikList .cgrp:not(.open) .cgrp-chev{position:absolute;right:14px;bottom:12px;z-index:2;}
+
+/* ═══ ENOTNE MREŽNE KARTICE: Stranke (.row) · Ceniki (.cgrp) · Arhiv (.a-row) ═══
+   Isti font, velikost in pozicije elementov v vseh treh submenujih. */
+html[data-view="grid"] .lcell:not(.open) .row,
+html[data-view="grid"] .lcell:not(.open) .a-row,
+html[data-view="grid"] #cenikList .cgrp:not(.open) .cgrp-h{
+  position:relative;display:flex;flex-direction:column;gap:2px;
+  padding:15px 16px;align-items:stretch;align-content:normal;text-align:left;min-width:0;box-sizing:border-box;}
+/* Ceniki: glava naj napolni celotno višino kartice, da meritev/puščica sedeta na dno */
+html[data-view="grid"] #cenikList .cgrp:not(.open) .cgrp-head-row{align-items:stretch;height:100%;}
+/* prvi (ovojni) span pri Strankah in ime-skupina pri Cenikih = stolpec naslov+podnaslov */
+html[data-view="grid"] .lcell:not(.open) .row > span:first-child,
+html[data-view="grid"] #cenikList .cgrp:not(.open) .cgrp-name{
+  display:flex;flex-direction:column;gap:2px;align-items:stretch;justify-content:flex-start;
+  height:auto;overflow:visible;min-width:0;max-width:100%;}
+/* ── Naslov ── */
+html[data-view="grid"] .lcell:not(.open) .row-name,
+html[data-view="grid"] .lcell:not(.open) .a-row .a-num,
+html[data-view="grid"] #cenikList .cgrp:not(.open) .cgrp-nm{
+  display:block;font-family:var(--sans);font-size:1rem;font-weight:600;line-height:1.4;height:1.4em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;max-width:100%;color:var(--ink);text-align:left;}
+/* ── Podnaslov ── */
+html[data-view="grid"] .lcell:not(.open) .row-legal,
+html[data-view="grid"] .lcell:not(.open) .a-row .a-cli,
+html[data-view="grid"] #cenikList .cgrp:not(.open) .cgrp-sub{
+  display:block;font-family:var(--sans);font-size:.76rem;font-weight:400;line-height:1.3;height:1.3em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;-webkit-line-clamp:none;min-width:0;max-width:100%;color:var(--mid);text-align:left;}
+/* ── Meritev spodaj levo ── */
+html[data-view="grid"] .lcell:not(.open) .row .num,
+html[data-view="grid"] .lcell:not(.open) .a-row .a-foot,
+html[data-view="grid"] #cenikList .cgrp:not(.open) .cgrp-count{
+  position:absolute;left:16px;bottom:12px;right:38px;margin:0;
+  display:flex;gap:7px;align-items:baseline;
+  font-family:var(--mono);font-size:.76rem;font-weight:400;color:var(--mid);text-align:left;
+  font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;align-self:auto;}
+html[data-view="grid"] .lcell:not(.open) .a-row .a-foot .num{font-size:.76rem;color:var(--mid);text-align:left;font-weight:400;}
+html[data-view="grid"] .lcell:not(.open) .a-row .a-foot .a-qty::before{content:'· ';}
+/* ── Puščica spodaj desno ── */
+html[data-view="grid"] .lcell:not(.open) .row .chev,
+html[data-view="grid"] .lcell:not(.open) .a-row .chev,
+html[data-view="grid"] #cenikList .cgrp:not(.open) .cgrp-chev{
+  display:block;position:absolute;right:14px;bottom:10px;left:auto;
+  font-size:19px;line-height:1;color:var(--mid);justify-self:auto;z-index:2;}
+/* skrij delež pri Strankah in podvojene elemente */
+html[data-view="grid"] .lcell:not(.open) .row-pct{display:none;}
 
 /* Mobilno: skrij vrstico z davčno št. in naslovom v okvirčku stranke */
 @media(max-width:760px){
@@ -995,7 +1041,8 @@ html[data-view="grid"] #cenikList .cgrp-chev{position:absolute;right:14px;bottom
 /* Mobilno: Fakture — »Od« in »Do« v isti vrstici, stranka in gumb pod njima */
 @media(max-width:760px){
   #sec-fakture .filtri{flex-direction:row;flex-wrap:wrap;align-items:stretch;gap:8px;}
-  #sec-fakture .filtri .fak-lab{flex:1 1 calc(50% - 4px);min-width:0;}
+  #sec-fakture .filtri .fak-lab{flex:1 1 calc(50% - 4px);min-width:0;justify-content:center;}
+  #sec-fakture .filtri .fak-lab input{width:auto;min-width:0;flex:0 1 auto;max-width:100%;}
   #sec-fakture .filtri .cs,
   #sec-fakture .filtri select,
   #sec-fakture .filtri #fakBtn{flex:1 1 100%;max-width:none;width:100%;}

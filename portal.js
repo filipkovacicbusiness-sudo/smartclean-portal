@@ -605,8 +605,7 @@
       ${klikljivo ? '' : 'style="cursor:default"'}>
       <span class="a-num">${escape_(l.number || '—')}</span>
       <span class="a-cli">${escape_(OSEBJE ? ORGIME[l.org_id] || '—' : l.issued_name || '')}</span>
-      <span class="num a-date">${datum(l.doc_date)}</span>
-      <span class="num">${stevilo(l.total_pieces)} kos</span>
+      <span class="a-foot"><span class="num a-date">${datum(l.doc_date)}</span><span class="num a-qty">${stevilo(l.total_pieces)} kos</span></span>
       <span class="chev" aria-hidden="true">${klikljivo ? '›' : ''}</span>
     </button>
     <div class="a-det" id="det${i}"></div></div>`).join('') + '</div>';
