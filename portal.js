@@ -1392,7 +1392,7 @@
       var splBtn = '<button type="button" class="cgrp-btn ghost sc-toggle' + (jeSpl ? ' on' : '') + '" data-splorg="' + g.org_id + '" data-splon="' + (jeSpl ? '1' : '0') + '">' + (jeSpl ? 'Splošni cenik: vklopljen ✓' : 'Vklopi splošni cenik') + '</button>';
       var bar = OSEBJE ? '<div class="cgrp-bar"><button type="button" class="cgrp-btn ghost" data-izvozorg="' + g.org_id + '">Izvozi</button><button type="button" class="cgrp-btn ghost" data-uvozorg="' + g.org_id + '">Uvozi</button>' + splBtn + '</div>' : '';
       return '<div class="cgrp' + (open ? ' open' : '') + '" data-key="' + escape_(g.key) + '" data-org="' + escape_(g.org_id) + '"><div class="cgrp-head-row"><button type="button" class="cgrp-h' + (open ? ' open' : '') + '" data-cgrp="' + escape_(g.key) + '">' +
-        '<span class="cgrp-name">' + escape_(g.label) + (jeSpl ? SC_TAG : '') + sub + '</span>' +
+        '<span class="cgrp-name">' + escape_(g.label) + sub + (jeSpl ? SC_TAG : '') + '</span>' +
         '<span class="cgrp-count">' + stevilo(list.length) + ' art.</span><span class="cgrp-chev" aria-hidden="true">›</span></button></div>' +
         '<div class="cgrp-body' + (open ? ' show' : '') + '">' + bar + rows + '</div></div>';
     }).join('');
