@@ -1222,11 +1222,18 @@
     if (!/^SC[0-9]{3}$/.test(id)) { toast('ID splošnega artikla mora biti SC + 3 številke (npr. SC001).'); return; }
     if (idZaseden(id, null)) { toast('ID ' + id + ' že obstaja.'); return; }
     var sifra = await naslednjaSifra();
-    var rec = { sifra: sifra, koda: id, naziv: name, em: 'kos', cena1: 0, cena2: 0, org_id: null, sort_order: null };
+    // vrstni red: ohrani trenutni prikaz obstoječih SC in dodaj NOVEGA na konec
+    var scList = (CENIK || []).filter(function (x) { return jeSc(x.koda); }).slice().sort(cenikSort);
+    var rec = { sifra: sifra, koda: id, naziv: name, em: 'kos', cena1: 0, cena2: 0, org_id: null, sort_order: scList.length };
     var e = (await sb.from('pricelist').insert(rec)).error;
     if (e) { toast('Napaka: ' + e.message); return; }
-    CENIK.push(rec); zgradiCenikMap();
+    CENIK.push(rec);
+    // normaliziraj sort_order vseh SC (obstoječi po trenutnem vrstnem redu, nov na koncu) → stabilen vrstni red
+    var koncni = scList.concat([rec]); var ups = [];
+    koncni.forEach(function (p, i) { if (p.sort_order !== i) { p.sort_order = i; ups.push(sb.from('pricelist').update({ sort_order: i }).eq('sifra', p.sifra)); } });
+    zgradiCenikMap();
     _cenikOpen['splosni'] = true;
+    if (ups.length) await Promise.all(ups);
     toast('Dodano v splošni cenik: ' + id);
     cenikRender();
   }
@@ -1303,7 +1310,7 @@
     var scRows = scItems.map(function (p) { return cenikVrsticaHtml(p, '', null); }).join('');
     var scAdd = OSEBJE ? ('<div class="art-add sc-add"><input type="text" class="sc-new" placeholder="nov standardni artikel"><input type="text" class="sc-id-new" placeholder="ID" maxlength="5" value="' + escape_(nextSc()) + '"><button type="button" class="btn btn-narrow sc-add-btn">+ Dodaj</button></div>') : '';
     var scBody = (scRows || '<p class="u-sub" style="padding:12px 16px 4px">Dodaj standardne artikle (ID SC001, SC002 …). Veljajo za vse stranke.</p>') + scAdd;
-    var scCard = OSEBJE ? ('<div class="cgrp splosni' + (scOpen ? ' open' : '') + '" data-key="splosni"><div class="cgrp-head-row"><button type="button" class="cgrp-h' + (scOpen ? ' open' : '') + '" data-cgrp="splosni"><span class="cgrp-name">Splošni cenik<span class="cgrp-sub">Standardni artikli (ID se začne s SC) · velja za vse</span></span><span class="cgrp-count">' + stevilo(scItems.length) + ' art.</span><span class="cgrp-chev" aria-hidden="true">›</span></button></div><div class="cgrp-body' + (scOpen ? ' show' : '') + '">' + scBody + '</div></div>') : '';
+    var scCard = OSEBJE ? ('<div class="cgrp splosni' + (scOpen ? ' open' : '') + '" data-key="splosni"><div class="cgrp-head-row"><button type="button" class="cgrp-h' + (scOpen ? ' open' : '') + '" data-cgrp="splosni"><span class="cgrp-name">Splošni cenik</span><span class="cgrp-count">' + stevilo(scItems.length) + ' art.</span><span class="cgrp-chev" aria-hidden="true">›</span></button></div><div class="cgrp-body' + (scOpen ? ' show' : '') + '">' + scBody + '</div></div>') : '';
     box.innerHTML = scCard + arr.map(function (g) {
       var list = g.items.slice().sort(function (x, y) { return (x.ord || 0) - (y.ord || 0) || cenikSort(x.p, y.p); });
       var rows = list.map(function (it) { return cenikVrsticaHtml(it.p, g.org_id, it.artId); }).join('');
@@ -1403,7 +1410,16 @@
     var g = body.closest ? body.closest('.cgrp') : null;
     var orgId = g ? g.dataset.org : null;
     var els = [].slice.call(body.querySelectorAll('.cenik-row'));
-    if (!els.length || !orgId) return;
+    if (!els.length) return;
+    // Splošni cenik: vrstni red je skupen → shrani v pricelist.sort_order
+    if (g && g.dataset.key === 'splosni') {
+      var supd = [];
+      els.forEach(function (el, i) { var sif = parseInt(el.dataset.s, 10); if (isNaN(sif)) return; supd.push(sb.from('pricelist').update({ sort_order: i }).eq('sifra', sif)); if (CENIKMAP[sif]) CENIKMAP[sif].sort_order = i; });
+      var sres = await Promise.all(supd);
+      if (sres.some(function (r) { return r.error; })) toast('Vrstni red morda ni v celoti shranjen.');
+      return;
+    }
+    if (!orgId) return;
     var updates = [];
     els.forEach(function (el, i) {
       var sif = parseInt(el.dataset.s, 10); if (isNaN(sif)) return;
