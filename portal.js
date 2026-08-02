@@ -691,7 +691,12 @@
     await nalozicenik();
     try {
       const { data } = await sb.from('articles').select('id,name,cena_sifra').eq('org_id', org_id).order('sort_order');
-      box._arts = (data || []).map(function (a) { return { id: a.id, name: a.name || '', koda: (a.cena_sifra != null && CENIKMAP && CENIKMAP[a.cena_sifra]) ? normId(CENIKMAP[a.cena_sifra].koda) : '' }; });
+      var vid = {};
+      box._arts = [];
+      (data || []).forEach(function (a) {
+        if (a.cena_sifra != null) { if (vid[a.cena_sifra]) return; vid[a.cena_sifra] = true; } // brez podvojenih (isti artikel)
+        box._arts.push({ id: a.id, name: a.name || '', koda: (a.cena_sifra != null && CENIKMAP && CENIKMAP[a.cena_sifra]) ? normId(CENIKMAP[a.cena_sifra].koda) : '' });
+      });
     } catch (e) { box._arts = []; }
   }
   async function urediList(box) {
