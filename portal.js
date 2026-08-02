@@ -616,7 +616,7 @@
       return;
     }
     document.querySelectorAll('#arhivList .a-row[aria-expanded="true"]').forEach(o => {
-      if (o !== btn) { o.setAttribute('aria-expanded', 'false'); const d = document.getElementById('det' + o.dataset.i); if (d) d.classList.remove('show'); const lc = o.closest('.lcell'); if (lc) lc.classList.remove('open'); }
+      if (o !== btn) { o.setAttribute('aria-expanded', 'false'); const d = (o.nextElementSibling && o.nextElementSibling.classList.contains('a-det')) ? o.nextElementSibling : document.getElementById('det' + o.dataset.i); if (d) d.classList.remove('show'); const lc = o.closest('.lcell'); if (lc) lc.classList.remove('open'); }
     });
     btn.setAttribute('aria-expanded', 'true');
     box.classList.add('show'); if (lcell) lcell.classList.add('open');
