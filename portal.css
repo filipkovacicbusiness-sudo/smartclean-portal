@@ -875,9 +875,10 @@ html[data-view="grid"] .lcell:not(.open) .a-row{align-content:center;}
 .art-splbar{margin-top:6px;}
 .art-splbar .art-spl-btn{width:100%;justify-content:center;}
 
-/* Značka »Splošni cenik«: vedno v svoji vrstici, poravnana LEVO z besedilom (ime/podnaslov) */
+/* Značka »Splošni cenik«: v svoji vrstici POD polnim imenom, poravnana LEVO */
 .cgrp-name .sc-tag{margin-left:0;margin-top:2px;}
-html[data-view="grid"] .row .sc-tag{display:block;margin-left:0;margin-top:3px;}
+.row .sc-tag{margin-left:0;margin-top:4px;}
+html[data-view="grid"] .row .sc-tag{display:block;margin-top:4px;}
 html[data-view="grid"] .row.has-sc > span:first-child{height:auto;}
 /* Preklop splošnega cenika v Ceniki */
 .sc-toggle.on{background:rgba(var(--brand-rgb),.10);border-color:rgba(var(--brand-rgb),.38);color:var(--ink);opacity:1;}

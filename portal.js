@@ -2020,8 +2020,7 @@
       const kg = kgm[o.id] || 0;
       const _spl = strankaSplosni(o.id);
       return `<div class="lcell"><button class="row${_spl ? ' has-sc' : ''}" type="button" data-id="${o.id}" data-i="${i}" aria-expanded="false">
-      <span><span class="row-name"><span class="row-nm">${escape_(o.name)}</span></span>${_spl ? SC_TAG : ''}
-      ${o.legal_name ? `<br><span class="row-legal">${escape_(o.legal_name)}</span>` : ''}</span>
+      <span><span class="row-name"><span class="row-nm">${escape_(o.name)}</span></span>${o.legal_name ? `<br><span class="row-legal">${escape_(o.legal_name)}</span>` : ''}${_spl ? SC_TAG : ''}</span>
       <span class="row-pct" title="delež vseh količin ta mesec">${skupajKg ? (Math.round(kg / skupajKg * 1000) / 10).toLocaleString('sl-SI') + ' %' : '—'}</span>
       <span class="num">${fmtKg(kg)}</span>
       <span class="chev" aria-hidden="true">›</span>
@@ -2139,8 +2138,8 @@
       if (_row && _row.classList && _row.classList.contains('row')) {
         var _priced = arts.filter(function (a) { return a.cena_sifra != null; });
         var _spl = _priced.length > 0 && _priced.every(function (a) { var p = CENIKMAP[a.cena_sifra]; return p && jeSc(p.koda); });
-        var _rn = _row.querySelector('.row-name'); var _has = _row.querySelector('.sc-tag');
-        if (_rn) { if (_spl && !_has) _rn.insertAdjacentHTML('afterend', SC_TAG); else if (!_spl && _has) _has.remove(); }
+        var _rn = _row.querySelector('.row-name'); var _wrap = _rn ? _rn.parentNode : null; var _has = _row.querySelector('.sc-tag');
+        if (_wrap) { if (_spl && !_has) _wrap.insertAdjacentHTML('beforeend', SC_TAG); else if (!_spl && _has) _has.remove(); }
         _row.classList.toggle('has-sc', !!_spl);
       }
     } catch (e) {}
