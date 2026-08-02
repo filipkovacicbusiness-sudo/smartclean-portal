@@ -600,7 +600,6 @@
     document.querySelectorAll('#arhivList .a-row').forEach(b => {
       b.addEventListener('click', () => odpriList(b));
     });
-    pripniDrsnik('arhivList', '.a-row');
   }
   $('arhivIsci').addEventListener('input', risiArhiv);
   { const ss = $('arhivSort'); if (ss) ss.addEventListener('change', risiArhiv); }
@@ -1197,29 +1196,6 @@
     return priced.every(function (a) { var p = CENIKMAP[a.cena_sifra]; return p && jeSc(p.koda); });
   }
   var SC_TAG = '<span class="sc-tag" title="Ta stranka uporablja splošni cenik">Splošni cenik</span>';
-  // Drseči poudarek v seznamih (isti občutek kot levi meni). Deleguje na stabilnem vsebniku,
-  // zato preživi ponovni izris otrok. Poudarek »zdrsi« od enega okvirčka do drugega.
-  function pripniDrsnik(contId, sel) {
-    var cont = $(contId); if (!cont || cont._slPripet) return; cont._slPripet = true;
-    cont.classList.add('sl-host');
-    var sl = document.createElement('span'); sl.className = 'list-slider'; sl.setAttribute('aria-hidden', 'true');
-    cont.insertBefore(sl, cont.firstChild);
-    var prvi = true;
-    function premakni(el) {
-      if (!el) return;
-      var cr = cont.getBoundingClientRect(), er = el.getBoundingClientRect();
-      var x = er.left - cr.left + cont.scrollLeft, y = er.top - cr.top + cont.scrollTop;
-      if (prvi) { sl.style.transition = 'none'; }
-      sl.style.transform = 'translate(' + x + 'px,' + y + 'px)';
-      sl.style.width = er.width + 'px'; sl.style.height = er.height + 'px';
-      if (prvi) { void sl.offsetWidth; sl.style.transition = ''; prvi = false; }
-      cont.classList.add('sl-on');
-    }
-    cont.addEventListener('mouseover', function (e) {
-      var el = e.target.closest(sel); if (el && cont.contains(el) && el !== sl) premakni(el);
-    });
-    cont.addEventListener('mouseleave', function () { cont.classList.remove('sl-on'); prvi = true; });
-  }
   function veljavenId(s) { return /^[A-ZČŠŽ]{2}[0-9]{3}$/.test(normId(s)); }
   function idZaseden(id, exceptSifra) { id = normId(id); if (!id || !CENIK) return null; var hit = CENIK.find(function (x) { return x.sifra !== exceptSifra && normId(x.koda) === id; }); return hit || null; }
   function pad3(n) { n = String(n); while (n.length < 3) n = '0' + n; return n; }
@@ -1339,7 +1315,6 @@
     box.querySelectorAll('[data-addexist]').forEach(bn => bn.addEventListener('click', e => { e.stopPropagation(); dodajObstojec(bn.dataset.addexist, bn); }));
     box.querySelectorAll('[data-izvozorg]').forEach(bn => bn.addEventListener('click', e => { e.stopPropagation(); izvoziCenik(bn.dataset.izvozorg); }));
     box.querySelectorAll('[data-uvozorg]').forEach(bn => bn.addEventListener('click', e => { e.stopPropagation(); uvoziVStranko(bn.dataset.uvozorg); }));
-    pripniDrsnik('cenikList', '.cgrp');
     requestAnimationFrame(function () { window.scrollTo(0, _sy); });
   }
   function izvoziCenik(orgId) {
@@ -1819,7 +1794,6 @@
     </button><div class="arts" id="a${i}"></div></div>`;
     }).join('') + '</div>';
     document.querySelectorAll('#content .row').forEach(b => b.addEventListener('click', () => toggle(b)));
-    pripniDrsnik('content', '.row');
     requestAnimationFrame(function () { window.scrollTo(0, _sy); });
   }
   $('search').addEventListener('input', render);
