@@ -1234,7 +1234,16 @@
     zgradiCenikMap();
     _cenikOpen['splosni'] = true;
     if (ups.length) await Promise.all(ups);
-    toast('Dodano v splošni cenik: ' + id);
+    // PROPAGACIJA: dodaj nov artikel VSEM strankam, ki imajo splošni cenik vklopljen
+    var ciljOrgi = (ORGSEZNAM || []).filter(function (o) { return strankaSplosni(o.id); });
+    var dodanih = 0;
+    for (var ci = 0; ci < ciljOrgi.length; ci++) {
+      var oid = ciljOrgi[ci].id;
+      var maxo = -1; (CLANI || []).forEach(function (a) { if (a.org_id === oid && typeof a.sort_order === 'number' && a.sort_order > maxo) maxo = a.sort_order; });
+      var ins = await sb.from('articles').insert({ org_id: oid, name: name, cena_sifra: sifra, sort_order: maxo + 1 }).select('id').maybeSingle();
+      if (!(ins && ins.error)) { if (CLANI) CLANI.push({ id: ins && ins.data ? ins.data.id : null, org_id: oid, name: name, cena_sifra: sifra, sort_order: maxo + 1 }); dodanih++; }
+    }
+    toast('Dodano v splošni cenik: ' + id + (dodanih ? ' · dodano ' + dodanih + ' strankam' : ''));
     cenikRender();
   }
   // Naslednja prosta šifra (PK) v ceniku — upošteva TUDI mehko izbrisane vrstice, da ne pride do trka.
