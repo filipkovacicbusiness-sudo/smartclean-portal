@@ -1212,18 +1212,31 @@
   }
   async function nalozicenik(force) {
     if (CENIK && CENIKMAP && !force) return { ok: true };
-    var r = await sb.from('pricelist').select('sifra,koda,naziv,em,cena1,cena2,org_id,sort_order,deleted_at').is('deleted_at', null).order('naziv');
+    var r = await vseVrstice(function (a, b) { return sb.from('pricelist').select('sifra,koda,naziv,em,cena1,cena2,org_id,sort_order,deleted_at').is('deleted_at', null).order('naziv').range(a, b); });
     if (r.error) {
-      var r2 = await sb.from('pricelist').select('sifra,koda,naziv,em,cena1,cena2').order('naziv');
+      var r2 = await vseVrstice(function (a, b) { return sb.from('pricelist').select('sifra,koda,naziv,em,cena1,cena2').order('naziv').range(a, b); });
       if (r2.error) return { ok: false, missing: true };
       CENIK = (r2.data || []).map(function (x) { return Object.assign({ org_id: null, sort_order: null }, x); });
       zgradiCenikMap(); return { ok: true, noext: true };
     }
     CENIK = r.data || []; zgradiCenikMap(); return { ok: true };
   }
+  // Naloži VSE vrstice (Supabase privzeto vrne le 1000) — po straneh.
+  async function vseVrstice(qFn) {
+    var all = [], od = 0, kos = 1000;
+    while (true) {
+      var r = await qFn(od, od + kos - 1);
+      if (r.error) return { error: r.error, data: all };
+      var d = r.data || [];
+      all = all.concat(d);
+      if (d.length < kos) break;
+      od += kos;
+    }
+    return { data: all };
+  }
   async function naloziClane(force) {
     if (CLANI && !force) return CLANI;
-    var r = await sb.from('articles').select('id,org_id,name,cena_sifra,sort_order');
+    var r = await vseVrstice(function (a, b) { return sb.from('articles').select('id,org_id,name,cena_sifra,sort_order').range(a, b); });
     CLANI = r.error ? [] : (r.data || []);
     return CLANI;
   }
