@@ -1697,8 +1697,17 @@
   // Preklop iz Ceniki (z opozorilom) — vklop nadomesti cene, izklop izprazni seznam.
   async function preklopiSplosni(orgId, on) {
     var o = ORGSEZNAM.find(function (x) { return x.id === orgId; }) || {};
-    if (on) { if (!confirm('Vklopim SPLOŠNI CENIK za »' + (o.name || '') + '«?\n\n⚠ To nadomesti obstoječe cene/artikle te stranke s splošnim cenikom.')) return; }
-    else { if (!confirm('Izklopim splošni cenik za »' + (o.name || '') + '«?\n\n⚠ Seznam artiklov te stranke bo PRAZEN.')) return; }
+    var ime = o.name || 'stranko';
+    var ok0 = await potrdiModal(on ? {
+      naslov: 'Vklopi splošni cenik',
+      sporocilo: 'Vklopim splošni cenik za »' + ime + '«? To nadomesti obstoječe cene in artikle te stranke s splošnim cenikom.',
+      potrdi: 'Vklopi'
+    } : {
+      naslov: 'Izklopi splošni cenik',
+      sporocilo: 'Izklopim splošni cenik za »' + ime + '«? Seznam artiklov te stranke bo prazen.',
+      potrdi: 'Izklopi in izprazni', nevarno: true
+    });
+    if (!ok0) return;
     toast(on ? 'Vklapljam splošni cenik …' : 'Izklapljam …');
     _cenikOpen['org:' + orgId] = true;
     var ok = await nastaviSplosni(orgId, on);
@@ -1825,6 +1834,30 @@
     _toastEl.classList.add('show');
     clearTimeout(_toastEl._h);
     _toastEl._h = setTimeout(() => _toastEl.classList.remove('show'), 2600);
+  }
+  // Potrditveno okno V PORTALU (namesto brskalnikovega confirm). Vrne Promise<boolean>.
+  function potrdiModal(opts) {
+    opts = opts || {};
+    return new Promise(function (resolve) {
+      var danger = !!opts.nevarno;
+      var back = document.createElement('div');
+      back.className = 'sc-modal-back';
+      back.innerHTML = '<div class="sc-modal" role="dialog" aria-modal="true"><h4></h4><p></p><div class="sc-modal-acts"><button type="button" class="sc-modal-btn ghost" data-no></button><button type="button" class="sc-modal-btn ' + (danger ? 'danger' : 'primary') + '" data-yes></button></div></div>';
+      back.querySelector('h4').textContent = opts.naslov || 'Potrditev';
+      back.querySelector('p').textContent = opts.sporocilo || '';
+      back.querySelector('[data-no]').textContent = opts.preklici || 'Prekliči';
+      back.querySelector('[data-yes]').textContent = opts.potrdi || 'Potrdi';
+      document.body.appendChild(back);
+      requestAnimationFrame(function () { back.classList.add('show'); });
+      var done = false;
+      function zapri(val) { if (done) return; done = true; back.classList.remove('show'); document.removeEventListener('keydown', onKey); setTimeout(function () { if (back.parentNode) back.parentNode.removeChild(back); }, 180); resolve(val); }
+      function onKey(e) { if (e.key === 'Escape') zapri(false); else if (e.key === 'Enter') zapri(true); }
+      back.querySelector('[data-no]').addEventListener('click', function (e) { e.stopPropagation(); zapri(false); });
+      back.querySelector('[data-yes]').addEventListener('click', function (e) { e.stopPropagation(); zapri(true); });
+      back.addEventListener('click', function (e) { if (e.target === back) zapri(false); });
+      document.addEventListener('keydown', onKey);
+      var yb = back.querySelector('[data-yes]'); if (yb) yb.focus();
+    });
   }
 
   /* ══════════ STRANKE (osebje) ══════════ */

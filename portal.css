@@ -541,8 +541,8 @@ input[type=email],input[type=password],input[type=search],.field input[type=text
 .cgrp-body{display:none;border-top:1px solid var(--line);}
 .cgrp-body.show{display:block;}
 .cgrp-body .cenik-row:last-child{border-bottom:none;}
-/* prazna skupina (samo vrstica z gumbi): brez spodnje črte, da spodnji robovi niso »zaglitchani« */
-.cgrp-body .cgrp-bar:last-child{border-bottom:none;}
+/* prazna skupina (samo vrstica z gumbi): brez spodnje črte + zaobljena spodnja robova + brez ozadja, da ni šiva na robu */
+.cgrp-body .cgrp-bar:last-child{border-bottom:none;background:transparent;border-bottom-left-radius:var(--radius);border-bottom-right-radius:var(--radius);}
 
 /* ── artikli: cena + povezava s cenikom ── */
 .art-ur li .art-main{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;}
@@ -897,3 +897,17 @@ html[data-theme="dark"] .art-hidden-tag{background:rgba(255,138,122,.14);color:#
 /* Naziv stranke: ena vrstica (maska) + drseči trak ob hoverju (kot glasbene aplikacije) */
 .row-name{display:block;max-width:100%;overflow:hidden;white-space:nowrap;}
 .row-nm{display:inline-block;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom;transition:transform .8s ease;will-change:transform;}
+
+/* Potrditveno okno v portalu (namesto brskalnikovega confirm) */
+.sc-modal-back{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.42);opacity:0;transition:opacity .18s ease;}
+.sc-modal-back.show{opacity:1;}
+.sc-modal{width:100%;max-width:420px;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:16px;padding:22px 22px 18px;box-shadow:0 24px 70px rgba(0,0,0,.28);transform:translateY(10px) scale(.98);transition:transform .18s ease;}
+.sc-modal-back.show .sc-modal{transform:none;}
+.sc-modal h4{margin:0 0 8px;font-size:1.06rem;font-weight:700;}
+.sc-modal p{margin:0 0 18px;color:var(--mid);font-size:.92rem;line-height:1.5;}
+.sc-modal-acts{display:flex;gap:10px;justify-content:flex-end;}
+.sc-modal-btn{padding:9px 17px;border-radius:100px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer;font-size:.9rem;font-weight:600;}
+.sc-modal-btn.ghost:hover{border-color:var(--mid);}
+.sc-modal-btn.primary{background:var(--ink);color:var(--bg);border-color:var(--ink);}
+.sc-modal-btn.danger{background:#c0392b;color:#fff;border-color:#c0392b;}
+.sc-modal-btn.danger:hover{background:#a93226;}
