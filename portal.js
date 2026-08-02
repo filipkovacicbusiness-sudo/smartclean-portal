@@ -35,7 +35,7 @@
     const p = temaPref();
     document.querySelectorAll('[data-tema]').forEach(b => b.classList.toggle('on', b.dataset.tema === p));
   }
-  function nastaviTemo(pref) { try { localStorage.setItem('sc-portal-theme', pref); } catch (e) {} uporabiTemo(); oznaciTemo(); }
+  function nastaviTemo(pref) { try { localStorage.setItem('sc-portal-theme', pref); } catch (e) {} uporabiTemo(); oznaciTemo(); if (typeof shraniNastavitve === 'function') shraniNastavitve(); }
   uporabiTemo();
 
   /* ── PWA namestitev ──────────────────────────────────────────────── */
@@ -80,11 +80,28 @@
     const v = pogledPref();
     document.querySelectorAll('.pogled-seg').forEach(seg => seg.querySelectorAll('.seg-b').forEach(b => b.classList.toggle('on', b.dataset.view === v)));
   }
-  function nastaviPogled(v) { try { localStorage.setItem('sc-view', v === 'grid' ? 'grid' : 'list'); } catch (e) {} uporabiPogled(); osveziPogledSege(); }
+  function nastaviPogled(v) { try { localStorage.setItem('sc-view', v === 'grid' ? 'grid' : 'list'); } catch (e) {} uporabiPogled(); osveziPogledSege(); if (typeof shraniNastavitve === 'function') shraniNastavitve(); }
   (function initPogled() {
     document.querySelectorAll('.pogled-seg .seg-b').forEach(b => b.addEventListener('click', () => nastaviPogled(b.dataset.view)));
     uporabiPogled(); osveziPogledSege();
   })();
+  // ── Sinhronizacija nastavitev med napravami (shranjeno v profil uporabnika) ──
+  var SINH_KLJUCI = ['sc-portal-theme', 'sc-view', 'sc-menu-order', 'sc-cust-order', 'sc-cenik-order'];
+  function zberiNastavitve() { var o = {}; SINH_KLJUCI.forEach(function (k) { try { var v = localStorage.getItem(k); if (v != null) o[k] = v; } catch (e) {} }); return o; }
+  function uporabiNastavitve(o) { if (!o || typeof o !== 'object') return; SINH_KLJUCI.forEach(function (k) { if (o[k] != null) { try { localStorage.setItem(k, o[k]); } catch (e) {} } }); }
+  var _shraniNastT = null;
+  function shraniNastavitve() {
+    if (!JAZ) return;
+    clearTimeout(_shraniNastT);
+    _shraniNastT = setTimeout(function () {
+      var n = zberiNastavitve();
+      try {
+        sb.rpc('shrani_nastavitve', { n: n }).then(function (r) {
+          if (r && r.error) { try { sb.from('profiles').update({ nastavitve: n }).eq('id', JAZ).then(function () {}, function () {}); } catch (e) {} }
+        }, function () {});
+      } catch (e) {}
+    }, 400);
+  }
 
   /* ── nastavitve ───────────────────────────────────────────────────── */
   let KEY = cfg.key && !cfg.key.startsWith('TUKAJ') ? cfg.key : null;
@@ -391,9 +408,12 @@
     } = await sb.auth.getUser();
     if (!user) return;
     JAZ = user.id;
-    const {
-      data: profil
-    } = await sb.from('profiles').select('full_name,is_staff').eq('id', user.id).maybeSingle();
+    let profil = null;
+    { const _pr = await sb.from('profiles').select('full_name,is_staff,nastavitve').eq('id', user.id).maybeSingle();
+      profil = _pr && _pr.data ? _pr.data : null;
+      if (_pr && _pr.error && /nastavitve/.test(_pr.error.message || '')) { const _pr2 = await sb.from('profiles').select('full_name,is_staff').eq('id', user.id).maybeSingle(); profil = _pr2 && _pr2.data ? _pr2.data : null; } }
+    // uveljavi sinhronizirane nastavitve (tema, pogled, vrstni red menija, razvrstitve)
+    if (profil && profil.nastavitve) { uporabiNastavitve(profil.nastavitve); uporabiTemo(); oznaciTemo(); uporabiPogled(); osveziPogledSege(); }
     OSEBJE = !!(profil !== null && profil !== void 0 && profil.is_staff);
     nastaviWho((profil && profil.full_name) || user.email);
     JAZIME = (profil && profil.full_name) || user.email;
@@ -1340,7 +1360,7 @@
       const si = $('cenikIsci'); if (si) si.addEventListener('input', () => cenikRender());
       const ib = $('cenikUvoz'); if (ib) ib.addEventListener('click', () => uvoziCenik());
       const kb = $('cenikKos'); if (kb) kb.addEventListener('click', () => risiKos());
-      const cs = $('cenikSort2'); if (cs) { cs.value = cenikOrderMode(); cs.addEventListener('change', function () { try { localStorage.setItem('sc-cenik-order', cs.value); } catch (e) {} cenikRender(); }); }
+      const cs = $('cenikSort2'); if (cs) { cs.value = cenikOrderMode(); cs.addEventListener('change', function () { try { localStorage.setItem('sc-cenik-order', cs.value); } catch (e) {} shraniNastavitve(); cenikRender(); }); }
       risiCeniki._wired = true;
     }
     box.innerHTML = '<p class="u-sub">Nalagam cenik …</p>';
@@ -1918,7 +1938,7 @@
       panel.innerHTML = '<h3 class="sec-h">Vrstni red menija</h3><p class="u-sub" style="margin-bottom:14px">Povleci razdelke za razvrščanje v levem meniju.</p><ul class="menu-order-list"></ul><button type="button" class="btn btn-narrow ghost menu-order-reset" style="margin-top:12px">Ponastavi privzeti vrstni red</button>';
       sec.appendChild(panel);
       panel.querySelector('.menu-order-reset').addEventListener('click', function () {
-        try { localStorage.removeItem('sc-menu-order'); } catch (e) {}
+        try { localStorage.removeItem('sc-menu-order'); } catch (e) {} shraniNastavitve();
         meni(); if (meni._drsnik) meni._drsnik(); risiMenijRed(); toast('Vrstni red menija ponastavljen');
       });
     }
@@ -1929,7 +1949,7 @@
     }).join('');
     dndSort(ul, 'li', '.dnd-handle', function (items) {
       var red = items.map(function (li) { return li.dataset.k; });
-      try { localStorage.setItem('sc-menu-order', JSON.stringify(red)); } catch (e) {}
+      try { localStorage.setItem('sc-menu-order', JSON.stringify(red)); } catch (e) {} shraniNastavitve();
       meni(); if (meni._drsnik) meni._drsnik();
     });
   }
@@ -2069,7 +2089,7 @@
     requestAnimationFrame(function () { window.scrollTo(0, _sy); });
   }
   $('search').addEventListener('input', render);
-  { const ss = $('strankeSort'); if (ss) { ss.value = custOrderMode(); ss.addEventListener('change', function () { try { localStorage.setItem('sc-cust-order', ss.value); } catch (e) {} render(); }); } }
+  { const ss = $('strankeSort'); if (ss) { ss.value = custOrderMode(); ss.addEventListener('change', function () { try { localStorage.setItem('sc-cust-order', ss.value); } catch (e) {} shraniNastavitve(); render(); }); } }
   { const b = $('novaStrankaBtn'); if (b) b.addEventListener('click', () => novaStranka()); }
 
   // Ob hoverju na kartico se predolgo ime »odvije« (marquee, kot v glasbenih aplikacijah).
