@@ -541,6 +541,8 @@ input[type=email],input[type=password],input[type=search],.field input[type=text
 .cgrp-body{display:none;border-top:1px solid var(--line);}
 .cgrp-body.show{display:block;}
 .cgrp-body .cenik-row:last-child{border-bottom:none;}
+/* prazna skupina (samo vrstica z gumbi): brez spodnje črte, da spodnji robovi niso »zaglitchani« */
+.cgrp-body .cgrp-bar:last-child{border-bottom:none;}
 
 /* ── artikli: cena + povezava s cenikom ── */
 .art-ur li .art-main{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;}
