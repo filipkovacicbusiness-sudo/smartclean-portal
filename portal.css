@@ -986,3 +986,8 @@ html[data-view="grid"] .lcell:not(.open) .row .chev{display:block;position:absol
 html[data-view="grid"] #cenikList .cgrp{position:relative;}
 html[data-view="grid"] #cenikList .cgrp-count{position:absolute;left:16px;bottom:12px;z-index:2;}
 html[data-view="grid"] #cenikList .cgrp-chev{position:absolute;right:14px;bottom:12px;z-index:2;}
+
+/* Mobilno: skrij vrstico z davčno št. in naslovom v okvirčku stranke */
+@media(max-width:760px){
+  #content .arts > .meta{display:none;}
+}
