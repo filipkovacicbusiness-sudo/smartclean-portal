@@ -695,7 +695,11 @@
       box._arts = [];
       (data || []).forEach(function (a) {
         if (a.cena_sifra != null) { if (vid[a.cena_sifra]) return; vid[a.cena_sifra] = true; } // brez podvojenih (isti artikel)
-        box._arts.push({ id: a.id, name: a.name || '', koda: (a.cena_sifra != null && CENIKMAP && CENIKMAP[a.cena_sifra]) ? normId(CENIKMAP[a.cena_sifra].koda) : '' });
+        box._arts.push({ id: a.id, name: a.name || '', koda: (a.cena_sifra != null && CENIKMAP && CENIKMAP[a.cena_sifra]) ? normId(CENIKMAP[a.cena_sifra].koda) : '', sifra: a.cena_sifra });
+      });
+      // dodaj LASTNE artikle stranke (pricelist z org_id te stranke), ki še nimajo članstva
+      (CENIK || []).forEach(function (x) {
+        if (x.org_id === org_id && !vid[x.sifra]) { vid[x.sifra] = true; box._arts.push({ id: null, name: x.naziv || '', koda: normId(x.koda), sifra: x.sifra }); }
       });
     } catch (e) { box._arts = []; }
   }
@@ -729,7 +733,7 @@
       opts += '<option value="">— izberi artikel —</option>';
       arts.forEach(function (a) {
         var lab = a.name + (a.koda ? ' · ' + a.koda : '');
-        opts += '<option value="' + escape_(a.name) + '" data-aid="' + escape_(String(a.id)) + '"' + (a.name === curName ? ' selected' : '') + '>' + escape_(lab) + '</option>';
+        opts += '<option value="' + escape_(a.name) + '" data-aid="' + escape_(String(a.id || '')) + '" data-sifra="' + escape_(String(a.sifra != null ? a.sifra : '')) + '"' + (a.name === curName ? ' selected' : '') + '>' + escape_(lab) + '</option>';
       });
       sel.innerHTML = opts;
     }
@@ -767,6 +771,7 @@
       return {
         naziv: (sel ? sel.value : '').trim(),
         artId: opt && opt.dataset.aid ? opt.dataset.aid : null,
+        sifra: opt && opt.dataset.sifra ? parseInt(opt.dataset.sifra, 10) : null,
         kosov: parseInt(r.querySelector('[data-pk]').value, 10) || 0
       };
     }).filter(p => p.naziv);
@@ -775,6 +780,13 @@
       const { data: arts } = await sb.from('articles').select('id,name').eq('org_id', org_id);
       const poImenu = {};
       (arts || []).forEach(a => { poImenu[(a.name || '').trim().toLowerCase()] = a.id; });
+      // za izbrane LASTNE artikle brez članstva ustvari povezavo (veljaven article_id)
+      for (const p of postavke) {
+        if (!p.artId && p.sifra != null && !isNaN(p.sifra)) {
+          const ins = await sb.from('articles').insert({ org_id, name: p.naziv, cena_sifra: p.sifra }).select('id').maybeSingle();
+          if (ins && ins.data) { p.artId = ins.data.id; if (CLANI) CLANI.push({ id: ins.data.id, org_id: org_id, name: p.naziv, cena_sifra: p.sifra, sort_order: null }); }
+        }
+      }
       let r = await sb.from('delivery_notes').update({
         org_id, doc_seq: seq, doc_year: leto, doc_date,
         weight_kg: tezaRaw === '' ? null : Number(tezaRaw),
@@ -1659,7 +1671,12 @@
   }
   async function uporabiUvoz(orgId, data) {
     var o = ORGSEZNAM.find(function (x) { return x.id === orgId; }) || {};
-    if (!confirm('Uvozim ' + data.artikli.length + ' artiklov v cenik stranke »' + (o.name || '') + '«?\nObstoječi cenik te stranke bo nadomeščen (artikli se povežejo po ID). Cene/ nazivi so skupni za vse stranke z istim ID.')) return;
+    var ok0 = await potrdiModal({
+      naslov: 'Uvozi cenik',
+      sporocilo: 'Uvozim ' + data.artikli.length + ' artiklov v cenik stranke »' + (o.name || '') + '«? Obstoječi cenik te stranke bo nadomeščen (artikli se povežejo po ID). Cene in nazivi so skupni za vse stranke z istim ID.',
+      potrdi: 'Uvozi', nevarno: true
+    });
+    if (!ok0) return;
     toast('Uvažam …');
     var ciljneSifre = [];
     for (var i = 0; i < data.artikli.length; i++) {
