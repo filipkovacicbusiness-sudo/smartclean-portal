@@ -991,3 +991,12 @@ html[data-view="grid"] #cenikList .cgrp-chev{position:absolute;right:14px;bottom
 @media(max-width:760px){
   #content .arts > .meta{display:none;}
 }
+
+/* Mobilno: Fakture — »Od« in »Do« v isti vrstici, stranka in gumb pod njima */
+@media(max-width:760px){
+  #sec-fakture .filtri{flex-direction:row;flex-wrap:wrap;align-items:stretch;gap:8px;}
+  #sec-fakture .filtri .fak-lab{flex:1 1 calc(50% - 4px);min-width:0;}
+  #sec-fakture .filtri .cs,
+  #sec-fakture .filtri select,
+  #sec-fakture .filtri #fakBtn{flex:1 1 100%;max-width:none;width:100%;}
+}

@@ -1,10 +1,11 @@
 /* Pralnica — service worker (offline) */
-const CACHE = "pralnica-v1";
+const CACHE = "pralnica-v2";
 const CORE = [
   "index.html",
   "manifest.json",
   "icon-192.png",
-  "icon-512.png"
+  "icon-512.png",
+  "xlsx.full.min.js"
 ];
 
 self.addEventListener("install", (e) => {
