@@ -1033,6 +1033,13 @@ html[data-view="grid"] #cenikList .cgrp:not(.open) .cgrp-chev{
 /* skrij delež pri Strankah in podvojene elemente */
 html[data-view="grid"] .lcell:not(.open) .row-pct{display:none;}
 
+/* ── Splošni cenik izoliran nad skupno mrežo strank ── */
+#cenikList .sc-isolate{margin-bottom:14px;padding-bottom:16px;border-bottom:1px solid var(--line);}
+#cenikList .cenik-sec-head{font-size:.8rem;font-weight:600;color:var(--mid);letter-spacing:.02em;margin:2px 0 10px;}
+html[data-view="grid"] #cenikList .sc-isolate,
+html[data-view="grid"] #cenikList .cenik-sec-head{grid-column:1 / -1;}
+html[data-view="grid"] #cenikList .sc-isolate .cgrp:not(.open){max-width:var(--tile-min);}
+
 /* Mobilno: skrij vrstico z davčno št. in naslovom v okvirčku stranke */
 @media(max-width:760px){
   #content .arts > .meta{display:none;}
