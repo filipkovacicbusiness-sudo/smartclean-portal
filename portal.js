@@ -431,16 +431,29 @@
     nastavitve: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>'
   };
   const ikona = k => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' + 'stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + IKONE[k] + '</svg>';
+  // Osnovni (privzeti) glavni razdelki menija za trenutnega uporabnika.
+  function glavniMeni() {
+    if (OSEBJE) {
+      var g = [['domov', 'Pregled'], ['statistika', 'Statistika'], ['arhiv', 'Arhiv'], ['fakture', 'Fakture'], ['ceniki', 'Ceniki'], ['stranke', 'Stranke'], ['aplikacija', 'Aplikacija']];
+      if (JE_LASTNIK()) g.push(['uporabniki', 'Uporabniki']);
+      return g;
+    }
+    return [['domov', 'Pregled'], ['arhiv', 'Arhiv'], ['katalog', 'Katalog']];
+  }
+  function menijVrstni() { try { return JSON.parse(localStorage.getItem('sc-menu-order') || '[]') || []; } catch (e) { return []; } }
+  // Uporabi shranjeni vrstni red; nove razdelke pripni na konec, neveljavne izpusti.
+  function urediGlavni(g) {
+    var ord = menijVrstni(); if (!ord.length) return g;
+    var poK = {}; g.forEach(function (x) { poK[x[0]] = x; });
+    var out = [];
+    ord.forEach(function (k) { if (poK[k]) { out.push(poK[k]); delete poK[k]; } });
+    g.forEach(function (x) { if (poK[x[0]]) out.push(x); });
+    return out;
+  }
   function meni() {
     let glavni, nast;
-    if (OSEBJE) {
-      glavni = [['domov', 'Pregled'], ['statistika', 'Statistika'], ['arhiv', 'Arhiv'], ['fakture', 'Fakture'], ['ceniki', 'Ceniki'], ['stranke', 'Stranke'], ['aplikacija', 'Aplikacija']];
-      if (JE_LASTNIK()) glavni.push(['uporabniki', 'Uporabniki']);
-      nast = [['nastavitve', 'Nastavitve'], ['racun', 'Moj račun']];
-    } else {
-      glavni = [['domov', 'Pregled'], ['arhiv', 'Arhiv'], ['katalog', 'Katalog']];
-      nast = [['racun', 'Moj račun']];
-    }
+    glavni = urediGlavni(glavniMeni());
+    nast = OSEBJE ? [['nastavitve', 'Nastavitve'], ['racun', 'Moj račun']] : [['racun', 'Moj račun']];
     const veja = ([k, l]) => `<a data-go="${k}">${ikona(k)}${l}</a>`;
     $('side').innerHTML = '<span class="side-slider" aria-hidden="true"></span>' + glavni.map(veja).join('') + '<div class="side-sep"></div>' + nast.map(veja).join('');
     const _side = $('side');
@@ -1894,6 +1907,31 @@
       });
       risiNastavitve._wired = true;
     }
+    risiMenijRed();
+  }
+  // Razvrščanje razdelkov levega menija (povleci; isti drag & drop kot pri artiklih).
+  function risiMenijRed() {
+    var sec = $('sec-nastavitve'); if (!sec) return;
+    var panel = sec.querySelector('.menu-order-panel');
+    if (!panel) {
+      panel = document.createElement('div'); panel.className = 'panel menu-order-panel';
+      panel.innerHTML = '<h3 class="sec-h">Vrstni red menija</h3><p class="u-sub" style="margin-bottom:14px">Povleci razdelke za razvrščanje v levem meniju.</p><ul class="menu-order-list"></ul><button type="button" class="btn btn-narrow ghost menu-order-reset" style="margin-top:12px">Ponastavi privzeti vrstni red</button>';
+      sec.appendChild(panel);
+      panel.querySelector('.menu-order-reset').addEventListener('click', function () {
+        try { localStorage.removeItem('sc-menu-order'); } catch (e) {}
+        meni(); if (meni._drsnik) meni._drsnik(); risiMenijRed(); toast('Vrstni red menija ponastavljen');
+      });
+    }
+    var ul = panel.querySelector('.menu-order-list');
+    var g = urediGlavni(glavniMeni());
+    ul.innerHTML = g.map(function (x) {
+      return '<li data-k="' + escape_(x[0]) + '"><button type="button" class="art-grip dnd-handle" title="povleci za razvrščanje" aria-label="razvrsti">' + DND_ICON + '</button><span class="mo-ikona" aria-hidden="true">' + ikona(x[0]) + '</span><span class="mo-ime">' + escape_(x[1]) + '</span></li>';
+    }).join('');
+    dndSort(ul, 'li', '.dnd-handle', function (items) {
+      var red = items.map(function (li) { return li.dataset.k; });
+      try { localStorage.setItem('sc-menu-order', JSON.stringify(red)); } catch (e) {}
+      meni(); if (meni._drsnik) meni._drsnik();
+    });
   }
 
   let _toastEl = null;

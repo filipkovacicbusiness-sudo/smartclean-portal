@@ -953,3 +953,12 @@ html{-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent;}
   .side{top:calc(64px + env(safe-area-inset-top));padding-bottom:calc(24px + env(safe-area-inset-bottom));overflow-y:auto;}
   .main{padding-left:calc(18px + env(safe-area-inset-left));padding-right:calc(18px + env(safe-area-inset-right));padding-bottom:calc(80px + env(safe-area-inset-bottom));}
 }
+
+/* ── Nastavitve: vrstni red menija (drag & drop) ─────────────────────── */
+.menu-order-list{list-style:none;display:flex;flex-direction:column;gap:8px;max-width:420px;margin:0;padding:0;}
+.menu-order-list li{display:flex;align-items:center;gap:12px;padding:11px 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface);cursor:default;}
+.menu-order-list li .art-grip{cursor:grab;}
+.menu-order-list .mo-ikona{display:inline-flex;align-items:center;color:var(--mid);}
+.menu-order-list .mo-ikona svg{width:18px;height:18px;}
+.menu-order-list .mo-ime{font-weight:500;color:var(--ink);}
+.menu-order-reset{margin-top:12px;}
