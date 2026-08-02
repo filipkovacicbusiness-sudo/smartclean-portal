@@ -1207,6 +1207,27 @@
     var num = best.num + 1, pref = best.pref; if (num > 999) { num = 1; pref = nextPref(pref); }
     return pref + pad3(num);
   }
+  // Naslednji prost SC-ID (SC001, SC002 …) za splošni cenik.
+  function nextSc() {
+    var max = 0;
+    (CENIK || []).forEach(function (x) { var m = normId(x.koda).match(/^SC([0-9]{3})$/); if (m) { var n = parseInt(m[1], 10); if (n > max) max = n; } });
+    var n = max + 1; if (n > 999) n = 999;
+    return 'SC' + pad3(n);
+  }
+  // Dodaj SKUPNI (deljeni) standardni artikel v splošni cenik (org_id = null → velja za vse).
+  async function dodajSplosniArtikel(name, id) {
+    await nalozicenik();
+    if (!/^SC[0-9]{3}$/.test(id)) { toast('ID splošnega artikla mora biti SC + 3 številke (npr. SC001).'); return; }
+    if (idZaseden(id, null)) { toast('ID ' + id + ' že obstaja.'); return; }
+    var sifra = await naslednjaSifra();
+    var rec = { sifra: sifra, koda: id, naziv: name, em: 'kos', cena1: 0, cena2: 0, org_id: null, sort_order: null };
+    var e = (await sb.from('pricelist').insert(rec)).error;
+    if (e) { toast('Napaka: ' + e.message); return; }
+    CENIK.push(rec); zgradiCenikMap();
+    _cenikOpen['splosni'] = true;
+    toast('Dodano v splošni cenik: ' + id);
+    cenikRender();
+  }
   // Naslednja prosta šifra (PK) v ceniku — upošteva TUDI mehko izbrisane vrstice, da ne pride do trka.
   async function naslednjaSifra() {
     var maxS = 900000;
@@ -1278,7 +1299,9 @@
     var scItems = (CENIK || []).filter(function (x) { return normId(x.koda).indexOf('SC') === 0 && matchesQ(x); }).sort(cenikSort);
     var scOpen = !!q || _cenikOpen['splosni'];
     var scRows = scItems.map(function (p) { return cenikVrsticaHtml(p, '', null); }).join('');
-    var scCard = OSEBJE ? ('<div class="cgrp splosni' + (scOpen ? ' open' : '') + '" data-key="splosni"><div class="cgrp-head-row"><button type="button" class="cgrp-h' + (scOpen ? ' open' : '') + '" data-cgrp="splosni"><span class="cgrp-name">Splošni cenik<span class="cgrp-sub">Standardni artikli (ID se začne s SC) · velja za vse</span></span><span class="cgrp-count">' + stevilo(scItems.length) + ' art.</span><span class="cgrp-chev" aria-hidden="true">›</span></button></div><div class="cgrp-body' + (scOpen ? ' show' : '') + '">' + (scRows || '<p class="u-sub" style="padding:12px 16px">Ni artiklov z ID, ki se začne s SC. Ustvari jih v Strankah z ID-jem SC001, SC002 …</p>') + '</div></div>') : '';
+    var scAdd = OSEBJE ? ('<div class="art-add sc-add"><input type="text" class="sc-new" placeholder="nov standardni artikel"><input type="text" class="sc-id-new" placeholder="ID" maxlength="5" value="' + escape_(nextSc()) + '"><button type="button" class="btn btn-narrow sc-add-btn">+ Dodaj</button></div>') : '';
+    var scBody = (scRows || '<p class="u-sub" style="padding:12px 16px 4px">Dodaj standardne artikle (ID SC001, SC002 …). Veljajo za vse stranke.</p>') + scAdd;
+    var scCard = OSEBJE ? ('<div class="cgrp splosni' + (scOpen ? ' open' : '') + '" data-key="splosni"><div class="cgrp-head-row"><button type="button" class="cgrp-h' + (scOpen ? ' open' : '') + '" data-cgrp="splosni"><span class="cgrp-name">Splošni cenik<span class="cgrp-sub">Standardni artikli (ID se začne s SC) · velja za vse</span></span><span class="cgrp-count">' + stevilo(scItems.length) + ' art.</span><span class="cgrp-chev" aria-hidden="true">›</span></button></div><div class="cgrp-body' + (scOpen ? ' show' : '') + '">' + scBody + '</div></div>') : '';
     box.innerHTML = scCard + arr.map(function (g) {
       var list = g.items.slice().sort(function (x, y) { return (x.ord || 0) - (y.ord || 0) || cenikSort(x.p, y.p); });
       var rows = list.map(function (it) { return cenikVrsticaHtml(it.p, g.org_id, it.artId); }).join('');
@@ -1317,6 +1340,12 @@
     box.querySelectorAll('[data-izvozorg]').forEach(bn => bn.addEventListener('click', e => { e.stopPropagation(); izvoziCenik(bn.dataset.izvozorg); }));
     box.querySelectorAll('[data-uvozorg]').forEach(bn => bn.addEventListener('click', e => { e.stopPropagation(); uvoziVStranko(bn.dataset.uvozorg); }));
     box.querySelectorAll('[data-splorg]').forEach(bn => bn.addEventListener('click', e => { e.stopPropagation(); preklopiSplosni(bn.dataset.splorg, bn.dataset.splon !== '1'); }));
+    { // dodajanje standardnih artiklov naravnost v splošni cenik
+      var _scNew = box.querySelector('.sc-new'), _scId = box.querySelector('.sc-id-new'), _scBtn = box.querySelector('.sc-add-btn');
+      var _scDodaj = function () { var nm = (_scNew.value || '').trim(); if (!nm) return; var id = normId(_scId.value) || nextSc(); dodajSplosniArtikel(nm, id); };
+      if (_scBtn) _scBtn.addEventListener('click', function (e) { e.stopPropagation(); _scDodaj(); });
+      [_scNew, _scId].forEach(function (el) { if (!el) return; el.addEventListener('click', function (e) { e.stopPropagation(); }); el.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); _scDodaj(); } }); });
+    }
     requestAnimationFrame(function () { window.scrollTo(0, _sy); });
   }
   function izvoziCenik(orgId) {
@@ -1628,12 +1657,13 @@
       if (CLANI) CLANI = CLANI.filter(function (a) { return !(a.org_id === orgId && a.cena_sifra == null); });
       return true;
     } else {
-      // IZKLOP → prazen seznam: odstrani vsa članstva stranke in njene lastne artikle
-      var lastni = (CENIK || []).filter(function (x) { return x.org_id === orgId; }).map(function (x) { return x.sifra; });
+      // IZKLOP → prazen seznam: odstrani vsa članstva stranke in njene lastne NE-SC artikle.
+      // SC-artiklov (splošni cenik) NIKOLI ne brišemo — so skupni in veljajo za vse.
+      var lastni = (CENIK || []).filter(function (x) { return x.org_id === orgId && !jeSc(x.koda); }).map(function (x) { return x.sifra; });
       await sb.from('articles').delete().eq('org_id', orgId);
       if (CLANI) CLANI = CLANI.filter(function (a) { return a.org_id !== orgId; });
       for (var i2 = 0; i2 < lastni.length; i2++) { await sb.from('pricelist').update({ deleted_at: new Date().toISOString() }).eq('sifra', lastni[i2]); }
-      if (lastni.length) { CENIK = CENIK.filter(function (x) { return x.org_id !== orgId; }); zgradiCenikMap(); }
+      if (lastni.length) { var _ls = {}; lastni.forEach(function (s) { _ls[s] = 1; }); CENIK = CENIK.filter(function (x) { return !_ls[x.sifra]; }); zgradiCenikMap(); }
       return true;
     }
   }
