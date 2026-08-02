@@ -873,3 +873,23 @@ html[data-view="grid"] .row .sc-tag{display:block;margin-left:0;margin-top:3px;}
 html[data-view="grid"] .row.has-sc > span:first-child{height:auto;}
 /* Preklop splošnega cenika v Ceniki */
 .sc-toggle.on{background:rgba(var(--brand-rgb),.10);border-color:rgba(var(--brand-rgb),.38);color:var(--ink);opacity:1;}
+/* Vrstica za dodajanje v kartico Splošni cenik — poravnaj z vsebino kartice, brez prelivanja */
+.sc-add{margin-top:0;padding:12px 16px 14px;box-sizing:border-box;width:100%;}
+.sc-add .sc-new{flex:1;min-width:0;padding:9px 12px;border:1.5px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink);font-size:.9rem;}
+.sc-add .sc-id-new{flex:0 0 110px;width:110px;min-width:0;padding:9px 12px;border:1.5px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink);font-size:.9rem;font-family:var(--mono);}
+.sc-add .sc-new:focus,.sc-add .sc-id-new:focus{border-color:var(--green-l);outline:none;}
+@media(max-width:560px){ .sc-add{flex-direction:column;align-items:stretch;} .sc-add .sc-id-new{flex:1 1 auto;width:auto;} .sc-add .sc-add-btn{width:100%;} }
+
+/* Vklop/izklop vidnosti artikla v aplikaciji (tablici) */
+.art-vis{border:1px solid var(--line);background:var(--surface);color:var(--mid);width:28px;height:28px;border-radius:7px;cursor:pointer;line-height:1;flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;}
+.art-vis:hover{border-color:var(--mid);color:var(--ink);}
+.art-vis.off{color:#c0392b;border-color:rgba(192,57,43,.4);}
+html[data-theme="dark"] .art-vis.off{color:#ff8a7a;border-color:rgba(255,138,122,.4);}
+.art-ur li.art-off{opacity:.5;}
+.art-ur li.art-off .art-nm{text-decoration:line-through;}
+.art-hidden-tag{display:inline-block;margin-left:8px;padding:0 7px;border-radius:100px;font-size:.62rem;font-weight:700;letter-spacing:.03em;text-transform:uppercase;background:rgba(192,57,43,.12);color:#c0392b;border:1px solid rgba(192,57,43,.35);}
+html[data-theme="dark"] .art-hidden-tag{background:rgba(255,138,122,.14);color:#ff8a7a;border-color:rgba(255,138,122,.4);}
+
+/* Naziv stranke: ena vrstica (maska) + drseči trak ob hoverju (kot glasbene aplikacije) */
+.row-name{display:block;max-width:100%;overflow:hidden;white-space:nowrap;}
+.row-nm{display:inline-block;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom;transition:transform .8s ease;will-change:transform;}
