@@ -608,17 +608,18 @@
   { const _nb = $('arhivNovBtn'); if (_nb) _nb.addEventListener('click', () => novList()); }
   async function odpriList(btn) {
     const box = btn.nextElementSibling && btn.nextElementSibling.classList.contains('a-det') ? btn.nextElementSibling : $('det' + btn.dataset.i);
+    const lcell = btn.closest('.lcell');
     const odprt = btn.getAttribute('aria-expanded') === 'true';
     if (odprt) {
       btn.setAttribute('aria-expanded', 'false');
-      box.classList.remove('show');
+      box.classList.remove('show'); if (lcell) lcell.classList.remove('open');
       return;
     }
     document.querySelectorAll('#arhivList .a-row[aria-expanded="true"]').forEach(o => {
-      if (o !== btn) { o.setAttribute('aria-expanded', 'false'); const d = document.getElementById('det' + o.dataset.i); if (d) d.classList.remove('show'); }
+      if (o !== btn) { o.setAttribute('aria-expanded', 'false'); const d = document.getElementById('det' + o.dataset.i); if (d) d.classList.remove('show'); const lc = o.closest('.lcell'); if (lc) lc.classList.remove('open'); }
     });
     btn.setAttribute('aria-expanded', 'true');
-    box.classList.add('show');
+    box.classList.add('show'); if (lcell) lcell.classList.add('open');
     if (box.dataset.loaded) return;
     box.innerHTML = '<p class="u-sub">Nalagam …</p>';
     const {

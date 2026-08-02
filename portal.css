@@ -853,8 +853,11 @@ html[data-view="grid"] #cenikList .cgrp.open{height:auto;overflow:visible;grid-c
 
 /* v mreži naj se odprta stranka razširi čez celo širino (drugače je vsebina stisnjena/odrezana) */
 html[data-view="grid"] .rows .lcell.open{grid-column:1 / -1;}
-html[data-view="grid"] .lcell.open .row{height:auto;}
+html[data-view="grid"] .lcell.open .row,
+html[data-view="grid"] .lcell.open .a-row{height:auto;}
 html[data-view="grid"] .lcell.open .row > span:first-child{height:auto;}
+/* razširjen spremni list v mreži: postavke v več stolpcih glede na širino (brez prekrivanja) */
+html[data-view="grid"] .lcell.open .a-det ul{columns:auto;column-width:220px;}
 
 /* Stranke/Arhiv v mreži: vsebino kartice navpično centriraj (kot pri Ceniku) */
 html[data-view="grid"] .lcell:not(.open) .row,
