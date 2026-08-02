@@ -1113,7 +1113,7 @@
   }
   function fakKg(kg) { return kg ? (Math.round(kg * 100) / 100).toLocaleString('sl-SI') + ' kg' : '—'; }
   function fakKartica(g, gi) {
-    const ime = ORGIME[g.org_id] || '—';
+    const ime = ORGIME[g.org_id] || 'Brez stranke';
     const post = g.postavke || Object.entries(g.artikli).map(([nm, q]) => ({ nm, q, cena: null, znesek: null }));
     const money = !!g.cenikOn;
     const rows = post.length ? post.map(p =>
@@ -2164,7 +2164,7 @@
       return k ? '<span class="art-id">' + escape_(normId(k)) + '</span>' : '<span class="art-id art-id-none">brez ID</span>';
     }
     html += arts.length
-      ? '<ul class="art-ur">' + arts.map(a => `<li data-artid="${a.id}" data-s="${a.cena_sifra != null ? a.cena_sifra : ''}" class="${a.aktiven === false ? 'art-off' : ''}">${OSEBJE ? `<button type="button" class="art-grip dnd-handle" title="povleci za razvrščanje" aria-label="razvrsti">${DND_ICON}</button>` : ''}<div class="art-main"><span class="art-nm">${escape_(a.name)}</span><span class="art-sub">${idOznaka(a)}${cenaOznaka(a)}${a.aktiven === false ? '<span class="art-hidden-tag">skrit</span>' : ''}</span></div>${OSEBJE ? `<span class="art-acts"><button type="button" class="art-vis${a.aktiven === false ? ' off' : ''}" data-art="${a.id}" data-on="${a.aktiven === false ? 0 : 1}" title="${a.aktiven === false ? 'skrit v aplikaciji — klikni za prikaz' : 'viden v aplikaciji — klikni za skritje'}" aria-label="prikaz v aplikaciji">${a.aktiven === false ? EYE_OFF : EYE_ON}</button><button type="button" class="art-link" data-art="${a.id}" data-s="${a.cena_sifra != null ? a.cena_sifra : ''}" title="poveži s cenikom" aria-label="poveži s cenikom">€</button><button type="button" class="art-ren" data-art="${a.id}" data-nm="${escape_(a.name)}" title="uredi (naziv + ID)" aria-label="uredi">✎</button><button type="button" class="art-del" data-art="${a.id}" title="odstrani" aria-label="odstrani">×</button></span>` : ''}</li>`).join('') + '</ul>'
+      ? '<ul class="art-ur">' + arts.map(a => `<li data-artid="${a.id}" data-s="${a.cena_sifra != null ? a.cena_sifra : ''}" class="${a.aktiven === false ? 'art-off' : ''}">${OSEBJE ? `<button type="button" class="art-grip dnd-handle" title="povleci za razvrščanje" aria-label="razvrsti">${DND_ICON}</button>` : ''}<div class="art-main"><span class="art-nm">${escape_(a.name)}</span><span class="art-sub">${idOznaka(a)}${cenaOznaka(a)}${a.aktiven === false ? '<span class="art-hidden-tag">skrit</span>' : ''}</span></div>${OSEBJE ? `<span class="art-acts"><button type="button" class="art-vis${a.aktiven === false ? ' off' : ''}" data-art="${a.id}" data-on="${a.aktiven === false ? 0 : 1}" title="${a.aktiven === false ? 'skrit v aplikaciji — klikni za prikaz' : 'viden v aplikaciji — klikni za skritje'}" aria-label="prikaz v aplikaciji">${a.aktiven === false ? EYE_OFF : EYE_ON}</button><button type="button" class="art-ren" data-art="${a.id}" data-nm="${escape_(a.name)}" title="uredi (naziv + ID)" aria-label="uredi">✎</button><button type="button" class="art-del" data-art="${a.id}" title="odstrani" aria-label="odstrani">×</button></span>` : ''}</li>`).join('') + '</ul>'
       : '<p class="none">Ta stranka še nima artiklov v katalogu.</p>';
     if (OSEBJE) html += `<div class="art-add"><input type="text" class="art-new" placeholder="nov artikel"><input type="text" class="art-id-new" placeholder="ID (npr. PV001)" maxlength="5" value="${escape_(predlagajId())}"><button type="button" class="btn btn-narrow art-add-btn">+ Dodaj</button><button type="button" class="btn btn-narrow ghost art-exist-btn">+ Obstoječ</button></div><div class="art-exist-box"></div>`;
     box.innerHTML = html;
@@ -2173,7 +2173,6 @@
       { const db = box.querySelector('.str-del'); if (db) db.addEventListener('click', e => { e.stopPropagation(); izbrisiStrankoStranke(orgId, box); }); }
       box.querySelectorAll('.art-del').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); izbrisiArtikel(b.dataset.art, box, orgId); }));
       box.querySelectorAll('.art-ren').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); preimenujArtikel(b, box, orgId); }));
-      box.querySelectorAll('.art-link').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); poveziArtikel(b, box, orgId); }));
       box.querySelectorAll('.art-vis').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); preklopiArtikelViden(b.dataset.art, b.dataset.on !== '1', box, orgId); }));
       { const ul = box.querySelector('.art-ur'); if (ul) dndSort(ul, 'li', '.art-grip', function () { shraniArtVrstniRed(ul); }); }
       const inp = box.querySelector('.art-new'), idInp = box.querySelector('.art-id-new'), addb = box.querySelector('.art-add-btn');
