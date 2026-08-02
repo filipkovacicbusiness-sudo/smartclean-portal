@@ -700,7 +700,8 @@
   }
 
   async function izbrisiList(box) {
-    if (!confirm('Izbrisati spremni list ' + (box._note.number || '') + '?\nTega ni mogoče razveljaviti.')) return;
+    var _ok = await potrdiModal({ naslov: 'Izbriši spremni list', sporocilo: 'Izbrisati spremni list ' + (box._note.number || '') + '? Tega ni mogoče razveljaviti.', potrdi: 'Izbriši', preklici: 'Prekliči', nevarno: true });
+    if (!_ok) return;
     box.innerHTML = '<p class="u-sub">Brišem …</p>';
     try {
       let r = await sb.from('delivery_note_items').delete().eq('note_id', box._id);
@@ -1611,6 +1612,8 @@
   async function cenikIzbrisi(s, orgId) {
     s = parseInt(s, 10);
     const rec = CENIKMAP[s]; if (!rec) return;
+    var _ok = await potrdiModal({ naslov: 'Odstrani artikel', sporocilo: 'Odstranim artikel „' + (rec.naziv || ('#' + s)) + '"' + (orgId ? ' iz cenika te stranke' : '') + '?', potrdi: 'Odstrani', preklici: 'Prekliči', nevarno: true });
+    if (!_ok) return;
     // odstrani povezavo (članstvo) te stranke z artiklom
     if (orgId) {
       const e1 = (await sb.from('articles').delete().eq('org_id', orgId).eq('cena_sifra', s)).error;
@@ -1991,6 +1994,31 @@
       var yb = back.querySelector('[data-yes]'); if (yb) yb.focus();
     });
   }
+  // Vnosno okno (nadomešča window.prompt) — vrne niz ali null (preklic).
+  function vnesiModal(opts) {
+    opts = opts || {};
+    return new Promise(function (resolve) {
+      var back = document.createElement('div');
+      back.className = 'sc-modal-back';
+      back.innerHTML = '<div class="sc-modal" role="dialog" aria-modal="true"><h4></h4><p></p><input type="text" class="sc-modal-input"><div class="sc-modal-acts"><button type="button" class="sc-modal-btn ghost" data-no></button><button type="button" class="sc-modal-btn primary" data-yes></button></div></div>';
+      back.querySelector('h4').textContent = opts.naslov || 'Vnos';
+      var pEl = back.querySelector('p'); if (opts.sporocilo) pEl.textContent = opts.sporocilo; else pEl.style.display = 'none';
+      var inp = back.querySelector('.sc-modal-input');
+      inp.value = opts.privzeto || ''; if (opts.placeholder) inp.placeholder = opts.placeholder;
+      back.querySelector('[data-no]').textContent = opts.preklici || 'Prekliči';
+      back.querySelector('[data-yes]').textContent = opts.potrdi || 'Shrani';
+      document.body.appendChild(back);
+      requestAnimationFrame(function () { back.classList.add('show'); });
+      var done = false;
+      function zapri(val) { if (done) return; done = true; back.classList.remove('show'); document.removeEventListener('keydown', onKey); setTimeout(function () { if (back.parentNode) back.parentNode.removeChild(back); }, 180); resolve(val); }
+      function onKey(e) { if (e.key === 'Escape') zapri(null); else if (e.key === 'Enter') { e.preventDefault(); zapri(inp.value); } }
+      back.querySelector('[data-no]').addEventListener('click', function (e) { e.stopPropagation(); zapri(null); });
+      back.querySelector('[data-yes]').addEventListener('click', function (e) { e.stopPropagation(); zapri(inp.value); });
+      back.addEventListener('click', function (e) { if (e.target === back) zapri(null); });
+      document.addEventListener('keydown', onKey);
+      setTimeout(function () { inp.focus(); inp.select(); }, 60);
+    });
+  }
   // ── Enotni spustni meniji (custom select) po standardu portala ──────────
   // Nativni <select> ostane (skrit) — vsa obstoječa logika (value/change) dela naprej.
   function olepsajSelect(sel) {
@@ -2318,6 +2346,10 @@
     await risiArtikleBox(box, orgId);
   }
   async function izbrisiArtikel(artId, box, orgId) {
+    var _li = box.querySelector('li[data-artid="' + artId + '"]');
+    var _nm = (_li && _li.querySelector('.art-nm')) ? _li.querySelector('.art-nm').textContent.trim() : '';
+    var _ok = await potrdiModal({ naslov: 'Odstrani artikel', sporocilo: _nm ? ('Odstranim artikel „' + _nm + '" iz cenika te stranke?') : 'Odstranim ta artikel iz cenika te stranke?', potrdi: 'Odstrani', preklici: 'Prekliči', nevarno: true });
+    if (!_ok) return;
     // če je artikel povezan z lastno ceno te stranke, jo mehko izbriši tudi iz cenika
     var sif = null;
     const ad = await sb.from('articles').select('cena_sifra').eq('id', artId).maybeSingle();
@@ -2979,7 +3011,7 @@
       act = btn.dataset.act;
     btn.disabled = true;
     if (act === 'ime') {
-      const novo = window.prompt('Ime in priimek uporabnika:', btn.dataset.ime || '');
+      const novo = await vnesiModal({ naslov: 'Ime uporabnika', placeholder: 'Ime in priimek', privzeto: btn.dataset.ime || '', potrdi: 'Shrani' });
       btn.disabled = false;
       if (novo === null) return;
       const ime = novo.trim();
@@ -3024,7 +3056,8 @@
       return;
     }
     if (act === 'del') {
-      if (!confirm('Res izbrisati račun ' + btn.dataset.m + '? Tega ni mogoče razveljaviti.')) {
+      const _ok = await potrdiModal({ naslov: 'Izbriši račun', sporocilo: 'Res izbrisati račun ' + (btn.dataset.m || '') + '? Tega ni mogoče razveljaviti.', potrdi: 'Izbriši', preklici: 'Prekliči', nevarno: true });
+      if (!_ok) {
         btn.disabled = false;
         return;
       }

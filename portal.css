@@ -919,6 +919,8 @@ html[data-theme="dark"] .art-hidden-tag{background:rgba(255,138,122,.14);color:#
 .sc-modal-back.show .sc-modal{transform:none;}
 .sc-modal h4{margin:0 0 8px;font-size:1.06rem;font-weight:700;}
 .sc-modal p{margin:0 0 18px;color:var(--mid);font-size:.92rem;line-height:1.5;}
+.sc-modal-input{width:100%;margin:0 0 18px;padding:10px 13px;border:1.5px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink);font-size:16px;font-family:var(--sans);}
+.sc-modal-input:focus{border-color:var(--green-l);outline:none;}
 .sc-modal-acts{display:flex;gap:10px;justify-content:flex-end;}
 .sc-modal-btn{padding:9px 17px;border-radius:100px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer;font-size:.9rem;font-weight:600;}
 .sc-modal-btn.ghost:hover{border-color:var(--mid);}
