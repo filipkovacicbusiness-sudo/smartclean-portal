@@ -411,6 +411,7 @@
     meni();
     await naloziListe();
     pojdi('domov');
+    zazeniCustomSelecte();
   }
 
   /* ══════════ STRANSKI MENI ══════════ */
@@ -1917,6 +1918,58 @@
       document.addEventListener('keydown', onKey);
       var yb = back.querySelector('[data-yes]'); if (yb) yb.focus();
     });
+  }
+  // ── Enotni spustni meniji (custom select) po standardu portala ──────────
+  // Nativni <select> ostane (skrit) — vsa obstoječa logika (value/change) dela naprej.
+  function olepsajSelect(sel) {
+    try {
+      if (!sel || sel._cs || sel.multiple || sel.dataset.noCs === '1') return;
+      var wrap = document.createElement('div'); wrap.className = 'cs';
+      sel.parentNode.insertBefore(wrap, sel); wrap.appendChild(sel);
+      var trig = document.createElement('button'); trig.type = 'button'; trig.className = 'cs-trigger';
+      trig.innerHTML = '<span class="cs-val"></span><span class="cs-arr" aria-hidden="true"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>';
+      wrap.appendChild(trig);
+      sel._cs = true; sel.classList.add('cs-native');
+      var valEl = trig.querySelector('.cs-val');
+      function syncVal() { var o = sel.options[sel.selectedIndex]; valEl.textContent = o ? o.textContent : ''; }
+      syncVal();
+      var panel = null;
+      function zapri() { if (panel) { panel.remove(); panel = null; } wrap.classList.remove('cs-open'); document.removeEventListener('mousedown', ven, true); document.removeEventListener('keydown', tipka, true); }
+      function ven(e) { if (!wrap.contains(e.target)) zapri(); }
+      function tipka(e) { if (e.key === 'Escape') zapri(); }
+      function odpri() {
+        if (panel) { zapri(); return; }
+        panel = document.createElement('div'); panel.className = 'cs-panel';
+        for (var i = 0; i < sel.options.length; i++) {
+          var o = sel.options[i];
+          var it = document.createElement('div'); it.className = 'cs-opt' + (i === sel.selectedIndex ? ' sel' : '') + (o.disabled ? ' dis' : '');
+          it.textContent = o.textContent; it.dataset.i = i; panel.appendChild(it);
+        }
+        panel.addEventListener('mousedown', function (e) { e.preventDefault(); var it = e.target.closest('.cs-opt'); if (!it || it.classList.contains('dis')) return; sel.selectedIndex = parseInt(it.dataset.i, 10); syncVal(); sel.dispatchEvent(new Event('change', { bubbles: true })); zapri(); });
+        wrap.appendChild(panel); wrap.classList.add('cs-open');
+        var s = panel.querySelector('.cs-opt.sel'); if (s) s.scrollIntoView({ block: 'nearest' });
+        document.addEventListener('mousedown', ven, true); document.addEventListener('keydown', tipka, true);
+      }
+      trig.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); odpri(); });
+      sel.addEventListener('change', syncVal);
+      try { var mo = new MutationObserver(syncVal); mo.observe(sel, { childList: true, attributes: true, attributeFilter: ['value'] }); } catch (e) {}
+    } catch (e) {}
+  }
+  function olepsajVse(root) { (root || document).querySelectorAll('select:not(.cs-native)').forEach(olepsajSelect); }
+  function zazeniCustomSelecte() {
+    olepsajVse(document);
+    try {
+      var mo = new MutationObserver(function (muts) {
+        muts.forEach(function (m) {
+          (m.addedNodes || []).forEach(function (n) {
+            if (n.nodeType !== 1) return;
+            if (n.tagName === 'SELECT') olepsajSelect(n);
+            else if (n.querySelectorAll) n.querySelectorAll('select:not(.cs-native)').forEach(olepsajSelect);
+          });
+        });
+      });
+      mo.observe(document.body, { childList: true, subtree: true });
+    } catch (e) {}
   }
 
   /* ══════════ STRANKE (osebje) ══════════ */
