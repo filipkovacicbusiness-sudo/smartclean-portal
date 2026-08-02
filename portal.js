@@ -1285,7 +1285,8 @@
       var open = !!q || _cenikOpen[g.key];
       var jeSpl = list.length && list.every(function (it) { return jeSc(it.p.koda); });
       var sub = ''; var pod = orgPodatki(g.org_id); if (pod) sub = '<span class="cgrp-sub">' + pod + '</span>';
-      var bar = OSEBJE ? '<div class="cgrp-bar"><button type="button" class="cgrp-btn ghost" data-izvozorg="' + g.org_id + '">Izvozi</button><button type="button" class="cgrp-btn ghost" data-uvozorg="' + g.org_id + '">Uvozi</button></div>' : '';
+      var splBtn = '<button type="button" class="cgrp-btn ghost sc-toggle' + (jeSpl ? ' on' : '') + '" data-splorg="' + g.org_id + '" data-splon="' + (jeSpl ? '1' : '0') + '">' + (jeSpl ? 'Splošni cenik: vklopljen ✓' : 'Vklopi splošni cenik') + '</button>';
+      var bar = OSEBJE ? '<div class="cgrp-bar"><button type="button" class="cgrp-btn ghost" data-izvozorg="' + g.org_id + '">Izvozi</button><button type="button" class="cgrp-btn ghost" data-uvozorg="' + g.org_id + '">Uvozi</button>' + splBtn + '</div>' : '';
       return '<div class="cgrp' + (open ? ' open' : '') + '" data-key="' + escape_(g.key) + '" data-org="' + escape_(g.org_id) + '"><div class="cgrp-head-row"><button type="button" class="cgrp-h' + (open ? ' open' : '') + '" data-cgrp="' + escape_(g.key) + '">' +
         '<span class="cgrp-name">' + escape_(g.label) + (jeSpl ? SC_TAG : '') + sub + '</span>' +
         '<span class="cgrp-count">' + stevilo(list.length) + ' art.</span><span class="cgrp-chev" aria-hidden="true">›</span></button></div>' +
@@ -1315,6 +1316,7 @@
     box.querySelectorAll('[data-addexist]').forEach(bn => bn.addEventListener('click', e => { e.stopPropagation(); dodajObstojec(bn.dataset.addexist, bn); }));
     box.querySelectorAll('[data-izvozorg]').forEach(bn => bn.addEventListener('click', e => { e.stopPropagation(); izvoziCenik(bn.dataset.izvozorg); }));
     box.querySelectorAll('[data-uvozorg]').forEach(bn => bn.addEventListener('click', e => { e.stopPropagation(); uvoziVStranko(bn.dataset.uvozorg); }));
+    box.querySelectorAll('[data-splorg]').forEach(bn => bn.addEventListener('click', e => { e.stopPropagation(); preklopiSplosni(bn.dataset.splorg, bn.dataset.splon !== '1'); }));
     requestAnimationFrame(function () { window.scrollTo(0, _sy); });
   }
   function izvoziCenik(orgId) {
@@ -1600,35 +1602,51 @@
     toast('Uvoženo: ' + ciljneSifre.length + ' artiklov');
     cenikRender();
   }
-  // Uvozi SPLOŠNI CENIK (vsi SC-artikli) v stranko — nadomesti obstoječe cene.
-  async function uvoziSplosniStranka(orgId, box) {
+  // JEDRO: vklopi/izklopi splošni cenik za stranko (spremeni bazo + CENIK/CLANI).
+  //  on=true  → stranki dodeli VSE SC-artikle (nadomesti obstoječe cene).
+  //  on=false → seznam artiklov stranke se ISPRAZNI (odstrani vsa članstva in lastne artikle).
+  async function nastaviSplosni(orgId, on) {
+    if (on) {
+      var sc = (CENIK || []).filter(function (x) { return jeSc(x.koda); }).slice().sort(cenikSort);
+      if (!sc.length) { toast('Splošni cenik je prazen (ni artiklov z ID SC…).'); return false; }
+      var ciljneSifre = sc.map(function (x) { return x.sifra; });
+      var obst = {}; (CLANI || []).forEach(function (a) { if (a.org_id === orgId && a.cena_sifra != null) obst[a.cena_sifra] = a; });
+      for (var j = 0; j < ciljneSifre.length; j++) {
+        var sif = ciljneSifre[j];
+        if (obst[sif]) { await sb.from('articles').update({ sort_order: j }).eq('org_id', orgId).eq('cena_sifra', sif); obst[sif].sort_order = j; delete obst[sif]; }
+        else { var p = CENIKMAP[sif]; var ins = await sb.from('articles').insert({ org_id: orgId, name: (p ? p.naziv : '') || '', cena_sifra: sif, sort_order: j }).select('id').maybeSingle(); if (CLANI) CLANI.push({ id: ins.data ? ins.data.id : null, org_id: orgId, name: (p ? p.naziv : '') || '', cena_sifra: sif, sort_order: j }); }
+      }
+      var odstrani = Object.keys(obst);
+      for (var k = 0; k < odstrani.length; k++) {
+        var s2 = parseInt(odstrani[k], 10);
+        await sb.from('articles').delete().eq('org_id', orgId).eq('cena_sifra', s2);
+        if (CLANI) CLANI = CLANI.filter(function (a) { return !(a.org_id === orgId && a.cena_sifra === s2); });
+        var rec2 = CENIKMAP[s2]; if (rec2 && rec2.org_id === orgId) { await sb.from('pricelist').update({ deleted_at: new Date().toISOString() }).eq('sifra', s2); CENIK = CENIK.filter(function (x) { return x.sifra !== s2; }); zgradiCenikMap(); }
+      }
+      var brez = (CLANI || []).filter(function (a) { return a.org_id === orgId && a.cena_sifra == null && a.id != null; });
+      for (var m = 0; m < brez.length; m++) { await sb.from('articles').delete().eq('id', brez[m].id); }
+      if (CLANI) CLANI = CLANI.filter(function (a) { return !(a.org_id === orgId && a.cena_sifra == null); });
+      return true;
+    } else {
+      // IZKLOP → prazen seznam: odstrani vsa članstva stranke in njene lastne artikle
+      var lastni = (CENIK || []).filter(function (x) { return x.org_id === orgId; }).map(function (x) { return x.sifra; });
+      await sb.from('articles').delete().eq('org_id', orgId);
+      if (CLANI) CLANI = CLANI.filter(function (a) { return a.org_id !== orgId; });
+      for (var i2 = 0; i2 < lastni.length; i2++) { await sb.from('pricelist').update({ deleted_at: new Date().toISOString() }).eq('sifra', lastni[i2]); }
+      if (lastni.length) { CENIK = CENIK.filter(function (x) { return x.org_id !== orgId; }); zgradiCenikMap(); }
+      return true;
+    }
+  }
+  // Preklop iz Ceniki (z opozorilom) — vklop nadomesti cene, izklop izprazni seznam.
+  async function preklopiSplosni(orgId, on) {
     var o = ORGSEZNAM.find(function (x) { return x.id === orgId; }) || {};
-    var sc = (CENIK || []).filter(function (x) { return jeSc(x.koda); }).slice().sort(cenikSort);
-    if (!sc.length) { toast('Splošni cenik je prazen (ni artiklov z ID SC…).'); return; }
-    if (!confirm('Uvozim SPLOŠNI CENIK (' + sc.length + ' art.) v stranko »' + (o.name || '') + '«?\n\n⚠ To bo IZBRISALO obstoječe cene/artikle te stranke in jih nadomestilo s splošnim cenikom.')) return;
-    toast('Uvažam splošni cenik …');
-    var ciljneSifre = sc.map(function (x) { return x.sifra; });
-    var obst = {}; (CLANI || []).forEach(function (a) { if (a.org_id === orgId && a.cena_sifra != null) obst[a.cena_sifra] = a; });
-    for (var j = 0; j < ciljneSifre.length; j++) {
-      var sif = ciljneSifre[j];
-      if (obst[sif]) { await sb.from('articles').update({ sort_order: j }).eq('org_id', orgId).eq('cena_sifra', sif); obst[sif].sort_order = j; delete obst[sif]; }
-      else { var p = CENIKMAP[sif]; var ins = await sb.from('articles').insert({ org_id: orgId, name: (p ? p.naziv : '') || '', cena_sifra: sif, sort_order: j }).select('id').maybeSingle(); if (CLANI) CLANI.push({ id: ins.data ? ins.data.id : null, org_id: orgId, name: (p ? p.naziv : '') || '', cena_sifra: sif, sort_order: j }); }
-    }
-    // odstrani preostala članstva (cene), ki niso v splošnem ceniku
-    var odstrani = Object.keys(obst);
-    for (var k = 0; k < odstrani.length; k++) {
-      var s2 = parseInt(odstrani[k], 10);
-      await sb.from('articles').delete().eq('org_id', orgId).eq('cena_sifra', s2);
-      if (CLANI) CLANI = CLANI.filter(function (a) { return !(a.org_id === orgId && a.cena_sifra === s2); });
-      var rec2 = CENIKMAP[s2]; if (rec2 && rec2.org_id === orgId) { await sb.from('pricelist').update({ deleted_at: new Date().toISOString() }).eq('sifra', s2); CENIK = CENIK.filter(function (x) { return x.sifra !== s2; }); zgradiCenikMap(); }
-    }
-    // odstrani še artikle brez cene (da ostane samo splošni cenik)
-    var brez = (CLANI || []).filter(function (a) { return a.org_id === orgId && a.cena_sifra == null && a.id != null; });
-    for (var m = 0; m < brez.length; m++) { await sb.from('articles').delete().eq('id', brez[m].id); }
-    if (CLANI) CLANI = CLANI.filter(function (a) { return !(a.org_id === orgId && a.cena_sifra == null); });
+    if (on) { if (!confirm('Vklopim SPLOŠNI CENIK za »' + (o.name || '') + '«?\n\n⚠ To nadomesti obstoječe cene/artikle te stranke s splošnim cenikom.')) return; }
+    else { if (!confirm('Izklopim splošni cenik za »' + (o.name || '') + '«?\n\n⚠ Seznam artiklov te stranke bo PRAZEN.')) return; }
+    toast(on ? 'Vklapljam splošni cenik …' : 'Izklapljam …');
     _cenikOpen['org:' + orgId] = true;
-    toast('Splošni cenik uvožen (' + ciljneSifre.length + ' art.)');
-    box.dataset.loaded = ''; await risiArtikleBox(box, orgId);
+    var ok = await nastaviSplosni(orgId, on);
+    if (ok === false) return;
+    toast(on ? 'Splošni cenik vklopljen' : 'Splošni cenik izklopljen (seznam prazen)');
     cenikRender();
   }
   function cenikPoveziPrefix(prefix, btn) {
@@ -1785,8 +1803,9 @@
     const naj = Math.max(...ORGSEZNAM.map(o => kgm[o.id] || 0), 1);
     $('content').innerHTML = '<div class="rows">' + list.map((o, i) => {
       const kg = kgm[o.id] || 0;
-      return `<div class="lcell"><button class="row" type="button" data-id="${o.id}" data-i="${i}" aria-expanded="false">
-      <span><span class="row-name">${escape_(o.name)}${strankaSplosni(o.id) ? SC_TAG : ''}</span>
+      const _spl = strankaSplosni(o.id);
+      return `<div class="lcell"><button class="row${_spl ? ' has-sc' : ''}" type="button" data-id="${o.id}" data-i="${i}" aria-expanded="false">
+      <span><span class="row-name">${escape_(o.name)}${_spl ? SC_TAG : ''}</span>
       ${o.legal_name ? `<br><span class="row-legal">${escape_(o.legal_name)}</span>` : ''}</span>
       <span class="row-pct" title="delež vseh količin ta mesec">${skupajKg ? (Math.round(kg / skupajKg * 1000) / 10).toLocaleString('sl-SI') + ' %' : '—'}</span>
       <span class="num">${fmtKg(kg)}</span>
@@ -1856,7 +1875,7 @@
     html += arts.length
       ? '<ul class="art-ur">' + arts.map(a => `<li data-artid="${a.id}" data-s="${a.cena_sifra != null ? a.cena_sifra : ''}">${OSEBJE ? `<button type="button" class="art-grip dnd-handle" title="povleci za razvrščanje" aria-label="razvrsti">${DND_ICON}</button>` : ''}<div class="art-main"><span class="art-nm">${escape_(a.name)}</span><span class="art-sub">${idOznaka(a)}${cenaOznaka(a)}</span></div>${OSEBJE ? `<span class="art-acts"><button type="button" class="art-link" data-art="${a.id}" data-s="${a.cena_sifra != null ? a.cena_sifra : ''}" title="poveži s cenikom" aria-label="poveži s cenikom">€</button><button type="button" class="art-ren" data-art="${a.id}" data-nm="${escape_(a.name)}" title="uredi (naziv + ID)" aria-label="uredi">✎</button><button type="button" class="art-del" data-art="${a.id}" title="odstrani" aria-label="odstrani">×</button></span>` : ''}</li>`).join('') + '</ul>'
       : '<p class="none">Ta stranka še nima artiklov v katalogu.</p>';
-    if (OSEBJE) html += `<div class="art-add"><input type="text" class="art-new" placeholder="nov artikel"><input type="text" class="art-id-new" placeholder="ID (npr. PV001)" maxlength="5" value="${escape_(predlagajId())}"><button type="button" class="btn btn-narrow art-add-btn">+ Dodaj</button><button type="button" class="btn btn-narrow ghost art-exist-btn">+ Obstoječ</button></div><div class="art-exist-box"></div><div class="art-splbar"><button type="button" class="btn btn-narrow ghost art-spl-btn">Uvozi splošni cenik</button></div>`;
+    if (OSEBJE) html += `<div class="art-add"><input type="text" class="art-new" placeholder="nov artikel"><input type="text" class="art-id-new" placeholder="ID (npr. PV001)" maxlength="5" value="${escape_(predlagajId())}"><button type="button" class="btn btn-narrow art-add-btn">+ Dodaj</button><button type="button" class="btn btn-narrow ghost art-exist-btn">+ Obstoječ</button></div><div class="art-exist-box"></div>`;
     box.innerHTML = html;
     if (OSEBJE) {
       { const eb = box.querySelector('.str-edit'); if (eb) eb.addEventListener('click', e => { e.stopPropagation(); urediStranko(box, orgId); }); }
@@ -1878,8 +1897,18 @@
       addb.addEventListener('click', e => { e.stopPropagation(); dodaj(); });
       [inp, idInp].forEach(el => { el.addEventListener('click', e => e.stopPropagation()); el.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); dodaj(); } }); });
       { const eb2 = box.querySelector('.art-exist-btn'); if (eb2) eb2.addEventListener('click', e => { e.stopPropagation(); dodajObstojecStranka(orgId, box); }); }
-      { const sb2 = box.querySelector('.art-spl-btn'); if (sb2) sb2.addEventListener('click', e => { e.stopPropagation(); uvoziSplosniStranka(orgId, box); }); }
     }
+    // sinhroniziraj značko »Splošni cenik« na vrstici stranke (živo, ob vsaki spremembi artiklov)
+    try {
+      var _row = box.previousElementSibling;
+      if (_row && _row.classList && _row.classList.contains('row')) {
+        var _priced = arts.filter(function (a) { return a.cena_sifra != null; });
+        var _spl = _priced.length > 0 && _priced.every(function (a) { var p = CENIKMAP[a.cena_sifra]; return p && jeSc(p.koda); });
+        var _rn = _row.querySelector('.row-name'); var _has = _rn && _rn.querySelector('.sc-tag');
+        if (_rn) { if (_spl && !_has) _rn.insertAdjacentHTML('beforeend', SC_TAG); else if (!_spl && _has) _has.remove(); }
+        _row.classList.toggle('has-sc', !!_spl);
+      }
+    } catch (e) {}
     box.dataset.loaded = '1';
     requestAnimationFrame(function () { window.scrollTo(0, _sy); });
   }

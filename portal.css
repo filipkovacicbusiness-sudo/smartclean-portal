@@ -866,3 +866,10 @@ html[data-view="grid"] .lcell:not(.open) .a-row{align-content:center;}
 .cgrp.splosni .cgrp-name{font-weight:700;}
 .art-splbar{margin-top:6px;}
 .art-splbar .art-spl-btn{width:100%;justify-content:center;}
+
+/* Značka »Splošni cenik« v MREŽI: da je ne odreže dolgo ime, jo damo v kot kartice */
+html[data-view="grid"] .lcell .row{position:relative;}
+html[data-view="grid"] .row .sc-tag{position:absolute;top:14px;right:14px;margin:0;z-index:2;}
+html[data-view="grid"] .row.has-sc .row-name{padding-right:86px;}
+/* Preklop splošnega cenika v Ceniki */
+.sc-toggle.on{background:rgba(var(--brand-rgb),.10);border-color:rgba(var(--brand-rgb),.38);color:var(--ink);opacity:1;}
