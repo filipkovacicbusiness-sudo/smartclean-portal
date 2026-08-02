@@ -510,6 +510,12 @@ body,.topbar,.side,.main,.panel,.row,.a-row,.arts,.a-det,.fak-card,.fak-tot,.sta
   text-align:center;white-space:nowrap;}
 .sc-foot:hover{opacity:1;}
 .sc-foot b{font-weight:600;color:var(--ink);}
+/* Na mobilnem naj ne lebdi čez vsebino — postavi ga na konec strani */
+@media(max-width:900px){
+  .sc-foot{position:static;left:auto;transform:none;bottom:auto;z-index:auto;
+    display:block;width:100%;margin:18px 0 calc(14px + env(safe-area-inset-bottom));opacity:.6;}
+  main.main{padding-bottom:28px;}
+}
 @media(max-width:560px){.sc-foot{font-size:.58rem;}}
 
 /* ══════════ ENOTEN HOVER PREHOD (kot eflitte nav) ══════════ */
