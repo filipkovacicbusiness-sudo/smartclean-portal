@@ -1406,7 +1406,12 @@
   function izvoziCenik(orgId) {
     var o = ORGSEZNAM.find(function (x) { return x.id === orgId; }) || {};
     var ime = o.name || 'stranka';
-    var rows = (CENIK || []).filter(function (x) { return x.org_id === orgId; }).slice().sort(cenikSort);
+    // enak nabor kot v prikazu Cenika: članstva (CLANI) + lastni artikli, brez podvajanj, po vrstnem redu
+    var _seen = {}, _items = [];
+    (CLANI || []).forEach(function (a) { if (a.org_id === orgId && a.cena_sifra != null) { var p = CENIKMAP[a.cena_sifra]; if (p && !_seen[p.sifra]) { _seen[p.sifra] = true; _items.push({ p: p, ord: (a.sort_order != null ? a.sort_order : 1e9) }); } } });
+    (CENIK || []).forEach(function (x) { if (x.org_id === orgId && !_seen[x.sifra]) { _seen[x.sifra] = true; _items.push({ p: x, ord: (x.sort_order != null ? x.sort_order : 1e9) }); } });
+    _items.sort(function (a, b) { return (a.ord - b.ord) || cenikSort(a.p, b.p); });
+    var rows = _items.map(function (it) { return it.p; });
     var payload = { _sc: 'SMARTCLEAN_CENIK', v: 1, izvozeno: new Date().toISOString(),
       stranka: { naziv: o.name || '', podjetje: o.legal_name || '', ddv: o.vat_id || '' },
       artikli: rows.map(function (x) { return { id: normId(x.koda), naziv: x.naziv || '', em: x.em || 'kos', cena: (x.cena1 != null ? x.cena1 : 0) }; }) };
