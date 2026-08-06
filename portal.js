@@ -447,6 +447,7 @@
     statistika: '<path d="M3 3v18h18"/><rect x="7" y="11" width="3" height="7" rx="1"/><rect x="12" y="7" width="3" height="11" rx="1"/><rect x="17" y="14" width="3" height="4" rx="1"/>',
     ceniki: '<path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0l-7.2-7.2A2 2 0 0 1 3 12V4a1 1 0 0 1 1-1h8a2 2 0 0 1 1.4.6l7.2 7.2a2 2 0 0 1 0 2.6Z"/><circle cx="7.5" cy="7.5" r="1.4"/>',
     prijave: '<circle cx="12" cy="8" r="3.4"/><path d="M5.5 20a6.5 6.5 0 0 1 13 0"/><path d="M12 8v0"/>',
+    prisotnost: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/>',
     aplikacija: '<rect x="6.5" y="2.5" width="11" height="19" rx="2.5"/><path d="M10.5 5.5h3"/><path d="M12 18.2h.01"/>',
     nastavitve: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>'
   };
@@ -454,7 +455,7 @@
   // Osnovni (privzeti) glavni razdelki menija za trenutnega uporabnika.
   function glavniMeni() {
     if (OSEBJE) {
-      var g = [['domov', 'Pregled'], ['statistika', 'Statistika'], ['arhiv', 'Arhiv'], ['fakture', 'Fakture'], ['ceniki', 'Ceniki'], ['stranke', 'Stranke'], ['aplikacija', 'Aplikacija']];
+      var g = [['domov', 'Pregled'], ['statistika', 'Statistika'], ['arhiv', 'Arhiv'], ['fakture', 'Fakture'], ['ceniki', 'Ceniki'], ['stranke', 'Stranke'], ['prisotnost', 'Prisotnost'], ['aplikacija', 'Aplikacija']];
       if (JE_LASTNIK()) g.push(['uporabniki', 'Uporabniki']);
       return g;
     }
@@ -527,6 +528,151 @@
     if (kam === 'racun') { const mi = $('mojeIme'); if (mi) mi.value = (JAZIME && JAZIME.indexOf('@') < 0) ? JAZIME : ''; }
     if (kam === 'aplikacija') risiAplikacijo();
     if (kam === 'ceniki') risiCeniki();
+    if (kam === 'prisotnost') risiPrisotnost();
+  }
+
+  /* ══════════ PRISOTNOST (registracija delovnega časa) ══════════ */
+  var ZAPOSLENI = null, PRISDOG = null, _prisDan = null, _prisMesec = false;
+
+  function prisOrg() {
+    if (ZAPOSLENI && ZAPOSLENI.length && ZAPOSLENI[0].org_id) return ZAPOSLENI[0].org_id;
+    return (ORGSEZNAM && ORGSEZNAM[0]) ? ORGSEZNAM[0].id : null;
+  }
+  function novCardToken() { var a = new Uint8Array(16); crypto.getRandomValues(a); return [].map.call(a, function (b) { return ('0' + b.toString(16)).slice(-2); }).join(''); }
+  function danes10() { var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+  function uraMin(ts) { return new Date(ts).toLocaleTimeString('sl-SI', { hour: '2-digit', minute: '2-digit' }); }
+  function trajanjeH(sek) { var m = Math.round(sek / 60); var h = Math.floor(m / 60); m = m % 60; return h + ':' + ('0' + m).slice(-2); }
+
+  async function naloziPrisotnost() {
+    var e = await sb.from('employees').select('id,org_id,ime,card_token,active,created_at').order('ime');
+    ZAPOSLENI = e.error ? [] : (e.data || []);
+    var meja = new Date(Date.now() - 62 * 24 * 3600 * 1000).toISOString();
+    PRISDOG = await vseVrstice(function (a, b) {
+      return sb.from('att_events').select('id,employee_id,terminal_id,ts,type,source').gte('ts', meja).order('ts', { ascending: true }).range(a, b);
+    });
+  }
+  function prisZadnji(empId) {
+    var last = null;
+    for (var i = 0; i < PRISDOG.length; i++) { var d = PRISDOG[i]; if (d.employee_id === empId && (!last || d.ts > last.ts)) last = d; }
+    return last;
+  }
+  // Pari prihod/odhod za ključ dneva ('YYYY-MM-DD') ali meseca ('YYYY-MM').
+  function prisPari(empId, kljuc) {
+    var evs = PRISDOG.filter(function (d) { return d.employee_id === empId && d.ts.slice(0, kljuc.length) === kljuc; })
+      .sort(function (a, b) { return a.ts < b.ts ? -1 : 1; });
+    var pari = [], odprt = null, sek = 0;
+    evs.forEach(function (d) {
+      if (d.type === 'in') { if (!odprt) odprt = d; }
+      else if (d.type === 'out') { if (odprt) { pari.push([odprt, d]); sek += (new Date(d.ts) - new Date(odprt.ts)) / 1000; odprt = null; } }
+    });
+    return { pari: pari, odprt: odprt, sek: sek };
+  }
+
+  async function risiPrisotnost() {
+    var box = $('prisList'); if (!box) return;
+    box.innerHTML = '<p class="u-sub" style="padding:16px">Nalagam …</p>';
+    await naloziPrisotnost();
+    if (!_prisDan) _prisDan = danes10();
+    prisRender();
+  }
+  function prisRender() {
+    var box = $('prisList'); if (!box) return;
+    var _sy = window.scrollY;
+    var aktivni = (ZAPOSLENI || []).filter(function (z) { return z.active; });
+    // ── Blok 1: trenutno stanje ──
+    var prisotnihN = 0;
+    var stanjeVrst = aktivni.map(function (z) {
+      var l = prisZadnji(z.id); var notri = !!(l && l.type === 'in');
+      if (notri) prisotnihN++;
+      return '<div class="pris-row"><span class="pris-nm">' + escape_(z.ime) + '</span>' +
+        (notri ? '<span class="pris-badge in">prisoten · od ' + uraMin(l.ts) + '</span>' : '<span class="pris-badge out">odsoten</span>') + '</div>';
+    }).join('') || '<p class="u-sub" style="padding:10px 2px">Ni aktivnih zaposlenih. Dodaj jih spodaj.</p>';
+    var blok1 = '<div class="pris-card"><div class="pris-h"><h3 class="sec-h">Trenutno prisotni</h3>' +
+      '<span class="pris-count">' + prisotnihN + ' / ' + aktivni.length + '</span></div>' + stanjeVrst + '</div>';
+
+    // ── Blok 2: evidenca (dan/mesec) ──
+    var kljuc = _prisMesec ? _prisDan.slice(0, 7) : _prisDan;
+    var evVrst = aktivni.map(function (z) {
+      var r = prisPari(z.id, kljuc);
+      var deli = r.pari.map(function (p) { return uraMin(p[0].ts) + '–' + uraMin(p[1].ts); }).join(', ');
+      if (r.odprt) deli += (deli ? ', ' : '') + uraMin(r.odprt.ts) + '– …';
+      return '<tr><td>' + escape_(z.ime) + '</td><td class="pris-pairs">' + (deli || '—') + '</td><td class="pris-ure">' + (r.sek ? trajanjeH(r.sek) : '—') + '</td>' +
+        '<td class="pris-act"><button type="button" class="btn-mini ghost" data-rocni="' + z.id + '">+ ročno</button></td></tr>';
+    }).join('');
+    var blok2 = '<div class="pris-card"><div class="pris-h"><h3 class="sec-h">Evidenca</h3>' +
+      '<span class="pris-tabs"><button type="button" class="pris-tab' + (!_prisMesec ? ' on' : '') + '" data-obd="dan">Dan</button>' +
+      '<button type="button" class="pris-tab' + (_prisMesec ? ' on' : '') + '" data-obd="mesec">Mesec</button></span></div>' +
+      '<div class="pris-datum"><input type="date" id="prisDatum" value="' + _prisDan + '"></div>' +
+      '<table class="pris-tbl"><thead><tr><th>Zaposleni</th><th>Prihod–odhod</th><th>Ur skupaj</th><th></th></tr></thead><tbody>' +
+      (evVrst || '<tr><td colspan="4" class="u-sub">Ni podatkov.</td></tr>') + '</tbody></table></div>';
+
+    // ── Blok 3: zaposleni ──
+    var zapVrst = (ZAPOSLENI || []).map(function (z) {
+      return '<div class="pris-emp"><span class="pris-nm">' + escape_(z.ime) + (z.active ? '' : ' <span class="u-sub">(neaktiven)</span>') + '</span>' +
+        '<span class="pris-emp-act">' +
+        '<button type="button" class="btn-mini ghost" data-karta="' + z.id + '">' + (z.card_token ? 'Nova kartica' : 'Dodeli kartico') + '</button>' +
+        '<button type="button" class="btn-mini ghost" data-aktiv="' + z.id + '" data-v="' + (z.active ? '0' : '1') + '">' + (z.active ? 'Deaktiviraj' : 'Aktiviraj') + '</button>' +
+        '</span></div>';
+    }).join('') || '<p class="u-sub" style="padding:10px 2px">Še ni zaposlenih.</p>';
+    var blok3 = '<div class="pris-card"><h3 class="sec-h">Zaposleni</h3>' + zapVrst +
+      '<div class="art-add" style="margin-top:12px"><input type="text" class="pris-new" placeholder="Ime in priimek novega zaposlenega"><button type="button" class="btn btn-narrow pris-add-btn">+ Dodaj</button></div></div>';
+
+    box.innerHTML = blok1 + blok2 + blok3;
+
+    var dat = $('prisDatum'); if (dat) dat.addEventListener('change', function () { _prisDan = this.value || danes10(); prisRender(); });
+    box.querySelectorAll('[data-obd]').forEach(function (b) { b.addEventListener('click', function () { _prisMesec = (b.dataset.obd === 'mesec'); prisRender(); }); });
+    box.querySelectorAll('[data-rocni]').forEach(function (b) { b.addEventListener('click', function () { prisRocni(b.dataset.rocni); }); });
+    box.querySelectorAll('[data-karta]').forEach(function (b) { b.addEventListener('click', function () { prisDodeliKarto(b.dataset.karta); }); });
+    box.querySelectorAll('[data-aktiv]').forEach(function (b) { b.addEventListener('click', function () { prisAktiv(b.dataset.aktiv, b.dataset.v === '1'); }); });
+    var nb = box.querySelector('.pris-add-btn'), ni = box.querySelector('.pris-new');
+    if (nb && ni) { nb.addEventListener('click', function () { prisDodajZap(ni.value); }); ni.addEventListener('keydown', function (e) { if (e.key === 'Enter') prisDodajZap(ni.value); }); }
+    requestAnimationFrame(function () { window.scrollTo(0, _sy); });
+  }
+  async function prisDodajZap(ime) {
+    ime = (ime || '').trim(); if (!ime) { toast('Vpiši ime.'); return; }
+    var org = prisOrg(); if (!org) { toast('Ni organizacije za zaposlenega.'); return; }
+    var ins = await sb.from('employees').insert({ org_id: org, ime: ime, active: true }).select('id').maybeSingle();
+    if (ins.error) { toast('Napaka: ' + ins.error.message); return; }
+    toast('Zaposleni dodan.'); await risiPrisotnost();
+  }
+  async function prisAktiv(empId, on) {
+    var up = await sb.from('employees').update({ active: on }).eq('id', empId);
+    if (up.error) { toast('Napaka: ' + up.error.message); return; }
+    await risiPrisotnost();
+  }
+  async function prisDodeliKarto(empId) {
+    var z = (ZAPOSLENI || []).find(function (x) { return x.id === empId; }); if (!z) return;
+    var ok = await potrdiModal({ naslov: 'Dodeli kartico', sporocilo: (z.card_token ? 'Ustvarim NOVO kartico za „' + z.ime + '"? Stara bo prenehala delovati.' : 'Ustvarim kartico za „' + z.ime + '"?'), potrdi: 'Ustvari', preklici: 'Prekliči' });
+    if (!ok) return;
+    var tok = novCardToken();
+    var up = await sb.from('employees').update({ card_token: tok }).eq('id', empId);
+    if (up.error) { toast('Napaka: ' + up.error.message); return; }
+    await potrdiModal({ naslov: 'Žeton kartice — ' + z.ime, sporocilo: 'Ta žeton zapiši na kartico:\n\n' + tok, potrdi: 'V redu', preklici: 'Zapri' });
+    await risiPrisotnost();
+  }
+  function prisRocni(empId) {
+    var z = (ZAPOSLENI || []).find(function (x) { return x.id === empId; }); if (!z) return;
+    var back = document.createElement('div'); back.className = 'sc-modal-back';
+    var privzeto = _prisDan + 'T' + new Date().toTimeString().slice(0, 5);
+    back.innerHTML = '<div class="sc-modal" role="dialog" aria-modal="true"><h4>Ročni vpis — ' + escape_(z.ime) + '</h4>' +
+      '<label class="pris-lab">Dogodek</label><select class="pris-tip"><option value="in">Prihod (in)</option><option value="out">Odhod (out)</option></select>' +
+      '<label class="pris-lab">Čas</label><input type="datetime-local" class="pris-cas sc-modal-input" value="' + privzeto + '">' +
+      '<div class="sc-modal-acts"><button type="button" class="sc-modal-btn ghost" data-no>Prekliči</button><button type="button" class="sc-modal-btn primary" data-yes>Shrani</button></div></div>';
+    document.body.appendChild(back);
+    requestAnimationFrame(function () { back.classList.add('show'); });
+    if (typeof zazeniCustomSelecte === 'function') zazeniCustomSelecte();
+    function zapri() { back.classList.remove('show'); setTimeout(function () { if (back.parentNode) back.parentNode.removeChild(back); }, 180); }
+    back.querySelector('[data-no]').addEventListener('click', zapri);
+    back.addEventListener('click', function (e) { if (e.target === back) zapri(); });
+    back.querySelector('[data-yes]').addEventListener('click', async function () {
+      var tip = back.querySelector('.pris-tip').value;
+      var cas = back.querySelector('.pris-cas').value;
+      if (!cas) { toast('Vpiši čas.'); return; }
+      var iso = new Date(cas).toISOString();
+      var ins = await sb.from('att_events').insert({ org_id: z.org_id, employee_id: z.id, type: tip, source: 'manual', ts: iso }).select('id').maybeSingle();
+      if (ins.error) { toast('Napaka: ' + ins.error.message); return; }
+      toast('Ročni vpis dodan (source = manual).'); zapri(); await risiPrisotnost();
+    });
   }
 
   /* ══════════ SPREMNI LISTI ══════════ */

@@ -1048,6 +1048,40 @@ html[data-view="grid"] #cenikList .sc-isolate,
 html[data-view="grid"] #cenikList .cenik-sec-head{grid-column:1 / -1;}
 html[data-view="grid"] #cenikList .sc-isolate .cgrp:not(.open){max-width:var(--tile-min);}
 
+/* ── PRISOTNOST ── */
+.pris-card{border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);padding:16px 18px;margin-bottom:14px;}
+.pris-h{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;}
+.pris-h .sec-h{margin:0;}
+.pris-count{font-family:var(--mono);font-size:.9rem;color:var(--mid);}
+.pris-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--line);}
+.pris-row:last-child{border-bottom:none;}
+.pris-nm{font-size:.95rem;color:var(--ink);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.pris-badge{font-size:.74rem;font-weight:600;padding:3px 10px;border-radius:100px;white-space:nowrap;flex:0 0 auto;}
+.pris-badge.in{background:rgba(47,143,111,.16);color:var(--wm-green,#3f9f6f);}
+.pris-badge.out{background:var(--green-m);color:var(--mid);}
+.pris-tabs{display:inline-flex;gap:4px;background:var(--green-m);border-radius:100px;padding:3px;}
+.pris-tab{border:none;background:none;color:var(--mid);font-size:.82rem;font-weight:600;padding:5px 14px;border-radius:100px;cursor:pointer;}
+.pris-tab.on{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12);}
+.pris-datum{margin:2px 0 12px;}
+.pris-datum input{padding:9px 12px;border:1.5px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink);font-size:15px;}
+.pris-datum input:focus{border-color:var(--green-l);outline:none;}
+.pris-tbl{width:100%;border-collapse:collapse;}
+.pris-tbl th{text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:var(--mid);font-weight:600;padding:6px 8px;border-bottom:1px solid var(--line);}
+.pris-tbl td{padding:9px 8px;border-bottom:1px solid var(--line);font-size:.9rem;color:var(--ink);vertical-align:middle;}
+.pris-tbl tr:last-child td{border-bottom:none;}
+.pris-pairs{font-family:var(--mono);font-size:.82rem;color:var(--mid);}
+.pris-ure{font-family:var(--mono);font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.pris-act{text-align:right;white-space:nowrap;}
+.pris-emp{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--line);}
+.pris-emp:last-of-type{border-bottom:none;}
+.pris-emp-act{display:inline-flex;gap:6px;flex:0 0 auto;}
+.pris-lab{display:block;font-size:.78rem;color:var(--mid);margin:4px 0 6px;}
+.pris-cas{width:100%;}
+@media(max-width:600px){
+  .pris-emp{flex-wrap:wrap;}
+  .pris-tbl th:nth-child(2),.pris-tbl td:nth-child(2){display:none;}
+}
+
 /* Mobilno: skrij vrstico z davčno št. in naslovom v okvirčku stranke */
 @media(max-width:760px){
   #content .arts > .meta{display:none;}
