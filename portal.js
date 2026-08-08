@@ -642,9 +642,15 @@
     } else {
       var dVrst = aktivni.map(function (z) {
         var r = prisPari(z.id, kljuc);
-        var deli = r.pari.map(function (p) { return uraMin(p[0].ts) + '–' + uraMin(p[1].ts); }).join(', ');
-        if (r.odprt) deli += (deli ? ', ' : '') + uraMin(r.odprt.ts) + '– …';
-        return '<tr><td>' + escape_(z.ime) + '</td><td class="pris-pairs">' + (deli || '—') + '</td><td class="pris-ure">' + (r.sek ? trajanjeH(r.sek) : '—') + '</td>' +
+        var chips = r.pari.map(function (p) {
+          var ids = p[0].id + ',' + p[1].id;
+          return '<span class="pris-chip"><button type="button" class="pris-chip-t" data-editpair="' + ids + '" title="uredi vpis">' + uraMin(p[0].ts) + '–' + uraMin(p[1].ts) + '</button>' +
+            '<button type="button" class="pris-chip-x" data-delpair="' + ids + '" title="izbriši vpis" aria-label="izbriši">×</button></span>';
+        });
+        if (r.odprt) chips.push('<span class="pris-chip"><button type="button" class="pris-chip-t" data-editpair="' + r.odprt.id + '" title="uredi vpis">' + uraMin(r.odprt.ts) + '– …</button>' +
+          '<button type="button" class="pris-chip-x" data-delpair="' + r.odprt.id + '" title="izbriši prihod" aria-label="izbriši">×</button></span>');
+        var deli = chips.join(' ') || '—';
+        return '<tr><td>' + escape_(z.ime) + '</td><td class="pris-pairs">' + deli + '</td><td class="pris-ure">' + (r.sek ? trajanjeH(r.sek) : '—') + '</td>' +
           '<td class="pris-act"><button type="button" class="cgrp-btn ghost" data-rocni="' + z.id + '">+ ročno</button></td></tr>';
       }).join('');
       telo = '<table class="pris-tbl"><thead><tr><th>Zaposleni</th><th>Prihod–odhod</th><th>Ur skupaj</th><th></th></tr></thead><tbody>' +
@@ -668,7 +674,7 @@
         '</span></div>';
     }).join('') || '<p class="u-sub" style="padding:10px 2px">Še ni zaposlenih.</p>';
     var blok3 = '<div class="pris-card"><h3 class="sec-h">Zaposleni</h3>' + zapVrst +
-      '<div class="art-add" style="margin-top:12px"><input type="text" class="pris-new" placeholder="Ime in priimek novega zaposlenega"><button type="button" class="btn btn-narrow pris-add-btn">+ Dodaj</button></div></div>';
+      '<div class="pris-add"><input type="text" class="pris-new" placeholder="Ime in priimek novega zaposlenega"><button type="button" class="cgrp-btn pris-add-btn">+ Dodaj</button></div></div>';
 
     box.innerHTML = blok1 + blok2 + blok3;
 
@@ -676,6 +682,8 @@
     box.querySelectorAll('[data-obd]').forEach(function (b) { b.addEventListener('click', function () { _prisMesec = (b.dataset.obd === 'mesec'); prisRender(); }); });
     { var ib = box.querySelector('.pris-izvoz'); if (ib) ib.addEventListener('click', prisIzvoz); }
     box.querySelectorAll('[data-rocni]').forEach(function (b) { b.addEventListener('click', function () { prisRocni(b.dataset.rocni); }); });
+    box.querySelectorAll('[data-delpair]').forEach(function (b) { b.addEventListener('click', function (e) { e.stopPropagation(); prisIzbrisiPar(b.dataset.delpair); }); });
+    box.querySelectorAll('[data-editpair]').forEach(function (b) { b.addEventListener('click', function (e) { e.stopPropagation(); prisUrediPar(b.dataset.editpair); }); });
     box.querySelectorAll('[data-karta]').forEach(function (b) { b.addEventListener('click', function () { prisDodeliKarto(b.dataset.karta); }); });
     box.querySelectorAll('[data-aktiv]').forEach(function (b) { b.addEventListener('click', function () { prisAktiv(b.dataset.aktiv, b.dataset.v === '1'); }); });
     box.querySelectorAll('[data-uredi]').forEach(function (b) { b.addEventListener('click', function () { prisPreimenuj(b.dataset.uredi); }); });
@@ -722,6 +730,54 @@
     if (up.error) { toast('Napaka: ' + up.error.message); return; }
     await potrdiModal({ naslov: 'Žeton kartice — ' + z.ime, sporocilo: 'Ta žeton zapiši na kartico:\n\n' + tok, potrdi: 'V redu', preklici: 'Zapri' });
     await risiPrisotnost();
+  }
+  async function prisIzbrisiPar(idsStr) {
+    var ids = String(idsStr || '').split(',').filter(Boolean);
+    if (!ids.length) return;
+    var ok = await potrdiModal({ naslov: 'Izbriši vpis', sporocilo: 'Izbrišem ta vpis ur (prihod' + (ids.length > 1 ? ' in odhod' : '') + ')? Tega ni mogoče razveljaviti.', potrdi: 'Izbriši', preklici: 'Prekliči', nevarno: true });
+    if (!ok) return;
+    var del = await sb.from('att_events').delete().in('id', ids);
+    if (del.error) { toast('Napaka: ' + del.error.message); return; }
+    toast('Vpis izbrisan.'); await risiPrisotnost();
+  }
+  function hmLocal(ts) { var d = new Date(ts); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); }
+  function danLocal(ts) { var d = new Date(ts); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+  function prisDogById(id) { return (PRISDOG || []).find(function (d) { return d.id === id; }); }
+  // Uredi obstoječi vpis: popravi prihod/odhod. Če odhod izprazniš, se ta odstrani (izmena spet odprta).
+  function prisUrediPar(idsStr) {
+    var ids = String(idsStr || '').split(',').filter(Boolean);
+    var inEv = prisDogById(ids[0]); var outEv = ids[1] ? prisDogById(ids[1]) : null;
+    if (!inEv) { toast('Vpisa ni več.'); return; }
+    var z = (ZAPOSLENI || []).find(function (x) { return x.id === inEv.employee_id; }); if (!z) return;
+    var back = document.createElement('div'); back.className = 'sc-modal-back';
+    back.innerHTML = '<div class="sc-modal" role="dialog" aria-modal="true"><h4>Uredi vpis — ' + escape_(z.ime) + '</h4>' +
+      '<label class="pris-lab">Datum</label><input type="date" class="pris-r-dan sc-modal-input" value="' + danLocal(inEv.ts) + '">' +
+      '<div class="pris-r-cas"><div><label class="pris-lab">Prihod</label><input type="time" class="pris-r-in sc-modal-input" value="' + hmLocal(inEv.ts) + '"></div>' +
+      '<div><label class="pris-lab">Odhod <span class="u-sub">(neobvezno)</span></label><input type="time" class="pris-r-out sc-modal-input" value="' + (outEv ? hmLocal(outEv.ts) : '') + '"></div></div>' +
+      '<p class="u-sub" style="margin:8px 0 0">Če odhod izprazniš, se odstrani (izmena ostane odprta).</p>' +
+      '<div class="sc-modal-acts"><button type="button" class="sc-modal-btn ghost" data-no>Prekliči</button><button type="button" class="sc-modal-btn primary" data-yes>Shrani</button></div></div>';
+    document.body.appendChild(back);
+    requestAnimationFrame(function () { back.classList.add('show'); });
+    function zapri() { back.classList.remove('show'); setTimeout(function () { if (back.parentNode) back.parentNode.removeChild(back); }, 180); }
+    back.querySelector('[data-no]').addEventListener('click', zapri);
+    back.addEventListener('click', function (e) { if (e.target === back) zapri(); });
+    back.querySelector('[data-yes]').addEventListener('click', async function () {
+      var nd = back.querySelector('.pris-r-dan').value;
+      var nin = back.querySelector('.pris-r-in').value;
+      var nout = back.querySelector('.pris-r-out').value;
+      if (!nd || !nin) { toast('Vpiši datum in prihod.'); return; }
+      if (nout && nout <= nin) { toast('Odhod mora biti za prihodom.'); return; }
+      var ops = [sb.from('att_events').update({ ts: new Date(nd + 'T' + nin).toISOString() }).eq('id', inEv.id)];
+      if (nout) {
+        if (outEv) ops.push(sb.from('att_events').update({ ts: new Date(nd + 'T' + nout).toISOString() }).eq('id', outEv.id));
+        else ops.push(sb.from('att_events').insert({ org_id: z.org_id, employee_id: z.id, type: 'out', source: 'manual', ts: new Date(nd + 'T' + nout).toISOString() }));
+      } else if (outEv) {
+        ops.push(sb.from('att_events').delete().eq('id', outEv.id));
+      }
+      var res = await Promise.all(ops);
+      if (res.some(function (r) { return r.error; })) { toast('Napaka pri shranjevanju.'); return; }
+      toast('Vpis posodobljen.'); zapri(); await risiPrisotnost();
+    });
   }
   // Ročni vnos cele izmene (prihod + odhod) naenkrat — glavni način, dokler kartični sistem ni v uporabi.
   function prisRocni(empId) {
