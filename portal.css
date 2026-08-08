@@ -1059,6 +1059,7 @@ html[data-view="grid"] #cenikList .sc-isolate .cgrp:not(.open){max-width:var(--t
 .pris-badge{font-size:.74rem;font-weight:600;padding:3px 10px;border-radius:100px;white-space:nowrap;flex:0 0 auto;}
 .pris-badge.in{background:rgba(47,143,111,.16);color:var(--wm-green,#3f9f6f);}
 .pris-badge.out{background:var(--green-m);color:var(--mid);}
+.pris-hbtns{display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;}
 .pris-tabs{display:inline-flex;gap:4px;background:var(--green-m);border-radius:100px;padding:3px;}
 .pris-tab{border:none;background:none;color:var(--mid);font-size:.82rem;font-weight:600;padding:5px 14px;border-radius:100px;cursor:pointer;}
 .pris-tab.on{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12);}

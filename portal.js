@@ -567,6 +567,38 @@
     });
     return { pari: pari, odprt: odprt, sek: sek };
   }
+  // Povzetek obdobja (dan ali mesec) za enega zaposlenega: št. dni + skupne sekunde.
+  function prisPovzetek(empId, kljuc) {
+    var r = prisPari(empId, kljuc);
+    var dnevi = {}; r.pari.forEach(function (p) { dnevi[p[0].ts.slice(0, 10)] = true; });
+    return { dni: Object.keys(dnevi).length, sek: r.sek, pari: r.pari, odprt: r.odprt };
+  }
+  function decimalneUre(sek) { return (Math.round(sek / 3600 * 100) / 100).toString().replace('.', ','); }
+  function csvC(s) { s = String(s == null ? '' : s); return /[";\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }
+  // Izvoz ur za trenutno izbrano obdobje v CSV (odpre se v Excelu).
+  function prisIzvoz() {
+    var mesec = _prisMesec; var kljuc = mesec ? _prisDan.slice(0, 7) : _prisDan;
+    var sep = ';', aktivni = (ZAPOSLENI || []).filter(function (z) { return z.active; });
+    var vrst = [['Zaposleni', 'Datum', 'Prihod', 'Odhod', 'Ure (h:mm)', 'Ure (decimalno)'].map(csvC).join(sep)];
+    aktivni.forEach(function (z) {
+      var r = prisPari(z.id, kljuc);
+      r.pari.forEach(function (p) {
+        var sek = (new Date(p[1].ts) - new Date(p[0].ts)) / 1000;
+        vrst.push([z.ime, p[0].ts.slice(0, 10), uraMin(p[0].ts), uraMin(p[1].ts), trajanjeH(sek), decimalneUre(sek)].map(csvC).join(sep));
+      });
+    });
+    vrst.push('');
+    vrst.push(['POVZETEK', 'Dni', '', '', 'Ure skupaj (h:mm)', 'Ure skupaj (decimalno)'].map(csvC).join(sep));
+    aktivni.forEach(function (z) {
+      var pov = prisPovzetek(z.id, kljuc);
+      vrst.push([z.ime, pov.dni, '', '', trajanjeH(pov.sek), decimalneUre(pov.sek)].map(csvC).join(sep));
+    });
+    var vsebina = '\ufeff' + vrst.join('\r\n');
+    var blob = new Blob([vsebina], { type: 'text/csv;charset=utf-8;' });
+    var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = 'ure_' + kljuc + '.csv'; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    toast('Izvoz pripravljen: ure_' + kljuc + '.csv');
+  }
 
   async function risiPrisotnost() {
     var box = $('prisList'); if (!box) return;
@@ -592,19 +624,31 @@
 
     // ── Blok 2: evidenca (dan/mesec) ──
     var kljuc = _prisMesec ? _prisDan.slice(0, 7) : _prisDan;
-    var evVrst = aktivni.map(function (z) {
-      var r = prisPari(z.id, kljuc);
-      var deli = r.pari.map(function (p) { return uraMin(p[0].ts) + '–' + uraMin(p[1].ts); }).join(', ');
-      if (r.odprt) deli += (deli ? ', ' : '') + uraMin(r.odprt.ts) + '– …';
-      return '<tr><td>' + escape_(z.ime) + '</td><td class="pris-pairs">' + (deli || '—') + '</td><td class="pris-ure">' + (r.sek ? trajanjeH(r.sek) : '—') + '</td>' +
-        '<td class="pris-act"><button type="button" class="btn-mini ghost" data-rocni="' + z.id + '">+ ročno</button></td></tr>';
-    }).join('');
+    var telo;
+    if (_prisMesec) {
+      var mVrst = aktivni.map(function (z) {
+        var pov = prisPovzetek(z.id, kljuc);
+        return '<tr><td>' + escape_(z.ime) + '</td><td class="pris-ure">' + pov.dni + '</td><td class="pris-ure">' + (pov.sek ? trajanjeH(pov.sek) : '—') + '</td></tr>';
+      }).join('');
+      telo = '<table class="pris-tbl"><thead><tr><th>Zaposleni</th><th>Dni</th><th>Ur skupaj</th></tr></thead><tbody>' +
+        (mVrst || '<tr><td colspan="3" class="u-sub">Ni podatkov.</td></tr>') + '</tbody></table>';
+    } else {
+      var dVrst = aktivni.map(function (z) {
+        var r = prisPari(z.id, kljuc);
+        var deli = r.pari.map(function (p) { return uraMin(p[0].ts) + '–' + uraMin(p[1].ts); }).join(', ');
+        if (r.odprt) deli += (deli ? ', ' : '') + uraMin(r.odprt.ts) + '– …';
+        return '<tr><td>' + escape_(z.ime) + '</td><td class="pris-pairs">' + (deli || '—') + '</td><td class="pris-ure">' + (r.sek ? trajanjeH(r.sek) : '—') + '</td>' +
+          '<td class="pris-act"><button type="button" class="btn-mini ghost" data-rocni="' + z.id + '">+ ročno</button></td></tr>';
+      }).join('');
+      telo = '<table class="pris-tbl"><thead><tr><th>Zaposleni</th><th>Prihod–odhod</th><th>Ur skupaj</th><th></th></tr></thead><tbody>' +
+        (dVrst || '<tr><td colspan="4" class="u-sub">Ni podatkov.</td></tr>') + '</tbody></table>';
+    }
     var blok2 = '<div class="pris-card"><div class="pris-h"><h3 class="sec-h">Evidenca</h3>' +
+      '<span class="pris-hbtns"><button type="button" class="btn-mini ghost pris-izvoz">Izvozi (Excel)</button>' +
       '<span class="pris-tabs"><button type="button" class="pris-tab' + (!_prisMesec ? ' on' : '') + '" data-obd="dan">Dan</button>' +
-      '<button type="button" class="pris-tab' + (_prisMesec ? ' on' : '') + '" data-obd="mesec">Mesec</button></span></div>' +
-      '<div class="pris-datum"><input type="date" id="prisDatum" value="' + _prisDan + '"></div>' +
-      '<table class="pris-tbl"><thead><tr><th>Zaposleni</th><th>Prihod–odhod</th><th>Ur skupaj</th><th></th></tr></thead><tbody>' +
-      (evVrst || '<tr><td colspan="4" class="u-sub">Ni podatkov.</td></tr>') + '</tbody></table></div>';
+      '<button type="button" class="pris-tab' + (_prisMesec ? ' on' : '') + '" data-obd="mesec">Mesec</button></span></span></div>' +
+      '<div class="pris-datum"><input type="' + (_prisMesec ? 'month' : 'date') + '" id="prisDatum" value="' + (_prisMesec ? _prisDan.slice(0, 7) : _prisDan) + '"></div>' +
+      telo + '</div>';
 
     // ── Blok 3: zaposleni ──
     var zapVrst = (ZAPOSLENI || []).map(function (z) {
@@ -619,8 +663,9 @@
 
     box.innerHTML = blok1 + blok2 + blok3;
 
-    var dat = $('prisDatum'); if (dat) dat.addEventListener('change', function () { _prisDan = this.value || danes10(); prisRender(); });
+    var dat = $('prisDatum'); if (dat) dat.addEventListener('change', function () { var v = this.value || danes10(); if (v.length === 7) v += '-01'; _prisDan = v; prisRender(); });
     box.querySelectorAll('[data-obd]').forEach(function (b) { b.addEventListener('click', function () { _prisMesec = (b.dataset.obd === 'mesec'); prisRender(); }); });
+    { var ib = box.querySelector('.pris-izvoz'); if (ib) ib.addEventListener('click', prisIzvoz); }
     box.querySelectorAll('[data-rocni]').forEach(function (b) { b.addEventListener('click', function () { prisRocni(b.dataset.rocni); }); });
     box.querySelectorAll('[data-karta]').forEach(function (b) { b.addEventListener('click', function () { prisDodeliKarto(b.dataset.karta); }); });
     box.querySelectorAll('[data-aktiv]').forEach(function (b) { b.addEventListener('click', function () { prisAktiv(b.dataset.aktiv, b.dataset.v === '1'); }); });
