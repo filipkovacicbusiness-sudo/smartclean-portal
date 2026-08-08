@@ -645,13 +645,13 @@
         var deli = r.pari.map(function (p) { return uraMin(p[0].ts) + '–' + uraMin(p[1].ts); }).join(', ');
         if (r.odprt) deli += (deli ? ', ' : '') + uraMin(r.odprt.ts) + '– …';
         return '<tr><td>' + escape_(z.ime) + '</td><td class="pris-pairs">' + (deli || '—') + '</td><td class="pris-ure">' + (r.sek ? trajanjeH(r.sek) : '—') + '</td>' +
-          '<td class="pris-act"><button type="button" class="btn-mini ghost" data-rocni="' + z.id + '">+ ročno</button></td></tr>';
+          '<td class="pris-act"><button type="button" class="cgrp-btn ghost" data-rocni="' + z.id + '">+ ročno</button></td></tr>';
       }).join('');
       telo = '<table class="pris-tbl"><thead><tr><th>Zaposleni</th><th>Prihod–odhod</th><th>Ur skupaj</th><th></th></tr></thead><tbody>' +
         (dVrst || '<tr><td colspan="4" class="u-sub">Ni podatkov.</td></tr>') + '</tbody></table>';
     }
     var blok2 = '<div class="pris-card"><div class="pris-h"><h3 class="sec-h">Evidenca</h3>' +
-      '<span class="pris-hbtns"><button type="button" class="btn-mini ghost pris-izvoz">Izvozi (Excel)</button>' +
+      '<span class="pris-hbtns"><button type="button" class="cgrp-btn ghost pris-izvoz">Izvozi (Excel)</button>' +
       '<span class="pris-tabs"><button type="button" class="pris-tab' + (!_prisMesec ? ' on' : '') + '" data-obd="dan">Dan</button>' +
       '<button type="button" class="pris-tab' + (_prisMesec ? ' on' : '') + '" data-obd="mesec">Mesec</button></span></span></div>' +
       '<div class="pris-datum"><input type="' + (_prisMesec ? 'month' : 'date') + '" id="prisDatum" value="' + (_prisMesec ? _prisDan.slice(0, 7) : _prisDan) + '"></div>' +
@@ -661,8 +661,10 @@
     var zapVrst = (ZAPOSLENI || []).map(function (z) {
       return '<div class="pris-emp"><span class="pris-nm">' + escape_(z.ime) + (z.active ? '' : ' <span class="u-sub">(neaktiven)</span>') + '</span>' +
         '<span class="pris-emp-act">' +
-        '<button type="button" class="btn-mini ghost" data-karta="' + z.id + '">' + (z.card_token ? 'Nova kartica' : 'Dodeli kartico') + '</button>' +
-        '<button type="button" class="btn-mini ghost" data-aktiv="' + z.id + '" data-v="' + (z.active ? '0' : '1') + '">' + (z.active ? 'Deaktiviraj' : 'Aktiviraj') + '</button>' +
+        '<button type="button" class="cgrp-btn ghost" data-uredi="' + z.id + '">Uredi</button>' +
+        '<button type="button" class="cgrp-btn ghost" data-karta="' + z.id + '">' + (z.card_token ? 'Nova kartica' : 'Dodeli kartico') + '</button>' +
+        '<button type="button" class="cgrp-btn ghost" data-aktiv="' + z.id + '" data-v="' + (z.active ? '0' : '1') + '">' + (z.active ? 'Deaktiviraj' : 'Aktiviraj') + '</button>' +
+        '<button type="button" class="cgrp-btn danger" data-izbrisi="' + z.id + '">Izbriši</button>' +
         '</span></div>';
     }).join('') || '<p class="u-sub" style="padding:10px 2px">Še ni zaposlenih.</p>';
     var blok3 = '<div class="pris-card"><h3 class="sec-h">Zaposleni</h3>' + zapVrst +
@@ -676,6 +678,8 @@
     box.querySelectorAll('[data-rocni]').forEach(function (b) { b.addEventListener('click', function () { prisRocni(b.dataset.rocni); }); });
     box.querySelectorAll('[data-karta]').forEach(function (b) { b.addEventListener('click', function () { prisDodeliKarto(b.dataset.karta); }); });
     box.querySelectorAll('[data-aktiv]').forEach(function (b) { b.addEventListener('click', function () { prisAktiv(b.dataset.aktiv, b.dataset.v === '1'); }); });
+    box.querySelectorAll('[data-uredi]').forEach(function (b) { b.addEventListener('click', function () { prisPreimenuj(b.dataset.uredi); }); });
+    box.querySelectorAll('[data-izbrisi]').forEach(function (b) { b.addEventListener('click', function () { prisIzbrisi(b.dataset.izbrisi); }); });
     var nb = box.querySelector('.pris-add-btn'), ni = box.querySelector('.pris-new');
     if (nb && ni) { nb.addEventListener('click', function () { prisDodajZap(ni.value); }); ni.addEventListener('keydown', function (e) { if (e.key === 'Enter') prisDodajZap(ni.value); }); }
     requestAnimationFrame(function () { window.scrollTo(0, _sy); });
@@ -691,6 +695,23 @@
     var up = await sb.from('employees').update({ active: on }).eq('id', empId);
     if (up.error) { toast('Napaka: ' + up.error.message); return; }
     await risiPrisotnost();
+  }
+  async function prisPreimenuj(empId) {
+    var z = (ZAPOSLENI || []).find(function (x) { return x.id === empId; }); if (!z) return;
+    var novo = await vnesiModal({ naslov: 'Preimenuj zaposlenega', privzeto: z.ime, placeholder: 'Ime in priimek', potrdi: 'Shrani' });
+    if (novo === null) return;
+    novo = novo.trim(); if (!novo) { toast('Ime ne sme biti prazno.'); return; }
+    var up = await sb.from('employees').update({ ime: novo }).eq('id', empId);
+    if (up.error) { toast('Napaka: ' + up.error.message); return; }
+    toast('Ime posodobljeno.'); await risiPrisotnost();
+  }
+  async function prisIzbrisi(empId) {
+    var z = (ZAPOSLENI || []).find(function (x) { return x.id === empId; }); if (!z) return;
+    var ok = await potrdiModal({ naslov: 'Izbriši zaposlenega', sporocilo: 'Res izbrišem „' + z.ime + '"? Izbrišejo se tudi vsi njegovi vpisi ur — tega ni mogoče razveljaviti. (Če želiš ohraniti zgodovino, raje uporabi Deaktiviraj.)', potrdi: 'Izbriši', preklici: 'Prekliči', nevarno: true });
+    if (!ok) return;
+    var del = await sb.from('employees').delete().eq('id', empId);
+    if (del.error) { toast('Napaka: ' + del.error.message); return; }
+    toast('Zaposleni izbrisan.'); await risiPrisotnost();
   }
   async function prisDodeliKarto(empId) {
     var z = (ZAPOSLENI || []).find(function (x) { return x.id === empId; }); if (!z) return;
