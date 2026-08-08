@@ -633,15 +633,21 @@
     var kljuc = _prisMesec ? _prisDan.slice(0, 7) : _prisDan;
     var telo;
     if (_prisMesec) {
+      var mSek = 0, mDni = 0;
       var mVrst = aktivni.map(function (z) {
         var pov = prisPovzetek(z.id, kljuc);
+        mSek += pov.sek; mDni += pov.dni;
         return '<tr><td>' + escape_(z.ime) + '</td><td class="pris-ure">' + pov.dni + '</td><td class="pris-ure">' + (pov.sek ? trajanjeH(pov.sek) : '—') + '</td></tr>';
       }).join('');
       telo = '<table class="pris-tbl"><thead><tr><th>Zaposleni</th><th>Dni</th><th>Ur skupaj</th></tr></thead><tbody>' +
-        (mVrst || '<tr><td colspan="3" class="u-sub">Ni podatkov.</td></tr>') + '</tbody></table>';
+        (mVrst || '<tr><td colspan="3" class="u-sub">Ni podatkov.</td></tr>') + '</tbody>' +
+        (mVrst ? '<tfoot><tr><td>Skupaj</td><td class="pris-ure">' + mDni + '</td><td class="pris-ure">' + (mSek ? trajanjeH(mSek) : '—') + '</td></tr></tfoot>' : '') +
+        '</table>';
     } else {
+      var dSek = 0;
       var dVrst = aktivni.map(function (z) {
         var r = prisPari(z.id, kljuc);
+        dSek += r.sek;
         var chips = r.pari.map(function (p) {
           var ids = p[0].id + ',' + p[1].id;
           return '<span class="pris-chip"><button type="button" class="pris-chip-t" data-editpair="' + ids + '" title="uredi vpis">' + uraMin(p[0].ts) + '–' + uraMin(p[1].ts) + '</button>' +
@@ -654,7 +660,9 @@
           '<td class="pris-act"><button type="button" class="cgrp-btn ghost" data-rocni="' + z.id + '">+ ročno</button></td></tr>';
       }).join('');
       telo = '<table class="pris-tbl"><thead><tr><th>Zaposleni</th><th>Prihod–odhod</th><th>Ur skupaj</th><th></th></tr></thead><tbody>' +
-        (dVrst || '<tr><td colspan="4" class="u-sub">Ni podatkov.</td></tr>') + '</tbody></table>';
+        (dVrst || '<tr><td colspan="4" class="u-sub">Ni podatkov.</td></tr>') + '</tbody>' +
+        (dVrst ? '<tfoot><tr><td>Skupaj</td><td></td><td class="pris-ure">' + (dSek ? trajanjeH(dSek) : '—') + '</td><td></td></tr></tfoot>' : '') +
+        '</table>';
     }
     var blok2 = '<div class="pris-card"><div class="pris-h"><h3 class="sec-h">Evidenca</h3>' +
       '<span class="pris-hbtns"><button type="button" class="cgrp-btn ghost pris-izvoz">Izvozi (Excel)</button>' +
