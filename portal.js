@@ -448,6 +448,7 @@
     ceniki: '<path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0l-7.2-7.2A2 2 0 0 1 3 12V4a1 1 0 0 1 1-1h8a2 2 0 0 1 1.4.6l7.2 7.2a2 2 0 0 1 0 2.6Z"/><circle cx="7.5" cy="7.5" r="1.4"/>',
     prijave: '<circle cx="12" cy="8" r="3.4"/><path d="M5.5 20a6.5 6.5 0 0 1 13 0"/><path d="M12 8v0"/>',
     prisotnost: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/>',
+    ucinek: '<path d="M4 15a8 8 0 0 1 16 0"/><path d="M12 15l4-4"/><circle cx="12" cy="15" r="1.3"/>',
     aplikacija: '<rect x="6.5" y="2.5" width="11" height="19" rx="2.5"/><path d="M10.5 5.5h3"/><path d="M12 18.2h.01"/>',
     nastavitve: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>'
   };
@@ -455,7 +456,7 @@
   // Osnovni (privzeti) glavni razdelki menija za trenutnega uporabnika.
   function glavniMeni() {
     if (OSEBJE) {
-      var g = [['domov', 'Pregled'], ['statistika', 'Statistika'], ['arhiv', 'Arhiv'], ['fakture', 'Fakture'], ['ceniki', 'Ceniki'], ['stranke', 'Stranke'], ['prisotnost', 'Prisotnost'], ['aplikacija', 'Aplikacija']];
+      var g = [['domov', 'Pregled'], ['statistika', 'Statistika'], ['arhiv', 'Arhiv'], ['fakture', 'Fakture'], ['ceniki', 'Ceniki'], ['stranke', 'Stranke'], ['prisotnost', 'Prisotnost'], ['ucinek', 'Učinkovitost'], ['aplikacija', 'Aplikacija']];
       if (JE_LASTNIK()) g.push(['uporabniki', 'Uporabniki']);
       return g;
     }
@@ -529,6 +530,7 @@
     if (kam === 'aplikacija') risiAplikacijo();
     if (kam === 'ceniki') risiCeniki();
     if (kam === 'prisotnost') risiPrisotnost();
+    if (kam === 'ucinek') risiUcinek();
   }
 
   /* ══════════ PRISOTNOST (registracija delovnega časa) ══════════ */
@@ -815,6 +817,112 @@
       if (ins.error) { toast('Napaka: ' + ins.error.message); return; }
       toast('Ročni vnos shranjen (' + (vout ? 'prihod + odhod' : 'samo prihod') + ').'); zapri(); await risiPrisotnost();
     });
+  }
+
+  /* ══════════ UČINKOVITOST (kilaža + produktivnost) ══════════ */
+  var UCEN_LISTI = null, UCEN_DOG = null, _ucDan = null, _ucMesec = false;
+  var UC_PAL = ['#4e79a7', '#59a14f', '#f28e2b', '#e15759', '#b07aa1', '#76b7b2', '#edc948'];
+
+  async function naloziUcinek() {
+    var meja = danLocal(new Date(Date.now() - 400 * 24 * 3600 * 1000).getTime());
+    var rl = await vseVrstice(function (a, b) { return sb.from('delivery_notes').select('id,org_id,doc_date,weight_kg').gte('doc_date', meja).order('doc_date', { ascending: true }).range(a, b); });
+    UCEN_LISTI = (rl && rl.data) ? rl.data : [];
+    var rd = await vseVrstice(function (a, b) { return sb.from('att_events').select('id,employee_id,ts,type').gte('ts', meja + 'T00:00:00Z').order('ts', { ascending: true }).range(a, b); });
+    UCEN_DOG = (rd && rd.data) ? rd.data : [];
+  }
+  function ucKgPoStranki(kljuc) {
+    var m = {};
+    (UCEN_LISTI || []).forEach(function (l) { if (l.doc_date && l.doc_date.slice(0, kljuc.length) === kljuc) m[l.org_id] = (m[l.org_id] || 0) + (parseFloat(l.weight_kg) || 0); });
+    return m;
+  }
+  function ucUreSek(kljuc) {
+    var byEmp = {};
+    (UCEN_DOG || []).forEach(function (d) { if (d.ts.slice(0, kljuc.length) === kljuc) (byEmp[d.employee_id] = byEmp[d.employee_id] || []).push(d); });
+    var sek = 0;
+    Object.keys(byEmp).forEach(function (eid) {
+      var evs = byEmp[eid].sort(function (a, b) { return a.ts < b.ts ? -1 : 1; }); var odprt = null;
+      evs.forEach(function (d) { if (d.type === 'in') { if (!odprt) odprt = d; } else if (d.type === 'out') { if (odprt) { sek += (new Date(d.ts) - new Date(odprt.ts)) / 1000; odprt = null; } } });
+    });
+    return sek;
+  }
+  function ucZadnjih7() {
+    var out = []; var now = new Date();
+    for (var i = 6; i >= 0; i--) { var d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i); var key = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); out.push({ key: key, lab: ('0' + d.getDate()).slice(-2) + '.' + ('0' + (d.getMonth() + 1)).slice(-2) + '.', kg: 0 }); }
+    var idx = {}; out.forEach(function (o) { idx[o.key] = o; });
+    (UCEN_LISTI || []).forEach(function (l) { var k = l.doc_date && l.doc_date.slice(0, 10); if (idx[k]) idx[k].kg += (parseFloat(l.weight_kg) || 0); });
+    return out;
+  }
+  function ucMesecIme(mk) { var p = mk.split('-'); var mes = ['januar', 'februar', 'marec', 'april', 'maj', 'junij', 'julij', 'avgust', 'september', 'oktober', 'november', 'december']; return (mes[parseInt(p[1], 10) - 1] || '') + ' ' + p[0]; }
+  function fmtStevilo1(n) { return (Math.round((n || 0) * 10) / 10).toLocaleString('sl-SI', { minimumFractionDigits: 1, maximumFractionDigits: 1 }); }
+  function ucDonut(map) {
+    var arr = Object.keys(map).map(function (id) { return { ime: ORGIME[id] || '—', kg: map[id] }; }).filter(function (x) { return x.kg > 0; }).sort(function (a, b) { return b.kg - a.kg; });
+    var total = arr.reduce(function (s, x) { return s + x.kg; }, 0);
+    if (!total) return '<p class="u-sub" style="padding:8px 0">Ni podatkov za izbrano obdobje.</p>';
+    var segs = arr.slice(0, 7).map(function (x, i) { return { ime: x.ime, kg: x.kg, col: UC_PAL[i % UC_PAL.length] }; });
+    var ostalo = arr.slice(7).reduce(function (s, x) { return s + x.kg; }, 0);
+    if (ostalo > 0) segs.push({ ime: 'Ostalo', kg: ostalo, col: '#bab0ac' });
+    var r = 52, cx = 60, cy = 60, sw = 20, C = 2 * Math.PI * r, off = 0, circles = '';
+    segs.forEach(function (s) { var len = s.kg / total * C; circles += '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="' + s.col + '" stroke-width="' + sw + '" stroke-dasharray="' + len.toFixed(2) + ' ' + (C - len).toFixed(2) + '" stroke-dashoffset="' + (-off).toFixed(2) + '" transform="rotate(-90 ' + cx + ' ' + cy + ')"/>'; off += len; });
+    var svg = '<svg viewBox="0 0 120 120" width="116" height="116" class="uc-donut">' + circles + '</svg>';
+    var leg = segs.map(function (s) { return '<div class="uc-leg"><span class="uc-dot" style="background:' + s.col + '"></span><span class="uc-leg-nm">' + escape_(s.ime) + '</span><span class="uc-leg-v">' + Math.round(s.kg / total * 100) + ' %</span></div>'; }).join('');
+    return '<div class="uc-donut-wrap">' + svg + '<div class="uc-leg-list">' + leg + '</div></div>';
+  }
+  async function risiUcinek() {
+    var box = $('ucList'); if (!box) return;
+    box.innerHTML = '<p class="u-sub" style="padding:16px">Nalagam …</p>';
+    try {
+      await naloziUcinek();
+      if (!_ucDan) _ucDan = danes10();
+      ucRender();
+    } catch (e) { box.innerHTML = '<div class="uc-card"><p class="u-sub">Napaka pri nalaganju: ' + escape_(e && e.message ? e.message : e) + '</p></div>'; }
+  }
+  function ucRender() {
+    var box = $('ucList'); if (!box) return;
+    var _sy = window.scrollY;
+    var mesecKljuc = _ucDan.slice(0, 7);
+    var mapMon = ucKgPoStranki(mesecKljuc);
+    var kgMon = Object.keys(mapMon).reduce(function (s, k) { return s + mapMon[k]; }, 0);
+    var ureMon = ucUreSek(mesecKljuc) / 3600;
+    var kgh = ureMon > 0 ? kgMon / ureMon : 0;
+    var d7 = ucZadnjih7(); var naj = Math.max.apply(null, d7.map(function (o) { return o.kg; }).concat([1]));
+
+    var cardDonut = '<div class="uc-card"><h3 class="sec-h">Delež kg po strankah</h3><p class="u-sub" style="margin:-2px 0 8px">' + ucMesecIme(mesecKljuc) + '</p>' + ucDonut(mapMon) + '</div>';
+    var cardBars = '<div class="uc-card"><h3 class="sec-h">kg zadnjih 7 dni</h3><div class="bars-row" style="margin-top:14px">' +
+      d7.map(function (o) { return '<div class="bars-col"><span class="bars-val">' + (o.kg ? Math.round(o.kg) : '') + '</span><div class="bars-bar" style="height:' + Math.round(o.kg / naj * 84) + 'px"></div><span class="bars-lab">' + o.lab + '</span></div>'; }).join('') + '</div></div>';
+    var cardProd = '<div class="uc-card uc-stat"><h3 class="sec-h">Skupna učinkovitost</h3><div class="uc-big">' + (kgh ? fmtStevilo1(kgh) : '—') + ' <span>kg/uro</span></div>' +
+      '<p class="u-sub">' + fmtKg(kgMon) + ' · ' + stevilo(Math.round(ureMon)) + ' delovnih ur · ' + ucMesecIme(mesecKljuc) + '</p></div>';
+    var top = '<div class="uc-top">' + cardDonut + cardBars + cardProd + '</div>';
+
+    var kljuc = _ucMesec ? _ucDan.slice(0, 7) : _ucDan;
+    var mapK = ucKgPoStranki(kljuc);
+    var arr = Object.keys(mapK).map(function (id) { return { ime: ORGIME[id] || '—', kg: mapK[id] }; }).filter(function (x) { return x.kg > 0; }).sort(function (a, b) { return b.kg - a.kg; });
+    var kgSkup = arr.reduce(function (s, x) { return s + x.kg; }, 0);
+    var rows = arr.map(function (x) { return '<tr><td>' + escape_(x.ime) + '</td><td class="pris-ure">' + fmtKg(x.kg) + '</td></tr>'; }).join('');
+    var tbl = '<table class="pris-tbl"><thead><tr><th>Stranka</th><th>Kilaža</th></tr></thead><tbody>' +
+      (rows || '<tr><td colspan="2" class="u-sub">Ni podatkov.</td></tr>') + '</tbody>' +
+      (rows ? '<tfoot><tr><td>Skupaj</td><td class="pris-ure">' + fmtKg(kgSkup) + '</td></tr></tfoot>' : '') + '</table>';
+    var ev = '<div class="pris-card"><div class="pris-h"><h3 class="sec-h">Evidenca kg</h3>' +
+      '<span class="pris-hbtns"><button type="button" class="cgrp-btn ghost uc-izvoz">Izvozi (Excel)</button>' +
+      '<span class="pris-tabs"><button type="button" class="pris-tab' + (!_ucMesec ? ' on' : '') + '" data-ucobd="dan">Dan</button>' +
+      '<button type="button" class="pris-tab' + (_ucMesec ? ' on' : '') + '" data-ucobd="mesec">Mesec</button></span></span></div>' +
+      '<div class="pris-datum"><input type="' + (_ucMesec ? 'month' : 'date') + '" id="ucDatum" value="' + (_ucMesec ? _ucDan.slice(0, 7) : _ucDan) + '"></div>' + tbl + '</div>';
+
+    box.innerHTML = top + ev;
+    var dat = $('ucDatum'); if (dat) dat.addEventListener('change', function () { var v = this.value || danes10(); if (v.length === 7) v += '-01'; _ucDan = v; ucRender(); });
+    box.querySelectorAll('[data-ucobd]').forEach(function (b) { b.addEventListener('click', function () { _ucMesec = (b.dataset.ucobd === 'mesec'); ucRender(); }); });
+    var ib = box.querySelector('.uc-izvoz'); if (ib) ib.addEventListener('click', ucIzvoz);
+    requestAnimationFrame(function () { window.scrollTo(0, _sy); });
+  }
+  function ucIzvoz() {
+    var kljuc = _ucMesec ? _ucDan.slice(0, 7) : _ucDan;
+    var map = ucKgPoStranki(kljuc);
+    var arr = Object.keys(map).map(function (id) { return { ime: ORGIME[id] || '—', kg: map[id] }; }).filter(function (x) { return x.kg > 0; }).sort(function (a, b) { return b.kg - a.kg; });
+    var sep = ';', vrst = [['Stranka', 'Kilaža (kg)'].map(csvC).join(sep)], skup = 0;
+    arr.forEach(function (x) { skup += x.kg; vrst.push([x.ime, (Math.round(x.kg * 10) / 10).toString().replace('.', ',')].map(csvC).join(sep)); });
+    vrst.push(''); vrst.push(['SKUPAJ', (Math.round(skup * 10) / 10).toString().replace('.', ',')].map(csvC).join(sep));
+    var blob = new Blob(['\ufeff' + vrst.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+    var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'kilaza_' + kljuc + '.csv'; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    toast('Izvoz pripravljen: kilaza_' + kljuc + '.csv');
   }
 
   /* ══════════ SPREMNI LISTI ══════════ */

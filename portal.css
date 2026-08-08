@@ -1048,6 +1048,21 @@ html[data-view="grid"] #cenikList .sc-isolate,
 html[data-view="grid"] #cenikList .cenik-sec-head{grid-column:1 / -1;}
 html[data-view="grid"] #cenikList .sc-isolate .cgrp:not(.open){max-width:var(--tile-min);}
 
+/* ── UČINKOVITOST (kilaža) ── */
+.uc-top{display:grid;grid-template-columns:repeat(auto-fit,minmax(232px,1fr));gap:14px;margin-bottom:14px;}
+.uc-card{border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);padding:16px 18px;box-sizing:border-box;}
+.uc-card .sec-h{margin:0 0 6px;}
+.uc-donut-wrap{display:flex;gap:14px;align-items:center;flex-wrap:wrap;}
+.uc-donut{flex:0 0 auto;}
+.uc-leg-list{flex:1;min-width:130px;display:flex;flex-direction:column;gap:5px;}
+.uc-leg{display:flex;align-items:center;gap:7px;font-size:.78rem;}
+.uc-dot{width:10px;height:10px;border-radius:3px;flex:0 0 auto;}
+.uc-leg-nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink);}
+.uc-leg-v{font-family:var(--mono);color:var(--mid);flex:0 0 auto;font-variant-numeric:tabular-nums;}
+.uc-stat{display:flex;flex-direction:column;justify-content:center;}
+.uc-big{font-size:2.3rem;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;line-height:1.1;margin:8px 0 6px;}
+.uc-big span{font-size:.98rem;font-weight:500;color:var(--mid);}
+
 /* ── PRISOTNOST ── */
 .pris-card{border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);padding:16px 18px;margin-bottom:14px;}
 .pris-h{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;}
@@ -1069,13 +1084,26 @@ html[data-view="grid"] #cenikList .sc-isolate .cgrp:not(.open){max-width:var(--t
 .pris-tbl{width:100%;border-collapse:collapse;}
 .pris-tbl th{text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:var(--mid);font-weight:600;padding:6px 8px;border-bottom:1px solid var(--line);}
 .pris-tbl td{padding:9px 8px;border-bottom:1px solid var(--line);font-size:.9rem;color:var(--ink);vertical-align:middle;}
-.pris-tbl tr:last-child td{border-bottom:none;}
+.pris-tbl tbody tr:last-child td{border-bottom:none;}
+.pris-tbl tfoot td{font-weight:700;color:var(--ink);border-top:2px solid var(--line);border-bottom:none;padding-top:12px;}
 .pris-pairs{font-family:var(--mono);font-size:.82rem;color:var(--mid);}
+.pris-chip{display:inline-flex;align-items:center;gap:1px;border:1px solid var(--line);border-radius:999px;background:var(--surface);padding:2px 4px 2px 3px;margin:3px 5px 3px 0;white-space:nowrap;transition:border-color .15s;}
+.pris-chip:hover{border-color:var(--green-l);}
+.pris-chip-t{border:none;background:none;color:var(--mid);font-family:var(--mono);font-size:.78rem;cursor:pointer;padding:3px 9px;border-radius:999px;transition:color .15s;}
+.pris-chip-t:hover{color:var(--ink);}
+.pris-chip-x{border:none;background:none;color:var(--mid);cursor:pointer;font-size:14px;line-height:1;width:20px;height:20px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;padding:0;flex:0 0 auto;transition:background .15s,color .15s;}
+.pris-chip-x:hover{background:rgba(192,57,43,.12);color:#c0392b;}
+html[data-theme="dark"] .pris-chip-x:hover{background:rgba(255,138,122,.16);color:#ff8a7a;}
 .pris-ure{font-family:var(--mono);font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap;}
 .pris-act{text-align:right;white-space:nowrap;}
 .pris-emp{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--line);}
 .pris-emp:last-of-type{border-bottom:none;}
 .pris-emp-act{display:inline-flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;}
+.pris-add{display:flex;gap:8px;align-items:stretch;margin-top:14px;}
+.pris-new{flex:1;min-width:0;padding:10px 13px;border:1.5px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink);font-size:16px;}
+.pris-new:focus{border-color:var(--green-l);outline:none;}
+.pris-add .pris-add-btn{flex:0 0 auto;white-space:nowrap;padding:8px 22px;border-radius:9px;}
+@media(max-width:600px){ .pris-add{flex-direction:column;} .pris-add .pris-add-btn{width:100%;} }
 .pris-lab{display:block;font-size:.78rem;color:var(--mid);margin:4px 0 6px;}
 .pris-cas{width:100%;}
 .pris-r-cas{display:flex;gap:10px;}
