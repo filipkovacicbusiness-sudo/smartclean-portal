@@ -547,9 +547,10 @@
     var e = await sb.from('employees').select('id,org_id,ime,card_token,active,created_at').order('ime');
     ZAPOSLENI = e.error ? [] : (e.data || []);
     var meja = new Date(Date.now() - 62 * 24 * 3600 * 1000).toISOString();
-    PRISDOG = await vseVrstice(function (a, b) {
+    var r = await vseVrstice(function (a, b) {
       return sb.from('att_events').select('id,employee_id,terminal_id,ts,type,source').gte('ts', meja).order('ts', { ascending: true }).range(a, b);
     });
+    PRISDOG = (r && r.data) ? r.data : [];
   }
   function prisZadnji(empId) {
     var last = null;
@@ -603,9 +604,15 @@
   async function risiPrisotnost() {
     var box = $('prisList'); if (!box) return;
     box.innerHTML = '<p class="u-sub" style="padding:16px">Nalagam …</p>';
-    await naloziPrisotnost();
-    if (!_prisDan) _prisDan = danes10();
-    prisRender();
+    try {
+      await naloziPrisotnost();
+      if (!Array.isArray(ZAPOSLENI)) ZAPOSLENI = [];
+      if (!Array.isArray(PRISDOG)) PRISDOG = [];
+      if (!_prisDan) _prisDan = danes10();
+      prisRender();
+    } catch (e) {
+      box.innerHTML = '<div class="pris-card"><p class="u-sub">Napake pri nalaganju: ' + escape_(e && e.message ? e.message : e) + '</p></div>';
+    }
   }
   function prisRender() {
     var box = $('prisList'); if (!box) return;
@@ -695,28 +702,33 @@
     await potrdiModal({ naslov: 'Žeton kartice — ' + z.ime, sporocilo: 'Ta žeton zapiši na kartico:\n\n' + tok, potrdi: 'V redu', preklici: 'Zapri' });
     await risiPrisotnost();
   }
+  // Ročni vnos cele izmene (prihod + odhod) naenkrat — glavni način, dokler kartični sistem ni v uporabi.
   function prisRocni(empId) {
     var z = (ZAPOSLENI || []).find(function (x) { return x.id === empId; }); if (!z) return;
     var back = document.createElement('div'); back.className = 'sc-modal-back';
-    var privzeto = _prisDan + 'T' + new Date().toTimeString().slice(0, 5);
-    back.innerHTML = '<div class="sc-modal" role="dialog" aria-modal="true"><h4>Ročni vpis — ' + escape_(z.ime) + '</h4>' +
-      '<label class="pris-lab">Dogodek</label><select class="pris-tip"><option value="in">Prihod (in)</option><option value="out">Odhod (out)</option></select>' +
-      '<label class="pris-lab">Čas</label><input type="datetime-local" class="pris-cas sc-modal-input" value="' + privzeto + '">' +
+    var dan = (_prisMesec || !_prisDan || _prisDan.length !== 10) ? danes10() : _prisDan;
+    back.innerHTML = '<div class="sc-modal" role="dialog" aria-modal="true"><h4>Ročni vnos ur — ' + escape_(z.ime) + '</h4>' +
+      '<label class="pris-lab">Datum</label><input type="date" class="pris-r-dan sc-modal-input" value="' + dan + '">' +
+      '<div class="pris-r-cas"><div><label class="pris-lab">Prihod</label><input type="time" class="pris-r-in sc-modal-input"></div>' +
+      '<div><label class="pris-lab">Odhod <span class="u-sub">(neobvezno)</span></label><input type="time" class="pris-r-out sc-modal-input"></div></div>' +
+      '<p class="u-sub" style="margin:8px 0 0">Če pustiš odhod prazen, se zabeleži samo prihod (npr. če zaposleni še dela).</p>' +
       '<div class="sc-modal-acts"><button type="button" class="sc-modal-btn ghost" data-no>Prekliči</button><button type="button" class="sc-modal-btn primary" data-yes>Shrani</button></div></div>';
     document.body.appendChild(back);
     requestAnimationFrame(function () { back.classList.add('show'); });
-    if (typeof zazeniCustomSelecte === 'function') zazeniCustomSelecte();
     function zapri() { back.classList.remove('show'); setTimeout(function () { if (back.parentNode) back.parentNode.removeChild(back); }, 180); }
     back.querySelector('[data-no]').addEventListener('click', zapri);
     back.addEventListener('click', function (e) { if (e.target === back) zapri(); });
     back.querySelector('[data-yes]').addEventListener('click', async function () {
-      var tip = back.querySelector('.pris-tip').value;
-      var cas = back.querySelector('.pris-cas').value;
-      if (!cas) { toast('Vpiši čas.'); return; }
-      var iso = new Date(cas).toISOString();
-      var ins = await sb.from('att_events').insert({ org_id: z.org_id, employee_id: z.id, type: tip, source: 'manual', ts: iso }).select('id').maybeSingle();
+      var d = back.querySelector('.pris-r-dan').value;
+      var vin = back.querySelector('.pris-r-in').value;
+      var vout = back.querySelector('.pris-r-out').value;
+      if (!d || !vin) { toast('Vpiši datum in prihod.'); return; }
+      if (vout && vout <= vin) { toast('Odhod mora biti za prihodom.'); return; }
+      var rows = [{ org_id: z.org_id, employee_id: z.id, type: 'in', source: 'manual', ts: new Date(d + 'T' + vin).toISOString() }];
+      if (vout) rows.push({ org_id: z.org_id, employee_id: z.id, type: 'out', source: 'manual', ts: new Date(d + 'T' + vout).toISOString() });
+      var ins = await sb.from('att_events').insert(rows);
       if (ins.error) { toast('Napaka: ' + ins.error.message); return; }
-      toast('Ročni vpis dodan (source = manual).'); zapri(); await risiPrisotnost();
+      toast('Ročni vnos shranjen (' + (vout ? 'prihod + odhod' : 'samo prihod') + ').'); zapri(); await risiPrisotnost();
     });
   }
 

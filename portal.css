@@ -1078,6 +1078,9 @@ html[data-view="grid"] #cenikList .sc-isolate .cgrp:not(.open){max-width:var(--t
 .pris-emp-act{display:inline-flex;gap:6px;flex:0 0 auto;}
 .pris-lab{display:block;font-size:.78rem;color:var(--mid);margin:4px 0 6px;}
 .pris-cas{width:100%;}
+.pris-r-cas{display:flex;gap:10px;}
+.pris-r-cas>div{flex:1;min-width:0;}
+.pris-r-cas input{width:100%;}
 @media(max-width:600px){
   .pris-emp{flex-wrap:wrap;}
   .pris-tbl th:nth-child(2),.pris-tbl td:nth-child(2){display:none;}
