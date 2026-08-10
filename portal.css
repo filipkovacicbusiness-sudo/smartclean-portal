@@ -1048,6 +1048,48 @@ html[data-view="grid"] #cenikList .sc-isolate,
 html[data-view="grid"] #cenikList .cenik-sec-head{grid-column:1 / -1;}
 html[data-view="grid"] #cenikList .sc-isolate .cgrp:not(.open){max-width:var(--tile-min);}
 
+/* ── ARTIKLI (katalog po skupinah) ── */
+.art-assign{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:11px 16px;border-bottom:1px solid var(--line);background:var(--green-m);}
+.art-assign-str{flex:1;min-width:0;display:flex;flex-wrap:wrap;gap:4px;align-items:center;}
+.art-thead{display:grid;grid-template-columns:74px 1fr 92px 76px 62px;gap:10px;padding:9px 16px 7px;font-size:.68rem;text-transform:uppercase;letter-spacing:.04em;color:var(--mid);font-weight:600;border-bottom:1px solid var(--line);}
+.art-thead span:nth-child(4){text-align:right;}
+.art-row{display:grid;grid-template-columns:74px 1fr 92px 76px 62px;gap:10px;align-items:center;padding:9px 16px;border-bottom:1px solid var(--line);font-size:.9rem;}
+.art-row:last-child{border-bottom:none;}
+.art-r-id{font-family:var(--mono);font-size:.78rem;color:var(--mid);}
+.art-r-nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink);}
+.art-r-teza{font-family:var(--mono);font-size:.82rem;color:var(--mid);}
+.art-r-cena{font-family:var(--mono);font-size:.82rem;color:var(--ink);text-align:right;font-variant-numeric:tabular-nums;}
+.art-r-acts{display:inline-flex;gap:4px;justify-content:flex-end;}
+.art-r-edit,.art-r-del{border:none;background:none;cursor:pointer;color:var(--mid);width:26px;height:26px;border-radius:7px;font-size:15px;display:inline-flex;align-items:center;justify-content:center;line-height:1;}
+.art-r-edit:hover{background:var(--green-m);color:var(--ink);}
+.art-r-del:hover{background:rgba(192,57,43,.12);color:#c0392b;}
+.art-add-new{display:flex;gap:8px;padding:12px 16px;flex-wrap:wrap;align-items:center;}
+.art-add-new input{padding:9px 11px;border:1.5px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink);font-size:15px;min-width:0;box-sizing:border-box;}
+.art-add-new .art-nn-nm{flex:1;min-width:130px;}
+.art-add-new .art-nn-id{width:92px;font-family:var(--mono);text-transform:uppercase;}
+.art-add-new .art-nn-teza,.art-add-new .art-nn-cena{width:78px;}
+.art-add-new input:focus{border-color:var(--green-l);outline:none;}
+.art-row-edit{display:block;padding:12px 16px;}
+.art-edit-form .ae-nm{width:100%;padding:9px 11px;border:1.5px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink);font-size:16px;margin-bottom:8px;box-sizing:border-box;}
+.art-edit-r{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.art-edit-r input{padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);min-width:0;box-sizing:border-box;}
+.art-edit-r .ae-id{width:84px;font-family:var(--mono);text-transform:uppercase;}
+.art-edit-r .ae-teza,.art-edit-r .ae-cena{width:92px;}
+.art-edit-form input:focus{border-color:var(--green-l);outline:none;}
+.art-chk-list{max-height:min(50vh,360px);overflow:auto;display:flex;flex-direction:column;gap:2px;margin-bottom:16px;}
+.art-chk{display:flex;align-items:center;gap:10px;padding:8px 8px;border-radius:8px;cursor:pointer;font-size:.92rem;color:var(--ink);}
+.art-chk:hover{background:var(--green-m);}
+.art-chk input{width:18px;height:18px;flex:0 0 auto;accent-color:var(--green-l);}
+@media(max-width:620px){
+  .art-thead{display:none;}
+  .art-row{grid-template-columns:1fr auto auto;grid-template-rows:auto auto;gap:1px 10px;padding:10px 16px;}
+  .art-r-nm{grid-column:1;grid-row:1;}
+  .art-r-id{grid-column:1;grid-row:2;}
+  .art-r-teza{grid-column:2;grid-row:1 / span 2;align-self:center;}
+  .art-r-cena{grid-column:3;grid-row:1;text-align:right;}
+  .art-r-acts{grid-column:3;grid-row:2;}
+}
+
 /* ── UČINKOVITOST (kilaža) ── */
 .uc-top{display:grid;grid-template-columns:repeat(auto-fit,minmax(232px,1fr));gap:14px;margin-bottom:14px;}
 .uc-card{border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);padding:16px 18px;box-sizing:border-box;}
