@@ -1049,6 +1049,8 @@ html[data-view="grid"] #cenikList .cenik-sec-head{grid-column:1 / -1;}
 html[data-view="grid"] #cenikList .sc-isolate .cgrp:not(.open){max-width:var(--tile-min);}
 
 /* ── ARTIKLI (katalog po skupinah) ── */
+.art-topbar{display:flex;justify-content:flex-end;margin-bottom:12px;}
+.art-topbar .btn-narrow{margin-top:0;}
 .art-assign{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:11px 16px;border-bottom:1px solid var(--line);background:var(--green-m);}
 .art-assign-str{flex:1;min-width:0;display:flex;flex-wrap:wrap;gap:4px;align-items:center;}
 .art-thead{display:grid;grid-template-columns:74px 1fr 92px 76px 62px;gap:10px;padding:9px 16px 7px;font-size:.68rem;text-transform:uppercase;letter-spacing:.04em;color:var(--mid);font-weight:600;border-bottom:1px solid var(--line);}

@@ -877,10 +877,13 @@
     var box = $('artList'); if (!box) return;
     var _sy = window.scrollY;
     var grupe = artikliGrupe();
-    var prefs = Object.keys(grupe).sort();
+    var preSet = {}; Object.keys(grupe).forEach(function (k) { if (k !== '—') preSet[k] = 1; }); Object.keys(SKUPINE_IME).forEach(function (k) { preSet[k] = 1; });
+    var prefs = Object.keys(preSet).sort();
+    if (grupe['—']) prefs.push('—');
     var strPoGrupi = {}; (ORGSEZNAM || []).forEach(function (o) { var g = strankaSkupina(o.id); if (g) (strPoGrupi[g] = strPoGrupi[g] || []).push(o); });
-    box.innerHTML = prefs.map(function (pre) {
-      var arts = grupe[pre]; var open = !!_artOpen[pre]; var str = strPoGrupi[pre] || [];
+    var topbar = '<div class="art-topbar"><button type="button" class="btn btn-narrow art-nova">+ Nov cenik</button></div>';
+    box.innerHTML = topbar + (prefs.length ? prefs.map(function (pre) {
+      var arts = grupe[pre] || []; var open = !!_artOpen[pre]; var str = strPoGrupi[pre] || [];
       var rows = arts.map(function (x) {
         return '<div class="art-row" data-s="' + x.sifra + '"><span class="art-r-id">' + escape_(normId(x.koda) || '—') + '</span>' +
           '<span class="art-r-nm">' + escape_(x.naziv || '') + '</span>' +
@@ -897,8 +900,9 @@
         '<div class="art-thead"><span>ID</span><span>Naziv</span><span>Teža/kos</span><span>Cena</span><span></span></div>' + rows +
         '<div class="art-add-new"><input type="text" class="art-nn-nm" placeholder="nov artikel"><input type="text" class="art-nn-id" maxlength="5" value="' + escape_(pre + artNextNum(pre)) + '"><input type="text" inputmode="decimal" class="art-nn-teza" placeholder="kg"><input type="text" inputmode="decimal" class="art-nn-cena" placeholder="€"><button type="button" class="cgrp-btn art-nn-btn" data-pre="' + escape_(pre) + '">+ Dodaj</button></div>' +
         '</div></div>';
-    }).join('') || '<div class="pris-card"><p class="u-sub">Ni artiklov v katalogu.</p></div>';
+    }).join('') : '<div class="pris-card"><p class="u-sub">Ni artiklov. Ustvari nov cenik z gumbom zgoraj.</p></div>');
 
+    { var nb = box.querySelector('.art-nova'); if (nb) nb.addEventListener('click', function () { artNovCenik(); }); }
     box.querySelectorAll('[data-artgrp]').forEach(function (h) { h.addEventListener('click', function () { var k = h.dataset.artgrp; _artOpen[k] = !_artOpen[k]; artRender(); }); });
     box.querySelectorAll('[data-aedit]').forEach(function (b) { b.addEventListener('click', function (e) { e.stopPropagation(); artUredi(parseInt(b.dataset.aedit, 10)); }); });
     box.querySelectorAll('[data-adel]').forEach(function (b) { b.addEventListener('click', function (e) { e.stopPropagation(); artIzbrisi(parseInt(b.dataset.adel, 10)); }); });
@@ -969,7 +973,39 @@
     var e = (await sb.from('pricelist').insert(rec)).error;
     if (e) { toast('Napaka: ' + e.message); return; }
     CENIK.push(rec); zgradiCenikMap();
-    _artOpen[pre] = true; toast('Artikel dodan.'); artRender();
+    // PROPAGACIJA: dodaj artikel vsem strankam, ki že uporabljajo to skupino
+    var ciljOrgi = (ORGSEZNAM || []).filter(function (o) { return strankaSkupina(o.id) === pre; });
+    var dodanih = 0;
+    for (var ci = 0; ci < ciljOrgi.length; ci++) {
+      var oid = ciljOrgi[ci].id;
+      var maxo = -1; (CLANI || []).forEach(function (a) { if (a.org_id === oid && typeof a.sort_order === 'number' && a.sort_order > maxo) maxo = a.sort_order; });
+      var ins = await sb.from('articles').insert({ org_id: oid, name: nm, cena_sifra: sifra, sort_order: maxo + 1 }).select('id').maybeSingle();
+      if (!(ins && ins.error)) { if (CLANI) CLANI.push({ id: ins && ins.data ? ins.data.id : null, org_id: oid, name: nm, cena_sifra: sifra, sort_order: maxo + 1 }); dodanih++; }
+    }
+    _artOpen[pre] = true; toast('Artikel dodan' + (dodanih ? ' · propagirano ' + dodanih + ' strankam' : '') + '.'); artRender();
+  }
+  function artNovCenik() {
+    var back = document.createElement('div'); back.className = 'sc-modal-back';
+    back.innerHTML = '<div class="sc-modal" role="dialog" aria-modal="true"><h4>Nov cenik (skupina)</h4>' +
+      '<label class="pris-lab">Ime cenika</label><input type="text" class="nc-ime sc-modal-input" placeholder="npr. Posteljnina">' +
+      '<label class="pris-lab">Predpona ID <span class="u-sub">(2 črki, npr. PO)</span></label><input type="text" class="nc-pre sc-modal-input" maxlength="2" placeholder="PO" style="text-transform:uppercase;font-family:var(--mono)">' +
+      '<div class="sc-modal-acts"><button type="button" class="sc-modal-btn ghost" data-no>Prekliči</button><button type="button" class="sc-modal-btn primary" data-yes>Ustvari</button></div></div>';
+    document.body.appendChild(back); requestAnimationFrame(function () { back.classList.add('show'); });
+    function zapri() { back.classList.remove('show'); setTimeout(function () { if (back.parentNode) back.parentNode.removeChild(back); }, 180); }
+    back.querySelector('[data-no]').addEventListener('click', zapri);
+    back.addEventListener('click', function (e) { if (e.target === back) zapri(); });
+    setTimeout(function () { var el = back.querySelector('.nc-ime'); if (el) el.focus(); }, 60);
+    back.querySelector('[data-yes]').addEventListener('click', async function () {
+      var ime = back.querySelector('.nc-ime').value.trim();
+      var pre = normId(back.querySelector('.nc-pre').value);
+      if (!/^[A-ZČŠŽ]{2}$/.test(pre)) { toast('Predpona morata biti 2 črki (npr. PO).'); return; }
+      var obst = {}; (CENIK || []).forEach(function (x) { obst[artPrefix(x.koda)] = 1; }); Object.keys(SKUPINE_IME).forEach(function (k) { obst[k] = 1; });
+      if (obst[pre]) { toast('Predpona ' + pre + ' že obstaja.'); return; }
+      var r = await sb.from('article_groups').upsert({ prefix: pre, name: ime || null, updated_at: new Date().toISOString() }, { onConflict: 'prefix' });
+      if (r.error) { toast('Napaka: ' + r.error.message + (/relation|does not exist/i.test(r.error.message) ? ' (poženi migracijo 13_skupine.sql)' : '')); return; }
+      if (ime) SKUPINE_IME[pre] = ime;
+      _artOpen[pre] = true; zapri(); toast('Cenik ustvarjen. Dodaj artikle.'); artRender();
+    });
   }
   async function artPreimenujSkupino(pre) {
     var novo = await vnesiModal({ naslov: 'Ime skupine ' + pre, sporocilo: 'Prijazno ime skupine (pusti prazno za privzeto »Skupina ' + pre + '«).', privzeto: SKUPINE_IME[pre] || '', placeholder: 'npr. Posteljnina', potrdi: 'Shrani' });
@@ -1015,8 +1051,8 @@
       zapri(); toast('Posodabljam cenike …');
       for (var i = 0; i < checks.length; i++) {
         var org = checks[i].dataset.org, wasP = strankaSkupina(org) === pre, isC = checks[i].checked;
-        if (isC && !wasP) await nastaviSkupinoStranki(org, sifre);
-        else if (!isC && wasP) await nastaviSkupinoStranki(org, []);
+        if (isC) await nastaviSkupinoStranki(org, sifre);        // uskladi (doda manjkajoče, popravi vrstni red)
+        else if (wasP) await nastaviSkupinoStranki(org, []);     // odstrani skupino
       }
       toast('Stranke posodobljene.'); artRender();
     });
