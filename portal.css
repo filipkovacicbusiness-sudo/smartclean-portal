@@ -273,7 +273,7 @@ h3.sec-h{font-family:var(--serif);font-size:1.05rem;font-weight:700;margin:0 0 1
 .bars-val{font-size:.72rem;color:var(--mid);}
 
 /* ══════════ ARHIV ══════════ */
-.a-row{display:grid;grid-template-columns:118px 1fr 96px 78px 24px;gap:14px;align-items:center;
+.a-row{display:grid;grid-template-columns:26px 118px 1fr 96px 78px 24px;gap:14px;align-items:center;position:relative;
   padding:15px 18px;border:1px solid var(--line);border-radius:var(--radius);cursor:pointer;
   background:var(--surface);width:100%;text-align:left;margin-bottom:10px;
   transition:background .15s,border-color .15s;}
@@ -281,6 +281,16 @@ h3.sec-h{font-family:var(--serif);font-size:1.05rem;font-weight:700;margin:0 0 1
 .a-row[aria-expanded="true"]{margin-bottom:0;border-bottom-left-radius:0;border-bottom-right-radius:0;}
 .a-num{font-weight:500;font-variant-numeric:tabular-nums;}
 .a-foot{display:contents;}
+/* Arhiv — status potrditve (zeleno potrjeno / rumeno nepotrjeno / rdeče prazno) */
+.arh-chk{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border:2px solid var(--line);border-radius:6px;background:var(--bg);color:#fff;font-size:13px;line-height:1;flex:0 0 auto;}
+.arh-chk.clk{cursor:pointer;transition:border-color .15s,background .15s;}
+.arh-chk.clk:hover{border-color:#3ea04a;}
+.arh-chk.on{background:#3ea04a;border-color:#3ea04a;}
+.arh-chk.dis{border-color:#e0574a;background:transparent;color:#e0574a;cursor:default;}
+.arh-green .a-row{border-left:4px solid #3ea04a;background:rgba(62,160,74,.08);}
+.arh-yellow .a-row{border-left:4px solid #e0a400;background:rgba(224,164,0,.10);}
+.arh-red .a-row{border-left:4px solid #e0574a;background:rgba(224,87,74,.08);}
+html[data-view="grid"] .lcell .a-row .arh-chk{position:absolute;top:12px;right:14px;}
 .a-det{display:none;padding:6px 18px 18px;border:1px solid var(--line);border-top:none;
   border-radius:0 0 var(--radius) var(--radius);background:var(--surface);margin-bottom:10px;}
 .a-det.show{display:block;}
@@ -303,7 +313,7 @@ h3.sec-h{font-family:var(--serif);font-size:1.05rem;font-weight:700;margin:0 0 1
   .filtri{flex-direction:column;align-items:stretch;width:100%;}
   .filtri input,.filtri select,.fak-lab input{max-width:none;width:100%;}
   .fak-lab{width:100%;}
-  .a-row{grid-template-columns:100px 1fr auto 20px;gap:10px;}
+  .a-row{grid-template-columns:26px 100px 1fr auto 20px;gap:10px;}
   .a-row .a-cli{display:none;}
   .a-row .num{white-space:nowrap;font-size:.8rem;}
   .a-det ul{columns:1;}
@@ -311,7 +321,7 @@ h3.sec-h{font-family:var(--serif);font-size:1.05rem;font-weight:700;margin:0 0 1
 }
 @media(max-width:520px){
   .stat-grid{grid-template-columns:1fr;}
-  .a-row{grid-template-columns:1fr auto 20px;}
+  .a-row{grid-template-columns:26px 1fr auto 20px;}
   .a-row .a-date{display:none;}
 }
 

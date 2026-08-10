@@ -1169,7 +1169,7 @@
     const {
       data,
       error
-    } = await sb.from('delivery_notes').select('id,number,doc_date,total_pieces,weight_kg,org_id,issued_name,popravil,popravljeno_at,source,transport').order('doc_date', {
+    } = await sb.from('delivery_notes').select('id,number,doc_date,total_pieces,weight_kg,org_id,issued_name,popravil,popravljeno_at,source,transport,potrjeno').order('doc_date', {
       ascending: false
     }).limit(1000);
     LISTI = error ? [] : data || [];
@@ -1235,15 +1235,21 @@
   /* ══════════ ARHIV ══════════ */
   function tabelaListov(vrstice, klikljivo) {
     if (!vrstice.length) return prazniListi(OSEBJE ? 'osebje' : 'stranka');
-    return '<div class="rows">' + vrstice.map((l, i) => `<div class="lcell">
+    return '<div class="rows">' + vrstice.map((l, i) => {
+      const prazno = !(l.total_pieces > 0);
+      const pot = l.potrjeno === true;
+      const stat = prazno ? 'red' : (pot ? 'green' : 'yellow');
+      const chk = '<span class="arh-chk' + (pot ? ' on' : '') + (prazno ? ' dis' : (OSEBJE ? ' clk' : '')) + '"' + (OSEBJE && !prazno ? ' data-pot="' + l.id + '" role="button" tabindex="0" title="' + (pot ? 'potrjeno — klikni za preklic' : 'klikni za potrditev (urejeno)') + '"' : ' title="' + (prazno ? 'prazen list' : (pot ? 'potrjeno' : 'nepotrjeno')) + '"') + '>' + (pot ? '✓' : '') + '</span>';
+      return `<div class="lcell arh-${stat}">
     <button class="a-row" type="button" data-i="${i}" data-id="${l.id}" aria-expanded="false"
       ${klikljivo ? '' : 'style="cursor:default"'}>
-      <span class="a-num">${escape_(l.number || '—')}</span>
+      ${chk}<span class="a-num">${escape_(l.number || '—')}</span>
       <span class="a-cli">${escape_(OSEBJE ? ORGIME[l.org_id] || '—' : l.issued_name || '')}</span>
       <span class="a-foot"><span class="num a-date">${datum(l.doc_date)}</span><span class="num a-qty">${stevilo(l.total_pieces)} kos</span></span>
       <span class="chev" aria-hidden="true">${klikljivo ? '›' : ''}</span>
     </button>
-    <div class="a-det" id="det${i}"></div></div>`).join('') + '</div>';
+    <div class="a-det" id="det${i}"></div></div>`;
+    }).join('') + '</div>';
   }
   function risiArhiv() {
     if (OSEBJE) {
@@ -1270,6 +1276,23 @@
     document.querySelectorAll('#arhivList .a-row').forEach(b => {
       b.addEventListener('click', () => odpriList(b));
     });
+    document.querySelectorAll('#arhivList .arh-chk.clk').forEach(c => {
+      c.addEventListener('click', e => { e.stopPropagation(); potrdiList(c); });
+      c.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); potrdiList(c); } });
+    });
+  }
+  async function potrdiList(chk) {
+    const id = chk.dataset.pot; if (!id) return;
+    const naVkljuceno = !chk.classList.contains('on');
+    chk.classList.toggle('on', naVkljuceno);
+    chk.innerHTML = naVkljuceno ? '✓' : '';
+    const lcell = chk.closest('.lcell');
+    if (lcell) { lcell.classList.remove('arh-green', 'arh-yellow'); lcell.classList.add(naVkljuceno ? 'arh-green' : 'arh-yellow'); }
+    chk.title = naVkljuceno ? 'potrjeno — klikni za preklic' : 'klikni za potrditev (urejeno)';
+    const { error } = await sb.from('delivery_notes').update({ potrjeno: naVkljuceno }).eq('id', id);
+    if (error) { toast('Napaka: ' + error.message); chk.classList.toggle('on', !naVkljuceno); chk.innerHTML = !naVkljuceno ? '✓' : ''; if (lcell) { lcell.classList.remove('arh-green', 'arh-yellow'); lcell.classList.add(!naVkljuceno ? 'arh-green' : 'arh-yellow'); } return; }
+    const rec = (LISTI || []).find(x => x.id === id); if (rec) rec.potrjeno = naVkljuceno;
+    toast(naVkljuceno ? 'Potrjeno kot urejeno.' : 'Potrditev preklicana.');
   }
   $('arhivIsci').addEventListener('input', risiArhiv);
   { const ss = $('arhivSort'); if (ss) ss.addEventListener('change', risiArhiv); }
