@@ -294,7 +294,8 @@
   let ORGSEZNAM = [],
     ORGIME = {},
     LISTI = [],
-    VSEHLISTOV = 0;
+    VSEHLISTOV = 0,
+    STAR_SET = new Set();   // note_id-ji, ki vsebujejo star zapis (postavka brez article_id)
 
   async function naloziOrge() {
     // skrij izbrisane stranke; če stolpca še ni, beri vse
@@ -1180,6 +1181,15 @@
       head: true
     });
     VSEHLISTOV = count || 0;
+    // Zberi liste s starim zapisom (postavka brez povezave na artikel → article_id IS NULL)
+    STAR_SET = new Set();
+    if (OSEBJE) {
+      try {
+        const rs = await vseVrstice((od, do_) =>
+          sb.from('delivery_note_items').select('note_id').is('article_id', null).range(od, do_));
+        (rs && rs.data ? rs.data : []).forEach(r => { if (r && r.note_id) STAR_SET.add(r.note_id); });
+      } catch (e) { STAR_SET = new Set(); }
+    }
   }
   const prazniListi = kdo => '<div class="rows"><div class="empty"><h3>Spremnih listov še ni</h3><p>' + (kdo === 'osebje' ? 'Spremni listi nastajajo na tablici v pralnici. Ko jih bomo prenesli v bazo,<br>se bodo izpisali tukaj.' : 'Ko bomo prevzeli in vrnili perilo, se bo vsak prevzem izpisal tukaj.') + '</p></div></div>';
 
@@ -1237,12 +1247,12 @@
     if (!vrstice.length) return prazniListi(OSEBJE ? 'osebje' : 'stranka');
     return '<div class="rows">' + vrstice.map((l, i) => {
       const prazno = !(l.total_pieces > 0);
-      const legacy = !!l.legacy_id;
+      const legacy = STAR_SET.has(l.id);   // vsebuje star zapis (postavka brez povezave na artikel)
       const pot = l.potrjeno === true;
       const stat = prazno ? 'red' : (pot ? 'green' : 'yellow');
       const zaklep = prazno || legacy;                 // ni mogoče potrditi
       const clk = OSEBJE && !zaklep;
-      const chkTitle = legacy ? 'star zapis (uvožen) — ni mogoče potrditi' : (prazno ? 'prazen list — ni mogoče potrditi' : (pot ? 'potrjeno — klikni za preklic' : 'klikni za potrditev (urejeno)'));
+      const chkTitle = legacy ? 'star zapis (postavka brez artikla) — ni mogoče potrditi' : (prazno ? 'prazen list — ni mogoče potrditi' : (pot ? 'potrjeno — klikni za preklic' : 'klikni za potrditev (urejeno)'));
       const chk = '<span class="arh-chk' + (pot ? ' on' : '') + (clk ? ' clk' : ' dis') + (legacy && !prazno ? ' leg' : '') + '"' + (clk ? ' data-pot="' + l.id + '" role="button" tabindex="0"' : '') + ' title="' + chkTitle + '">' + (pot ? '✓' : (legacy && !prazno ? '★' : '')) + '</span>';
       return `<div class="lcell arh-${stat}">
     <button class="a-row" type="button" data-i="${i}" data-id="${l.id}" aria-expanded="false"
