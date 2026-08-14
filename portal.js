@@ -606,6 +606,42 @@
     toast('Izvoz pripravljen: ure_' + kljuc + '.csv');
   }
 
+  // Ročna odjava zaposlenega (če pozabi tapniti odhod). Vpiše dogodek 'out'
+  // (source='manual'). Stanje je le v bazi — Pi in kartica nimata stanja.
+  async function prisOdjavi(empId) {
+    var z = (ZAPOSLENI || []).find(function (x) { return x.id === empId; });
+    if (!z) return;
+    var l = prisZadnji(empId);
+    if (!l || l.type !== 'in') { toast('Ta oseba ni prijavljena.'); return; }
+    var now = new Date();
+    var privzeto = ('0' + now.getHours()).slice(-2) + ':' + ('0' + now.getMinutes()).slice(-2);
+    var cas = await vnesiModal({ naslov: 'Odjavi — ' + z.ime, sporocilo: 'Ura odhoda (HH:MM):', privzeto: privzeto, potrdi: 'Odjavi', preklici: 'Prekliči' });
+    if (cas == null) return;
+    var m = String(cas).trim().match(/^(\d{1,2}):(\d{2})$/);
+    if (!m) { toast('Vpiši uro v obliki HH:MM.'); return; }
+    var hhmm = ('0' + m[1]).slice(-2) + ':' + m[2];
+    var dan = l.ts.slice(0, 10);
+    var tsIso = new Date(dan + 'T' + hhmm + ':00').toISOString();
+    if (new Date(tsIso) <= new Date(l.ts)) { toast('Odhod mora biti po prihodu (' + uraMin(l.ts) + ').'); return; }
+    var ins = await sb.from('att_events').insert({ org_id: z.org_id, employee_id: z.id, type: 'out', source: 'manual', ts: tsIso });
+    if (ins.error) { toast('Napaka: ' + ins.error.message); return; }
+    toast('Odjavljen(a): ' + z.ime);
+    await risiPrisotnost();
+  }
+  var _prisTimer = null;
+  // Samodejno osveževanje table "Trenutno prisotni" (brez ročnega refresha).
+  function prisAuto() {
+    var sec = document.getElementById('sec-prisotnost');
+    if (!sec || sec.classList.contains('hidden')) return;      // ni odprto
+    if (document.querySelector('.sc-modal-back')) return;      // odprt modal → ne moti
+    var ae = document.activeElement;                            // uporabnik nekaj tipka → ne moti
+    if (ae && sec.contains(ae) && /INPUT|SELECT|TEXTAREA/.test(ae.tagName)) return;
+    naloziPrisotnost().then(function () {
+      if (!Array.isArray(ZAPOSLENI)) ZAPOSLENI = [];
+      if (!Array.isArray(PRISDOG)) PRISDOG = [];
+      prisRender();
+    }).catch(function () {});
+  }
   async function risiPrisotnost() {
     var box = $('prisList'); if (!box) return;
     box.innerHTML = '<p class="u-sub" style="padding:16px">Nalagam …</p>';
@@ -615,6 +651,7 @@
       if (!Array.isArray(PRISDOG)) PRISDOG = [];
       if (!_prisDan) _prisDan = danes10();
       prisRender();
+      if (!_prisTimer) _prisTimer = setInterval(prisAuto, 12000);
     } catch (e) {
       box.innerHTML = '<div class="pris-card"><p class="u-sub">Napake pri nalaganju: ' + escape_(e && e.message ? e.message : e) + '</p></div>';
     }
@@ -629,7 +666,7 @@
       var l = prisZadnji(z.id); var notri = !!(l && l.type === 'in');
       if (notri) prisotnihN++;
       return '<div class="pris-row"><span class="pris-nm">' + escape_(z.ime) + '</span>' +
-        (notri ? '<span class="pris-badge in">prisoten · od ' + uraMin(l.ts) + '</span>' : '<span class="pris-badge out">odsoten</span>') + '</div>';
+        (notri ? '<span class="pris-badge in">prisoten · od ' + uraMin(l.ts) + '</span><button type="button" class="cgrp-btn ghost pris-odjavi" data-odjavi="' + z.id + '">Odjavi</button>' : '<span class="pris-badge out">odsoten</span>') + '</div>';
     }).join('') || '<p class="u-sub" style="padding:10px 2px">Ni aktivnih zaposlenih. Dodaj jih spodaj.</p>';
     var blok1 = '<div class="pris-card"><div class="pris-h"><h3 class="sec-h">Trenutno prisotni</h3>' +
       '<span class="pris-count">' + prisotnihN + ' / ' + aktivni.length + '</span></div>' + stanjeVrst + '</div>';
@@ -694,6 +731,7 @@
     var dat = $('prisDatum'); if (dat) dat.addEventListener('change', function () { var v = this.value || danes10(); if (v.length === 7) v += '-01'; _prisDan = v; prisRender(); });
     box.querySelectorAll('[data-obd]').forEach(function (b) { b.addEventListener('click', function () { _prisMesec = (b.dataset.obd === 'mesec'); prisRender(); }); });
     { var ib = box.querySelector('.pris-izvoz'); if (ib) ib.addEventListener('click', prisIzvoz); }
+    box.querySelectorAll('[data-odjavi]').forEach(function (b) { b.addEventListener('click', function () { prisOdjavi(b.dataset.odjavi); }); });
     box.querySelectorAll('[data-rocni]').forEach(function (b) { b.addEventListener('click', function () { prisRocni(b.dataset.rocni); }); });
     box.querySelectorAll('[data-delpair]').forEach(function (b) { b.addEventListener('click', function (e) { e.stopPropagation(); prisIzbrisiPar(b.dataset.delpair); }); });
     box.querySelectorAll('[data-editpair]').forEach(function (b) { b.addEventListener('click', function (e) { e.stopPropagation(); prisUrediPar(b.dataset.editpair); }); });
