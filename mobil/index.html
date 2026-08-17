@@ -1921,12 +1921,27 @@ function risiSyncGumb(){
 /* ── katalog iz portala ─────────────────────────────────────────── */
 /* Baza je vir resnice za stranke in artikle. Ta prenos dopolni lokalni
    katalog; ničesar ne briše, da izpad omrežja ne more izprazniti tablice. */
+/* potegne VSE vrstice po straneh (privzeta meja Supabase je 1000) */
+async function apiVse(potBase, korak){
+  korak = korak || 1000;
+  var vse = [], off = 0;
+  while(true){
+    var sep = potBase.indexOf("?") >= 0 ? "&" : "?";
+    var page = await api(potBase + sep + "limit=" + korak + "&offset=" + off);
+    if(!Array.isArray(page) || !page.length) break;
+    vse = vse.concat(page);
+    if(page.length < korak) break;
+    off += korak;
+    if(off > 100000) break;
+  }
+  return vse;
+}
 async function osveziKatalog(tiho){
   if(!portalNastavljen() || !portalAuth){ if(!tiho) toast("Najprej poveži napravo s portalom."); return; }
   if(!tiho) toast("Osvežujem katalog…");
   try{
-    var orgs = await api("orgs?select=id,name,legal_name,address,vat_id,legacy_id&order=name");
-    var arts = await api("articles?select=id,org_id,name,legacy_id,sort_order&order=sort_order");
+    var orgs = await apiVse("orgs?select=id,name,legal_name,address,vat_id,legacy_id&order=name");
+    var arts = await apiVse("articles?select=id,org_id,name,legacy_id,sort_order&order=sort_order,id");
     var artPoOrg = {};
     (arts || []).forEach(function(a){ (artPoOrg[a.org_id] = artPoOrg[a.org_id] || []).push(a); });
 
