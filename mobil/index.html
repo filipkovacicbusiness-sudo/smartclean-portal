@@ -269,7 +269,8 @@
   .sm-btn:hover{border-color:var(--press);color:var(--press-deep)}
   .sm-btn.active{background:var(--press);color:var(--paper);border-color:var(--press)}
   .sm-clear{border:1px solid var(--line);background:var(--paper);border-radius:9px;padding:9px 12px;color:var(--ink-soft);font-size:12.5px;font-weight:600}
-  .sm-date-hidden{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
+  .sm-date-wrap{position:relative;display:inline-flex}
+  .sm-date-over{position:absolute;inset:0;width:100%;height:100%;opacity:0;border:0;margin:0;padding:0;background:transparent;-webkit-appearance:none;appearance:none;pointer-events:auto}
   .search-chip{margin-top:8px;font-size:13px;color:var(--press-deep);background:var(--press-tint);display:inline-block;padding:5px 12px;border-radius:20px;font-weight:600}
   .kg-step{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--paper)}
   .kg-step.need{border-color:var(--warn);background:rgba(178,59,59,.08)}
@@ -572,10 +573,9 @@
           <div class="search-modes">
             <span class="sm-lbl">Išči:</span>
             <button type="button" class="sm-btn" id="searchById">ID</button>
-            <button type="button" class="sm-btn" id="searchByDate">Datum</button>
+            <span class="sm-date-wrap"><button type="button" class="sm-btn" id="searchByDate">Datum</button><input type="date" id="searchDateInput" class="sm-date-over" aria-label="Datum" /></span>
             <button type="button" class="sm-btn" id="searchByClient">Stranka</button>
             <button type="button" class="sm-clear" id="searchClear2" style="display:none">✕ Počisti</button>
-            <input type="date" id="searchDateInput" class="sm-date-hidden" />
           </div>
           <div class="search-chip" id="searchChip" style="display:none"></div>
         </div>
@@ -1105,9 +1105,15 @@
 
   function delEntry(id){
     var e=entries.find(function(x){return x.id===id;}); if(!e) return;
-    askConfirm("Izbriši spremni list?", e.stevilka+" ("+e.strankaNaziv+") bo trajno izbrisan.", "Izbriši", async function(){
+    /* Aplikacija ne briše listov, ki so že v portalu (poslani/preneseni/potrjeni).
+       Briše lahko samo lokalne osnutke, ki še niso bili poslani. Brisanje v portalu
+       se opravi neposredno v portalu. */
+    if(e.syncedAt || e.prenesenIzPortala || e.potrjeno){
+      toast("Brisanje spremnih listov je mogoče samo v portalu.");
+      return;
+    }
+    askConfirm("Izbriši osnutek?", e.stevilka+" ("+e.strankaNaziv+") – osnutek še ni v portalu.", "Izbriši", async function(){
       await deleteSyncPdf(e);
-      if(e.syncedAt){ vBrisanjeVrsto(e); await saveBrisanja(); try{ await procesirajBrisanja(); }catch(_e){} }
       entries=entries.filter(function(x){return x.id!==id;});
       if(id===editingId) cancelEdit();
       await saveEntries(); render();
@@ -1786,14 +1792,20 @@ async function posljiEnega(e){
     source: "tablet", legacy_id: e.id
   };
 
-  var obst = await api("delivery_notes?legacy_id=eq." + encodeURIComponent(e.id) + "&select=id&limit=1");
+  var obst = await api("delivery_notes?legacy_id=eq." + encodeURIComponent(e.id) + "&select=id,potrjeno&limit=1");
   /* če ni zadetka po legacy_id, poišči obstoječi list po isti številki (leto+zap.št.) */
   if(!obst.length){
-    obst = await api("delivery_notes?doc_year=eq." + leto + "&doc_seq=eq." + seq + "&select=id&limit=1");
+    obst = await api("delivery_notes?doc_year=eq." + leto + "&doc_seq=eq." + seq + "&select=id,potrjeno&limit=1");
   }
   var noteId;
   if(obst.length){
     noteId = obst[0].id;
+    /* ŽELEZNO PRAVILO: potrjenega (zelenega) lista aplikacija NIKOLI ne spreminja.
+       Take se ureja samo neposredno v portalu. Označi lokalno kot potrjen in končaj. */
+    if(obst[0].potrjeno === true){
+      e.potrjeno = true; e.zaklenjen = true; e.syncedAt = e.syncedAt || new Date().toISOString();
+      return true;
+    }
     await api("delivery_notes?id=eq." + noteId, { method: "PATCH", body: vrstica });
     await api("delivery_note_items?note_id=eq." + noteId, { method: "DELETE" });
   }else{
@@ -2098,12 +2110,9 @@ function risiPortalAdmin(){
 
 /* ── brisanje enega spremnega lista iz portala ── */
 async function posljiBrisanje(e){
-  if(!portalNastavljen() || !portalAuth) return false;
-  var obst = await api("delivery_notes?legacy_id=eq." + encodeURIComponent(e.id) + "&select=id&limit=1");
-  if(!obst || !obst.length) return false;
-  var noteId = obst[0].id;
-  await api("delivery_note_items?note_id=eq." + noteId, { method: "DELETE" });
-  await api("delivery_notes?id=eq." + noteId, { method: "DELETE" });
+  /* ŽELEZNO PRAVILO: aplikacija NIKOLI ne briše spremnih listov iz portala.
+     Brisanje je mogoče samo neposredno v portalu. Vrni true, da se morebitni
+     stari zapisi v čakalni vrsti za brisanje počistijo brez učinka na portal. */
   return true;
 }
 
@@ -2160,7 +2169,7 @@ async function potegniIzPortala(){
     /* 1. cel arhiv iz portala (naprava vidi vse), po straneh */
     var pl = [], off = 0;
     while(true){
-      var page = await api("delivery_notes?select=id,legacy_id,doc_year,doc_seq,doc_date,weight_kg,transport,issued_name,popravil,popravljeno_at,orgs(id,name,legal_name,address,vat_id,legacy_id)&order=doc_date.desc&limit=1000&offset=" + off);
+      var page = await api("delivery_notes?select=id,legacy_id,doc_year,doc_seq,doc_date,weight_kg,transport,issued_name,popravil,popravljeno_at,potrjeno,orgs(id,name,legal_name,address,vat_id,legacy_id)&order=doc_date.desc&limit=1000&offset=" + off);
       if(!Array.isArray(page) || !page.length) break;
       pl = pl.concat(page);
       if(page.length < 1000) break;
@@ -2182,6 +2191,8 @@ async function potegniIzPortala(){
         if(r.orgs.vat_id) e.strankaDavcna = r.orgs.vat_id;
       }
       e.popravil = r.popravil || null;
+      e.potrjeno = (r.potrjeno === true);
+      e.zaklenjen = (r.potrjeno === true);
     }
 
     var portalPoKljucu = {};
@@ -2235,7 +2246,9 @@ async function potegniIzPortala(){
         syncNapaka: null,
         popravil: r.popravil || null,
         portalPopravljenoAt: r.popravljeno_at || null,
-        prenesenIzPortala: true
+        prenesenIzPortala: true,
+        potrjeno: (r.potrjeno === true),
+        zaklenjen: (r.potrjeno === true)
       };
       entries.push(e);
       lokalno[k] = e;
