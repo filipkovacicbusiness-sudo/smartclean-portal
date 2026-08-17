@@ -287,6 +287,7 @@ h3.sec-h{font-family:var(--serif);font-size:1.05rem;font-weight:700;margin:0 0 1
 .arh-chk.clk:hover{border-color:#3ea04a;}
 .arh-chk.on{background:#3ea04a;border-color:#3ea04a;}
 .arh-chk.dis{border-color:#e0574a;background:transparent;color:#e0574a;cursor:default;}
+.arh-chk.dis.leg{border-color:var(--mid);color:var(--mid);font-size:12px;}
 .arh-green .a-row{border-left:4px solid #3ea04a;background:rgba(62,160,74,.08);}
 .arh-yellow .a-row{border-left:4px solid #e0a400;background:rgba(224,164,0,.10);}
 .arh-red .a-row{border-left:4px solid #e0574a;background:rgba(224,87,74,.08);}
@@ -1063,6 +1064,12 @@ html[data-view="grid"] #cenikList .sc-isolate .cgrp:not(.open){max-width:var(--t
 .art-topbar .btn-narrow{margin-top:0;}
 .art-assign{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:11px 16px;border-bottom:1px solid var(--line);background:var(--green-m);}
 .art-assign-str{flex:1;min-width:0;display:flex;flex-wrap:wrap;gap:4px;align-items:center;}
+.art-assign-acts{display:flex;gap:8px;flex-wrap:wrap;align-items:center;flex:0 0 auto;}
+@media(max-width:560px){
+  .art-assign{flex-direction:column;align-items:stretch;gap:10px;}
+  .art-assign-str{flex:none;width:100%;}
+  .art-assign-acts{width:100%;}
+}
 .art-thead{display:grid;grid-template-columns:74px 1fr 92px 76px 62px;gap:10px;padding:9px 16px 7px;font-size:.68rem;text-transform:uppercase;letter-spacing:.04em;color:var(--mid);font-weight:600;border-bottom:1px solid var(--line);}
 .art-thead span:nth-child(4){text-align:right;}
 .art-row{display:grid;grid-template-columns:74px 1fr 92px 76px 62px;gap:10px;align-items:center;padding:9px 16px;border-bottom:1px solid var(--line);font-size:.9rem;}
