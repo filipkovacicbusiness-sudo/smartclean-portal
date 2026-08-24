@@ -1,13 +1,14 @@
 /* Pralnica — service worker (mobil) */
 /* HTML = network-first (vedno sveža koda, offline pa iz predpomnilnika),
    statične datoteke (ikone, xlsx) = cache-first. */
-const CACHE = "pralnica-mobil-v4";
+const CACHE = "pralnica-mobil-v5";
 const CORE = [
   "index.html",
   "manifest.json",
   "icon-192.png",
   "icon-512.png",
-  "xlsx.full.min.js"
+  "xlsx.full.min.js",
+  "supabase.js"
 ];
 
 self.addEventListener("install", (e) => {
