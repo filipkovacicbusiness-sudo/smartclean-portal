@@ -749,7 +749,7 @@
         return '<tr><td>' + escape_(z.ime) + '</td><td class="pris-pairs">' + c.html + '</td><td class="pris-ure">' + (c.sek ? trajanjeH(c.sek) : '—') + '</td>' +
           '<td class="pris-act"><button type="button" class="cgrp-btn ghost" data-rocni="' + z.id + '">+ ročno</button></td></tr>';
       }).join('');
-      telo = '<table class="pris-tbl"><thead><tr><th>Zaposleni</th><th>Prihod–odhod</th><th>Ur skupaj</th><th></th></tr></thead><tbody>' +
+      telo = '<table class="pris-tbl pris-tbl-dan"><thead><tr><th>Zaposleni</th><th>Prihod–odhod</th><th>Ur skupaj</th><th></th></tr></thead><tbody>' +
         (dVrst || '<tr><td colspan="4" class="u-sub">Ni podatkov.</td></tr>') + '</tbody>' +
         (dVrst ? '<tfoot><tr><td>Skupaj</td><td></td><td class="pris-ure">' + (dSek ? trajanjeH(dSek) : '—') + '</td><td></td></tr></tfoot>' : '') +
         '</table>';
