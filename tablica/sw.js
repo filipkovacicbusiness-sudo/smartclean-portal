@@ -3,7 +3,7 @@
    lastne statične datoteke (ikone, xlsx, supabase.js) = cache-first.
    POMEMBNO: klici na Supabase (API + realtime) se NIKOLI ne predpomnijo —
    drugače aplikacija streže star odgovor in podatki niso sveži. */
-const CACHE = "pralnica-tablica-v8-3";
+const CACHE = "pralnica-tablica-v8-4";
 const CORE = [
   "index.html",
   "manifest.json",

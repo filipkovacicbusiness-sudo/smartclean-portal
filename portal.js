@@ -567,7 +567,7 @@
     ZAPOSLENI = e.error ? [] : (e.data || []);
     var meja = new Date(Date.now() - 62 * 24 * 3600 * 1000).toISOString();
     var r = await vseVrstice(function (a, b) {
-      return sb.from('att_events').select('id,employee_id,terminal_id,ts,type,source').gte('ts', meja).order('ts', { ascending: true }).range(a, b);
+      return sb.from('att_events').select('id,employee_id,terminal_id,ts,type,source,potrjeno').gte('ts', meja).order('ts', { ascending: true }).range(a, b);
     });
     PRISDOG = (r && r.data) ? r.data : [];
   }
@@ -598,7 +598,10 @@
     var r = prisPari(empId, dayISO);
     var chips = r.pari.map(function (p) {
       var ids = p[0].id + ',' + p[1].id;
-      return '<span class="pris-chip"><button type="button" class="pris-chip-t" data-editpair="' + ids + '" title="uredi vpis">' + uraMin(p[0].ts) + '–' + uraMin(p[1].ts) + '</button>' +
+      var pot = !!(p[0].potrjeno && p[1].potrjeno);
+      return '<span class="pris-chip pris-pair ' + (pot ? 'pot-ok' : 'pot-ni') + '">' +
+        '<input type="checkbox" class="pris-pair-chk" data-cpair="' + ids + '"' + (pot ? ' checked' : '') + ' title="potrdi uro">' +
+        '<button type="button" class="pris-chip-t" data-editpair="' + ids + '" title="uredi vpis">' + uraMin(p[0].ts) + '–' + uraMin(p[1].ts) + '</button>' +
         '<button type="button" class="pris-chip-x" data-delpair="' + ids + '" title="izbriši vpis" aria-label="izbriši">×</button></span>';
     });
     if (r.odprt) chips.push('<span class="pris-chip open"><button type="button" class="pris-chip-t" data-editpair="' + r.odprt.id + '" title="uredi vpis">' + uraMin(r.odprt.ts) + ' → v teku</button>' +
@@ -741,17 +744,9 @@
     } else {
       var dSek = 0;
       var dVrst = aktivni.map(function (z) {
-        var r = prisPari(z.id, kljuc);
-        dSek += r.sek;
-        var chips = r.pari.map(function (p) {
-          var ids = p[0].id + ',' + p[1].id;
-          return '<span class="pris-chip"><button type="button" class="pris-chip-t" data-editpair="' + ids + '" title="uredi vpis">' + uraMin(p[0].ts) + '–' + uraMin(p[1].ts) + '</button>' +
-            '<button type="button" class="pris-chip-x" data-delpair="' + ids + '" title="izbriši vpis" aria-label="izbriši">×</button></span>';
-        });
-        if (r.odprt) chips.push('<span class="pris-chip open"><button type="button" class="pris-chip-t" data-editpair="' + r.odprt.id + '" title="uredi vpis">' + uraMin(r.odprt.ts) + ' → v teku</button>' +
-          '<button type="button" class="pris-chip-x" data-delpair="' + r.odprt.id + '" title="izbriši prihod" aria-label="izbriši">×</button></span>');
-        var deli = chips.join(' ') || '—';
-        return '<tr><td>' + escape_(z.ime) + '</td><td class="pris-pairs">' + deli + '</td><td class="pris-ure">' + (r.sek ? trajanjeH(r.sek) : '—') + '</td>' +
+        var c = prisChipiDan(z.id, kljuc);
+        dSek += c.sek;
+        return '<tr><td>' + escape_(z.ime) + '</td><td class="pris-pairs">' + c.html + '</td><td class="pris-ure">' + (c.sek ? trajanjeH(c.sek) : '—') + '</td>' +
           '<td class="pris-act"><button type="button" class="cgrp-btn ghost" data-rocni="' + z.id + '">+ ročno</button></td></tr>';
       }).join('');
       telo = '<table class="pris-tbl"><thead><tr><th>Zaposleni</th><th>Prihod–odhod</th><th>Ur skupaj</th><th></th></tr></thead><tbody>' +
@@ -797,6 +792,7 @@
     box.querySelectorAll('[data-odjavi]').forEach(function (b) { b.addEventListener('click', function () { prisOdjavi(b.dataset.odjavi); }); });
     box.querySelectorAll('[data-rocni]').forEach(function (b) { b.addEventListener('click', function () { prisRocni(b.dataset.rocni); }); });
     box.querySelectorAll('[data-delpair]').forEach(function (b) { b.addEventListener('click', function (e) { e.stopPropagation(); prisIzbrisiPar(b.dataset.delpair); }); });
+    box.querySelectorAll('[data-cpair]').forEach(function (cb) { cb.addEventListener('click', function (e) { e.stopPropagation(); }); cb.addEventListener('change', function (e) { e.stopPropagation(); prisPotrdiPar(cb.dataset.cpair, cb.checked); }); });
     box.querySelectorAll('[data-editpair]').forEach(function (b) { b.addEventListener('click', function (e) { e.stopPropagation(); prisUrediPar(b.dataset.editpair); }); });
     box.querySelectorAll('[data-karta]').forEach(function (b) { b.addEventListener('click', function () { prisDodeliKarto(b.dataset.karta); }); });
     box.querySelectorAll('[data-aktiv]').forEach(function (b) { b.addEventListener('click', function () { prisAktiv(b.dataset.aktiv, b.dataset.v === '1'); }); });
@@ -844,6 +840,15 @@
     if (up.error) { toast('Napaka: ' + up.error.message); return; }
     await potrdiModal({ naslov: 'Žeton kartice — ' + z.ime, sporocilo: 'Ta žeton zapiši na kartico:\n\n' + tok, potrdi: 'V redu', preklici: 'Zapri' });
     await risiPrisotnost();
+  }
+  // Potrdi/prekliči uro (par prihod–odhod). Označi obe (prihod + odhod).
+  async function prisPotrdiPar(idsStr, on) {
+    var ids = String(idsStr || '').split(',').filter(Boolean);
+    if (!ids.length) return;
+    var up = await sb.from('att_events').update({ potrjeno: on }).in('id', ids);
+    if (up.error) { toast('Napaka: ' + up.error.message); return; }
+    ids.forEach(function (id) { var d = prisDogById(id); if (d) d.potrjeno = on; });
+    prisRender();
   }
   async function prisIzbrisiPar(idsStr) {
     var ids = String(idsStr || '').split(',').filter(Boolean);
