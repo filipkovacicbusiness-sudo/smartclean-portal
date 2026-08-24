@@ -884,6 +884,14 @@
     var pill=document.querySelector('[data-pill="'+id+'"]'); if(pill) pill.textContent=k>0?k:'0';
     var row=document.querySelector('[data-open="'+id+'"]'); if(row) row.classList.toggle('filled',k>0);
   }
+  /* Po prenosu iz portala osveži VSE vidne poglede — tudi odprt seznam artiklov
+     stranke (drugače nov artikel iz portala ne bi bil viden dokler ne zapreš/odpreš). */
+  function osveziPrikaz(){
+    try{ if(typeof render==="function") render(); }catch(e){}
+    try{ if(typeof renderSummary==="function") renderSummary(); }catch(e){}
+    try{ if((selectedId||editingId) && typeof renderEntry==="function") renderEntry(); }catch(e){}
+    try{ if(typeof renderAdmin==="function") renderAdmin(); }catch(e){}
+  }
   function renderSummary(){
     var host=document.getElementById("summaryHost");
     var lines=draftLines();
@@ -2129,8 +2137,7 @@ async function osveziKatalog(tiho){
       odstranjenih = pred - CLIENTS.length;
     }
     try{ await dbWrite(CLIENTS_KEY, JSON.stringify(CLIENTS)); }catch(e){}
-    if(typeof renderAdmin === "function") renderAdmin();
-    if(typeof render === "function") render();
+    osveziPrikaz();
     if(!tiho) toast("Katalog osvežen — novih " + novih + ", posodobljenih " + posod + (odstranjenih ? (", odstranjenih " + odstranjenih) : ""));
   }catch(err){
     if(!tiho) toast("Katalog ni šel: " + (err.message || err));
@@ -2615,8 +2622,17 @@ function osveziObPovratku(){
   /* potegni sveže iz portala (katalog + liste) — brez potiskanja, da ne povozi portala */
   osveziKatalog(true).then(function(){ return potegniIzPortala(); }).catch(function(){});
 }
-document.addEventListener("visibilitychange", osveziObPovratku);
+document.addEventListener("visibilitychange", function(){ osveziObPovratku(); try{ if(document.visibilityState==="visible" && portalAuth) zaziviRealtime(); }catch(e){} });
 window.addEventListener("focus", osveziObPovratku);
+
+/* Varnostni poll: medtem ko je aplikacija v ospredju, vsakih 20 s potegni sveže
+   iz portala. Realtime da takojšnjo posodobitev; ta poll je zavarovanje za primere,
+   ko iOS/PWA v ospredju uspava websocket. */
+setInterval(function(){
+  if(document.visibilityState !== "visible") return;
+  if(!portalAuth || !session) return;
+  osveziKatalog(true).then(function(){ return potegniIzPortala(); }).catch(function(){});
+}, 20000);
 
 })();
 </script>
