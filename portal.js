@@ -1726,7 +1726,7 @@
     return on && on.dataset.tv === 'izredni' ? 'izredni' : 'redni';
   }
 
-  function novList() {
+  async function novList() {
     const box = $('novListBox');
     if (!box) return;
     const letos = new Date().getFullYear();
@@ -1745,16 +1745,30 @@
       </div>
       <label class="ur-f"><span>Izdal</span><input type="text" data-izdal value="${escape_(JAZIME || '')}"></label>
       <div class="ur-f"><span>Vrsta prevoza</span>${segPrevoz('redni')}</div>
-      <p class="u-sub" style="margin:10px 0 4px">Postavke</p>
+      <p class="u-sub" style="margin:10px 0 4px">Postavke — izberi artikel (z ID) iz kataloga stranke</p>
       <div data-postavke></div>
       <button type="button" class="ur-add" data-dodaj>+ Dodaj postavko</button>
       <div class="u-acts" style="margin-top:14px"><button type="button" class="ur-save" data-shrani>Ustvari</button><button type="button" data-preklici>Prekliči</button></div>
       <p class="u-sub ur-msg" data-msg></p></div>`;
     const pBox = box.querySelector('[data-postavke]');
+    await nalozArtSez(box);
+    function napolniPn(sel, curName) {
+      var arts = box._arts || [];
+      var matched = arts.some(function (a) { return a.name === curName; });
+      var opts = '';
+      if (curName && !matched) opts += '<option value="' + escape_(curName) + '" data-aid="" selected>' + escape_(curName) + ' — ročno</option>';
+      opts += '<option value="">— izberi artikel —</option>';
+      arts.forEach(function (a) {
+        var lab = a.name + (a.koda ? ' · ' + a.koda : '');
+        opts += '<option value="' + escape_(a.name) + '" data-aid="' + escape_(String(a.id || '')) + '" data-sifra="' + escape_(String(a.sifra != null ? a.sifra : '')) + '"' + (a.name === curName ? ' selected' : '') + '>' + escape_(lab) + '</option>';
+      });
+      sel.innerHTML = opts;
+    }
     const dodajVrstico = (naziv = '', kosov = '') => {
       const row = document.createElement('div');
       row.className = 'ur-post';
-      row.innerHTML = `<input type="text" data-pn list="artikliDatalist" placeholder="artikel" value="${escape_(naziv)}"><input type="number" data-pk placeholder="kos" value="${kosov}"><button type="button" class="ur-del" data-del title="odstrani">×</button>`;
+      row.innerHTML = `<select data-pn class="ur-pn"></select><input type="number" data-pk placeholder="kos" value="${kosov}"><button type="button" class="ur-del" data-del title="odstrani">×</button>`;
+      napolniPn(row.querySelector('[data-pn]'), naziv);
       row.querySelector('[data-del]').addEventListener('click', () => row.remove());
       pBox.appendChild(row);
     };
@@ -1763,7 +1777,7 @@
     box.querySelector('[data-preklici]').addEventListener('click', () => { box.innerHTML = ''; box.classList.remove('show'); });
     box.querySelector('[data-shrani]').addEventListener('click', () => shraniNovList(box));
     wireSeg(box);
-    { const _os = box.querySelector('[data-org]'); if (_os) _os.addEventListener('change', () => osveziArtikleDatalist(box)); osveziArtikleDatalist(box); }
+    { const _os = box.querySelector('[data-org]'); if (_os) _os.addEventListener('change', async () => { await nalozArtSez(box); box.querySelectorAll('.ur-post [data-pn]').forEach(function (sel) { napolniPn(sel, sel.value); }); }); }
     box.classList.add('show');
     box.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
@@ -1780,15 +1794,28 @@
     if (!org_id) { msg.textContent = 'Izberi stranko.'; return; }
     if (!seq || !leto) { msg.textContent = 'Vpiši številko in leto.'; return; }
     if (!doc_date) { msg.textContent = 'Vpiši datum.'; return; }
-    const postavke = zdruziPodvojene([...box.querySelectorAll('.ur-post')].map(r => ({
-      naziv: r.querySelector('[data-pn]').value.trim(),
-      kosov: parseInt(r.querySelector('[data-pk]').value, 10) || 0
-    })).filter(p => p.naziv));
+    const postavke = zdruziPodvojene([...box.querySelectorAll('.ur-post')].map(r => {
+      const sel = r.querySelector('[data-pn]');
+      const opt = sel && sel.selectedOptions && sel.selectedOptions[0];
+      return {
+        naziv: (sel ? sel.value : '').trim(),
+        artId: opt && opt.dataset.aid ? opt.dataset.aid : null,
+        sifra: opt && opt.dataset.sifra ? parseInt(opt.dataset.sifra, 10) : null,
+        kosov: parseInt(r.querySelector('[data-pk]').value, 10) || 0
+      };
+    }).filter(p => p.naziv));
     msg.textContent = 'Ustvarjam …';
     try {
       const { data: arts } = await sb.from('articles').select('id,name').eq('org_id', org_id);
       const poImenu = {};
       (arts || []).forEach(a => { poImenu[(a.name || '').trim().toLowerCase()] = a.id; });
+      // za izbrane LASTNE artikle brez članstva ustvari povezavo (veljaven article_id)
+      for (const p of postavke) {
+        if (!p.artId && p.sifra != null && !isNaN(p.sifra)) {
+          const ins = await sb.from('articles').insert({ org_id, name: p.naziv, cena_sifra: p.sifra }).select('id').maybeSingle();
+          if (ins && ins.data) { p.artId = ins.data.id; if (CLANI) CLANI.push({ id: ins.data.id, org_id: org_id, name: p.naziv, cena_sifra: p.sifra, sort_order: null }); }
+        }
+      }
       const { data: nova, error } = await sb.from('delivery_notes').insert({
         org_id, doc_seq: seq, doc_year: leto, doc_date,
         weight_kg: tezaRaw === '' ? null : Number(tezaRaw),
@@ -1798,7 +1825,7 @@
       }).select('id').single();
       if (error) throw error;
       if (postavke.length) {
-        const rows = postavke.map((p, i) => ({ note_id: nova.id, article_name: p.naziv, article_id: poImenu[p.naziv.toLowerCase()] || null, pieces: p.kosov, sort_order: i }));
+        const rows = postavke.map((p, i) => ({ note_id: nova.id, article_name: p.naziv, article_id: p.artId || poImenu[p.naziv.toLowerCase()] || null, pieces: p.kosov, sort_order: i }));
         const r2 = await sb.from('delivery_note_items').insert(rows);
         if (r2.error) throw r2.error;
       }
