@@ -1141,7 +1141,7 @@ html[data-view="grid"] #cenikList .sc-isolate .cgrp:not(.open){max-width:var(--t
 .pris-tab.on{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12);}
 .pris-barvrsta{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:2px 0 14px;}
 .pris-datum{display:flex;align-items:center;gap:8px;margin:0;}
-.pris-datum input{padding:9px 12px;border:1.5px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink);font-size:15px;}
+.pris-datum input{height:40px;box-sizing:border-box;padding:0 12px;border:1.5px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink);font-size:15px;line-height:normal;}
 .pris-datum input:focus{border-color:var(--green-l);outline:none;}
 .pris-nav{width:40px;height:40px;flex:0 0 auto;border:1.5px solid var(--line);border-radius:9px;background:var(--surface);color:var(--ink);font-size:22px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;}
 .pris-nav:hover{border-color:var(--green-l);background:var(--green-m);}
@@ -1248,6 +1248,7 @@ html[data-theme="dark"] .pris-chip-x:hover{background:rgba(255,138,122,.16);colo
 
 /* ── Prisotnost: stabilna postavitev (stolpci se ne premikajo med dnevi) ── */
 .pris-tbl-dan,.pris-tbl-oseba{table-layout:fixed;}
+.pris-tbl-dan tbody td,.pris-tbl-oseba tbody td{height:46px;}   /* stalna višina vrstic — se ne krčijo med dnevi */
 .pris-tbl-dan th:nth-child(1),.pris-tbl-dan td:nth-child(1){width:26%;}
 .pris-tbl-dan th:nth-child(2),.pris-tbl-dan td:nth-child(2){width:auto;}
 .pris-tbl-dan th:nth-child(3),.pris-tbl-dan td:nth-child(3){width:104px;}
