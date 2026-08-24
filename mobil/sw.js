@@ -1,7 +1,7 @@
 /* Pralnica — service worker (mobil) */
 /* HTML = network-first (vedno sveža koda, offline pa iz predpomnilnika),
    statične datoteke (ikone, xlsx) = cache-first. */
-const CACHE = "pralnica-mobil-v3";
+const CACHE = "pralnica-mobil-v4";
 const CORE = [
   "index.html",
   "manifest.json",

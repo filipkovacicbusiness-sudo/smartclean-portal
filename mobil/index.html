@@ -1198,7 +1198,9 @@
     ifr.setAttribute("aria-hidden","true");
     ifr.style.cssText="position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden";
     document.body.appendChild(ifr);
+    var klican=false;               /* zaščita: natisni SAMO enkrat (drugače se okno za tiskanje odpre dvakrat) */
     var natisni=function(){
+      if(klican) return; klican=true;
       try{
         var w=ifr.contentWindow;
         w.focus();
@@ -1210,9 +1212,9 @@
     };
     var d=ifr.contentWindow.document;
     d.open(); d.write(doc); d.close();
-    // počakaj, da se naloži (pisave/postavitev), nato natisni
-    if(ifr.contentWindow.document.readyState==="complete"){ natisni(); }
-    else{ ifr.onload=natisni; setTimeout(natisni, 1200); }
+    // počakaj, da se naloži (pisave/postavitev), nato natisni — onload ALI zasilni časovnik, kar prej pride (a le enkrat)
+    ifr.onload=natisni;
+    setTimeout(natisni, 1200);
   }
   function pdfPlugin(){ try{ if(window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.PralnicaPrint) return Capacitor.Plugins.PralnicaPrint; }catch(e){} return null; }
   function pdfName(e){ return String(e.stevilka).replace(/[\/]/g,"-")+".pdf"; }
@@ -2448,6 +2450,21 @@ function polnaSinh(){
 
 window.addEventListener("online", function(){ polnaSinh(); });
 setInterval(function(){ polnaSinh(); }, 120000);
+
+/* Ko se aplikacija vrne v ospredje (npr. po dodajanju artikla v portalu),
+   takoj potegni svež katalog — mobilni brskalnik namreč v ozadju ustavi zgornji časovnik.
+   Rahlo dušenje, da preklapljanje ne sproža klica prepogosto. */
+var _zadnjiKatOsvez = 0;
+function osveziObPovratku(){
+  if(document.visibilityState !== "visible") return;
+  if(!portalNastavljen() || !portalAuth) return;
+  var zdaj = Date.now();
+  if(zdaj - _zadnjiKatOsvez < 8000) return;
+  _zadnjiKatOsvez = zdaj;
+  osveziKatalog(true);
+}
+document.addEventListener("visibilitychange", osveziObPovratku);
+window.addEventListener("focus", osveziObPovratku);
 
 })();
 </script>
