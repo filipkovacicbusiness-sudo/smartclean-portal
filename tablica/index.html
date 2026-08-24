@@ -688,7 +688,7 @@
 </div>
 <!-- ADMIN -->
 <div class="admin-screen" id="adminScreen">
-  <div class="admin-head"><span class="t">Admin</span><button class="tb-btn" id="adminClose">Zapri</button></div>
+  <div class="admin-head"><span class="t">Admin <small id="admVerz" style="opacity:.5;font-weight:400;font-size:12px"></small></span><button class="tb-btn" id="adminClose">Zapri</button></div>
   <div class="admin-body">
     <div class="admin-sec"><h3>Uporabniki</h3><div id="admUsers"></div>
       <div class="admin-add">
@@ -870,14 +870,34 @@
     if(clientPickerMode==="search"){ clientPickerMode="entry"; searchMode="client"; searchClientId=id; updateSearchChip(); renderList(); return; }
     selectClient(id); }
   function selectClient(id){ if(selectedId!==id){ selectedId=id; draftQty={}; } setClientLabel(); renderEntry(); renderSummary();
-    /* ob izbiri stranke vedno potegni svež katalog iz portala (v ozadju), da so artikli aktualni */
-    if(portalAuth){ osveziKatalog(true).then(function(){ return potegniIzPortala(); }).then(function(){ if(selectedId===id) renderEntry(); }).catch(function(){}); }
+    /* ob izbiri stranke potegni artikle TOČNO za to stranko neposredno iz portala */
+    if(portalAuth){ osveziStrankinArtikle(id); }
+  }
+  /* Potegni artikle izbrane stranke naravnost iz portala (po njenem org-u) in
+     posodobi TOČNO ta objekt stranke — mimo ujemanja/podvajanja v lokalnem katalogu. */
+  async function osveziStrankinArtikle(cid){
+    var c = clientById(cid); if(!c || !portalAuth) return false;
+    try{
+      var orgs = await apiVse("orgs?select=id,name,legacy_id&order=name");
+      var org = orgs.find(function(o){ return (o.legacy_id && o.legacy_id === c.id) || (o.name||"").trim().toLowerCase() === (c.naziv||"").trim().toLowerCase(); });
+      if(!org) return false;
+      var arts = await apiVse("articles?select=id,name,legacy_id,sort_order&org_id=eq." + org.id + "&order=sort_order,id");
+      c.artikli = (arts||[]).map(function(a){ return { id: a.legacy_id || ("s" + a.id.slice(0,8)), naziv: a.name, sy: true }; });
+      try{ await dbWrite(CLIENTS_KEY, JSON.stringify(CLIENTS)); }catch(e){}
+      if(selectedId === cid) renderEntry();
+      return true;
+    }catch(e){ return false; }
   }
   /* Ročna osvežitev iz portala (gumb ⟳ v orodni vrstici). */
   async function rocnaOsvezitev(btn){
     if(!portalAuth){ toast("Najprej se prijavi."); return; }
     if(btn){ btn.disabled=true; btn.classList.add("vrti"); }
-    try{ await osveziKatalog(true); await potegniIzPortala(); toast("Osveženo iz portala"); }
+    try{
+      if(selectedId){ await osveziStrankinArtikle(selectedId); }   /* najprej takoj osveži odprto stranko */
+      await osveziKatalog(true); await potegniIzPortala();
+      if(selectedId) renderEntry();
+      toast("Osveženo iz portala");
+    }
     catch(e){ toast("Osvežitev ni uspela: "+((e&&e.message)||e)); }
     finally{ if(btn){ btn.disabled=false; btn.classList.remove("vrti"); } }
   }
@@ -1618,7 +1638,8 @@
     }).join("") : '<div style="color:var(--ink-soft);font-size:13px">Danes še ni shranjenih listov.</div>';
     document.querySelectorAll("[data-opendanes]").forEach(function(b){ b.onclick=function(){ closeDanes(); openSheet(b.getAttribute("data-opendanes")); }; });
   }
-  function openAdmin(){ if(!session||session.role!=="admin") return; renderAdmin(); document.getElementById("adminScreen").classList.add("show"); }
+  var APP_VERZIJA="v8";
+  function openAdmin(){ if(!session||session.role!=="admin") return; var av=document.getElementById("admVerz"); if(av) av.textContent=APP_VERZIJA; renderAdmin(); document.getElementById("adminScreen").classList.add("show"); }
   function closeAdmin(){ document.getElementById("adminScreen").classList.remove("show"); }
   function renderAdmRecent(){
     var q=(admListQuery||"").trim().toLowerCase();
@@ -2657,6 +2678,9 @@ setInterval(function(){
     window.addEventListener("load",function(){
       navigator.serviceWorker.register("sw.js").catch(function(){});
     });
+    /* Ko nova koda prevzame nadzor, se enkrat samodejno osveži — brez ročnega brisanja. */
+    var _swReload=false;
+    navigator.serviceWorker.addEventListener("controllerchange",function(){ if(_swReload)return; _swReload=true; location.reload(); });
   }
 </script>
 </body>
