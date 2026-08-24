@@ -1070,9 +1070,9 @@ html[data-view="grid"] #cenikList .sc-isolate .cgrp:not(.open){max-width:var(--t
   .art-assign-str{flex:none;width:100%;}
   .art-assign-acts{width:100%;}
 }
-.art-thead{display:grid;grid-template-columns:74px 1fr 92px 76px 104px;gap:10px;padding:9px 16px 7px;font-size:.68rem;text-transform:uppercase;letter-spacing:.04em;color:var(--mid);font-weight:600;border-bottom:1px solid var(--line);}
+.art-thead{display:grid;grid-template-columns:74px 1fr 92px 76px 140px;gap:10px;padding:9px 16px 7px;font-size:.68rem;text-transform:uppercase;letter-spacing:.04em;color:var(--mid);font-weight:600;border-bottom:1px solid var(--line);}
 .art-thead span:nth-child(4){text-align:right;}
-.art-row{display:grid;grid-template-columns:74px 1fr 92px 76px 104px;gap:10px;align-items:center;padding:9px 16px;border-bottom:1px solid var(--line);font-size:.9rem;}
+.art-row{display:grid;grid-template-columns:74px 1fr 92px 76px 140px;gap:10px;align-items:center;padding:9px 16px;border-bottom:1px solid var(--line);font-size:.9rem;}
 .art-row:last-child{border-bottom:none;}
 .art-r-id{font-family:var(--mono);font-size:.78rem;color:var(--mid);}
 .art-r-nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink);}
@@ -1139,9 +1139,13 @@ html[data-view="grid"] #cenikList .sc-isolate .cgrp:not(.open){max-width:var(--t
 .pris-tabs{display:inline-flex;gap:4px;background:var(--green-m);border-radius:100px;padding:3px;}
 .pris-tab{border:none;background:none;color:var(--mid);font-size:.82rem;font-weight:600;padding:5px 14px;border-radius:100px;cursor:pointer;}
 .pris-tab.on{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12);}
-.pris-datum{margin:2px 0 12px;}
+.pris-barvrsta{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:2px 0 14px;}
+.pris-datum{display:flex;align-items:center;gap:8px;margin:0;}
 .pris-datum input{padding:9px 12px;border:1.5px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink);font-size:15px;}
 .pris-datum input:focus{border-color:var(--green-l);outline:none;}
+.pris-nav{width:40px;height:40px;flex:0 0 auto;border:1.5px solid var(--line);border-radius:9px;background:var(--surface);color:var(--ink);font-size:22px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;}
+.pris-nav:hover{border-color:var(--green-l);background:var(--green-m);}
+@media(max-width:560px){.pris-barvrsta{gap:8px}.pris-datum{flex:1}.pris-datum input{flex:1;min-width:0}}
 .pris-tbl{width:100%;border-collapse:collapse;}
 .pris-tbl th{text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:var(--mid);font-weight:600;padding:6px 8px;border-bottom:1px solid var(--line);}
 .pris-tbl td{padding:9px 8px;border-bottom:1px solid var(--line);font-size:.9rem;color:var(--ink);vertical-align:middle;}
@@ -1220,3 +1224,18 @@ html[data-theme="dark"] .pris-chip-x:hover{background:rgba(255,138,122,.16);colo
 .pris-tbl-oseba td.pris-dan-c{white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--mid);font-weight:600;width:76px}
 .pris-tbl-oseba tr.pris-vikend td{background:var(--green-m)}
 .pris-tbl-oseba tr.pris-vikend td.pris-dan-c{color:var(--ink)}
+
+/* ── Artikli: potrditev cene (kljukica + barvna stanja) ── */
+.art-row.cena-nic .art-r-cena{color:#c0392b;font-weight:700;}   /* rdeča: 0,00 € */
+.art-row.cena-ni  .art-r-cena{color:#d98218;font-weight:700;}   /* oranžna: ni potrjeno */
+.art-row.cena-ok  .art-r-cena{color:#1a6644;font-weight:600;}   /* zelena: potrjeno */
+.art-row.cena-nic{box-shadow:inset 3px 0 0 #c0392b;}
+.art-row.cena-ni{box-shadow:inset 3px 0 0 #d98218;}
+.art-row.cena-ok{box-shadow:inset 3px 0 0 #1a6644;}
+.art-chk{display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:4px;}
+.art-chk input{position:absolute;opacity:0;width:1px;height:1px;}
+.art-chk-box{width:20px;height:20px;border:1.6px solid var(--line);border-radius:5px;display:inline-flex;align-items:center;justify-content:center;transition:background .12s,border-color .12s;}
+.art-row.cena-ni .art-chk-box{border-color:#d98218;}
+.art-chk input:checked + .art-chk-box{background:#1a6644;border-color:#1a6644;}
+.art-chk input:checked + .art-chk-box::after{content:"\2713";color:#fff;font-size:13px;font-weight:800;line-height:1;}
+.art-chk.dis{cursor:not-allowed;opacity:.35;}
