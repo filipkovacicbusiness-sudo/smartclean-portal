@@ -459,7 +459,7 @@
   // Osnovni (privzeti) glavni razdelki menija za trenutnega uporabnika.
   function glavniMeni() {
     if (OSEBJE) {
-      var g = [['domov', 'Pregled'], ['statistika', 'Statistika'], ['arhiv', 'Arhiv'], ['fakture', 'Fakture'], ['artikli', 'Artikli'], ['stranke', 'Stranke'], ['prisotnost', 'Prisotnost'], ['ucinek', 'Učinkovitost'], ['dokumenti', 'Dokumenti'], ['aplikacija', 'Aplikacija']];
+      var g = [['domov', 'Pregled'], ['statistika', 'Statistika'], ['arhiv', 'Arhiv'], ['fakture', 'Fakture'], ['artikli', 'Artikli'], ['stranke', 'Stranke'], ['prisotnost', 'Prisotnost'], ['ucinek', 'Učinkovitost'], ['dokumenti', 'Dokumenti'], ['aplikacija', 'Programska oprema']];
       if (JE_LASTNIK()) g.push(['uporabniki', 'Uporabniki']);
       return g;
     }
@@ -3578,45 +3578,50 @@
 
     var skenerPanel =
       '<div class="panel">' +
-        '<h3 class="sec-h">Skener računov</h3>' +
-        '<p class="uvoz-nav">Fotografiraj fizični račun s telefonom, dodaj opombo — shrani se med <b>Dokumente</b>. Odpri to na telefonu (prijava je ista kot v portalu).</p>' +
-        '<p><a class="btn btn-narrow" href="skener/" target="_blank" rel="noopener">Odpri skener računov</a></p>' +
-        '<p class="u-sub" style="margin-top:12px">Namig: v skenerju tapni »Deli → Dodaj na začetni zaslon«, da imaš ikono kot pravo aplikacijo.</p>' +
+        '<h3 class="sec-h">1. Aplikacija za skeniranje računov</h3>' +
+        '<p class="uvoz-nav">Fotografiraj fizični račun s telefonom, dodaj opombo — shrani se med <b>Dokumente</b>. Prijava je ista kot v portalu.</p>' +
+        '<p><a class="btn btn-narrow" href="skener/" target="_blank" rel="noopener">Odpri skener</a></p>' +
+        '<p class="u-sub" style="margin-top:12px">Namig: v skenerju tapni »Deli → Dodaj na začetni zaslon« za ikono kot prava aplikacija.</p>' +
       '</div>';
 
-    var portalPanel =
+    var tabletPanel = '<div class="panel" id="apkTablet"><h3 class="sec-h">2. Aplikacija za tiskanje — tablica (Android)</h3><p class="u-sub">Preverjam …</p></div>';
+
+    var telefonPanel =
       '<div class="panel">' +
-        '<h3 class="sec-h">Namesti portal na telefon</h3>' +
-        '<p class="uvoz-nav">Portal lahko dodaš na začetni zaslon telefona — odpre se čez cel zaslon, z ikono, kot prava aplikacija.</p>' +
-        '<button type="button" class="btn btn-narrow" id="pwaInstall" style="display:none;margin-bottom:12px">Namesti aplikacijo</button>' +
-        '<div class="por"><div class="por-op" id="pwaHint">' +
-          '<b>Android:</b> tapni gumb »Namesti aplikacijo« zgoraj — ali meni brskalnika (⋮) → »Namesti aplikacijo«.<br><br>' +
-          '<b>iPhone / iPad (Safari):</b> tapni gumb <b>Deli</b> (kvadratek s puščico) → podrsaj do <b>»Dodaj na začetni zaslon«</b> → <b>Dodaj</b>.' +
+        '<h3 class="sec-h">3. Aplikacija za tiskanje — telefon (iPhone in Android)</h3>' +
+        '<p class="uvoz-nav">Za vnos in tiskanje spremnih listov na telefonu. Odpre se v brskalniku; dodaj jo na začetni zaslon, da deluje kot prava aplikacija.</p>' +
+        '<p><a class="btn btn-narrow" href="mobil/" target="_blank" rel="noopener">Odpri aplikacijo za telefon</a></p>' +
+        '<div class="por"><div class="por-op">' +
+          '<b>iPhone (Safari):</b> tapni <b>Deli</b> (kvadratek s puščico) → podrsaj do <b>»Dodaj na začetni zaslon«</b> → <b>Dodaj</b>.<br><br>' +
+          '<b>Android (Chrome):</b> meni (⋮) → <b>»Dodaj na začetni zaslon«</b> oz. <b>»Namesti aplikacijo«</b>.' +
         '</div></div>' +
       '</div>';
 
-    var tabletPanel = '<div class="panel" id="apkTablet"><h3 class="sec-h">Pralnica za tablico (Android)</h3><p class="u-sub">Preverjam …</p></div>';
+    var webPanel =
+      '<div class="panel">' +
+        '<h3 class="sec-h">4. Aplikacija za tiskanje — spletni pogled</h3>' +
+        '<p class="uvoz-nav">Deluje v katerem koli brskalniku, brez nameščanja — priročno za računalnik ali hiter dostop.</p>' +
+        '<p><a class="btn btn-narrow" href="tablica/" target="_blank" rel="noopener">Odpri spletni pogled</a></p>' +
+      '</div>';
 
-    p.innerHTML = skenerPanel + portalPanel + tabletPanel;
-    wirePwa(p);
+    p.innerHTML = skenerPanel + tabletPanel + telefonPanel + webPanel;
 
     fetch(url, { method: 'HEAD' }).then(function (r) {
       if (!r.ok) throw new Error('ni ga');
       var mb = Number(r.headers.get('content-length') || 0) / 1048576;
       var t = document.getElementById('apkTablet');
       if (t) t.innerHTML =
-        '<h3 class="sec-h">Pralnica za tablico (Android)</h3>' +
-        '<p class="uvoz-nav">Za vnos in tiskanje spremnih listov. <b>To stran odpri na tablici</b> in tapni gumb — Android bo vprašal za dovoljenje za namestitev, dovoli ga.</p>' +
+        '<h3 class="sec-h">2. Aplikacija za tiskanje — tablica (Android)</h3>' +
+        '<p class="uvoz-nav">Za vnos in tiskanje spremnih listov na tablici. <b>To stran odpri na tablici</b> in tapni gumb — Android bo vprašal za dovoljenje za namestitev, dovoli ga.</p>' +
         '<p><a class="btn btn-narrow" href="' + escape_(url) + '" download>Prenesi aplikacijo' +
         (mb ? ' (' + mb.toFixed(1) + ' MB)' : '') + '</a></p>' +
-        '<p class="u-sub" style="margin-top:14px">Po namestitvi: koda 9999 → Admin → Portal — povezava. ' +
-        'Brez nameščanja deluje tudi <a href="tablica/" style="text-decoration:underline">spletna različica</a> (ne tiska in ne shranjuje PDF-jev).</p>';
+        '<p class="u-sub" style="margin-top:14px">Po namestitvi: koda 9999 → Admin → Portal — povezava.</p>';
     }).catch(function () {
       var t = document.getElementById('apkTablet');
       if (t) t.innerHTML =
-        '<h3 class="sec-h">Pralnica za tablico (Android)</h3>' +
+        '<h3 class="sec-h">2. Aplikacija za tiskanje — tablica (Android)</h3>' +
         '<div class="msg bad show">Namestitvenega paketa (<b>' + escape_(APK_POT) + '</b>) še ni na strežniku.</div>' +
-        '<p class="u-sub" style="margin-top:12px">Medtem deluje <a href="tablica/" style="text-decoration:underline">spletna različica</a>, ki je ni treba nameščati.</p>';
+        '<p class="u-sub" style="margin-top:12px">Medtem deluje spletni pogled (točka 4), ki ga ni treba nameščati.</p>';
     });
   }
 
