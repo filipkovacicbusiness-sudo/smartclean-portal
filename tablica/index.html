@@ -1642,7 +1642,7 @@
     }).join("") : '<div style="color:var(--ink-soft);font-size:13px">Danes še ni shranjenih listov.</div>';
     document.querySelectorAll("[data-opendanes]").forEach(function(b){ b.onclick=function(){ closeDanes(); openSheet(b.getAttribute("data-opendanes")); }; });
   }
-  var APP_VERZIJA="8.2";
+  var APP_VERZIJA="8.3";
   function openAdmin(){ if(!session||session.role!=="admin") return; var av=document.getElementById("admVerz"); if(av) av.textContent="v"+APP_VERZIJA; var vf=document.getElementById("verzFoot"); if(vf) vf.textContent=APP_VERZIJA; renderAdmin(); document.getElementById("adminScreen").classList.add("show"); }
   function closeAdmin(){ document.getElementById("adminScreen").classList.remove("show"); }
   function renderAdmRecent(){
