@@ -254,7 +254,7 @@
   .toast{position:fixed;left:50%;top:calc(14px + env(safe-area-inset-top));transform:translateX(-50%) translateY(-20px);
     max-width:88vw;text-align:center;
     background:var(--ink);color:var(--paper);padding:11px 18px;border-radius:11px;font-size:14px;font-weight:500;
-    box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:all .25s;z-index:9999}
+    box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:opacity .25s ease,transform .25s ease;z-index:9999}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
   .searchwrap{margin-bottom:12px}
@@ -1997,11 +1997,10 @@ async function osveziKatalog(tiho){
         lok.naziv = o.name; lok.podjetje = o.legal_name || "";
         lok.naslov = o.address || ""; lok.davcna = o.vat_id || ""; lok.sy = true;
         if(portalArts.length){
-          /* portal je merodajen: obdrži portalove + lokalne še-nesinhronizirane; sinhronizirane, ki jih v portalu ni več, zavrzi (izbris) */
-          var pn = {}; portalArts.forEach(function(a){ pn[(a.naziv || "").toLowerCase()] = true; });
-          var keep = (lok.artikli || []).filter(function(la){ return la.sy !== true && !pn[(la.naziv || "").toLowerCase()]; });
-          lok.artikli = portalArts.concat(keep);
-        } /* če portal nima artiklov za to stranko, pusti lokalne (varnost) */
+          /* PORTAL JE EDINI VIR RESNICE: seznam artiklov v celoti prevzame portalov.
+             Kar je v portalu izbrisano, izgine tudi tu; kar je dodano, se pojavi. */
+          lok.artikli = portalArts;
+        } /* če portal nima artiklov za to stranko, pusti lokalne (varnost pred praznim/delnim prenosom) */
         posod++;
       }else{
         CLIENTS.push({
@@ -2393,6 +2392,11 @@ async function potegniIzPortala(){
    legacy_id in imenu prepreči podvajanje. */
 var katalogTecev = false;
 async function posljiKatalog(){
+  /* IZKLOPLJENO: katalog (stranke + artikli) se ureja SAMO v portalu.
+     Aplikacija ga le prevzema (osveziKatalog), nikoli ne potiska nazaj —
+     tako izbris/urejanje v portalu ostane in se ne povozi. */
+  return false;
+  /* eslint-disable no-unreachable */
   if(katalogTecev) return false;
   if(!portalNastavljen() || !portalAuth) return false;
   if(navigator.onLine === false) return false;

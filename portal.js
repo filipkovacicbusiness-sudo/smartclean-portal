@@ -540,6 +540,9 @@
 
   /* ══════════ PRISOTNOST (registracija delovnega časa) ══════════ */
   var ZAPOSLENI = null, PRISDOG = null, _prisDan = null, _prisMesec = false;
+  var _prisView = 'dan', _prisOseba = null;   // pogled: 'dan' | 'mesec' | 'oseba'
+  function dniVMesecu(kljuc7) { var l = kljuc7.split('-'); return new Date(+l[0], +l[1], 0).getDate(); }
+  var DNEVI_KR = ['ned', 'pon', 'tor', 'sre', 'čet', 'pet', 'sob'];
 
   function prisOrg() {
     if (ZAPOSLENI && ZAPOSLENI.length && ZAPOSLENI[0].org_id) return ZAPOSLENI[0].org_id;
@@ -581,12 +584,25 @@
     var dnevi = {}; r.pari.forEach(function (p) { dnevi[p[0].ts.slice(0, 10)] = true; });
     return { dni: Object.keys(dnevi).length, sek: r.sek, pari: r.pari, odprt: r.odprt };
   }
+  // Čipi prihod–odhod za en dan enega zaposlenega (za urejanje). Vrne {html, sek}.
+  function prisChipiDan(empId, dayISO) {
+    var r = prisPari(empId, dayISO);
+    var chips = r.pari.map(function (p) {
+      var ids = p[0].id + ',' + p[1].id;
+      return '<span class="pris-chip"><button type="button" class="pris-chip-t" data-editpair="' + ids + '" title="uredi vpis">' + uraMin(p[0].ts) + '–' + uraMin(p[1].ts) + '</button>' +
+        '<button type="button" class="pris-chip-x" data-delpair="' + ids + '" title="izbriši vpis" aria-label="izbriši">×</button></span>';
+    });
+    if (r.odprt) chips.push('<span class="pris-chip open"><button type="button" class="pris-chip-t" data-editpair="' + r.odprt.id + '" title="uredi vpis">' + uraMin(r.odprt.ts) + ' → v teku</button>' +
+      '<button type="button" class="pris-chip-x" data-delpair="' + r.odprt.id + '" title="izbriši prihod" aria-label="izbriši">×</button></span>');
+    return { html: chips.join(' ') || '<span class="u-sub">—</span>', sek: r.sek };
+  }
   function decimalneUre(sek) { return (Math.round(sek / 3600 * 100) / 100).toString().replace('.', ','); }
   function csvC(s) { s = String(s == null ? '' : s); return /[";\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }
   // Izvoz ur za trenutno izbrano obdobje v CSV (odpre se v Excelu).
   function prisIzvoz() {
-    var mesec = _prisMesec; var kljuc = mesec ? _prisDan.slice(0, 7) : _prisDan;
+    var mesec = (_prisView !== 'dan'); var kljuc = mesec ? _prisDan.slice(0, 7) : _prisDan;
     var sep = ';', aktivni = (ZAPOSLENI || []).filter(function (z) { return z.active; });
+    if (_prisView === 'oseba' && _prisOseba) { aktivni = (ZAPOSLENI || []).filter(function (z) { return z.id === _prisOseba; }); }
     var vrst = [['Zaposleni', 'Datum', 'Prihod', 'Odhod', 'Ure (h:mm)', 'Ure (decimalno)'].map(csvC).join(sep)];
     aktivni.forEach(function (z) {
       var r = prisPari(z.id, kljuc);
@@ -673,10 +689,36 @@
     var blok1 = '<div class="pris-card"><div class="pris-h"><h3 class="sec-h">Trenutno prisotni</h3>' +
       '<span class="pris-count">' + prisotnihN + ' / ' + aktivni.length + '</span></div>' + stanjeVrst + '</div>';
 
-    // ── Blok 2: evidenca (dan/mesec) ──
-    var kljuc = _prisMesec ? _prisDan.slice(0, 7) : _prisDan;
+    // ── Blok 2: evidenca (dan/mesec/oseba) ──
+    var mesecni = (_prisView === 'mesec' || _prisView === 'oseba');
+    var kljuc = mesecni ? _prisDan.slice(0, 7) : _prisDan;
     var telo;
-    if (_prisMesec) {
+    if (_prisView === 'oseba') {
+      var mk = _prisDan.slice(0, 7);
+      var zsel = (ZAPOSLENI || []).find(function (z) { return z.id === _prisOseba; }) || aktivni[0] || (ZAPOSLENI || [])[0] || null;
+      if (zsel) _prisOseba = zsel.id;
+      var opts = (ZAPOSLENI || []).map(function (z) {
+        return '<option value="' + z.id + '"' + (zsel && z.id === zsel.id ? ' selected' : '') + '>' + escape_(z.ime) + (z.active ? '' : ' (neaktiven)') + '</option>';
+      }).join('');
+      var oRows = '', oTot = 0, oDni = 0;
+      if (zsel) {
+        var nDni = dniVMesecu(mk);
+        for (var di = 1; di <= nDni; di++) {
+          var dayISO = mk + '-' + ('0' + di).slice(-2);
+          var wd = new Date(dayISO + 'T00:00:00').getDay();
+          var c = prisChipiDan(zsel.id, dayISO); oTot += c.sek; if (c.sek) oDni++;
+          oRows += '<tr' + (wd === 0 || wd === 6 ? ' class="pris-vikend"' : '') + '>' +
+            '<td class="pris-dan-c">' + DNEVI_KR[wd] + ' ' + di + '.</td>' +
+            '<td class="pris-pairs">' + c.html + '</td>' +
+            '<td class="pris-ure">' + (c.sek ? trajanjeH(c.sek) : '—') + '</td>' +
+            '<td class="pris-act"><button type="button" class="cgrp-btn ghost" data-rocniday="' + zsel.id + '|' + dayISO + '">+ ročno</button></td></tr>';
+        }
+      }
+      telo = '<div class="pris-oseba-sel"><select id="prisOsebaSel" class="sc-modal-input">' + (opts || '') + '</select></div>' +
+        '<table class="pris-tbl pris-tbl-oseba"><thead><tr><th>Dan</th><th>Prihod–odhod</th><th>Ur</th><th></th></tr></thead><tbody>' +
+        (oRows || '<tr><td colspan="4" class="u-sub">Ni zaposlenih.</td></tr>') + '</tbody>' +
+        '<tfoot><tr><td>Skupaj (' + oDni + ' dni)</td><td></td><td class="pris-ure">' + (oTot ? trajanjeH(oTot) : '—') + '</td><td></td></tr></tfoot></table>';
+    } else if (_prisView === 'mesec') {
       var mSek = 0, mDni = 0;
       var mVrst = aktivni.map(function (z) {
         var pov = prisPovzetek(z.id, kljuc);
@@ -710,9 +752,10 @@
     }
     var blok2 = '<div class="pris-card"><div class="pris-h"><h3 class="sec-h">Evidenca</h3>' +
       '<span class="pris-hbtns"><button type="button" class="cgrp-btn ghost pris-izvoz">Izvozi (Excel)</button>' +
-      '<span class="pris-tabs"><button type="button" class="pris-tab' + (!_prisMesec ? ' on' : '') + '" data-obd="dan">Dan</button>' +
-      '<button type="button" class="pris-tab' + (_prisMesec ? ' on' : '') + '" data-obd="mesec">Mesec</button></span></span></div>' +
-      '<div class="pris-datum"><input type="' + (_prisMesec ? 'month' : 'date') + '" id="prisDatum" value="' + (_prisMesec ? _prisDan.slice(0, 7) : _prisDan) + '"></div>' +
+      '<span class="pris-tabs"><button type="button" class="pris-tab' + (_prisView === 'dan' ? ' on' : '') + '" data-obd="dan">Dan</button>' +
+      '<button type="button" class="pris-tab' + (_prisView === 'mesec' ? ' on' : '') + '" data-obd="mesec">Mesec</button>' +
+      '<button type="button" class="pris-tab' + (_prisView === 'oseba' ? ' on' : '') + '" data-obd="oseba">Oseba</button></span></span></div>' +
+      '<div class="pris-datum"><input type="' + (mesecni ? 'month' : 'date') + '" id="prisDatum" value="' + (mesecni ? _prisDan.slice(0, 7) : _prisDan) + '"></div>' +
       telo + '</div>';
 
     // ── Blok 3: zaposleni ──
@@ -731,7 +774,9 @@
     box.innerHTML = blok1 + blok2 + blok3;
 
     var dat = $('prisDatum'); if (dat) dat.addEventListener('change', function () { var v = this.value || danes10(); if (v.length === 7) v += '-01'; _prisDan = v; prisRender(); });
-    box.querySelectorAll('[data-obd]').forEach(function (b) { b.addEventListener('click', function () { _prisMesec = (b.dataset.obd === 'mesec'); prisRender(); }); });
+    box.querySelectorAll('[data-obd]').forEach(function (b) { b.addEventListener('click', function () { _prisView = b.dataset.obd; _prisMesec = (_prisView !== 'dan'); prisRender(); }); });
+    { var os = $('prisOsebaSel'); if (os) os.addEventListener('change', function () { _prisOseba = this.value; prisRender(); }); }
+    box.querySelectorAll('[data-rocniday]').forEach(function (b) { b.addEventListener('click', function () { var p = String(b.dataset.rocniday).split('|'); prisRocni(p[0], p[1]); }); });
     { var ib = box.querySelector('.pris-izvoz'); if (ib) ib.addEventListener('click', prisIzvoz); }
     box.querySelectorAll('[data-odjavi]').forEach(function (b) { b.addEventListener('click', function () { prisOdjavi(b.dataset.odjavi); }); });
     box.querySelectorAll('[data-rocni]').forEach(function (b) { b.addEventListener('click', function () { prisRocni(b.dataset.rocni); }); });
@@ -833,10 +878,10 @@
     });
   }
   // Ročni vnos cele izmene (prihod + odhod) naenkrat — glavni način, dokler kartični sistem ni v uporabi.
-  function prisRocni(empId) {
+  function prisRocni(empId, danArg) {
     var z = (ZAPOSLENI || []).find(function (x) { return x.id === empId; }); if (!z) return;
     var back = document.createElement('div'); back.className = 'sc-modal-back';
-    var dan = (_prisMesec || !_prisDan || _prisDan.length !== 10) ? danes10() : _prisDan;
+    var dan = (danArg && danArg.length === 10) ? danArg : ((_prisMesec || !_prisDan || _prisDan.length !== 10) ? danes10() : _prisDan);
     back.innerHTML = '<div class="sc-modal" role="dialog" aria-modal="true"><h4>Ročni vnos ur — ' + escape_(z.ime) + '</h4>' +
       '<label class="pris-lab">Datum</label><input type="date" class="pris-r-dan sc-modal-input" value="' + dan + '">' +
       '<div class="pris-r-cas"><div><label class="pris-lab">Prihod</label><input type="time" class="pris-r-in sc-modal-input"></div>' +

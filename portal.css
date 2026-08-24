@@ -1212,3 +1212,11 @@ html[data-theme="dark"] .pris-chip-x:hover{background:rgba(255,138,122,.16);colo
 .dok-acts .btn-mini.danger:hover{background:rgba(192,57,43,.08);border-color:#c0392b;}
 @media(max-width:560px){.dok-grid{grid-template-columns:1fr 1fr;gap:12px;}
   .dok-op{font-size:12px;}.dok-acts .btn-mini{padding:7px 10px;font-size:12px;}}
+
+/* ── Prisotnost: pogled po zaposleni (mesec) ── */
+.pris-oseba-sel{margin:4px 0 12px}
+.pris-oseba-sel select{width:100%;max-width:340px;height:44px;border:1px solid var(--line);border-radius:10px;
+  background:var(--surface);color:var(--ink);padding:0 12px;font-size:15px}
+.pris-tbl-oseba td.pris-dan-c{white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--mid);font-weight:600;width:76px}
+.pris-tbl-oseba tr.pris-vikend td{background:var(--green-m)}
+.pris-tbl-oseba tr.pris-vikend td.pris-dan-c{color:var(--ink)}
