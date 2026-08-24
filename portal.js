@@ -452,13 +452,14 @@
     ucinek: '<path d="M4 15a8 8 0 0 1 16 0"/><path d="M12 15l4-4"/><circle cx="12" cy="15" r="1.3"/>',
     artikli: '<path d="M3 12l8.5-8.5a2 2 0 0 1 1.4-.5H19a2 2 0 0 1 2 2v6.1a2 2 0 0 1-.6 1.4L12 21Z"/><circle cx="16.5" cy="7.5" r="1.3"/>',
     aplikacija: '<rect x="6.5" y="2.5" width="11" height="19" rx="2.5"/><path d="M10.5 5.5h3"/><path d="M12 18.2h.01"/>',
+    dokumenti: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6"/><path d="M9 17h4"/>',
     nastavitve: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>'
   };
   const ikona = k => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' + 'stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + IKONE[k] + '</svg>';
   // Osnovni (privzeti) glavni razdelki menija za trenutnega uporabnika.
   function glavniMeni() {
     if (OSEBJE) {
-      var g = [['domov', 'Pregled'], ['statistika', 'Statistika'], ['arhiv', 'Arhiv'], ['fakture', 'Fakture'], ['artikli', 'Artikli'], ['stranke', 'Stranke'], ['prisotnost', 'Prisotnost'], ['ucinek', 'Učinkovitost'], ['aplikacija', 'Aplikacija']];
+      var g = [['domov', 'Pregled'], ['statistika', 'Statistika'], ['arhiv', 'Arhiv'], ['fakture', 'Fakture'], ['artikli', 'Artikli'], ['stranke', 'Stranke'], ['prisotnost', 'Prisotnost'], ['ucinek', 'Učinkovitost'], ['dokumenti', 'Dokumenti'], ['aplikacija', 'Aplikacija']];
       if (JE_LASTNIK()) g.push(['uporabniki', 'Uporabniki']);
       return g;
     }
@@ -530,6 +531,7 @@
     if (kam === 'nastavitve') risiNastavitve();
     if (kam === 'racun') { const mi = $('mojeIme'); if (mi) mi.value = (JAZIME && JAZIME.indexOf('@') < 0) ? JAZIME : ''; }
     if (kam === 'aplikacija') risiAplikacijo();
+    if (kam === 'dokumenti') risiDokumenti();
     if (kam === 'ceniki') risiCeniki();
     if (kam === 'prisotnost') risiPrisotnost();
     if (kam === 'ucinek') risiUcinek();
@@ -928,7 +930,7 @@
           '<span class="art-r-nm">' + escape_(x.naziv || '') + '</span>' +
           '<span class="art-r-teza">' + (x.teza != null && x.teza !== '' ? fmtTeza(x.teza) : '<span class="u-sub">— kg</span>') + '</span>' +
           '<span class="art-r-cena">' + cenaFmt(x.cena1) + '</span>' +
-          '<span class="art-r-acts"><button type="button" class="art-r-edit" data-aedit="' + x.sifra + '" title="uredi" aria-label="uredi">✎</button><button type="button" class="art-r-del" data-adel="' + x.sifra + '" title="izbriši" aria-label="izbriši">×</button></span></div>';
+          '<span class="art-r-acts"><button type="button" class="art-grip dnd-handle" title="povleci za razvrščanje" aria-label="razvrsti">' + DND_ICON + '</button><button type="button" class="art-r-edit" data-aedit="' + x.sifra + '" title="uredi" aria-label="uredi">✎</button><button type="button" class="art-r-del" data-adel="' + x.sifra + '" title="izbriši" aria-label="izbriši">×</button></span></div>';
       }).join('');
       var chips = str.length ? str.map(function (o) { return '<span class="pris-chip"><span class="pris-chip-t" style="cursor:default">' + escape_(ORGIME[o.id] || o.name) + '</span></span>'; }).join(' ') : '<span class="u-sub">Ni dodeljenih strank.</span>';
       return '<div class="cgrp' + (open ? ' open' : '') + '" data-pre="' + escape_(pre) + '"><div class="cgrp-head-row"><button type="button" class="cgrp-h' + (open ? ' open' : '') + '" data-artgrp="' + escape_(pre) + '">' +
@@ -936,7 +938,7 @@
         '<span class="cgrp-count">' + arts.length + ' art.</span><span class="cgrp-chev" aria-hidden="true">›</span></button></div>' +
         '<div class="cgrp-body' + (open ? ' show' : '') + '">' +
         '<div class="art-assign"><div class="art-assign-str">' + chips + '</div><div class="art-assign-acts"><button type="button" class="cgrp-btn ghost art-preime" data-pre="' + escape_(pre) + '">Preimenuj</button><button type="button" class="cgrp-btn ghost art-dodeli" data-pre="' + escape_(pre) + '">Uredi stranke</button><button type="button" class="cgrp-btn danger art-delskup" data-pre="' + escape_(pre) + '">Izbriši skupino</button></div></div>' +
-        '<div class="art-thead"><span>ID</span><span>Naziv</span><span>Teža/kos</span><span>Cena</span><span></span></div>' + rows +
+        '<div class="art-thead"><span>ID</span><span>Naziv</span><span>Teža/kos</span><span>Cena</span><span></span></div><div class="art-rows">' + rows + '</div>' +
         '<div class="art-add-new"><input type="text" class="art-nn-nm" placeholder="nov artikel"><input type="text" class="art-nn-id" maxlength="5" value="' + escape_(pre + artNextNum(pre)) + '"><input type="text" inputmode="decimal" class="art-nn-teza" placeholder="kg"><input type="text" inputmode="decimal" class="art-nn-cena" placeholder="€"><button type="button" class="cgrp-btn art-nn-btn" data-pre="' + escape_(pre) + '">+ Dodaj</button></div>' +
         '</div></div>';
     }).join('') : '<div class="pris-card"><p class="u-sub">Ni artiklov. Ustvari nov cenik z gumbom zgoraj.</p></div>');
@@ -949,7 +951,24 @@
     box.querySelectorAll('.art-preime').forEach(function (b) { b.addEventListener('click', function (e) { e.stopPropagation(); artPreimenujSkupino(b.dataset.pre); }); });
     box.querySelectorAll('.art-delskup').forEach(function (b) { b.addEventListener('click', function (e) { e.stopPropagation(); artIzbrisiSkupino(b.dataset.pre); }); });
     box.querySelectorAll('.art-nn-btn').forEach(function (b) { b.addEventListener('click', function (e) { e.stopPropagation(); artDodajNov(b.dataset.pre, b.closest('.art-add-new')); }); });
+    box.querySelectorAll('.art-rows').forEach(function (rw) { dndSort(rw, '.art-row', '.art-grip', function () { artShraniVrstniRed(rw); }); });
     requestAnimationFrame(function () { window.scrollTo(0, _sy); });
+  }
+  async function artShraniVrstniRed(container) {
+    var els = [].slice.call(container.querySelectorAll('.art-row'));
+    if (!els.length) return;
+    var upd = [];
+    els.forEach(function (el, i) {
+      var sif = parseInt(el.dataset.s, 10); if (isNaN(sif)) return;
+      upd.push(sb.from('pricelist').update({ sort_order: i }).eq('sifra', sif));
+      if (CENIKMAP[sif]) CENIKMAP[sif].sort_order = i;
+      var rec = (CENIK || []).find(function (p) { return p.sifra === sif; }); if (rec) rec.sort_order = i;
+    });
+    try {
+      var res = await Promise.all(upd);
+      if (res.some(function (r) { return r.error; })) toast('Vrstni red morda ni v celoti shranjen.');
+      else toast('Vrstni red shranjen.');
+    } catch (e) { toast('Napaka pri shranjevanju vrstnega reda.'); }
   }
   function artUredi(sifra) {
     var rec = CENIKMAP[sifra]; if (!rec) return;
@@ -3512,6 +3531,14 @@
     if (!p) return;
     var url = new URL(APK_POT, location.href).href;
 
+    var skenerPanel =
+      '<div class="panel">' +
+        '<h3 class="sec-h">Skener računov</h3>' +
+        '<p class="uvoz-nav">Fotografiraj fizični račun s telefonom, dodaj opombo — shrani se med <b>Dokumente</b>. Odpri to na telefonu (prijava je ista kot v portalu).</p>' +
+        '<p><a class="btn btn-narrow" href="skener/" target="_blank" rel="noopener">Odpri skener računov</a></p>' +
+        '<p class="u-sub" style="margin-top:12px">Namig: v skenerju tapni »Deli → Dodaj na začetni zaslon«, da imaš ikono kot pravo aplikacijo.</p>' +
+      '</div>';
+
     var portalPanel =
       '<div class="panel">' +
         '<h3 class="sec-h">Namesti portal na telefon</h3>' +
@@ -3525,7 +3552,7 @@
 
     var tabletPanel = '<div class="panel" id="apkTablet"><h3 class="sec-h">Pralnica za tablico (Android)</h3><p class="u-sub">Preverjam …</p></div>';
 
-    p.innerHTML = portalPanel + tabletPanel;
+    p.innerHTML = skenerPanel + portalPanel + tabletPanel;
     wirePwa(p);
 
     fetch(url, { method: 'HEAD' }).then(function (r) {
@@ -3547,6 +3574,93 @@
         '<p class="u-sub" style="margin-top:12px">Medtem deluje <a href="tablica/" style="text-decoration:underline">spletna različica</a>, ki je ni treba nameščati.</p>';
     });
   }
+
+  /* ══════════ DOKUMENTI (skenirani računi) ══════════ */
+  var DOKUMENTI = null;
+  function dokDatum(r) {
+    var d = r.datum || (r.created_at ? String(r.created_at).slice(0, 10) : '');
+    if (!d) return '—';
+    var p = d.split('-'); return p.length === 3 ? (p[2] + '. ' + p[1] + '. ' + p[0]) : d;
+  }
+  async function risiDokumenti() {
+    var box = $('dokList'); if (!box) return;
+    box.innerHTML = '<div class="empty"><h3>Nalagam …</h3></div>';
+    var res;
+    try {
+      res = await sb.from('documents').select('id,opomba,datum,storage_path,mime,velikost,created_at').order('datum', { ascending: false }).order('created_at', { ascending: false });
+    } catch (e) { res = { error: e }; }
+    if (res.error) {
+      box.innerHTML = '<div class="msg bad show">Napaka pri nalaganju: ' + escape_(res.error.message || String(res.error)) +
+        '<br><small>Če piše, da tabela ne obstaja, zaženi migracijo <b>19_dokumenti.sql</b> v Supabase.</small></div>';
+      return;
+    }
+    DOKUMENTI = res.data || [];
+    // pridobi podpisane URL-je (bucket je privaten)
+    DOK_URL = {};
+    var poti = DOKUMENTI.map(function (r) { return r.storage_path; }).filter(Boolean);
+    if (poti.length) {
+      try {
+        var su = await sb.storage.from('dokumenti').createSignedUrls(poti, 3600);
+        (su && su.data ? su.data : []).forEach(function (x) { if (x && x.path && x.signedUrl) DOK_URL[x.path] = x.signedUrl; });
+      } catch (e) {}
+    }
+    dokTabela();
+  }
+  var DOK_URL = {};
+  function dokTabela() {
+    var box = $('dokList'); if (!box) return;
+    var q = ($('dokIsci') && $('dokIsci').value || '').trim().toLowerCase();
+    var vrstice = (DOKUMENTI || []).filter(function (r) { return !q || ((r.opomba || '').toLowerCase().indexOf(q) >= 0) || dokDatum(r).indexOf(q) >= 0; });
+    var pod = $('dokPod'); if (pod) pod.textContent = (DOKUMENTI ? DOKUMENTI.length : 0) + ' dokumentov · skenirani računi';
+    if (!vrstice.length) {
+      box.innerHTML = '<div class="empty"><h3>' + (q ? 'Ni zadetkov' : 'Ni dokumentov') + '</h3>' +
+        (q ? '' : '<p>Skeniraj prvi račun z aplikacijo <b>Skener</b> (razdelek Aplikacije).</p>') + '</div>';
+      return;
+    }
+    var html = '<div class="dok-grid">';
+    vrstice.forEach(function (r) {
+      var url = DOK_URL[r.storage_path] || '';
+      var kb = r.velikost ? Math.round(r.velikost / 1024) + ' KB' : '';
+      html += '<div class="dok-card" data-id="' + escape_(r.id) + '">' +
+        '<div class="dok-thumb">' + (url ? '<img src="' + escape_(url) + '" alt="Račun" loading="lazy"/>' : '<span class="dok-noimg">slika ni na voljo</span>') + '</div>' +
+        '<div class="dok-meta">' +
+          '<div class="dok-dat">' + escape_(dokDatum(r)) + '</div>' +
+          '<div class="dok-op">' + (r.opomba ? escape_(r.opomba) : '<i>brez opombe</i>') + '</div>' +
+          (kb ? '<div class="dok-kb">' + kb + '</div>' : '') +
+          '<div class="dok-acts">' +
+            (url ? '<a class="btn btn-mini" href="' + escape_(url) + '" target="_blank" rel="noopener">Odpri</a>' : '') +
+            (url ? '<a class="btn btn-mini sec" href="' + escape_(url) + '" download>Prenesi</a>' : '') +
+            '<button type="button" class="btn btn-mini danger dok-del">Izbriši</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    });
+    html += '</div>';
+    box.innerHTML = html;
+    box.querySelectorAll('.dok-del').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var card = b.closest('.dok-card'); if (!card) return;
+        dokIzbrisi(card.getAttribute('data-id'), b);
+      });
+    });
+  }
+  async function dokIzbrisi(id, btn) {
+    var r = (DOKUMENTI || []).filter(function (x) { return x.id === id; })[0];
+    if (!r) return;
+    if (!confirm('Izbrišem ta dokument? Tega ni mogoče razveljaviti.')) return;
+    if (btn) { btn.disabled = true; btn.textContent = 'Brišem …'; }
+    try {
+      if (r.storage_path) { try { await sb.storage.from('dokumenti').remove([r.storage_path]); } catch (e) {} }
+      var del = await sb.from('documents').delete().eq('id', id);
+      if (del.error) throw del.error;
+      DOKUMENTI = (DOKUMENTI || []).filter(function (x) { return x.id !== id; });
+      dokTabela();
+    } catch (e) {
+      if (btn) { btn.disabled = false; btn.textContent = 'Izbriši'; }
+      alert('Napaka pri brisanju: ' + (e && e.message ? e.message : e));
+    }
+  }
+  { var _di = $('dokIsci'); if (_di) _di.addEventListener('input', function () { dokTabela(); }); }
 
   /* ══════════ MOJ RAČUN ══════════ */
   { const _if = $('imeForm'); if (_if) _if.addEventListener('submit', async e => {
