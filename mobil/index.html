@@ -251,9 +251,10 @@
     margin-top:14px;cursor:pointer;user-select:none}
   .onecopy input{width:18px;height:18px;accent-color:var(--press);cursor:pointer;margin:0}
 
-  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);
+  .toast{position:fixed;left:50%;top:calc(14px + env(safe-area-inset-top));transform:translateX(-50%) translateY(-20px);
+    max-width:88vw;text-align:center;
     background:var(--ink);color:var(--paper);padding:11px 18px;border-radius:11px;font-size:14px;font-weight:500;
-    box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:all .25s;z-index:60}
+    box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:all .25s;z-index:9999}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
   .searchwrap{margin-bottom:12px}
@@ -376,6 +377,8 @@
   .admin-in{border:1px solid var(--line);border-radius:9px;padding:10px 12px;font-size:15px;color:var(--ink);background:var(--paper)}
   .admin-add{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap} .admin-add .admin-in{flex:1;min-width:120px}
   .btn-mini{border:1px solid var(--line);background:var(--paper);border-radius:9px;padding:9px 13px;font-weight:600;font-size:13px;color:var(--ink)}
+  .portal-cfg-toggle{margin-top:10px;background:none;border:none;color:var(--ink-soft);font-size:12.5px;font-weight:600;padding:4px 0;cursor:pointer;text-decoration:underline}
+  .portal-setup{display:none} .portal-setup.open{display:block}
   .btn-mini:hover{border-color:var(--press);color:var(--press-deep)}
   .btn-mini.p{background:var(--press);color:var(--paper);border-color:var(--press)} .btn-mini.d{color:var(--warn)} .btn-mini.d:hover{border-color:var(--warn)}
   .log-row{display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px solid var(--line)} .log-row .mono{color:var(--ink-soft)}
@@ -682,22 +685,26 @@
       <div style="font-size:11.5px;color:var(--ink-soft);margin-top:8px" id="admNextHint"></div>
     </div>
     <div class="admin-sec"><h3>Portal (Supabase)</h3>
-      <div class="admin-add" style="flex-wrap:wrap">
-        <input class="admin-in" id="admPortalUrl" style="flex:1;min-width:230px" placeholder="https://….supabase.co" />
-        <input class="admin-in" id="admPortalKey" style="flex:1;min-width:230px" placeholder="sb_publishable_…" />
-        <button class="btn-mini p" id="admPortalSave">Shrani</button>
-      </div>
-      <div class="admin-add" style="flex-wrap:wrap;margin-top:8px">
-        <input class="admin-in" id="admPortalMail" style="flex:1;min-width:200px" placeholder="e-naslov naprave" inputmode="email" autocomplete="off" />
-        <input class="admin-in" id="admPortalPass" type="password" style="flex:1;min-width:150px" placeholder="geslo naprave" autocomplete="off" />
-        <button class="btn-mini p" id="admPortalLogin">Poveži napravo</button>
-        <button class="btn-mini d" id="admPortalLogout">Odjavi</button>
-      </div>
-      <div class="admin-add" style="margin-top:8px">
-        <button class="btn-mini p" id="admPortalSync">Sinhroniziraj</button>
-        <button class="btn-mini" id="admPortalRefresh">Osveži katalog</button>
+      <div class="admin-add" style="margin-top:2px">
+        <button class="btn-mini p" id="admPortalSync" style="flex:1">Sinhroniziraj z portalom</button>
       </div>
       <div style="font-size:11.5px;color:var(--ink-soft);margin-top:8px" id="admPortalHint"></div>
+      <button type="button" class="portal-cfg-toggle" id="admPortalCfgToggle">Nastavitve povezave ▾</button>
+      <div id="portalSetup" class="portal-setup">
+        <div class="admin-add" style="flex-wrap:wrap;margin-top:8px">
+          <input class="admin-in" id="admPortalUrl" style="flex:1;min-width:230px" placeholder="https://….supabase.co" />
+          <input class="admin-in" id="admPortalKey" style="flex:1;min-width:230px" placeholder="sb_publishable_…" />
+          <button class="btn-mini p" id="admPortalSave">Shrani</button>
+        </div>
+        <div class="admin-add" style="flex-wrap:wrap;margin-top:8px">
+          <input class="admin-in" id="admPortalMail" style="flex:1;min-width:200px" placeholder="e-naslov naprave" inputmode="email" autocomplete="off" />
+          <input class="admin-in" id="admPortalPass" type="password" style="flex:1;min-width:150px" placeholder="geslo naprave" autocomplete="off" />
+          <button class="btn-mini p" id="admPortalLogin">Poveži napravo</button>
+        </div>
+        <div class="admin-add" style="margin-top:8px">
+          <button class="btn-mini d" id="admPortalLogout">Prekini povezavo</button>
+        </div>
+      </div>
     </div>
     <div class="admin-sec"><h3>Videz</h3>
       <div class="tema-izbira" id="admTema">
@@ -1629,8 +1636,9 @@
   document.getElementById("admPortalSave").onclick=function(){ savePortalCfg(); };
   document.getElementById("admPortalLogin").onclick=function(){ portalPrijava(); };
   document.getElementById("admPortalLogout").onclick=function(){ portalOdjava(); };
-  document.getElementById("admPortalSync").onclick=function(){ sinhronizirajRocno(); };
-  document.getElementById("admPortalRefresh").onclick=function(){ osveziKatalog(); };
+  document.getElementById("admPortalSync").onclick=function(){ syncVse(); };
+  { var _ct=document.getElementById("admPortalCfgToggle");
+    if(_ct) _ct.onclick=function(){ var ps=document.getElementById("portalSetup"); if(ps) ps.classList.toggle("open"); }; }
   document.getElementById("syncBtn").onclick=function(){ syncPush(false); };
   document.getElementById("loginBack").onclick=function(){ document.getElementById("loginPin").style.display="none"; document.getElementById("loginUsers").style.display=""; document.getElementById("loginSub").textContent="Izberi uporabnika"; };
   document.getElementById("admUserAdd").onclick=addUser;
@@ -2135,7 +2143,7 @@ async function sinhronizirajRocno(){
   }
 
   await saveEntries();
-  b.disabled = false; b.textContent = "Sinhroniziraj";
+  b.disabled = false; b.textContent = "Sinhroniziraj z portalom";
   zadnjePorocilo = porociloHtml(por);
   h.innerHTML = zadnjePorocilo;
   risiSyncGumb();
@@ -2167,6 +2175,40 @@ function risiPortalAdmin(){
   if(zadnjePorocilo){ document.getElementById("admPortalHint").innerHTML = zadnjePorocilo;
                       zadnjePorocilo = null; }
   else document.getElementById("admPortalHint").textContent = t;
+
+  /* Povezano → pokaži samo gumb + status; nastavitve povezave skrite.
+     Ni povezano → nastavitve odprte (da napravo enkrat povežeš). */
+  var povezano = portalNastavljen() && !!portalAuth;
+  var setup = document.getElementById("portalSetup");
+  var toggle = document.getElementById("admPortalCfgToggle");
+  var syncBtn = document.getElementById("admPortalSync");
+  if(setup){ if(povezano) setup.classList.remove("open"); else setup.classList.add("open"); }
+  if(toggle) toggle.style.display = povezano ? "" : "none";
+  if(syncBtn) syncBtn.style.display = povezano ? "" : "none";
+}
+
+/* En sam gumb: potisne čakajoče liste + potegne katalog in liste iz portala. */
+async function syncVse(){
+  if(!portalNastavljen() || !portalAuth){
+    toast("Naprava ni povezana — odpri »Nastavitve povezave«.");
+    var ps = document.getElementById("portalSetup"); if(ps) ps.classList.add("open");
+    return;
+  }
+  var b = document.getElementById("admPortalSync");
+  try{
+    await sinhronizirajRocno();                 // potisne čakajoče liste (sam upravlja gumb)
+    if(b){ b.disabled = true; b.textContent = "Osvežujem …"; }
+    await osveziKatalog(true);                   // portalov katalog (stranke + artikli)
+    await potegniIzPortala();                     // liste, narejene drugje
+    try{ await procesirajBrisanja(); }catch(e){}
+    try{ render(); renderAdmin(); }catch(e){}
+    toast("Sinhronizirano");
+  }catch(e){
+    toast("Napaka: " + ((e && e.message) || e));
+  }finally{
+    if(b){ b.disabled = false; b.textContent = "Sinhroniziraj z portalom"; }
+    try{ risiPortalAdmin(); }catch(e){}
+  }
 }
 
 
@@ -2461,7 +2503,8 @@ function osveziObPovratku(){
   var zdaj = Date.now();
   if(zdaj - _zadnjiKatOsvez < 8000) return;
   _zadnjiKatOsvez = zdaj;
-  osveziKatalog(true);
+  /* potegni sveže iz portala (katalog + liste) — brez potiskanja, da ne povozi portala */
+  osveziKatalog(true).then(function(){ return potegniIzPortala(); }).catch(function(){});
 }
 document.addEventListener("visibilitychange", osveziObPovratku);
 window.addEventListener("focus", osveziObPovratku);
