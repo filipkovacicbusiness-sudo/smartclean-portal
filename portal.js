@@ -3840,12 +3840,14 @@
     btn.textContent = 'Shrani novo geslo';
     if (error) {
       m.className = 'msg bad show';
-      m.textContent = /weak|short|password/i.test(error.message) ? 'Geslo je prešibko. Uporabite vsaj 12 znakov, z velikimi in malimi črkami, številko in simbolom.' : 'Ni uspelo: ' + error.message;
+      var em = (error.message || '') + '';
+      m.textContent = /same.*password|different/i.test(em) ? 'Novo geslo mora biti drugačno od starega.'
+        : /weak|short|at least|length|characters/i.test(em) ? ('Geslo ni sprejeto: ' + em + ' (poskusi daljše/močnejše geslo).')
+        : /reauth/i.test(em) ? 'Za spremembo gesla je potrebna ponovna potrditev. Odjavi se in znova prijavi, nato poskusi.'
+        : ('Ni uspelo: ' + em);
       return;
     }
-    ['curPw', 'chPw1', 'chPw2'].forEach(id => {
-      $(id).value = '';
-    });
+    ['curPw', 'chPw1', 'chPw2'].forEach(id => { $(id).value = ''; });
     m.className = 'msg show';
     m.textContent = 'Geslo je spremenjeno.';
   });
