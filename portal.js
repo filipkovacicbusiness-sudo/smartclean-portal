@@ -288,10 +288,15 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '3.1';
+  var APP_VERZIJA = '3.1 · BETA';
+  var NALAGANJE = '<div class="sc-load"><div class="sc-load-bar"></div></div>';
   const JE_LASTNIK = () => (JAZMAIL || '').trim().toLowerCase() === 'filip@eflitte.si';
   // Super admin = lastnik ali profil s super_admin=true. Samo super admin vidi Fakture.
   const JE_SUPER = () => JE_LASTNIK() || !!(MOJPROFIL && MOJPROFIL.super_admin);
+  const JE_ZAPOSLENI = () => !OSEBJE && !!(MOJPROFIL && MOJPROFIL.zaposleni);
+  // Rang vloge (za hierarhijo urejanja): super=3, osebje=2, zaposleni=1, stranka=0.
+  function vlogaRang(v) { return v === 'super' ? 3 : v === 'osebje' ? 2 : v === 'zaposleni' ? 1 : 0; }
+  function mojRang() { if (JE_LASTNIK()) return 99; if (JE_SUPER()) return 3; if (OSEBJE) return 2; if (JE_ZAPOSLENI()) return 1; return 0; }
   function nastaviWho(ime) {
     $('who').innerHTML = '<span class="who-name">' + escape_(ime || '') + '</span>' + (OSEBJE ? '<span class="who-role">osebje</span>' : '');
   }
@@ -421,7 +426,7 @@
     if (!user) return;
     JAZ = user.id;
     let profil = null;
-    { const _pr = await sb.from('profiles').select('full_name,is_staff,super_admin,nastavitve,avatar_url,phone,contact_email').eq('id', user.id).maybeSingle();
+    { const _pr = await sb.from('profiles').select('full_name,is_staff,super_admin,zaposleni,nastavitve,avatar_url,phone,contact_email').eq('id', user.id).maybeSingle();
       profil = _pr && _pr.data ? _pr.data : null;
       if (_pr && _pr.error) { const _pr2 = await sb.from('profiles').select('full_name,is_staff').eq('id', user.id).maybeSingle(); profil = _pr2 && _pr2.data ? _pr2.data : null; } }
     MOJPROFIL = profil || {};
@@ -479,9 +484,11 @@
       var g = [['domov', 'Pregled'], ['statistika', 'Statistika'], ['arhiv', 'Arhiv']];
       if (JE_SUPER()) g.push(['fakture', 'Fakture']);
       g = g.concat([['artikli', 'Artikli'], ['stranke', 'Stranke'], ['prisotnost', 'Prisotnost'], ['dokumenti', 'Dokumenti'], ['aplikacija', 'Programska oprema']]);
-      if (JE_LASTNIK()) { g.push(['uporabniki', 'Uporabniki']); g.push(['konzola', 'Konzola']); }
+      if (JE_SUPER()) g.push(['uporabniki', 'Uporabniki']);
+      if (JE_LASTNIK()) g.push(['konzola', 'Konzola']);
       return g;
     }
+    if (JE_ZAPOSLENI()) return [['domov', 'Pregled'], ['prisotnost', 'Prisotnost']];
     return [['domov', 'Pregled'], ['arhiv', 'Arhiv'], ['katalog', 'Katalog']];
   }
   function menijVrstni() { try { return JSON.parse(localStorage.getItem('sc-menu-order') || '[]') || []; } catch (e) { return []; } }
@@ -544,6 +551,8 @@
   function pojdi(kam) {
     // Fakture so na voljo samo super adminom.
     if (kam === 'fakture' && !JE_SUPER()) kam = 'domov';
+    // Zaposleni vidi samo Pregled, Prisotnost in Moj račun.
+    if (JE_ZAPOSLENI() && ['domov', 'prisotnost', 'racun'].indexOf(kam) < 0) kam = 'domov';
     document.querySelectorAll('.sec').forEach(s => {
       s.classList.toggle('hidden', s.id !== 'sec-' + kam);
     });
@@ -798,7 +807,7 @@
   }
   async function risiPrisotnost() {
     var box = $('prisList'); if (!box) return;
-    box.innerHTML = '<p class="u-sub" style="padding:16px">Nalagam …</p>';
+    box.innerHTML = NALAGANJE;
     try {
       await naloziPrisotnost();
       if (!Array.isArray(ZAPOSLENI)) ZAPOSLENI = [];
@@ -813,6 +822,8 @@
   function prisRender() {
     var box = $('prisList'); if (!box) return;
     var _sy = window.scrollY;
+    // Zaposleni vidi SAMO svoje ure (oseben pregled, brez ostalih).
+    if (JE_ZAPOSLENI()) { prisRenderMoje(box, _sy); return; }
     var aktivni = (ZAPOSLENI || []).filter(function (z) { return z.active; });
     // ── Blok 1: trenutno stanje ──
     var prisotnihN = 0;
@@ -924,6 +935,34 @@
     box.querySelectorAll('[data-izbrisi]').forEach(function (b) { b.addEventListener('click', function () { prisIzbrisi(b.dataset.izbrisi); }); });
     var nb = box.querySelector('.pris-add-btn'), ni = box.querySelector('.pris-new');
     if (nb && ni) { nb.addEventListener('click', function () { prisDodajZap(ni.value); }); ni.addEventListener('keydown', function (e) { if (e.key === 'Enter') prisDodajZap(ni.value); }); }
+    requestAnimationFrame(function () { window.scrollTo(0, _sy); });
+  }
+  // Oseben pregled ur za vlogo »Zaposleni«.
+  function prisRenderMoje(box, _sy) {
+    var mk = _prisDan.slice(0, 7);
+    var moj = (ZAPOSLENI || []).find(function (z) { return (z.ime || '').trim().toLowerCase() === (JAZIME || '').trim().toLowerCase(); });
+    var telo;
+    if (!moj) {
+      telo = '<p class="u-sub" style="padding:8px 2px">Tvoj profil še ni povezan z evidenco ur. Prosi vodjo, da te v Prisotnosti doda pod imenom »' + escape_(JAZIME || '') + '«.</p>';
+    } else {
+      var rows = '', tot = 0, dni = 0, nDni = dniVMesecu(mk);
+      for (var di = 1; di <= nDni; di++) {
+        var dayISO = mk + '-' + ('0' + di).slice(-2);
+        var wd = new Date(dayISO + 'T00:00:00').getDay();
+        var c = prisChipiDan(moj.id, dayISO); tot += c.sek; if (c.sek) dni++;
+        rows += '<tr' + (wd === 0 || wd === 6 ? ' class="pris-vikend"' : '') + '><td class="pris-dan-c">' + DNEVI_KR[wd] + ' ' + di + '.</td><td class="pris-pairs">' + c.html + '</td><td class="pris-ure">' + (c.sek ? trajanjeH(c.sek) : '—') + '</td></tr>';
+      }
+      telo = '<table class="pris-tbl pris-tbl-oseba"><thead><tr><th>Dan</th><th>Prihod–odhod</th><th>Ur</th></tr></thead><tbody>' + rows + '</tbody><tfoot><tr><td>Skupaj (' + dni + ' dni)</td><td></td><td class="pris-ure">' + (tot ? trajanjeH(tot) : '—') + '</td></tr></tfoot></table>';
+    }
+    box.innerHTML = '<div class="pris-card"><div class="pris-h"><h3 class="sec-h">Moje ure — ' + escape_(_mesecLabel(mk)) + '</h3></div>' +
+      '<div class="pris-barvrsta"><div class="pris-datum">' +
+      '<button type="button" class="pris-nav" data-mnav="-1" aria-label="Prejšnji"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button>' +
+      '<input type="month" id="prisDatumMoj" value="' + mk + '">' +
+      '<button type="button" class="pris-nav" data-mnav="1" aria-label="Naslednji"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>' +
+      '</div></div>' + telo + '</div>';
+    function skoci(delta) { var d = new Date(mk + '-01T00:00:00'); d.setMonth(d.getMonth() + delta); _prisDan = d.toISOString().slice(0, 10); prisRender(); }
+    var dm = $('prisDatumMoj'); if (dm) dm.addEventListener('change', function () { var v = this.value; if (v) { _prisDan = v + '-01'; prisRender(); } });
+    box.querySelectorAll('[data-mnav]').forEach(function (b) { b.addEventListener('click', function () { skoci(parseInt(b.dataset.mnav, 10)); }); });
     requestAnimationFrame(function () { window.scrollTo(0, _sy); });
   }
   async function prisDodajZap(ime) {
@@ -1096,7 +1135,7 @@
   }
   async function risiArtikli() {
     var box = $('artList'); if (!box) return;
-    box.innerHTML = '<p class="u-sub" style="padding:16px">Nalagam …</p>';
+    box.innerHTML = NALAGANJE;
     try {
       await nalozicenik(true);
       await naloziClane(true);
@@ -1376,7 +1415,7 @@
   }
   async function risiUcinek() {
     var box = $('ucList'); if (!box) return;
-    box.innerHTML = '<p class="u-sub" style="padding:16px">Nalagam …</p>';
+    box.innerHTML = NALAGANJE;
     try {
       await naloziUcinek();
       if (!_ucDan) _ucDan = danes10();
@@ -1599,7 +1638,7 @@
     btn.setAttribute('aria-expanded', 'true');
     box.classList.add('show'); if (lcell) lcell.classList.add('open');
     if (box.dataset.loaded) return;
-    box.innerHTML = '<p class="u-sub">Nalagam …</p>';
+    box.innerHTML = NALAGANJE;
     const {
       data,
       error
@@ -2070,7 +2109,7 @@
     const list = $('fakList');
     const od = $('fakOd').value, doo = $('fakDo').value, orgFilter = $('fakOrg').value;
     if (!fakDatumOK(od, doo)) { list.innerHTML = '<div class="panel"><p class="u-sub">Izberi veljavno obdobje (od ≤ do).</p></div>'; return; }
-    list.innerHTML = '<div class="panel"><p class="u-sub">Nalagam …</p></div>';
+    list.innerHTML = '<div class="panel">' + NALAGANJE + '</div>';
     let q = sb.from('delivery_notes')
       .select('id,number,doc_date,weight_kg,total_pieces,org_id,transport,delivery_note_items(article_name,pieces)')
       .gte('doc_date', od).lte('doc_date', doo).order('doc_date', { ascending: true }).limit(5000);
@@ -2396,7 +2435,7 @@
       const cs = $('cenikSort2'); if (cs) { cs.value = cenikOrderMode(); cs.addEventListener('change', function () { try { localStorage.setItem('sc-cenik-order', cs.value); } catch (e) {} shraniNastavitve(); cenikRender(); }); }
       risiCeniki._wired = true;
     }
-    box.innerHTML = '<p class="u-sub">Nalagam cenik …</p>';
+    box.innerHTML = NALAGANJE;
     const res = await nalozicenik(true);
     if (!res.ok) {
       CENIK = null;
@@ -2893,7 +2932,7 @@
   }
   async function risiKos() {
     const box = $('cenikList'); if (!box) return;
-    box.innerHTML = '<p class="u-sub">Nalagam …</p>';
+    box.innerHTML = NALAGANJE;
     if ($('cenikPod')) $('cenikPod').textContent = 'Nedavno brisani — obnovljivi 30 dni';
     const mejnik = new Date(Date.now() - 30 * 864e5).toISOString();
     let orgsDel = [];
@@ -3194,7 +3233,7 @@
   async function risiArtikleBox(box, orgId) {
     var _sy = window.scrollY;
     // ob osvežitvi (box že ima vsebino) ne pokaži »Nalagam« — brez utripa
-    if (!box.dataset.loaded) box.innerHTML = '<p class="meta">Nalagam …</p>';
+    if (!box.dataset.loaded) box.innerHTML = NALAGANJE;
     const org = ORGSEZNAM.find(o => o.id === orgId) || {};
     await nalozicenik();
     let arts;
@@ -3569,7 +3608,7 @@
       $('katalogList').innerHTML = '<div class="rows"><div class="empty">' + '<h3>Tu še ni ničesar za prikaz</h3><p>Vaš račun ni povezan z nobenim podjetjem.<br>' + 'Javite se nam in vam ga uredimo.</p></div></div>';
       return;
     }
-    $('katalogList').innerHTML = '<div class="rows"><div class="empty">Nalagam …</div></div>';
+    $('katalogList').innerHTML = NALAGANJE;
     const {
       data
     } = await sb.from('articles').select('name').eq('org_id', MOJEPODJETJE.id).order('sort_order');
@@ -3884,7 +3923,7 @@
   }
   async function risiDokumenti() {
     var box = $('dokList'); if (!box) return;
-    box.innerHTML = '<div class="empty"><h3>Nalagam …</h3></div>';
+    box.innerHTML = NALAGANJE;
     var res;
     try {
       res = await sb.from('documents').select('id,opomba,datum,storage_path,mime,velikost,created_at').order('datum', { ascending: false }).order('created_at', { ascending: false });
@@ -4164,15 +4203,15 @@
     };
   }
   async function loadUsers() {
-    $('usersList').innerHTML = '<p class="u-sub">Nalagam …</p>';
+    $('usersList').innerHTML = NALAGANJE;
     if (!$('nuOrg').options.length) {
       $('nuOrg').innerHTML = '<option value="">— osebje SmartClean —</option>' + ORGSEZNAM.map(o => `<option value="${o.id}">${escape_(o.name)}</option>`).join('');
     }
     const [rLjudje, {
       data: clanstva
-    }] = await Promise.all([sb.from('profiles').select('id,email,full_name,is_staff,super_admin,active,last_login,last_seen').order('email'), sb.from('memberships').select('user_id,org_id')]);
+    }] = await Promise.all([sb.from('profiles').select('id,email,full_name,is_staff,super_admin,zaposleni,active,last_login,last_seen').order('email'), sb.from('memberships').select('user_id,org_id')]);
     let ljudje = rLjudje.data;
-    if (rLjudje.error) { /* super_admin ali last_seen še ni — beri brez njiju */
+    if (rLjudje.error) { /* super_admin/zaposleni ali last_seen še ni — beri brez njih */
       const fb = await sb.from('profiles').select('id,email,full_name,is_staff,active,last_login').order('email');
       if (fb.error) { const fb2 = await sb.from('profiles').select('id,email,full_name,is_staff,active').order('email'); ljudje = fb2.data; }
       else ljudje = fb.data;
@@ -4182,38 +4221,40 @@
       clanPo[c.user_id] = ORGIME[c.org_id];
     });
     const jeLastnik = JE_LASTNIK();
+    const mr = mojRang();
     const jeSuperLastnik = function (u) { return (u.email || '').trim().toLowerCase() === 'filip@eflitte.si'; };
+    const VLOGE = [['super', 'Super admin', 3], ['osebje', 'Osebje', 2], ['zaposleni', 'Zaposleni', 1], ['stranka', 'Stranka', 0]];
     $('usersList').innerHTML = (ljudje || []).map(u => {
       const jaz = u.id === JAZ;
       const superad = jeSuperLastnik(u) || !!u.super_admin;
-      const vlogaVal = superad ? 'super' : (u.is_staff ? 'osebje' : 'stranka');
+      const vlogaVal = superad ? 'super' : u.is_staff ? 'osebje' : u.zaposleni ? 'zaposleni' : 'stranka';
+      const ur = superad ? 3 : u.is_staff ? 2 : u.zaposleni ? 1 : 0;
+      const lahkoUredi = !jaz && mr > ur;             // nadrejeni ureja podrejene
       const naSpletu = jaz || (u.last_seen && (Date.now() - new Date(u.last_seen).getTime()) < 120000);
+      const roleOpts = VLOGE.filter(r => r[2] < mr).sort((a, b) => b[2] - a[2]).map(r => `<option value="${r[0]}"${vlogaVal === r[0] ? ' selected' : ''}>${r[1]}</option>`).join('');
       return `<div class="u-row ${u.active ? '' : 'u-off'}">
       <div class="u-info">
         <div class="u-mail">${escape_(u.full_name || u.email || '—')}
           ${naSpletu ? '<span class="pill pill-on"><span class="dot-on"></span>na spletu</span>' : ''}
           ${superad ? '<span class="pill pill-super">super admin</span>' : ''}
+          ${(!superad && !u.is_staff && u.zaposleni) ? '<span class="pill">zaposleni</span>' : ''}
           ${jaz ? '<span class="pill">vi</span>' : ''}
           ${u.active ? '' : '<span class="pill">izklopljen</span>'}</div>
-        <div class="u-sub">${escape_(u.email || '—')}</div>
-        <div class="u-sub">Zadnja prijava: ${u.last_login ? datumcas(u.last_login) : 'še nikoli'}</div>
-        ${jaz ? '' : `<div class="u-role-wrap">
-          <select class="u-role" data-role="${u.id}" data-cur="${vlogaVal}" aria-label="Vloga">
-            <option value="osebje"${vlogaVal === 'osebje' ? ' selected' : ''}>Osebje</option>
-            <option value="super"${vlogaVal === 'super' ? ' selected' : ''}>Super admin</option>
-            <option value="stranka"${vlogaVal === 'stranka' ? ' selected' : ''}>Stranka</option>
-          </select>
-          ${u.is_staff ? '' : `<select class="u-org" data-org="${u.id}" aria-label="Podjetje">
+        ${lahkoUredi ? `<div class="u-role-wrap">
+          <select class="u-role" data-role="${u.id}" data-cur="${vlogaVal}" aria-label="Vloga">${roleOpts}</select>
+          ${vlogaVal === 'stranka' ? `<select class="u-org" data-org="${u.id}" aria-label="Podjetje">
              <option value="">— izberi podjetje —</option>
              ${ORGSEZNAM.map(o => `<option value="${o.id}"${clanPo[u.id] === o.name ? ' selected' : ''}>${escape_(o.name)}</option>`).join('')}
-           </select>`}
-        </div>`}
+           </select>` : ''}
+        </div>` : ''}
+        <div class="u-sub">${escape_(u.email || '—')}</div>
+        <div class="u-sub">Zadnja prijava: ${u.last_login ? datumcas(u.last_login) : 'še nikoli'}</div>
       </div>
       <div class="u-acts">
-        <button data-act="ime" data-id="${u.id}" data-ime="${escape_(u.full_name || '')}">preimenuj</button>
-        ${jaz ? '' : `<button data-act="active" data-id="${u.id}" data-v="${u.active ? 0 : 1}">${u.active ? 'izklopi' : 'vklopi'}</button>`}
-        <button data-act="pw" data-id="${u.id}">novo geslo</button>
-        ${jaz ? '' : `<button class="danger" data-act="del" data-id="${u.id}" data-m="${escape_(u.email || '')}">izbriši</button>`}
+        ${(jaz || lahkoUredi) ? `<button data-act="ime" data-id="${u.id}" data-ime="${escape_(u.full_name || '')}">preimenuj</button>` : ''}
+        ${lahkoUredi ? `<button data-act="active" data-id="${u.id}" data-v="${u.active ? 0 : 1}">${u.active ? 'izklopi' : 'vklopi'}</button>` : ''}
+        ${(jaz || lahkoUredi) ? `<button data-act="pw" data-id="${u.id}">novo geslo</button>` : ''}
+        ${(jeLastnik && !jaz) ? `<button class="danger" data-act="del" data-id="${u.id}" data-m="${escape_(u.email || '')}">izbriši</button>` : ''}
       </div>
     </div>`;
     }).join('') || '<p class="u-sub">Ni uporabnikov.</p>';
@@ -4234,8 +4275,9 @@
     }, 30000);
   }
   function opisVloge(v) {
-    if (v === 'super') return 'Super admin — kot osebje, dodatno vidi in ureja Fakture.';
-    if (v === 'osebje') return 'Osebje — vidi vse stranke, arhiv, statistiko, prisotnost in katalog. Brez Faktur.';
+    if (v === 'super') return 'Super admin — kot osebje, dodatno vidi in ureja Fakture ter Uporabnike.';
+    if (v === 'osebje') return 'Osebje — vidi vse stranke, arhiv, statistiko, prisotnost in katalog. Brez Faktur in Uporabnikov.';
+    if (v === 'zaposleni') return 'Zaposleni — vidi samo svojo prisotnost (svoje ure). Brez ostalih razdelkov.';
     return 'Stranka — vidi samo svoj arhiv in katalog svojega podjetja. Brez dostopa do osebja.';
   }
   async function spremeniVlogo(sel) {
@@ -4250,11 +4292,14 @@
     await nastaviVlogo(uid, nova);
   }
   async function nastaviVlogo(uid, vloga) {
-    var patch = { is_staff: vloga !== 'stranka', super_admin: vloga === 'super' };
+    var staff = (vloga === 'osebje' || vloga === 'super');
+    var patch = { is_staff: staff, super_admin: vloga === 'super', zaposleni: vloga === 'zaposleni' };
     var r = await sb.from('profiles').update(patch).eq('id', uid);
-    if (r && r.error && /super_admin/i.test(r.error.message || '')) {
-      r = await sb.from('profiles').update({ is_staff: vloga !== 'stranka' }).eq('id', uid);
-      if (vloga === 'super') { uMsg('Vloga spremenjena, a za Fakture najprej zaženi 27_super_admin.sql.', true); if (vloga !== 'stranka') { try { await sb.from('memberships').delete().eq('user_id', uid); } catch (e) {} } loadUsers(); return; }
+    if (r && r.error && /(super_admin|zaposleni)/i.test(r.error.message || '')) {
+      // stolpec super_admin ali zaposleni še ne obstaja → shrani vsaj is_staff in opozori
+      r = await sb.from('profiles').update({ is_staff: staff }).eq('id', uid);
+      var manjka = vloga === 'super' ? '27_super_admin.sql' : vloga === 'zaposleni' ? '28_zaposleni.sql' : null;
+      if (manjka) { if (vloga !== 'stranka') { try { await sb.from('memberships').delete().eq('user_id', uid); } catch (e) {} } uMsg('Vloga delno spremenjena — najprej zaženi ' + manjka + ' v Supabase.', true); loadUsers(); return; }
     }
     if (r && r.error) { uMsg('Ni uspelo: ' + escape_(r.error.message), true); loadUsers(); return; }
     if (vloga !== 'stranka') { try { await sb.from('memberships').delete().eq('user_id', uid); } catch (e) {} }

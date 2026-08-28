@@ -206,8 +206,10 @@ select:focus{border-color:var(--green-l);outline:none;}
 .u-info{display:flex;flex-direction:column;gap:3px;min-width:0;}
 .u-info .u-mail{display:flex;align-items:center;flex-wrap:wrap;gap:6px 8px;}
 .u-info .u-mail .pill{margin-left:0;}
-.u-role-wrap{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center;}
-.u-role-wrap select{min-width:150px;max-width:220px;}
+.u-role-wrap{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 6px;align-items:center;}
+.u-role-wrap .cs{width:auto;}
+.u-role-wrap .cs-trigger{width:auto;min-width:150px;padding:7px 12px;font-size:.85rem;}
+.u-role-wrap select{min-width:150px;max-width:200px;}
 .u-mail{font-weight:500;word-break:break-word;}
 .u-sub{font-size:.78rem;color:var(--mid);}
 .u-acts{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;align-items:flex-start;align-content:flex-start;}
@@ -240,12 +242,12 @@ select:focus{border-color:var(--green-l);outline:none;}
 /* ══════════ LUPINA: stranski meni + vsebina ══════════ */
 .shell{max-width:1240px;margin:0 auto;display:grid;grid-template-columns:212px 1fr;
   align-items:start;gap:0;}
-.side{position:sticky;top:65px;padding:22px 14px 24px;border-right:1px solid var(--line);
+.side{position:sticky;top:65px;padding:22px 14px 12px;border-right:1px solid var(--line);
   height:calc(100dvh - 65px);overflow-y:auto;display:flex;flex-direction:column;gap:2px;background:var(--bg);}
-.side-foot{margin-top:auto;padding:18px 12px 4px;display:flex;flex-direction:column;align-items:flex-end;gap:3px;}
+.side-foot{margin-top:auto;padding:18px 11px 0;display:flex;flex-direction:column;align-items:flex-start;gap:3px;}
 .side-ver{font-size:.62rem;letter-spacing:.04em;color:var(--mid);opacity:.6;}
 .side a.side-eflitte{display:block;padding:0;border-radius:0;background:none;font-size:.62rem;letter-spacing:.03em;
-  color:var(--mid);text-decoration:none;opacity:.72;font-weight:400;text-align:right;transition:opacity .15s;}
+  color:var(--mid);text-decoration:none;opacity:.72;font-weight:400;text-align:left;transition:opacity .15s;}
 .side a.side-eflitte:hover{opacity:1;color:var(--mid);background:none;}
 .side-eflitte b{font-weight:600;color:var(--ink);}
 .side-h{font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;color:var(--mid);
@@ -540,6 +542,11 @@ body,.topbar,.side,.main,.panel,.row,.a-row,.arts,.a-det,.fak-card,.fak-tot,.sta
 @media (prefers-reduced-motion:reduce){*{transition:none!important;}}
 
 .side-sep{height:1px;background:var(--line);margin:14px 10px 10px;}
+/* Centriran nalagalni trak (namesto »Nalagam«) */
+.sc-load{display:flex;align-items:center;justify-content:center;padding:56px 16px;}
+.sc-load-bar{width:190px;max-width:60%;height:4px;border-radius:4px;background:var(--line);overflow:hidden;position:relative;}
+.sc-load-bar::after{content:'';position:absolute;top:0;left:-42%;height:100%;width:42%;border-radius:4px;background:var(--ink);animation:scload 1.05s ease-in-out infinite;}
+@keyframes scload{0%{left:-42%}100%{left:100%}}
 
 /* ══════════ FOOTER (vedno viden) ══════════ */
 .sc-foot{position:fixed;right:calc(16px + env(safe-area-inset-right));
@@ -1360,7 +1367,11 @@ html[data-theme="dark"] .pris-chip-x:hover{background:rgba(255,138,122,.16);colo
 .konz-nas{font-weight:700;font-size:.92rem;margin:0 0 2px;}
 .konz-txt{font-size:.88rem;color:var(--mid);line-height:1.45;white-space:pre-wrap;word-break:break-word;}
 .konz-meta{font-size:.74rem;color:var(--mid);margin-top:6px;}
-.konz-acts{display:flex;gap:6px;flex:0 0 auto;}
+.konz-acts{display:flex;gap:8px;flex:0 0 auto;flex-wrap:wrap;justify-content:flex-end;}
+.konz-acts .btn-mini{font-size:.78rem;padding:6px 13px;border:1px solid var(--line);border-radius:100px;background:none;color:var(--mid);cursor:pointer;transition:border-color .18s,color .18s,background .18s;white-space:nowrap;}
+.konz-acts .btn-mini:hover{border-color:var(--mid);color:var(--ink);}
+.konz-acts .btn-mini.danger{color:var(--coral);border-color:rgba(192,57,43,.3);}
+.konz-acts .btn-mini.danger:hover{border-color:var(--coral);background:rgba(192,57,43,.06);}
 /* Opomba na spremnem listu (Arhiv) */
 .opomba-blok{margin-top:14px;padding-top:14px;border-top:1px solid var(--line);}
 .opomba-h{text-transform:uppercase;font-size:.68rem;letter-spacing:.08em;color:var(--mid);font-weight:600;margin-bottom:8px;}
