@@ -443,6 +443,9 @@
     await naloziListe();
     pojdi('domov');
     zazeniCustomSelecte();
+    try { pokaziObvestila(); } catch (e) {}
+    try { narociObvestila(); } catch (e) {}
+    try { morebitiPromoBio(); } catch (e) {}
   }
 
   /* ══════════ STRANSKI MENI ══════════ */
@@ -463,6 +466,7 @@
     artikli: '<path d="M3 12l8.5-8.5a2 2 0 0 1 1.4-.5H19a2 2 0 0 1 2 2v6.1a2 2 0 0 1-.6 1.4L12 21Z"/><circle cx="16.5" cy="7.5" r="1.3"/>',
     aplikacija: '<rect x="6.5" y="2.5" width="11" height="19" rx="2.5"/><path d="M10.5 5.5h3"/><path d="M12 18.2h.01"/>',
     dokumenti: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6"/><path d="M9 17h4"/>',
+    konzola: '<path d="M3 11v2a1 1 0 0 0 1 1h2l4 4V6L6 10H4a1 1 0 0 0-1 1Z"/><path d="M15 8a4 4 0 0 1 0 8"/><path d="M18 5a8 8 0 0 1 0 14"/>',
     nastavitve: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>'
   };
   const ikona = k => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' + 'stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + IKONE[k] + '</svg>';
@@ -470,7 +474,7 @@
   function glavniMeni() {
     if (OSEBJE) {
       var g = [['domov', 'Pregled'], ['statistika', 'Statistika'], ['arhiv', 'Arhiv'], ['fakture', 'Fakture'], ['artikli', 'Artikli'], ['stranke', 'Stranke'], ['prisotnost', 'Prisotnost'], ['ucinek', 'Učinkovitost'], ['dokumenti', 'Dokumenti'], ['aplikacija', 'Programska oprema']];
-      if (JE_LASTNIK()) g.push(['uporabniki', 'Uporabniki']);
+      if (JE_LASTNIK()) { g.push(['uporabniki', 'Uporabniki']); g.push(['konzola', 'Konzola']); }
       return g;
     }
     return [['domov', 'Pregled'], ['arhiv', 'Arhiv'], ['katalog', 'Katalog']];
@@ -538,8 +542,9 @@
     if (kam === 'stranke') risiStranke();
     if (kam === 'katalog') risiKatalog();
     if (kam === 'uporabniki') loadUsers();
-    if (kam === 'nastavitve') risiNastavitve();
-    if (kam === 'racun') { napolniProfil(); napolniBio(); }
+    if (kam === 'nastavitve') { risiNastavitve(); napolniBio(); }
+    if (kam === 'racun') { napolniProfil(); }
+    if (kam === 'konzola') { risiKonzola(); }
     if (kam === 'aplikacija') risiAplikacijo();
     if (kam === 'dokumenti') risiDokumenti();
     if (kam === 'ceniki') risiCeniki();
@@ -4352,6 +4357,100 @@
     var m = $('bioMsg'); m.className = 'msg show'; m.textContent = 'Odstranjeno s te naprave.';
     napolniBio();
   }); }
+
+  /* ══════════ OBVESTILA (konzola) ══════════ */
+  var OBV_IKONA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>';
+  function obvVerjeni() { try { var a = JSON.parse(localStorage.getItem('sc-obv-seen') || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+  function obvOznaciVerjeno(id) { try { var a = obvVerjeni(); if (a.indexOf(id) < 0) { a.push(id); if (a.length > 200) a = a.slice(-200); localStorage.setItem('sc-obv-seen', JSON.stringify(a)); } } catch (e) {} }
+  // Prikaži neprebrana aktivna obvestila kot toaste (za vse uporabnike).
+  async function pokaziObvestila() {
+    if (!sb) return;
+    var r = await sb.from('obvestila').select('id,naslov,sporocilo,created_at').eq('aktivno', true).order('created_at', { ascending: false }).limit(20);
+    if (!r || r.error || !r.data) return;
+    var vid = obvVerjeni();
+    r.data.filter(function (o) { return vid.indexOf(o.id) < 0; }).reverse().forEach(narisiToast);
+  }
+  function narisiToast(o) {
+    var wrap = $('obvWrap'); if (!wrap) return;
+    if (wrap.querySelector('[data-obv="' + o.id + '"]')) return;
+    var el = document.createElement('div');
+    el.className = 'obv-card'; el.setAttribute('data-obv', o.id);
+    el.innerHTML = '<span class="obv-ic">' + OBV_IKONA + '</span>' +
+      '<div class="obv-body">' + (o.naslov ? '<div class="obv-nas">' + escape_(o.naslov) + '</div>' : '') +
+      '<div class="obv-txt">' + escape_(o.sporocilo || '') + '</div></div>' +
+      '<button type="button" class="obv-x" aria-label="Zapri">×</button>';
+    el.querySelector('.obv-x').addEventListener('click', function () { obvOznaciVerjeno(o.id); el.remove(); });
+    wrap.appendChild(el);
+  }
+  // Živa dostava novih obvestil (če je realtime na voljo).
+  var _obvKanal = null;
+  function narociObvestila() {
+    if (!sb || _obvKanal) return;
+    try {
+      _obvKanal = sb.channel('obvestila-live')
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'obvestila' }, function (p) {
+          var o = p && p.new; if (o && o.aktivno && obvVerjeni().indexOf(o.id) < 0) narisiToast(o);
+        })
+        .subscribe();
+    } catch (e) {}
+  }
+  // ── Konzola (samo lastnik): pisanje in pregled obvestil ──
+  async function risiKonzola() {
+    var list = $('konzList'); if (!list) return;
+    list.innerHTML = '<div class="konz-txt">Nalagam …</div>';
+    var r = await sb.from('obvestila').select('id,naslov,sporocilo,aktivno,created_at').order('created_at', { ascending: false }).limit(50);
+    if (!r || r.error) { list.innerHTML = '<div class="konz-txt">Napaka pri nalaganju.</div>'; return; }
+    if (!r.data || !r.data.length) { list.innerHTML = '<div class="konz-txt">Ni še poslanih obvestil.</div>'; return; }
+    list.innerHTML = r.data.map(function (o) {
+      var dat = new Date(o.created_at).toLocaleString('sl-SI', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+      return '<div class="konz-row' + (o.aktivno ? '' : ' off') + '" data-id="' + o.id + '">' +
+        '<div class="k-body">' + (o.naslov ? '<div class="konz-nas">' + escape_(o.naslov) + '</div>' : '') +
+        '<div class="konz-txt">' + escape_(o.sporocilo || '') + '</div>' +
+        '<div class="konz-meta">' + escape_(dat) + (o.aktivno ? '' : ' · skrito') + '</div></div>' +
+        '<div class="konz-acts">' +
+        '<button type="button" class="btn-mini k-tog" data-id="' + o.id + '" data-ak="' + (o.aktivno ? '1' : '0') + '">' + (o.aktivno ? 'Skrij' : 'Prikaži') + '</button>' +
+        '<button type="button" class="btn-mini danger k-del" data-id="' + o.id + '">Izbriši</button>' +
+        '</div></div>';
+    }).join('');
+    list.querySelectorAll('.k-tog').forEach(function (b) { b.addEventListener('click', async function () {
+      await sb.from('obvestila').update({ aktivno: b.dataset.ak !== '1' }).eq('id', b.dataset.id); risiKonzola();
+    }); });
+    list.querySelectorAll('.k-del').forEach(function (b) { b.addEventListener('click', async function () {
+      await sb.from('obvestila').delete().eq('id', b.dataset.id); risiKonzola();
+    }); });
+  }
+  { var _kf = $('konzForm'); if (_kf) _kf.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    var m = $('konzMsg'), btn = $('konzBtn');
+    var nas = $('konzNas').value.trim(), txt = $('konzTxt').value.trim();
+    if (!txt) { m.className = 'msg bad show'; m.textContent = 'Vpiši sporočilo.'; return; }
+    btn.disabled = true; btn.textContent = 'Pošiljam …';
+    var r = await sb.from('obvestila').insert({ naslov: nas || null, sporocilo: txt, aktivno: true });
+    btn.disabled = false; btn.textContent = 'Pošlji vsem';
+    if (r && r.error) { m.className = 'msg bad show'; m.textContent = 'Ni uspelo: ' + r.error.message; return; }
+    $('konzNas').value = ''; $('konzTxt').value = '';
+    m.className = 'msg show'; m.textContent = 'Obvestilo je poslano vsem uporabnikom.';
+    risiKonzola();
+  }); }
+
+  /* ══════════ POZIV ZA BIOMETRIJO OB PRVI PRIJAVI ══════════ */
+  function morebitiPromoBio() {
+    if (!bioPodprt() || !JAZ) return;
+    if (bioVklopljen(JAZ)) return;
+    var kljuc = 'sc-bioask-' + JAZ;
+    try { if (localStorage.getItem(kljuc)) return; } catch (e) {}
+    try { localStorage.setItem(kljuc, '1'); } catch (e) {}
+    var el = $('bioPromo'); if (!el) return;
+    setTimeout(function () { el.classList.remove('hidden'); }, 700);
+  }
+  function zapriPromoBio() { var el = $('bioPromo'); if (el) el.classList.add('hidden'); }
+  { var _bpo = $('bioPromoOn'); if (_bpo) _bpo.addEventListener('click', async function () {
+    var m = $('bioPromoMsg'); this.disabled = true; var t = this.textContent; this.textContent = 'Potrjujem …';
+    try { await bioOmogoci(); zapriPromoBio(); }
+    catch (e) { m.className = 'msg bad show'; m.textContent = (e && /NotAllowed|abort/i.test(e.name || e.message || '')) ? 'Preklicano.' : (e && e.message ? e.message : 'Ni uspelo.'); }
+    this.disabled = false; this.textContent = t;
+  }); }
+  { var _bpl = $('bioPromoLater'); if (_bpl) _bpl.addEventListener('click', zapriPromoBio); }
 
   /* ══════════ OBNOVITEV SEJE ══════════ */
   (async function () {

@@ -244,13 +244,14 @@ html[data-theme="light"] .sc-hex{opacity:.5}
             <button type="button" class="seg-b" data-view="grid">Mreža</button>
           </div>
         </div>
-        <div class="panel">
-          <h3 class="sec-h">Samodejna prijava</h3>
-          <p class="u-sub" style="margin-bottom:14px">Ko je vklopljena, te portal na tej napravi ob naslednjem obisku samodejno spusti naprej. Izklopi, če se želiš vsakič prijaviti sam.</p>
-          <div class="seg auto-seg" id="autoSeg2" role="group" aria-label="Samodejna prijava">
-            <button type="button" class="seg-b" data-auto="1">Vklopljena</button>
-            <button type="button" class="seg-b" data-auto="0">Izklopljena</button>
+        <div class="panel hidden" id="bioPanel">
+          <h3 class="sec-h">Face ID / prstni odtis</h3>
+          <p class="bio-lead" id="bioLead">Namesto gesla se lahko prijaviš s Face ID ali prstnim odtisom te naprave.</p>
+          <div class="bio-row">
+            <button type="button" class="btn btn-narrow" id="bioOn">Omogoči na tej napravi</button>
+            <button type="button" class="btn btn-narrow bio-off hidden" id="bioOff">Odstrani s te naprave</button>
           </div>
+          <div class="msg" id="bioMsg" role="status" aria-live="polite"></div>
         </div>
       </section>
 
@@ -355,15 +356,6 @@ html[data-theme="light"] .sc-hex{opacity:.5}
           </div>
           <div class="msg" id="imeMsg" role="status" aria-live="polite"></div>
         </div>
-        <div class="panel hidden" id="bioPanel">
-          <h3 class="sec-h">Face ID / prstni odtis</h3>
-          <p class="bio-lead" id="bioLead">Namesto gesla se lahko prijaviš s Face ID ali prstnim odtisom te naprave.</p>
-          <div class="bio-row">
-            <button type="button" class="btn btn-narrow" id="bioOn">Omogoči na tej napravi</button>
-            <button type="button" class="btn btn-narrow bio-off hidden" id="bioOff">Odstrani s te naprave</button>
-          </div>
-          <div class="msg" id="bioMsg" role="status" aria-live="polite"></div>
-        </div>
         <div class="panel">
           <h3 class="sec-h">Sprememba gesla</h3>
           <form id="changePwForm" novalidate>
@@ -387,7 +379,45 @@ html[data-theme="light"] .sc-hex{opacity:.5}
         </div>
       </section>
 
+      <section class="sec hidden" id="sec-konzola">
+        <div class="head"><div><h2>Konzola</h2><p class="count">Pošlji obvestilo vsem uporabnikom</p></div></div>
+        <div class="panel">
+          <h3 class="sec-h">Novo obvestilo</h3>
+          <form id="konzForm" novalidate>
+            <div class="field">
+              <label for="konzNas">Naslov (neobvezno)</label>
+              <input type="text" id="konzNas" maxlength="80" placeholder="npr. Obvestilo"/>
+            </div>
+            <div class="field">
+              <label for="konzTxt">Sporočilo</label>
+              <textarea id="konzTxt" rows="3" maxlength="600" placeholder="Kaj želiš sporočiti vsem uporabnikom?"></textarea>
+            </div>
+            <button type="submit" class="btn btn-narrow" id="konzBtn">Pošlji vsem</button>
+          </form>
+          <div class="msg" id="konzMsg" role="status" aria-live="polite"></div>
+        </div>
+        <div class="panel">
+          <h3 class="sec-h">Poslana obvestila</h3>
+          <div class="konz-list" id="konzList"></div>
+        </div>
+      </section>
+
     </main>
+  </div>
+</div>
+
+<div class="obv-wrap" id="obvWrap"></div>
+
+<div class="bio-promo hidden" id="bioPromo" role="dialog" aria-modal="true" aria-labelledby="bioPromoNaslov">
+  <div class="bio-promo-card">
+    <div class="bio-promo-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 11a2 2 0 0 0-2 2v2"/><path d="M12 7a6 6 0 0 1 6 6v1"/><path d="M6 13a6 6 0 0 1 3-5.2"/><path d="M8 17.5a8 8 0 0 0 .5 2"/><path d="M15.5 20a10 10 0 0 0 .5-6 4 4 0 0 0-6.5-3"/></svg></div>
+    <h3 id="bioPromoNaslov">Hitrejša prijava</h3>
+    <p>Naslednjič se lahko prijaviš kar s <b>Face ID</b> ali <b>prstnim odtisom</b> te naprave — brez tipkanja gesla.</p>
+    <div class="bio-promo-btns">
+      <button type="button" class="btn" id="bioPromoOn">Omogoči</button>
+      <button type="button" class="btn btn-ghost" id="bioPromoLater">Ne zdaj</button>
+    </div>
+    <div class="msg" id="bioPromoMsg" role="status" aria-live="polite"></div>
   </div>
 </div>
 
