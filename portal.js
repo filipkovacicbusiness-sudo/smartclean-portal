@@ -236,9 +236,9 @@
   });
   $('logoutBtn').addEventListener('click', async () => {
     ustaviUtrip();
-    // Če je na tej napravi omogočen Face ID, seje NE ukinemo (kot bančne aplikacije):
-    // ostaneš prijavljen, ob vrnitvi te Face ID le odklene. Sicer se popolnoma odjavimo.
-    if (!bioVklopljen(JAZ)) { try { await sb.auth.signOut(); } catch (e) {} }
+    // Vedno počistimo lokalno sejo (scope local), da se lahko naslednji uporabnik prijavi kot
+    // on sam; žeton na strežniku ostane veljaven, zato biometrija obnovi pravega uporabnika.
+    try { await sb.auth.signOut({ scope: 'local' }); } catch (e) { try { await sb.auth.signOut(); } catch (e2) {} }
     location.reload();
   });
 
@@ -4201,7 +4201,8 @@
     var prof = beriProfile();
     var BIO_IKONA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 11a2 2 0 0 0-2 2v2"/><path d="M12 7a6 6 0 0 1 6 6v1"/><path d="M6 13a6 6 0 0 1 3-5.2"/><path d="M8 17.5a8 8 0 0 0 .5 2"/><path d="M15.5 20a10 10 0 0 0 .5-6 4 4 0 0 0-6.5-3"/></svg>';
     var html = prof.map(function (p) {
-      var badge = (p.bio && bioPodprt()) ? '<span class="pp-bio" title="Face ID / prstni odtis">' + BIO_IKONA + '</span>' : '';
+      var imaBio = bioPodprt() && p.uid && bioVklopljen(p.uid);
+      var badge = imaBio ? '<span class="pp-bio" title="Face ID / prstni odtis">' + BIO_IKONA + '</span>' : '';
       return '<div class="pp-tile-wrap">' +
         '<button type="button" class="pp-tile" data-email="' + escape_(p.email) + '">' +
         ppAvatarHtml(p, 'pp-av') + badge +
@@ -4284,11 +4285,21 @@
     return b.buffer;
   }
   function nakljucje(n) { var a = new Uint8Array(n || 32); (window.crypto || {}).getRandomValues && window.crypto.getRandomValues(a); return a; }
-  /* Vpis (credId) je LOČEN od žetona: vpis ostane, tudi če žeton poteče. */
+  /* Vpis (credId) je LOČEN od žetona. Za vsakega uporabnika hranimo NJEGOV žeton,
+     da na skupni napravi z več uporabniki biometrija obnovi PRAVEGA uporabnika. */
   function bioCred(uid) { try { return localStorage.getItem('sc-biocred-' + uid) || null; } catch (e) { return null; } }
   function bioSetCred(uid, c) { try { localStorage.setItem('sc-biocred-' + uid, c); } catch (e) {} }
   function bioDelCred(uid) { try { localStorage.removeItem('sc-biocred-' + uid); } catch (e) {} }
+  function bioTok(uid) { try { var r = localStorage.getItem('sc-biotok-' + uid); return r ? JSON.parse(r) : null; } catch (e) { return null; } }
+  function bioSetTok(uid, o) { try { localStorage.setItem('sc-biotok-' + uid, JSON.stringify(o)); } catch (e) {} }
+  function bioDelTok(uid) { try { localStorage.removeItem('sc-biotok-' + uid); } catch (e) {} }
   function bioVklopljen(uid) { return !!(uid && bioCred(uid)); }
+  // Ob prijavi/osvežitvi žetona posodobimo shrambo TEGA uporabnika (če ima vpis).
+  function bioOsveziZetone(session) {
+    if (!session || !session.user) return;
+    var uid = session.user.id;
+    if (bioCred(uid) && session.refresh_token) bioSetTok(uid, { at: session.access_token, rt: session.refresh_token });
+  }
   // Omogoči na tej napravi: ustvari PLATFORMNI ključ (Windows Hello / Face ID / Touch ID).
   // Seje NE hranimo ročno — Supabase svojo sejo že obdrži; biometrija je le lokalni zaklep.
   async function bioOmogoci() {
@@ -4310,11 +4321,12 @@
     var cred = await navigator.credentials.create(opts);
     if (!cred) throw new Error('Ni uspelo.');
     bioSetCred(session.user.id, b64u(cred.rawId));
+    bioSetTok(session.user.id, { at: session.access_token, rt: session.refresh_token });
     zapomniProfil({ email: JAZMAIL, name: JAZIME, avatar: (MOJPROFIL && MOJPROFIL.avatar_url) || '', uid: session.user.id });
   }
-  // Odkleni: biometrična potrditev; seja je Supabasova lastna (obstojna), le jo osvežimo.
-  // Vrne true, če je po potrditvi na voljo veljavna seja. Ob prekinitvi vrže napako.
-  // Ob potekli seji vrže 'expired' — VPIS ostane (Face ID se ne izklopi).
+  // Odkleni: biometrična potrditev, nato obnovi sejo TOČNO TEGA uporabnika iz njegovega žetona.
+  // Vrne true ob uspehu. Ob prekinitvi vrže napako. Ob poteklem žetonu vrže 'expired'
+  // (VPIS ostane — Face ID se ne izklopi, potreben je le enkraten vpis gesla).
   async function bioOdkleni(uid) {
     var credId = bioCred(uid);
     if (!credId) return false;
@@ -4325,11 +4337,21 @@
       rpId: location.hostname,
       timeout: 60000
     } });
-    // Biometrija potrjena → preveri, da je Supabasova seja še živa (getSession po potrebi osveži).
-    var s = await sb.auth.getSession();
-    var sess = s && s.data && s.data.session;
-    if (sess && sess.user) return true;
-    var e0 = new Error('expired'); e0.code = 'expired'; throw e0;
+    // Biometrija potrjena → obnovi NJEGOVO sejo (ne glede na to, kdo je bil nazadnje prijavljen).
+    var st = bioTok(uid);
+    if (!st || !st.rt) { var e0 = new Error('expired'); e0.code = 'expired'; throw e0; }
+    var sess = null;
+    var r = await sb.auth.refreshSession({ refresh_token: st.rt });
+    if (r && !r.error && r.data && r.data.session) { sess = r.data.session; }
+    else if (st.at) {
+      var r2 = await sb.auth.setSession({ access_token: st.at, refresh_token: st.rt });
+      if (r2 && !r2.error && r2.data && r2.data.session) sess = r2.data.session;
+    }
+    if (!sess || !sess.user) { bioDelTok(uid); var e1 = new Error('expired'); e1.code = 'expired'; throw e1; }
+    // Varovalka: obnovljena seja se MORA ujemati s pritisnjenim profilom.
+    if (sess.user.id !== uid) { throw new Error('Napačen uporabnik — vpiši geslo.'); }
+    bioSetTok(uid, { at: sess.access_token, rt: sess.refresh_token });
+    return true;
   }
   // Panel v »Moj račun«.
   function napolniBio() {
@@ -4478,6 +4500,8 @@
         showAuthPane('newPwForm');
         document.querySelector('.auth-box .sub').textContent = 'Vpišite novo geslo za svoj račun.';
       }
+      // Face ID: ob prijavi/osvežitvi posodobi žeton tega uporabnika, da ostane veljaven.
+      if ((event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN') && session) { try { bioOsveziZetone(session); } catch (e) {} }
     });
     setTimeout(() => {
       if (recovery) return;
