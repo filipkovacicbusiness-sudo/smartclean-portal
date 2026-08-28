@@ -506,7 +506,7 @@
     glavni = urediGlavni(glavniMeni());
     nast = OSEBJE ? [['nastavitve', 'Nastavitve'], ['racun', 'Moj račun']] : [['racun', 'Moj račun']];
     const veja = ([k, l]) => `<a data-go="${k}">${ikona(k)}${l}</a>`;
-    $('side').innerHTML = '<span class="side-slider" aria-hidden="true"></span>' + glavni.map(veja).join('') + '<div class="side-sep"></div>' + nast.map(veja).join('') + '<a class="side-eflitte" href="https://eflitte.si" target="_blank" rel="noopener">Izdelava <b>Eflitte</b></a>';
+    $('side').innerHTML = '<span class="side-slider" aria-hidden="true"></span>' + glavni.map(veja).join('') + '<div class="side-sep"></div>' + nast.map(veja).join('');
     const _side = $('side');
     const _sl = _side.querySelector('.side-slider');
     const premakniDrsnik = a => {
@@ -1608,8 +1608,8 @@
     }
     return '<div class="opomba-blok"><div class="opomba-h">Opomba</div>' + obst +
       '<textarea class="opomba-vnos" data-opomba rows="2" maxlength="600" placeholder="Dodaj pisno opombo …">' + escape_(n.opomba || '') + '</textarea>' +
-      '<div class="u-acts" style="margin-top:8px"><button type="button" data-opomba-shrani>' + (n.opomba ? 'Posodobi opombo' : 'Shrani opombo') + '</button>' +
-      (n.opomba ? '<button type="button" class="danger" data-opomba-brisi>Odstrani</button>' : '') +
+      '<div class="opomba-acts"><button type="button" class="opomba-save" data-opomba-shrani>' + (n.opomba ? 'Posodobi opombo' : 'Shrani opombo') + '</button>' +
+      (n.opomba ? '<button type="button" class="opomba-remove" data-opomba-brisi>Odstrani opombo</button>' : '') +
       '</div><div class="msg" data-opomba-msg role="status" aria-live="polite"></div></div>';
   }
   function wireOpomba(box) {
@@ -4534,15 +4534,53 @@
   function obvVerjeni() { try { var a = JSON.parse(localStorage.getItem('sc-obv-seen') || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
   function obvOznaciVerjeno(id) { try { var a = obvVerjeni(); if (a.indexOf(id) < 0) { a.push(id); if (a.length > 200) a = a.slice(-200); localStorage.setItem('sc-obv-seen', JSON.stringify(a)); } } catch (e) {} }
   function obvZaMene(o) { return !o.prejemnik || o.prejemnik === JAZ; }
+  // Naloži aktualna obvestila zame (za toaste, zvonec in seznam »za nazaj«).
+  async function naloziMojaObvestila() {
+    if (!sb) return [];
+    var r = await sb.from('obvestila').select('id,naslov,sporocilo,created_at,prejemnik').eq('aktivno', true).order('created_at', { ascending: false }).limit(50);
+    if (r && r.error) { r = await sb.from('obvestila').select('id,naslov,sporocilo,created_at').eq('aktivno', true).order('created_at', { ascending: false }).limit(50); }
+    if (!r || r.error || !r.data) return [];
+    return r.data.filter(obvZaMene);
+  }
   // Prikaži neprebrana aktivna obvestila kot toaste (vsem ali meni osebno).
   async function pokaziObvestila() {
     if (!sb) return;
-    var r = await sb.from('obvestila').select('id,naslov,sporocilo,created_at,prejemnik').eq('aktivno', true).order('created_at', { ascending: false }).limit(20);
-    if (r && r.error) { r = await sb.from('obvestila').select('id,naslov,sporocilo,created_at').eq('aktivno', true).order('created_at', { ascending: false }).limit(20); }
-    if (!r || r.error || !r.data) return;
+    var list = await naloziMojaObvestila();
     var vid = obvVerjeni();
-    r.data.filter(function (o) { return vid.indexOf(o.id) < 0 && obvZaMene(o); }).reverse().forEach(narisiToast);
+    list.filter(function (o) { return vid.indexOf(o.id) < 0; }).reverse().forEach(narisiToast);
+    osveziNotifZnak(list);
   }
+  // Pika na zvoncu, če je kaj neprebranega.
+  function osveziNotifZnak(list) {
+    var dot = $('notifDot'); if (!dot) return;
+    var vid = obvVerjeni();
+    var neprebrano = (list || []).some(function (o) { return vid.indexOf(o.id) < 0; });
+    dot.hidden = !neprebrano;
+  }
+  // Zvonec: seznam obvestil »za nazaj«.
+  async function odpriNotif() {
+    var panel = $('notifPanel'), lst = $('notifList'); if (!panel || !lst) return;
+    if (!panel.classList.contains('hidden')) { panel.classList.add('hidden'); return; }
+    panel.classList.remove('hidden');
+    lst.innerHTML = '<div class="notif-empty">Nalagam …</div>';
+    var list = await naloziMojaObvestila();
+    if (!list.length) { lst.innerHTML = '<div class="notif-empty">Ni obvestil.</div>'; }
+    else {
+      lst.innerHTML = list.map(function (o) {
+        var dat = new Date(o.created_at).toLocaleString('sl-SI', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        return '<div class="notif-item">' + (o.naslov ? '<div class="notif-nas">' + escape_(o.naslov) + '</div>' : '') +
+          '<div class="notif-txt">' + escape_(o.sporocilo || '') + '</div><div class="notif-dat">' + escape_(dat) + '</div></div>';
+      }).join('');
+    }
+    // ob odprtju označimo vse kot prebrano → pika izgine
+    list.forEach(function (o) { obvOznaciVerjeno(o.id); });
+    osveziNotifZnak(list);
+  }
+  { var _notb = $('notifBtn'); if (_notb) _notb.addEventListener('click', function (e) { e.stopPropagation(); odpriNotif(); }); }
+  document.addEventListener('click', function (e) {
+    var p = $('notifPanel'); if (!p || p.classList.contains('hidden')) return;
+    if (!p.contains(e.target) && !(e.target.closest && e.target.closest('#notifBtn'))) p.classList.add('hidden');
+  });
   function narisiToast(o) {
     var wrap = $('obvWrap'); if (!wrap) return;
     if (wrap.querySelector('[data-obv="' + o.id + '"]')) return;
