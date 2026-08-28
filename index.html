@@ -394,6 +394,13 @@ html[data-theme="light"] .sc-hex{opacity:.5}
               <select id="konzKomu"><option value="">Vsi uporabniki</option></select>
             </div>
             <div class="field">
+              <label for="konzTip">Oblika</label>
+              <select id="konzTip">
+                <option value="toast">Obvestilo (v kotu)</option>
+                <option value="modal">Pojavno okno (na sredini, z gumbom V redu)</option>
+              </select>
+            </div>
+            <div class="field">
               <label for="konzNas">Naslov (neobvezno)</label>
               <input type="text" id="konzNas" maxlength="80" placeholder="npr. Obvestilo"/>
             </div>
@@ -408,6 +415,12 @@ html[data-theme="light"] .sc-hex{opacity:.5}
         <div class="panel">
           <h3 class="sec-h">Poslana obvestila</h3>
           <div class="konz-list" id="konzList"></div>
+        </div>
+        <div class="panel">
+          <h3 class="sec-h">Posodobitev portala</h3>
+          <p class="bio-lead">Po nalaganju nove različice na GitHub klikni, da vsem prijavljenim uporabnikom potisneš osvežitev (počisti tudi predpomnilnik, da dobijo novo kodo).</p>
+          <button type="button" class="btn btn-narrow" id="pushRefreshBtn">Osveži aplikacijo vsem</button>
+          <div class="msg" id="pushRefreshMsg" role="status" aria-live="polite"></div>
         </div>
       </section>
 

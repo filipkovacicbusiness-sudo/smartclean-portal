@@ -542,11 +542,16 @@ body,.topbar,.side,.main,.panel,.row,.a-row,.arts,.a-det,.fak-card,.fak-tot,.sta
 @media (prefers-reduced-motion:reduce){*{transition:none!important;}}
 
 .side-sep{height:1px;background:var(--line);margin:14px 10px 10px;}
-/* Centriran nalagalni trak (namesto »Nalagam«) */
-.sc-load{display:flex;align-items:center;justify-content:center;padding:56px 16px;}
-.sc-load-bar{width:190px;max-width:60%;height:4px;border-radius:4px;background:var(--line);overflow:hidden;position:relative;}
-.sc-load-bar::after{content:'';position:absolute;top:0;left:-42%;height:100%;width:42%;border-radius:4px;background:var(--ink);animation:scload 1.05s ease-in-out infinite;}
-@keyframes scload{0%{left:-42%}100%{left:100%}}
+/* Širok, centriran nalagalni trak (namesto »Nalagam«) */
+.sc-load{display:flex;align-items:center;justify-content:center;min-height:46vh;padding:24px 16px;animation:scfadein .18s ease;}
+.sc-load-bar{width:min(440px,72%);height:5px;border-radius:5px;background:var(--line);overflow:hidden;position:relative;}
+.sc-load-bar::after{content:'';position:absolute;top:0;left:-40%;height:100%;width:40%;border-radius:5px;
+  background:linear-gradient(90deg,transparent,var(--ink),transparent);animation:scload 1s cubic-bezier(.65,0,.35,1) infinite;}
+@keyframes scload{0%{left:-40%}100%{left:100%}}
+@keyframes scfadein{from{opacity:0}to{opacity:1}}
+/* Gladek prehod na razdelek ob menjavi */
+@keyframes secIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.sec.sec-anim{animation:secIn .2s ease;}
 
 /* ══════════ FOOTER (vedno viden) ══════════ */
 .sc-foot{position:fixed;right:calc(16px + env(safe-area-inset-right));
@@ -972,6 +977,14 @@ html[data-theme="dark"] .art-hidden-tag{background:rgba(255,138,122,.14);color:#
 .sc-modal-btn.primary{background:var(--ink);color:var(--bg);border-color:var(--ink);}
 .sc-modal-btn.danger{background:#c0392b;color:#fff;border-color:#c0392b;}
 .sc-modal-btn.danger:hover{background:#a93226;}
+.sc-modal-acts.one{justify-content:center;}
+.sc-modal-acts.one .sc-modal-btn{min-width:150px;text-align:center;justify-content:center;}
+/* Pojavno obvestilo iz konzole (na sredini, z gumbom V redu) */
+.sc-modal-obv{max-width:400px;text-align:center;padding:26px 24px 20px;}
+.sc-modal-obv .obvm-ic{display:inline-flex;align-items:center;justify-content:center;width:50px;height:50px;margin:0 auto 12px;border-radius:50%;background:var(--green-m);color:var(--ink);}
+.sc-modal-obv .obvm-ic svg{width:24px;height:24px;}
+.sc-modal-obv h4{margin:0 0 6px;font-size:1.12rem;}
+.sc-modal-obv p{margin:0 0 20px;color:var(--mid);white-space:pre-line;}
 
 /* ── Enotni spustni meniji (custom select) po standardu portala ─────────── */
 .cs{position:relative;display:block;width:100%;}
@@ -1096,7 +1109,7 @@ html[data-view="grid"] #cenikList .cenik-sec-head{grid-column:1 / -1;}
 html[data-view="grid"] #cenikList .sc-isolate .cgrp:not(.open){max-width:var(--tile-min);}
 
 /* ── ARTIKLI (katalog po skupinah) ── */
-.art-topbar{display:flex;justify-content:flex-end;margin-bottom:12px;}
+.art-topbar{display:flex;justify-content:flex-start;margin-bottom:12px;}
 .art-topbar .btn-narrow{margin-top:0;}
 .art-assign{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:11px 16px;border-bottom:1px solid var(--line);background:var(--green-m);}
 .art-assign-str{flex:1;min-width:0;display:flex;flex-wrap:wrap;gap:4px;align-items:center;}

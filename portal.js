@@ -290,6 +290,7 @@
   var MOJPROFIL = {};
   var APP_VERZIJA = '3.1 · BETA';
   var NALAGANJE = '<div class="sc-load"><div class="sc-load-bar"></div></div>';
+  var _reloadVal = null;   // vrednost 'reload' ob nalaganju (za potisnjeno osvežitev)
   const JE_LASTNIK = () => (JAZMAIL || '').trim().toLowerCase() === 'filip@eflitte.si';
   // Super admin = lastnik ali profil s super_admin=true. Samo super admin vidi Fakture.
   const JE_SUPER = () => JE_LASTNIK() || !!(MOJPROFIL && MOJPROFIL.super_admin);
@@ -453,6 +454,7 @@
     zazeniCustomSelecte();
     try { pokaziObvestila(); } catch (e) {}
     try { narociObvestila(); } catch (e) {}
+    try { preberiReload(); } catch (e) {}
     try { morebitiPromoBio(); } catch (e) {}
   }
 
@@ -556,6 +558,9 @@
     document.querySelectorAll('.sec').forEach(s => {
       s.classList.toggle('hidden', s.id !== 'sec-' + kam);
     });
+    // Gladek prehod na novo prikazani razdelek.
+    var _ns = document.getElementById('sec-' + kam);
+    if (_ns) { _ns.classList.remove('sec-anim'); void _ns.offsetWidth; _ns.classList.add('sec-anim'); }
     document.querySelectorAll('#side a[data-go]').forEach(a => {
       a.classList.toggle('on', a.dataset.go === kam);
     });
@@ -4655,17 +4660,20 @@
   // Naloži aktualna obvestila zame (za toaste, zvonec in seznam »za nazaj«).
   async function naloziMojaObvestila() {
     if (!sb) return [];
-    var r = await sb.from('obvestila').select('id,naslov,sporocilo,created_at,prejemnik').eq('aktivno', true).order('created_at', { ascending: false }).limit(50);
+    var r = await sb.from('obvestila').select('id,naslov,sporocilo,created_at,prejemnik,tip').eq('aktivno', true).order('created_at', { ascending: false }).limit(50);
+    if (r && r.error) { r = await sb.from('obvestila').select('id,naslov,sporocilo,created_at,prejemnik').eq('aktivno', true).order('created_at', { ascending: false }).limit(50); }
     if (r && r.error) { r = await sb.from('obvestila').select('id,naslov,sporocilo,created_at').eq('aktivno', true).order('created_at', { ascending: false }).limit(50); }
     if (!r || r.error || !r.data) return [];
     return r.data.filter(obvZaMene);
   }
-  // Prikaži neprebrana aktivna obvestila kot toaste (vsem ali meni osebno).
+  // Prikaži eno obvestilo v pravi obliki: pojavno okno (modal) ali toast v kotu.
+  function obvPrikazi(o) { if (o && o.tip === 'modal') narisiModalObvestilo(o); else narisiToast(o); }
+  // Prikaži neprebrana aktivna obvestila (vsem ali meni osebno).
   async function pokaziObvestila() {
     if (!sb) return;
     var list = await naloziMojaObvestila();
     var vid = obvVerjeni();
-    list.filter(function (o) { return vid.indexOf(o.id) < 0; }).reverse().forEach(narisiToast);
+    list.filter(function (o) { return vid.indexOf(o.id) < 0; }).reverse().forEach(obvPrikazi);
     osveziNotifZnak(list);
   }
   // Pika na zvoncu, če je kaj neprebranega.
@@ -4711,6 +4719,40 @@
     el.querySelector('.obv-x').addEventListener('click', function () { obvOznaciVerjeno(o.id); el.remove(); });
     wrap.appendChild(el);
   }
+  // Pojavno obvestilo na sredini z gumbom »V redu« (v vrsti, eno naenkrat).
+  var _obvMq = [], _obvMon = false;
+  function narisiModalObvestilo(o) {
+    if (!o || obvVerjeni().indexOf(o.id) >= 0) return;
+    if (_obvMq.some(function (x) { return x.id === o.id; })) return;
+    if (document.querySelector('.sc-modal-back[data-obvm="' + o.id + '"]')) return;
+    _obvMq.push(o); obvModalNaprej();
+  }
+  function obvModalNaprej() {
+    if (_obvMon) return;
+    var o = _obvMq.shift(); if (!o) return;
+    _obvMon = true;
+    var back = document.createElement('div');
+    back.className = 'sc-modal-back'; back.setAttribute('data-obvm', o.id);
+    back.innerHTML = '<div class="sc-modal sc-modal-obv" role="dialog" aria-modal="true"><span class="obvm-ic">' + OBV_IKONA + '</span><h4></h4><p></p><div class="sc-modal-acts one"><button type="button" class="sc-modal-btn primary" data-ok></button></div></div>';
+    back.querySelector('h4').textContent = o.naslov || 'Obvestilo';
+    back.querySelector('p').textContent = o.sporocilo || '';
+    back.querySelector('[data-ok]').textContent = 'V redu';
+    document.body.appendChild(back);
+    requestAnimationFrame(function () { back.classList.add('show'); });
+    var done = false;
+    function zapri() {
+      if (done) return; done = true;
+      obvOznaciVerjeno(o.id);
+      back.classList.remove('show');
+      document.removeEventListener('keydown', onKey);
+      setTimeout(function () { if (back.parentNode) back.parentNode.removeChild(back); _obvMon = false; obvModalNaprej(); }, 180);
+    }
+    function onKey(e) { if (e.key === 'Escape' || e.key === 'Enter') { e.preventDefault(); zapri(); } }
+    back.querySelector('[data-ok]').addEventListener('click', function (e) { e.stopPropagation(); zapri(); });
+    back.addEventListener('click', function (e) { if (e.target === back) zapri(); });
+    document.addEventListener('keydown', onKey);
+    var ob = back.querySelector('[data-ok]'); if (ob) ob.focus();
+  }
   // Živa dostava: realtime (če deluje) + zanesljiva osvežitev vsakih 60 s.
   var _obvKanal = null, _obvTimer = null;
   function narociObvestila() {
@@ -4722,20 +4764,52 @@
           try { var tok = s && s.data && s.data.session && s.data.session.access_token; if (tok && sb.realtime && sb.realtime.setAuth) sb.realtime.setAuth(tok); } catch (e) {}
           _obvKanal = sb.channel('obvestila-live')
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'obvestila' }, function (p) {
-              var o = p && p.new; if (o && o.aktivno && obvVerjeni().indexOf(o.id) < 0 && obvZaMene(o)) narisiToast(o);
+              var o = p && p.new; if (o && o.aktivno && obvVerjeni().indexOf(o.id) < 0 && obvZaMene(o)) obvPrikazi(o);
+            })
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'app_config' }, function (p) {
+              var o = p && p.new; if (o && o.kljuc === 'reload' && _reloadVal != null && String(o.vrednost) !== String(_reloadVal)) osveziAplikacijo();
             })
             .subscribe();
         });
       } catch (e) {}
     }
-    // Zanesljiva rezerva: preveri nova obvestila vsakih 60 s (brez podvajanja).
+    // Zanesljiva rezerva: preveri nova obvestila + potisnjeno osvežitev vsakih 60 s.
     if (!_obvTimer) {
       _obvTimer = setInterval(function () {
         if (document.hidden) return;
         try { pokaziObvestila(); } catch (e) {}
+        try { preveriReload(); } catch (e) {}
       }, 60000);
     }
   }
+  /* ── Potisnjena osvežitev vseh (po posodobitvi portala) ── */
+  async function preberiReload() {
+    try { var r = await sb.from('app_config').select('vrednost').eq('kljuc', 'reload').maybeSingle(); if (r && r.data) _reloadVal = r.data.vrednost; } catch (e) {}
+  }
+  async function osveziAplikacijo() {
+    try { if ('serviceWorker' in navigator) { var regs = await navigator.serviceWorker.getRegistrations(); for (var i = 0; i < regs.length; i++) { try { await regs[i].unregister(); } catch (e) {} } } } catch (e) {}
+    try { if (window.caches) { var ks = await caches.keys(); await Promise.all(ks.map(function (k) { return caches.delete(k); })); } } catch (e) {}
+    location.reload();
+  }
+  async function preveriReload() {
+    try {
+      var r = await sb.from('app_config').select('vrednost').eq('kljuc', 'reload').maybeSingle();
+      var v = r && r.data ? r.data.vrednost : null;
+      if (v != null && _reloadVal != null && String(v) !== String(_reloadVal)) osveziAplikacijo();
+    } catch (e) {}
+  }
+  { var _prb = $('pushRefreshBtn'); if (_prb) _prb.addEventListener('click', async function () {
+    var m = $('pushRefreshMsg');
+    var ok = await potrdiModal({ naslov: 'Osveži aplikacijo vsem', sporocilo: 'Vsi trenutno prijavljeni uporabniki bodo v nekaj sekundah samodejno osveženi in naložijo novo različico. Nadaljujem?', potrdi: 'Osveži vsem', preklici: 'Prekliči' });
+    if (!ok) return;
+    this.disabled = true; var t = this.textContent; this.textContent = 'Pošiljam …';
+    var val = String(Date.now());
+    var r = await sb.from('app_config').upsert({ kljuc: 'reload', vrednost: val }, { onConflict: 'kljuc' });
+    this.disabled = false; this.textContent = t;
+    if (r && r.error) { m.className = 'msg bad show'; m.textContent = /app_config|relation|column/i.test(r.error.message || '') ? 'Najprej zaženi 29_app_config.sql v Supabase.' : 'Ni uspelo: ' + r.error.message; return; }
+    _reloadVal = val; // da se pošiljatelj ne osveži sam
+    m.className = 'msg show'; m.textContent = 'Osvežitev je poslana. Uporabniki se osvežijo v nekaj sekundah.';
+  }); }
   // Naloži seznam uporabnikov v izbirnik prejemnika + zgradi zemljevid imen.
   var _konzImena = {};
   async function naloziKonzUporabnike() {
@@ -4757,17 +4831,19 @@
     var list = $('konzList'); if (!list) return;
     try { await naloziKonzUporabnike(); } catch (e) {}
     list.innerHTML = '<div class="konz-txt">Nalagam …</div>';
-    var r = await sb.from('obvestila').select('id,naslov,sporocilo,aktivno,created_at,prejemnik').order('created_at', { ascending: false }).limit(50);
+    var r = await sb.from('obvestila').select('id,naslov,sporocilo,aktivno,created_at,prejemnik,tip').order('created_at', { ascending: false }).limit(50);
+    if (r && r.error) { r = await sb.from('obvestila').select('id,naslov,sporocilo,aktivno,created_at,prejemnik').order('created_at', { ascending: false }).limit(50); }
     if (r && r.error) { r = await sb.from('obvestila').select('id,naslov,sporocilo,aktivno,created_at').order('created_at', { ascending: false }).limit(50); }
     if (!r || r.error) { list.innerHTML = '<div class="konz-txt">Napaka pri nalaganju.</div>'; return; }
     if (!r.data || !r.data.length) { list.innerHTML = '<div class="konz-txt">Ni še poslanih obvestil.</div>'; return; }
     list.innerHTML = r.data.map(function (o) {
       var dat = new Date(o.created_at).toLocaleString('sl-SI', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
       var komu = o.prejemnik ? ('za: ' + escape_(_konzImena[o.prejemnik] || 'uporabnika')) : 'vsem';
+      var oblika = (o.tip === 'modal') ? ' · pojavno okno' : '';
       return '<div class="konz-row' + (o.aktivno ? '' : ' off') + '" data-id="' + o.id + '">' +
         '<div class="k-body">' + (o.naslov ? '<div class="konz-nas">' + escape_(o.naslov) + '</div>' : '') +
         '<div class="konz-txt">' + escape_(o.sporocilo || '') + '</div>' +
-        '<div class="konz-meta">' + escape_(dat) + ' · ' + komu + (o.aktivno ? '' : ' · skrito') + '</div></div>' +
+        '<div class="konz-meta">' + escape_(dat) + ' · ' + komu + oblika + (o.aktivno ? '' : ' · skrito') + '</div></div>' +
         '<div class="konz-acts">' +
         '<button type="button" class="btn-mini k-tog" data-id="' + o.id + '" data-ak="' + (o.aktivno ? '1' : '0') + '">' + (o.aktivno ? 'Skrij' : 'Prikaži') + '</button>' +
         '<button type="button" class="btn-mini danger k-del" data-id="' + o.id + '">Izbriši</button>' +
@@ -4785,18 +4861,29 @@
     var m = $('konzMsg'), btn = $('konzBtn');
     var nas = $('konzNas').value.trim(), txt = $('konzTxt').value.trim();
     var komu = $('konzKomu') ? $('konzKomu').value : '';
+    var tip = ($('konzTip') && $('konzTip').value === 'modal') ? 'modal' : 'toast';
     if (!txt) { m.className = 'msg bad show'; m.textContent = 'Vpiši sporočilo.'; return; }
     btn.disabled = true; btn.textContent = 'Pošiljam …';
-    var r = await sb.from('obvestila').insert({ naslov: nas || null, sporocilo: txt, aktivno: true, prejemnik: komu || null }).select('id,naslov,sporocilo,created_at,prejemnik').single();
+    var base = { naslov: nas || null, sporocilo: txt, aktivno: true, prejemnik: komu || null };
+    var tipManjka = false;
+    var r = await sb.from('obvestila').insert(Object.assign({}, base, { tip: tip })).select('id,naslov,sporocilo,created_at,prejemnik,tip').single();
+    if (r && r.error && /\btip\b/i.test(r.error.message || '')) {
+      tipManjka = true;
+      r = await sb.from('obvestila').insert(base).select('id,naslov,sporocilo,created_at,prejemnik').single();
+    }
     if (r && r.error && /prejemnik/i.test(r.error.message || '')) {
       if (komu) { btn.disabled = false; btn.textContent = 'Pošlji'; m.className = 'msg bad show'; m.textContent = 'Za pošiljanje eni osebi najprej zaženi 26_obvestila_prejemnik.sql v Supabase.'; return; }
       r = await sb.from('obvestila').insert({ naslov: nas || null, sporocilo: txt, aktivno: true }).select('id,naslov,sporocilo,created_at').single();
     }
     btn.disabled = false; btn.textContent = 'Pošlji';
     if (r && r.error) { m.className = 'msg bad show'; m.textContent = 'Ni uspelo: ' + r.error.message; return; }
-    $('konzNas').value = ''; $('konzTxt').value = ''; if ($('konzKomu')) $('konzKomu').value = '';
-    m.className = 'msg show'; m.textContent = komu ? ('Obvestilo je poslano uporabniku ' + (_konzImena[komu] || '') + '.') : 'Obvestilo je poslano vsem uporabnikom.';
-    if (r && r.data && (!r.data.prejemnik || r.data.prejemnik === JAZ)) narisiToast(r.data); // pokaži pošiljatelju le, če je zanj
+    $('konzNas').value = ''; $('konzTxt').value = ''; if ($('konzKomu')) $('konzKomu').value = ''; if ($('konzTip')) $('konzTip').value = 'toast';
+    if (tipManjka && tip === 'modal') {
+      m.className = 'msg bad show'; m.textContent = 'Poslano kot navadno obvestilo. Za pojavna okna najprej zaženi 30_obvestila_tip.sql v Supabase.';
+    } else {
+      m.className = 'msg show'; m.textContent = komu ? ('Obvestilo je poslano uporabniku ' + (_konzImena[komu] || '') + '.') : 'Obvestilo je poslano vsem uporabnikom.';
+    }
+    if (r && r.data) { if (tipManjka) r.data.tip = 'toast'; if (!r.data.prejemnik || r.data.prejemnik === JAZ) obvPrikazi(r.data); } // pokaži pošiljatelju le, če je zanj
     risiKonzola();
   }); }
 
