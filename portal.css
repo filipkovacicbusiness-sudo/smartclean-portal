@@ -240,11 +240,13 @@ select:focus{border-color:var(--green-l);outline:none;}
 /* ══════════ LUPINA: stranski meni + vsebina ══════════ */
 .shell{max-width:1240px;margin:0 auto;display:grid;grid-template-columns:212px 1fr;
   align-items:start;gap:0;}
-.side{position:sticky;top:64px;padding:22px 14px 24px;border-right:1px solid var(--line);
-  height:calc(100dvh - 64px);overflow-y:auto;display:flex;flex-direction:column;gap:2px;background:var(--bg);}
-.side-eflitte{margin-top:auto;padding-top:18px;text-align:right;font-size:.62rem;letter-spacing:.03em;
-  color:var(--mid);text-decoration:none;opacity:.72;transition:opacity .15s;}
-.side-eflitte:hover{opacity:1;}
+.side{position:sticky;top:65px;padding:22px 14px 24px;border-right:1px solid var(--line);
+  height:calc(100dvh - 65px);overflow-y:auto;display:flex;flex-direction:column;gap:2px;background:var(--bg);}
+.side-foot{margin-top:auto;padding:18px 12px 4px;display:flex;flex-direction:column;align-items:flex-end;gap:3px;}
+.side-ver{font-size:.62rem;letter-spacing:.04em;color:var(--mid);opacity:.6;}
+.side a.side-eflitte{display:block;padding:0;border-radius:0;background:none;font-size:.62rem;letter-spacing:.03em;
+  color:var(--mid);text-decoration:none;opacity:.72;font-weight:400;text-align:right;transition:opacity .15s;}
+.side a.side-eflitte:hover{opacity:1;color:var(--mid);background:none;}
 .side-eflitte b{font-weight:600;color:var(--ink);}
 .side-h{font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;color:var(--mid);
   margin:14px 10px 6px;}

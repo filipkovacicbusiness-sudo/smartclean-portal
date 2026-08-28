@@ -288,6 +288,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
+  var APP_VERZIJA = '3.1';
   const JE_LASTNIK = () => (JAZMAIL || '').trim().toLowerCase() === 'filip@eflitte.si';
   // Super admin = lastnik ali profil s super_admin=true. Samo super admin vidi Fakture.
   const JE_SUPER = () => JE_LASTNIK() || !!(MOJPROFIL && MOJPROFIL.super_admin);
@@ -506,7 +507,8 @@
     glavni = urediGlavni(glavniMeni());
     nast = OSEBJE ? [['nastavitve', 'Nastavitve'], ['racun', 'Moj račun']] : [['racun', 'Moj račun']];
     const veja = ([k, l]) => `<a data-go="${k}">${ikona(k)}${l}</a>`;
-    $('side').innerHTML = '<span class="side-slider" aria-hidden="true"></span>' + glavni.map(veja).join('') + '<div class="side-sep"></div>' + nast.map(veja).join('') + '<a class="side-eflitte" href="https://eflitte.si" target="_blank" rel="noopener">Izdelava <b>Eflitte</b></a>';
+    $('side').innerHTML = '<span class="side-slider" aria-hidden="true"></span>' + glavni.map(veja).join('') + '<div class="side-sep"></div>' + nast.map(veja).join('') +
+      '<div class="side-foot"><span class="side-ver">Različica ' + escape_(APP_VERZIJA) + '</span><a class="side-eflitte" href="https://eflitte.si" target="_blank" rel="noopener">Izdelava <b>Eflitte</b></a></div>';
     const _side = $('side');
     const _sl = _side.querySelector('.side-slider');
     const premakniDrsnik = a => {
@@ -589,7 +591,7 @@
   function novCardToken() { var a = new Uint8Array(16); crypto.getRandomValues(a); return [].map.call(a, function (b) { return ('0' + b.toString(16)).slice(-2); }).join(''); }
   function danes10() { var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
   function uraMin(ts) { return new Date(ts).toLocaleTimeString('sl-SI', { hour: '2-digit', minute: '2-digit' }); }
-  function trajanjeH(sek) { var m = Math.round(sek / 60); var h = Math.floor(m / 60); m = m % 60; return h + ':' + ('0' + m).slice(-2); }
+  function trajanjeH(sek) { var m = Math.round(sek / 60); var h = Math.floor(m / 60); m = m % 60; if (!h) return m + 'min'; if (!m) return h + 'h'; return h + 'h ' + m + 'min'; }
 
   async function naloziPrisotnost() {
     var e = await sb.from('employees').select('id,org_id,ime,card_token,active,created_at').order('ime');
@@ -731,7 +733,7 @@
     var mesecIme = _mesecLabel(mesecKljuc);
     var sheets = [];
     // 1) Povzetek — vse zaposlene skupaj
-    var pov = [[{ v: 'Povzetek ur — ' + mesecIme, s: 2 }], [], [B('Zaposleni'), B('Dni'), B('Ure (h:mm)'), B('Ure (decimalno)')]];
+    var pov = [[{ v: 'Povzetek ur — ' + mesecIme, s: 2 }], [], [B('Zaposleni'), B('Dni'), B('Ure'), B('Ure (decimalno)')]];
     var skupSek = 0, skupDni = 0;
     aktivni.forEach(function (z) {
       var p = prisPovzetek(z.id, mesecKljuc);
@@ -743,7 +745,7 @@
     sheets.push({ name: 'Povzetek', rows: pov, freeze: false });
     // 2) Sheet za vsako zaposleno — dnevne ure
     aktivni.forEach(function (z) {
-      var rows = [[B('Datum'), B('Prihod'), B('Odhod'), B('Ure (h:mm)'), B('Ure (decimalno)')]];
+      var rows = [[B('Datum'), B('Prihod'), B('Odhod'), B('Ure'), B('Ure (decimalno)')]];
       var r = prisPari(z.id, mesecKljuc);
       r.pari.forEach(function (p) {
         var sek = (new Date(p[1].ts) - new Date(p[0].ts)) / 1000;
