@@ -506,7 +506,7 @@
     glavni = urediGlavni(glavniMeni());
     nast = OSEBJE ? [['nastavitve', 'Nastavitve'], ['racun', 'Moj račun']] : [['racun', 'Moj račun']];
     const veja = ([k, l]) => `<a data-go="${k}">${ikona(k)}${l}</a>`;
-    $('side').innerHTML = '<span class="side-slider" aria-hidden="true"></span>' + glavni.map(veja).join('') + '<div class="side-sep"></div>' + nast.map(veja).join('');
+    $('side').innerHTML = '<span class="side-slider" aria-hidden="true"></span>' + glavni.map(veja).join('') + '<div class="side-sep"></div>' + nast.map(veja).join('') + '<a class="side-eflitte" href="https://eflitte.si" target="_blank" rel="noopener">Izdelava <b>Eflitte</b></a>';
     const _side = $('side');
     const _sl = _side.querySelector('.side-slider');
     const premakniDrsnik = a => {
@@ -665,62 +665,97 @@
   }
   function _xEsc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
   function _xCol(c) { var s = ''; c++; while (c) { var m = (c - 1) % 26; s = String.fromCharCode(65 + m) + s; c = (c - m - 1) / 26; } return s; }
-  function _xSheet(rows) {
+  // Slogi: s=1 glava (krepko + siva podlaga), s=2 krepko (skupaj vrstica).
+  function _xSheet(rows, freeze) {
     var widths = [];
     rows.forEach(function (row) { (row || []).forEach(function (cell, ci) { var t = (cell && typeof cell === 'object') ? String(cell.v) : String(cell == null ? '' : cell); widths[ci] = Math.max(widths[ci] || 0, t.length); }); });
-    var cols = widths.length ? '<cols>' + widths.map(function (w, i) { return '<col min="' + (i + 1) + '" max="' + (i + 1) + '" width="' + Math.min(Math.max((w || 8) + 2, 10), 44) + '" customWidth="1"/>'; }).join('') + '</cols>' : '';
+    var cols = widths.length ? '<cols>' + widths.map(function (w, i) { return '<col min="' + (i + 1) + '" max="' + (i + 1) + '" width="' + Math.min(Math.max((w || 8) + 3, 11), 46) + '" customWidth="1"/>'; }).join('') + '</cols>' : '';
     var body = '';
     rows.forEach(function (row, ri) {
       var cells = '';
       (row || []).forEach(function (cell, ci) {
         var ref = _xCol(ci) + (ri + 1);
         if (cell === null || cell === undefined || cell === '') return;
-        if (typeof cell === 'number') { cells += '<c r="' + ref + '"><v>' + cell + '</v></c>'; }
-        else if (cell && typeof cell === 'object' && cell.bold) { cells += '<c r="' + ref + '" t="inlineStr" s="1"><is><t xml:space="preserve">' + _xEsc(cell.v) + '</t></is></c>'; }
-        else { cells += '<c r="' + ref + '" t="inlineStr"><is><t xml:space="preserve">' + _xEsc(cell) + '</t></is></c>'; }
+        var val, s = 0, isNum;
+        if (cell && typeof cell === 'object') { val = cell.v; s = cell.s || (cell.bold ? 1 : 0); isNum = (typeof val === 'number'); }
+        else { val = cell; isNum = (typeof cell === 'number'); }
+        var sAttr = s ? (' s="' + s + '"') : '';
+        if (isNum) { cells += '<c r="' + ref + '"' + sAttr + '><v>' + val + '</v></c>'; }
+        else { cells += '<c r="' + ref + '"' + sAttr + ' t="inlineStr"><is><t xml:space="preserve">' + _xEsc(val) + '</t></is></c>'; }
       });
       body += '<row r="' + (ri + 1) + '">' + cells + '</row>';
     });
-    return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' + cols + '<sheetData>' + body + '</sheetData></worksheet>';
+    var views = freeze ? '<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/><selection pane="bottomLeft"/></sheetView></sheetViews>' : '';
+    return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' + views + cols + '<sheetData>' + body + '</sheetData></worksheet>';
   }
-  function prenesiXlsx(ime, sheetName, rows) {
+  var _XSTYLES = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFEDF2F0"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="1"><border/></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="3"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs></styleSheet>';
+  function _xImeSheeta(ime, i, vzeti) {
+    var n = String(ime || ('List ' + (i + 1))).replace(/[\\\/\?\*\[\]:]/g, ' ').trim().slice(0, 31) || ('List ' + (i + 1));
+    var base = n, k = 2;
+    while (vzeti[n.toLowerCase()]) { n = (base.slice(0, 28) + ' ' + k).slice(0, 31); k++; }
+    vzeti[n.toLowerCase()] = true; return n;
+  }
+  // Zapiši .xlsx z več sheeti: sheets = [{name, rows, freeze?}]
+  function prenesiXlsx(ime, sheets) {
+    var vzeti = {}, ct = '', wbSheets = '', wbRels = '', wsFiles = [];
+    sheets.forEach(function (s, i) {
+      var n = i + 1, nm = _xImeSheeta(s.name, i, vzeti);
+      ct += '<Override PartName="/xl/worksheets/sheet' + n + '.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>';
+      wbSheets += '<sheet name="' + _xEsc(nm) + '" sheetId="' + n + '" r:id="rId' + n + '"/>';
+      wbRels += '<Relationship Id="rId' + n + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet' + n + '.xml"/>';
+      wsFiles.push({ name: 'xl/worksheets/sheet' + n + '.xml', data: _xB(_xSheet(s.rows, s.freeze !== false)) });
+    });
+    var stylesRid = sheets.length + 1;
+    wbRels += '<Relationship Id="rId' + stylesRid + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>';
     var files = [
-      { name: '[Content_Types].xml', data: _xB('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>') },
+      { name: '[Content_Types].xml', data: _xB('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>' + ct + '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>') },
       { name: '_rels/.rels', data: _xB('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>') },
-      { name: 'xl/workbook.xml', data: _xB('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="' + _xEsc(sheetName) + '" sheetId="1" r:id="rId1"/></sheets></workbook>') },
-      { name: 'xl/_rels/workbook.xml.rels', data: _xB('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>') },
-      { name: 'xl/styles.xml', data: _xB('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="1"><fill><patternFill patternType="none"/></fill></fills><borders count="1"><border/></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs></styleSheet>') },
-      { name: 'xl/worksheets/sheet1.xml', data: _xB(_xSheet(rows)) }
-    ];
+      { name: 'xl/workbook.xml', data: _xB('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>' + wbSheets + '</sheets></workbook>') },
+      { name: 'xl/_rels/workbook.xml.rels', data: _xB('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' + wbRels + '</Relationships>') },
+      { name: 'xl/styles.xml', data: _xB(_XSTYLES) }
+    ].concat(wsFiles);
     var bytes = _xZip(files);
     var blob = new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = ime; document.body.appendChild(a); a.click();
     setTimeout(function () { document.body.removeChild(a); URL.revokeObjectURL(a.href); }, 100);
   }
+  function _mesecLabel(kljuc) { try { return new Date(kljuc + '-01T00:00:00').toLocaleDateString('sl-SI', { month: 'long', year: 'numeric' }); } catch (e) { return kljuc; } }
 
-  // Izvoz ur za trenutno izbrano obdobje v pravi Excel (.xlsx).
+  // Izvoz ur ZA IZBRANI MESEC v pravi Excel (.xlsx): povzetek + sheet za vsako zaposleno.
   function prisIzvoz() {
-    var mesec = (_prisView !== 'dan'); var kljuc = mesec ? _prisDan.slice(0, 7) : _prisDan;
+    var mesecKljuc = _prisDan.slice(0, 7);
     var aktivni = (ZAPOSLENI || []).filter(function (z) { return z.active; });
-    if (_prisView === 'oseba' && _prisOseba) { aktivni = (ZAPOSLENI || []).filter(function (z) { return z.id === _prisOseba; }); }
-    var B = function (t) { return { v: t, bold: true }; };
+    var B = function (t) { return { v: t, bold: true }; };      // glava
+    var T = function (t) { return { v: t, s: 2 }; };            // krepko (skupaj)
     var dec = function (sek) { return Math.round(sek / 3600 * 100) / 100; };
-    var rows = [[B('Zaposleni'), B('Datum'), B('Prihod'), B('Odhod'), B('Ure (h:mm)'), B('Ure (decimalno)')]];
+    var mesecIme = _mesecLabel(mesecKljuc);
+    var sheets = [];
+    // 1) Povzetek — vse zaposlene skupaj
+    var pov = [[{ v: 'Povzetek ur — ' + mesecIme, s: 2 }], [], [B('Zaposleni'), B('Dni'), B('Ure (h:mm)'), B('Ure (decimalno)')]];
+    var skupSek = 0, skupDni = 0;
     aktivni.forEach(function (z) {
-      var r = prisPari(z.id, kljuc);
+      var p = prisPovzetek(z.id, mesecKljuc);
+      skupSek += p.sek; skupDni += p.dni;
+      pov.push([z.ime, p.dni, trajanjeH(p.sek), { v: dec(p.sek) }]);
+    });
+    pov.push([]);
+    pov.push([T('SKUPAJ'), T(skupDni), T(trajanjeH(skupSek)), { v: dec(skupSek), s: 2 }]);
+    sheets.push({ name: 'Povzetek', rows: pov, freeze: false });
+    // 2) Sheet za vsako zaposleno — dnevne ure
+    aktivni.forEach(function (z) {
+      var rows = [[B('Datum'), B('Prihod'), B('Odhod'), B('Ure (h:mm)'), B('Ure (decimalno)')]];
+      var r = prisPari(z.id, mesecKljuc);
       r.pari.forEach(function (p) {
         var sek = (new Date(p[1].ts) - new Date(p[0].ts)) / 1000;
-        rows.push([z.ime, p[0].ts.slice(0, 10), uraMin(p[0].ts), uraMin(p[1].ts), trajanjeH(sek), dec(sek)]);
+        rows.push([p[0].ts.slice(0, 10), uraMin(p[0].ts), uraMin(p[1].ts), trajanjeH(sek), dec(sek)]);
       });
+      var pv = prisPovzetek(z.id, mesecKljuc);
+      rows.push([]);
+      rows.push([T('Skupaj (' + pv.dni + ' dni)'), '', '', T(trajanjeH(pv.sek)), { v: dec(pv.sek), s: 2 }]);
+      sheets.push({ name: z.ime, rows: rows });
     });
-    rows.push([]);
-    rows.push([B('POVZETEK'), B('Dni'), '', '', B('Ure skupaj (h:mm)'), B('Ure skupaj (decimalno)')]);
-    aktivni.forEach(function (z) {
-      var pov = prisPovzetek(z.id, kljuc);
-      rows.push([z.ime, pov.dni, '', '', trajanjeH(pov.sek), dec(pov.sek)]);
-    });
-    prenesiXlsx('ure_' + kljuc + '.xlsx', 'Ure ' + kljuc, rows);
-    toast('Izvoz pripravljen: ure_' + kljuc + '.xlsx');
+    prenesiXlsx('ure_' + mesecKljuc + '.xlsx', sheets);
+    toast('Izvoz pripravljen: ure_' + mesecKljuc + '.xlsx');
   }
 
   // Ročna odjava zaposlenega (če pozabi tapniti odhod). Vpiše dogodek 'out'
@@ -842,7 +877,7 @@
         '</table>';
     }
     var blok2 = '<div class="pris-card"><div class="pris-h"><h3 class="sec-h">Evidenca</h3>' +
-      '<button type="button" class="cgrp-btn ghost pris-izvoz">Izvozi (Excel)</button></div>' +
+      '<button type="button" class="cgrp-btn ghost pris-izvoz">Izvozi ' + escape_(_mesecLabel(_prisDan.slice(0, 7))) + '</button></div>' +
       '<div class="pris-barvrsta">' +
         '<div class="pris-datum">' +
           '<button type="button" class="pris-nav" data-nav="-1" aria-label="Prejšnji"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button>' +
@@ -4149,7 +4184,7 @@
     $('usersList').innerHTML = (ljudje || []).map(u => {
       const jaz = u.id === JAZ;
       const superad = jeSuperLastnik(u) || !!u.super_admin;
-      const vloga = u.is_staff ? (superad ? 'super admin — poln dostop' : 'osebje — vidi vse stranke') : clanPo[u.id] ? 'stranka — ' + escape_(clanPo[u.id]) : 'brez dostopa';
+      const vlogaVal = superad ? 'super' : (u.is_staff ? 'osebje' : 'stranka');
       const naSpletu = jaz || (u.last_seen && (Date.now() - new Date(u.last_seen).getTime()) < 120000);
       return `<div class="u-row ${u.active ? '' : 'u-off'}">
       <div class="u-info">
@@ -4158,23 +4193,31 @@
           ${superad ? '<span class="pill pill-super">super admin</span>' : ''}
           ${jaz ? '<span class="pill">vi</span>' : ''}
           ${u.active ? '' : '<span class="pill">izklopljen</span>'}</div>
-        <div class="u-sub">${u.full_name ? escape_(u.email) + ' · ' : ''}${vloga}</div>
+        <div class="u-sub">${escape_(u.email || '—')}</div>
         <div class="u-sub">Zadnja prijava: ${u.last_login ? datumcas(u.last_login) : 'še nikoli'}</div>
-        ${u.is_staff ? '' : `<select class="u-org" data-org="${u.id}" ${jaz ? 'disabled' : ''}>
-             <option value="">— brez dostopa —</option>
+        ${jaz ? '' : `<div class="u-role-wrap">
+          <select class="u-role" data-role="${u.id}" data-cur="${vlogaVal}" aria-label="Vloga">
+            <option value="osebje"${vlogaVal === 'osebje' ? ' selected' : ''}>Osebje</option>
+            <option value="super"${vlogaVal === 'super' ? ' selected' : ''}>Super admin</option>
+            <option value="stranka"${vlogaVal === 'stranka' ? ' selected' : ''}>Stranka</option>
+          </select>
+          ${u.is_staff ? '' : `<select class="u-org" data-org="${u.id}" aria-label="Podjetje">
+             <option value="">— izberi podjetje —</option>
              ${ORGSEZNAM.map(o => `<option value="${o.id}"${clanPo[u.id] === o.name ? ' selected' : ''}>${escape_(o.name)}</option>`).join('')}
            </select>`}
+        </div>`}
       </div>
       <div class="u-acts">
         <button data-act="ime" data-id="${u.id}" data-ime="${escape_(u.full_name || '')}">preimenuj</button>
-        ${jaz ? '' : `<button data-act="staff" data-id="${u.id}" data-v="${u.is_staff ? 0 : 1}">${u.is_staff ? 'v stranko' : 'v osebje'}</button>`}
-        ${(jeLastnik && !jeSuperLastnik(u) && u.is_staff) ? `<button data-act="super" data-id="${u.id}" data-v="${superad ? 0 : 1}">${superad ? 'odvzemi super' : 'v super admina'}</button>` : ''}
         ${jaz ? '' : `<button data-act="active" data-id="${u.id}" data-v="${u.active ? 0 : 1}">${u.active ? 'izklopi' : 'vklopi'}</button>`}
         <button data-act="pw" data-id="${u.id}">novo geslo</button>
         ${jaz ? '' : `<button class="danger" data-act="del" data-id="${u.id}" data-m="${escape_(u.email || '')}">izbriši</button>`}
       </div>
     </div>`;
     }).join('') || '<p class="u-sub">Ni uporabnikov.</p>';
+    document.querySelectorAll('#usersList select[data-role]').forEach(sel => {
+      sel.addEventListener('change', () => spremeniVlogo(sel));
+    });
     document.querySelectorAll('#usersList select[data-org]').forEach(sel => {
       sel.addEventListener('change', () => nastaviStranko(sel.dataset.org, sel.value));
     });
@@ -4187,6 +4230,34 @@
       const el = $('usersList');
       if (el && el.offsetParent !== null) loadUsers();
     }, 30000);
+  }
+  function opisVloge(v) {
+    if (v === 'super') return 'Super admin — kot osebje, dodatno vidi in ureja Fakture.';
+    if (v === 'osebje') return 'Osebje — vidi vse stranke, arhiv, statistiko, prisotnost in katalog. Brez Faktur.';
+    return 'Stranka — vidi samo svoj arhiv in katalog svojega podjetja. Brez dostopa do osebja.';
+  }
+  async function spremeniVlogo(sel) {
+    var uid = sel.dataset.role, stara = sel.dataset.cur, nova = sel.value;
+    if (!uid || nova === stara) return;
+    var ok = await potrdiModal({
+      naslov: 'Sprememba vloge',
+      sporocilo: 'Zdaj: ' + opisVloge(stara) + '\n\nNova vloga: ' + opisVloge(nova) + '\n\nŽeliš spremeniti vlogo tega uporabnika?',
+      potrdi: 'Spremeni vlogo', preklici: 'Prekliči'
+    });
+    if (!ok) { loadUsers(); return; }
+    await nastaviVlogo(uid, nova);
+  }
+  async function nastaviVlogo(uid, vloga) {
+    var patch = { is_staff: vloga !== 'stranka', super_admin: vloga === 'super' };
+    var r = await sb.from('profiles').update(patch).eq('id', uid);
+    if (r && r.error && /super_admin/i.test(r.error.message || '')) {
+      r = await sb.from('profiles').update({ is_staff: vloga !== 'stranka' }).eq('id', uid);
+      if (vloga === 'super') { uMsg('Vloga spremenjena, a za Fakture najprej zaženi 27_super_admin.sql.', true); if (vloga !== 'stranka') { try { await sb.from('memberships').delete().eq('user_id', uid); } catch (e) {} } loadUsers(); return; }
+    }
+    if (r && r.error) { uMsg('Ni uspelo: ' + escape_(r.error.message), true); loadUsers(); return; }
+    if (vloga !== 'stranka') { try { await sb.from('memberships').delete().eq('user_id', uid); } catch (e) {} }
+    uMsg('Vloga je spremenjena.');
+    loadUsers();
   }
   async function nastaviStranko(userId, orgId) {
     await sb.from('memberships').delete().eq('user_id', userId);
