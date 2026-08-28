@@ -87,7 +87,14 @@ html[data-theme="light"] .sc-hex{opacity:.5}
   </aside>
 
   <div class="auth-main">
-    <div class="auth-box">
+    <div class="profile-picker hidden" id="profilePicker">
+      <div class="wordmark pp-mark">Smart<span>Clean</span></div>
+      <h1 class="pp-title">Izberi profil</h1>
+      <p class="sub">Tapni svoj profil za prijavo.</p>
+      <div class="pp-grid" id="ppGrid"></div>
+      <div class="msg" id="ppMsg" role="status" aria-live="polite"></div>
+    </div>
+    <div class="auth-box" id="authBox">
       <p class="eyebrow">Prijava</p>
       <h1>Dobrodošli nazaj</h1>
       <p class="sub">Vpišite se s podatki, ki ste jih prejeli od nas.</p>
@@ -101,16 +108,9 @@ html[data-theme="light"] .sc-hex{opacity:.5}
           <label for="password">Geslo</label>
           <input type="password" id="password" name="password" autocomplete="current-password" required/>
         </div>
-        <div class="field auto-field">
-          <label>Samodejna prijava</label>
-          <div class="seg auto-seg" id="autoSeg" role="group" aria-label="Samodejna prijava">
-            <button type="button" class="seg-b on" data-auto="1">Vklopljena</button>
-            <button type="button" class="seg-b" data-auto="0">Izklopljena</button>
-          </div>
-        </div>
         <button type="submit" class="btn" id="loginBtn">Prijavi se</button>
       </form>
-      <p class="under"><button type="button" class="link-btn" id="forgotBtn">Pozabljeno geslo?</button></p>
+      <p class="under"><button type="button" class="link-btn" id="backToPickerBtn" style="display:none">‹ Nazaj na profile</button> <button type="button" class="link-btn" id="forgotBtn">Pozabljeno geslo?</button></p>
 
       <form id="resetForm" class="hidden" novalidate>
         <div class="field">
@@ -329,14 +329,30 @@ html[data-theme="light"] .sc-hex{opacity:.5}
       <section class="sec hidden" id="sec-racun">
         <div class="head"><div><h2>Moj račun</h2><p class="count" id="racunPod"></p></div></div>
         <div class="panel">
-          <h3 class="sec-h">Ime in priimek</h3>
-          <form id="imeForm" novalidate>
-            <div class="field">
-              <label for="mojeIme">Prikazano ime</label>
-              <input type="text" id="mojeIme" autocomplete="name" placeholder="npr. Filip Novak"/>
+          <h3 class="sec-h">Profil</h3>
+          <div class="prof-edit">
+            <div class="prof-av-wrap">
+              <div class="prof-av" id="profAvatar"><span id="profAvInit">?</span></div>
+              <input type="file" id="profAvFile" accept="image/*" style="display:none"/>
+              <button type="button" class="btn-mini prof-av-btn" id="profAvBtn">Naloži sliko</button>
+              <button type="button" class="btn-mini prof-av-del" id="profAvDel" style="display:none">Odstrani</button>
             </div>
-            <button type="submit" class="btn btn-narrow" id="imeBtn">Shrani ime</button>
-          </form>
+            <form id="imeForm" class="prof-fields" novalidate>
+              <div class="field">
+                <label for="mojeIme">Prikazano ime</label>
+                <input type="text" id="mojeIme" autocomplete="name" placeholder="npr. Filip Novak"/>
+              </div>
+              <div class="field">
+                <label for="mojTel">Telefon</label>
+                <input type="tel" id="mojTel" autocomplete="tel" placeholder="npr. 041 123 456"/>
+              </div>
+              <div class="field">
+                <label for="mojKontaktMail">Kontaktni e-naslov</label>
+                <input type="email" id="mojKontaktMail" autocomplete="email" placeholder="npr. filip@primer.si"/>
+              </div>
+              <button type="submit" class="btn btn-narrow" id="imeBtn">Shrani profil</button>
+            </form>
+          </div>
           <div class="msg" id="imeMsg" role="status" aria-live="polite"></div>
         </div>
         <div class="panel">

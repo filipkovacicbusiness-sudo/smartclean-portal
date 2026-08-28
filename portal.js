@@ -171,17 +171,22 @@
     });
     const f = $('forgotBtn');
     if (f) f.classList.toggle('hidden', which !== 'loginForm');
+    const bp = $('backToPickerBtn');
+    if (bp && which !== 'loginForm') bp.style.display = 'none';
     const m = $('loginMsg');
     if (m) m.className = 'msg';
   }
   $('forgotBtn').addEventListener('click', () => {
     $('resetEmail').value = $('email').value.trim();
     showAuthPane('resetForm');
-    document.querySelector('.sub').textContent = 'Vpišite svoj e-naslov in poslali vam bomo povezavo za nastavitev novega gesla.';
+    document.querySelector('.auth-box .sub').textContent = 'Vpišite svoj e-naslov in poslali vam bomo povezavo za nastavitev novega gesla.';
   });
   $('backBtn').addEventListener('click', () => {
     showAuthPane('loginForm');
-    document.querySelector('.sub').textContent = 'Vpišite se s podatki, ki ste jih prejeli od nas.';
+    document.querySelector('.auth-box .sub').textContent = 'Vpišite se s podatki, ki ste jih prejeli od nas.';
+  });
+  if ($('backToPickerBtn')) $('backToPickerBtn').addEventListener('click', () => {
+    pokaziIzbirnik();
   });
   $('resetForm').addEventListener('submit', async e => {
     e.preventDefault();
@@ -280,6 +285,7 @@
     JAZMAIL = '',
     OSEBJE = false,
     MOJEPODJETJE = null;
+  var MOJPROFIL = {};
   const JE_LASTNIK = () => (JAZMAIL || '').trim().toLowerCase() === 'filip@eflitte.si';
   function nastaviWho(ime) {
     $('who').innerHTML = '<span class="who-name">' + escape_(ime || '') + '</span>' + (OSEBJE ? '<span class="who-role">osebje</span>' : '');
@@ -410,15 +416,17 @@
     if (!user) return;
     JAZ = user.id;
     let profil = null;
-    { const _pr = await sb.from('profiles').select('full_name,is_staff,nastavitve').eq('id', user.id).maybeSingle();
+    { const _pr = await sb.from('profiles').select('full_name,is_staff,nastavitve,avatar_url,phone,contact_email').eq('id', user.id).maybeSingle();
       profil = _pr && _pr.data ? _pr.data : null;
-      if (_pr && _pr.error && /nastavitve/.test(_pr.error.message || '')) { const _pr2 = await sb.from('profiles').select('full_name,is_staff').eq('id', user.id).maybeSingle(); profil = _pr2 && _pr2.data ? _pr2.data : null; } }
+      if (_pr && _pr.error) { const _pr2 = await sb.from('profiles').select('full_name,is_staff').eq('id', user.id).maybeSingle(); profil = _pr2 && _pr2.data ? _pr2.data : null; } }
+    MOJPROFIL = profil || {};
     // uveljavi sinhronizirane nastavitve (tema, pogled, vrstni red menija, razvrstitve)
     if (profil && profil.nastavitve) { uporabiNastavitve(profil.nastavitve); uporabiTemo(); oznaciTemo(); uporabiPogled(); osveziPogledSege(); }
     OSEBJE = !!(profil !== null && profil !== void 0 && profil.is_staff);
     nastaviWho((profil && profil.full_name) || user.email);
     JAZIME = (profil && profil.full_name) || user.email;
     JAZMAIL = user.email || '';
+    zapomniProfil({ email: user.email, name: JAZIME, avatar: (profil && profil.avatar_url) || '', uid: user.id });
     $('racunPod').textContent = user.email;
     /* Zabeleži čas te prijave in začni sporočati prisotnost (kdo je na spletu). */
     zabeleziPrijavo(user.id);
@@ -529,7 +537,7 @@
     if (kam === 'katalog') risiKatalog();
     if (kam === 'uporabniki') loadUsers();
     if (kam === 'nastavitve') risiNastavitve();
-    if (kam === 'racun') { const mi = $('mojeIme'); if (mi) mi.value = (JAZIME && JAZIME.indexOf('@') < 0) ? JAZIME : ''; }
+    if (kam === 'racun') { napolniProfil(); }
     if (kam === 'aplikacija') risiAplikacijo();
     if (kam === 'dokumenti') risiDokumenti();
     if (kam === 'ceniki') risiCeniki();
@@ -3781,20 +3789,116 @@
   { var _di = $('dokIsci'); if (_di) _di.addEventListener('input', function () { dokTabela(); }); }
 
   /* ══════════ MOJ RAČUN ══════════ */
+  /* ── Moj profil: prikaz avatarja + polj ── */
+  function narisiProfAvatar() {
+    var box = $('profAvatar'), del = $('profAvDel');
+    if (!box) return;
+    var url = MOJPROFIL && MOJPROFIL.avatar_url;
+    if (url) {
+      box.style.backgroundImage = 'url(' + encodeURI(url).replace(/"/g, '%22') + ')';
+      box.classList.add('has-img');
+      var ini = $('profAvInit'); if (ini) ini.style.display = 'none';
+      if (del) del.style.display = '';
+    } else {
+      box.style.backgroundImage = '';
+      box.classList.remove('has-img');
+      var ini2 = $('profAvInit'); if (ini2) { ini2.style.display = ''; ini2.textContent = ppIniciale(JAZIME); }
+      if (del) del.style.display = 'none';
+    }
+  }
+  function napolniProfil() {
+    var mi = $('mojeIme'); if (mi) mi.value = (JAZIME && JAZIME.indexOf('@') < 0) ? JAZIME : '';
+    var t = $('mojTel'); if (t) t.value = (MOJPROFIL && MOJPROFIL.phone) || '';
+    var k = $('mojKontaktMail'); if (k) k.value = (MOJPROFIL && MOJPROFIL.contact_email) || '';
+    narisiProfAvatar();
+  }
+
   { const _if = $('imeForm'); if (_if) _if.addEventListener('submit', async e => {
     e.preventDefault();
     const m = $('imeMsg'), btn = $('imeBtn');
     const ime = $('mojeIme').value.trim();
-    if (!ime) { m.className = 'msg bad show'; m.textContent = 'Vpiši ime.'; return; }
+    const tel = ($('mojTel') ? $('mojTel').value.trim() : '');
+    const kmail = ($('mojKontaktMail') ? $('mojKontaktMail').value.trim() : '');
+    if (!ime) { m.className = 'msg bad show'; m.textContent = 'Vpiši prikazano ime.'; return; }
+    if (kmail && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(kmail)) { m.className = 'msg bad show'; m.textContent = 'Kontaktni e-naslov ni veljaven.'; return; }
     btn.disabled = true; btn.textContent = 'Shranjujem …';
-    const { error } = await sb.from('profiles').update({ full_name: ime }).eq('id', JAZ);
-    btn.disabled = false; btn.textContent = 'Shrani ime';
+    const { error } = await sb.from('profiles').update({ full_name: ime, phone: tel || null, contact_email: kmail || null }).eq('id', JAZ);
+    btn.disabled = false; btn.textContent = 'Shrani profil';
     if (error) { m.className = 'msg bad show'; m.textContent = 'Napaka: ' + error.message; return; }
     JAZIME = ime;
+    MOJPROFIL.full_name = ime; MOJPROFIL.phone = tel || null; MOJPROFIL.contact_email = kmail || null;
     nastaviWho(ime);
+    zapomniProfil({ email: JAZMAIL, name: ime, avatar: MOJPROFIL.avatar_url || '', uid: JAZ });
     if ($('domovNaslov') && !$('sec-domov').classList.contains('hidden')) $('domovNaslov').textContent = OSEBJE ? ('Pozdravljen/a, ' + prvoIme()) : $('domovNaslov').textContent;
-    m.className = 'msg show'; m.textContent = 'Ime shranjeno.';
+    m.className = 'msg show'; m.textContent = 'Profil shranjen.';
   }); }
+
+  /* ── Avatar: naloži / odstrani ── */
+  { const _ab = $('profAvBtn'); if (_ab) _ab.addEventListener('click', function () { if ($('profAvFile')) $('profAvFile').click(); }); }
+  { const _af = $('profAvFile'); if (_af) _af.addEventListener('change', async function () {
+    var m = $('imeMsg');
+    var f = this.files && this.files[0];
+    if (!f) return;
+    if (!/^image\//.test(f.type)) { m.className = 'msg bad show'; m.textContent = 'Izberi slikovno datoteko.'; this.value = ''; return; }
+    if (f.size > 5 * 1024 * 1024) { m.className = 'msg bad show'; m.textContent = 'Slika je prevelika (največ 5 MB).'; this.value = ''; return; }
+    m.className = 'msg show'; m.textContent = 'Nalagam sliko …';
+    try {
+      var blob = await pomanjsajSliko(f, 512).catch(function () { return f; });
+      var ct = blob.type || 'image/jpeg';
+      var ext = (ct === 'image/png') ? 'png' : 'jpg';
+      var pot = JAZ + '/avatar.' + ext;
+      var up = await sb.storage.from('avatars').upload(pot, blob, { upsert: true, contentType: ct, cacheControl: '3600' });
+      if (up.error) throw up.error;
+      var pub = sb.storage.from('avatars').getPublicUrl(pot);
+      var url = (pub && pub.data && pub.data.publicUrl) + '?v=' + Date.now();
+      var upd = await sb.from('profiles').update({ avatar_url: url }).eq('id', JAZ);
+      if (upd.error) throw upd.error;
+      MOJPROFIL.avatar_url = url;
+      narisiProfAvatar();
+      zapomniProfil({ email: JAZMAIL, name: JAZIME, avatar: url, uid: JAZ });
+      m.className = 'msg show'; m.textContent = 'Slika shranjena.';
+    } catch (err) {
+      m.className = 'msg bad show'; m.textContent = 'Nalaganje ni uspelo: ' + (err && err.message ? err.message : err);
+    }
+    this.value = '';
+  }); }
+  { const _ad = $('profAvDel'); if (_ad) _ad.addEventListener('click', async function () {
+    var m = $('imeMsg');
+    m.className = 'msg show'; m.textContent = 'Odstranjujem …';
+    try {
+      try { await sb.storage.from('avatars').remove([JAZ + '/avatar.jpg', JAZ + '/avatar.png']); } catch (e) {}
+      var upd = await sb.from('profiles').update({ avatar_url: null }).eq('id', JAZ);
+      if (upd.error) throw upd.error;
+      MOJPROFIL.avatar_url = null;
+      narisiProfAvatar();
+      zapomniProfil({ email: JAZMAIL, name: JAZIME, avatar: '', uid: JAZ });
+      m.className = 'msg show'; m.textContent = 'Slika odstranjena.';
+    } catch (err) {
+      m.className = 'msg bad show'; m.textContent = 'Ni uspelo: ' + (err && err.message ? err.message : err);
+    }
+  }); }
+
+  /* Pomanjša in stisne sliko v kvadrat (za manjše datoteke in hitrejši prikaz). */
+  function pomanjsajSliko(file, rob) {
+    return new Promise(function (resolve, reject) {
+      var img = new Image();
+      var url = URL.createObjectURL(file);
+      img.onload = function () {
+        try {
+          var s = Math.min(img.width, img.height);
+          var sx = (img.width - s) / 2, sy = (img.height - s) / 2;
+          var c = document.createElement('canvas');
+          c.width = c.height = rob;
+          var ctx = c.getContext('2d');
+          ctx.drawImage(img, sx, sy, s, s, 0, 0, rob, rob);
+          URL.revokeObjectURL(url);
+          c.toBlob(function (b) { b ? resolve(b) : reject(new Error('canvas')); }, 'image/jpeg', 0.85);
+        } catch (e) { reject(e); }
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); reject(new Error('slika')); };
+      img.src = url;
+    });
+  }
 
   $('changePwForm').addEventListener('submit', async e => {
     e.preventDefault();
@@ -4057,6 +4161,84 @@
     loadUsers();
   });
 
+  /* ══════════ ZAPOMNJENI PROFILI (izbirnik prijave) ══════════ */
+  function beriProfile() {
+    try { var a = JSON.parse(localStorage.getItem('sc-profiles') || '[]'); return Array.isArray(a) ? a : []; }
+    catch (e) { return []; }
+  }
+  function shraniProfile(a) { try { localStorage.setItem('sc-profiles', JSON.stringify(a || [])); } catch (e) {} }
+  function zapomniProfil(p) {
+    if (!p || !p.email) return;
+    var a = beriProfile();
+    a = a.filter(function (x) { return (x.email || '').toLowerCase() !== (p.email || '').toLowerCase(); });
+    a.unshift({ email: p.email, name: p.name || p.email, avatar: p.avatar || '', uid: p.uid || '' });
+    if (a.length > 8) a = a.slice(0, 8);
+    shraniProfile(a);
+  }
+  function pozabiProfil(email) {
+    var a = beriProfile().filter(function (x) { return (x.email || '').toLowerCase() !== (email || '').toLowerCase(); });
+    shraniProfile(a);
+  }
+  function ppIniciale(ime) {
+    var d = (ime || '').trim().split(/\s+/).filter(Boolean);
+    if (!d.length) return '?';
+    return (d[0][0] + (d.length > 1 ? d[d.length - 1][0] : '')).toUpperCase();
+  }
+  function ppAvatarHtml(p, cls) {
+    if (p && p.avatar) return '<span class="' + cls + '" style="background-image:url(' + encodeURI(p.avatar).replace(/"/g, '%22') + ')"></span>';
+    return '<span class="' + cls + '">' + escape_(ppIniciale(p && p.name)) + '</span>';
+  }
+  function narisiIzbirnik() {
+    var grid = $('ppGrid'); if (!grid) return;
+    var prof = beriProfile();
+    var html = prof.map(function (p) {
+      return '<div class="pp-tile-wrap">' +
+        '<button type="button" class="pp-tile" data-email="' + escape_(p.email) + '">' +
+        ppAvatarHtml(p, 'pp-av') +
+        '<span class="pp-nm">' + escape_(p.name || p.email) + '</span></button>' +
+        '<button type="button" class="pp-tile-x" data-forget="' + escape_(p.email) + '" aria-label="Odstrani profil" title="Odstrani profil">×</button>' +
+        '</div>';
+    }).join('');
+    html += '<button type="button" class="pp-tile pp-add" id="ppAdd"><span class="pp-av pp-plus">+</span><span class="pp-nm">Drug uporabnik</span></button>';
+    grid.innerHTML = html;
+    grid.querySelectorAll('.pp-tile[data-email]').forEach(function (b) {
+      b.addEventListener('click', function () { izberiProfil(b.dataset.email); });
+    });
+    grid.querySelectorAll('.pp-tile-x').forEach(function (b) {
+      b.addEventListener('click', function (e) {
+        e.stopPropagation();
+        pozabiProfil(b.dataset.forget);
+        if (beriProfile().length) narisiIzbirnik(); else pokaziPrijavo('');
+      });
+    });
+    var add = $('ppAdd');
+    if (add) add.addEventListener('click', function () { pokaziPrijavo(''); });
+  }
+  function pokaziIzbirnik() {
+    narisiIzbirnik();
+    $('profilePicker').classList.remove('hidden');
+    $('authBox').classList.add('hidden');
+  }
+  function pokaziPrijavo(email) {
+    $('profilePicker').classList.add('hidden');
+    $('authBox').classList.remove('hidden');
+    showAuthPane('loginForm');
+    var q = document.querySelector('.auth-box .sub'); if (q) q.textContent = 'Vpišite se s podatki, ki ste jih prejeli od nas.';
+    if ($('email')) $('email').value = email || '';
+    var back = $('backToPickerBtn');
+    if (back) back.style.display = beriProfile().length ? '' : 'none';
+    setTimeout(function () { try { (email ? $('password') : $('email')).focus(); } catch (e) {} }, 40);
+  }
+  async function izberiProfil(email) {
+    // Če je seja še živa in pripada temu uporabniku, ga spustimo naravnost noter.
+    try {
+      var s = await sb.auth.getSession();
+      var u = s && s.data && s.data.session && s.data.session.user;
+      if (u && (u.email || '').toLowerCase() === (email || '').toLowerCase()) { start(); return; }
+    } catch (e) {}
+    pokaziPrijavo(email);
+  }
+
   /* ══════════ OBNOVITEV SEJE ══════════ */
   (async function () {
     if (!sb) return;
@@ -4064,17 +4246,16 @@
     sb.auth.onAuthStateChange(event => {
       if (event === 'PASSWORD_RECOVERY') {
         recovery = true;
+        $('profilePicker').classList.add('hidden');
+        $('authBox').classList.remove('hidden');
         showAuthPane('newPwForm');
-        document.querySelector('.sub').textContent = 'Vpišite novo geslo za svoj račun.';
+        document.querySelector('.auth-box .sub').textContent = 'Vpišite novo geslo za svoj račun.';
       }
     });
-    const {
-      data: {
-        session
-      }
-    } = await sb.auth.getSession();
     setTimeout(() => {
-      if (session && !recovery && autoLoginOn()) start();
+      if (recovery) return;
+      if (beriProfile().length) pokaziIzbirnik();
+      else pokaziPrijavo('');
     }, 60);
   })();
 
