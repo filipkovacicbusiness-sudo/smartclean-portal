@@ -188,12 +188,18 @@ select{width:100%;padding:11px 40px 11px 14px;border:1.5px solid var(--line);bor
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
   background-repeat:no-repeat;background-position:right 13px center;background-size:15px;}
 select:focus{border-color:var(--green-l);outline:none;}
-.u-row{display:grid;grid-template-columns:1fr 190px auto;gap:14px;align-items:center;
-  padding:12px 0;border-bottom:1px solid var(--line);}
+.u-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,340px);gap:12px 18px;align-items:start;
+  padding:14px 0;border-bottom:1px solid var(--line);}
 .u-row:last-child{border-bottom:none;}
-.u-mail{font-weight:500;word-break:break-all;}
+.u-info{display:flex;flex-direction:column;gap:3px;min-width:0;}
+.u-info .u-mail{display:flex;align-items:center;flex-wrap:wrap;gap:6px 8px;}
+.u-info .u-mail .pill{margin-left:0;}
+.u-org{margin-top:8px;max-width:260px;}
+.u-mail{font-weight:500;word-break:break-word;}
 .u-sub{font-size:.78rem;color:var(--mid);}
-.u-acts{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;}
+.u-acts{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;align-items:flex-start;align-content:flex-start;}
+.pill{white-space:nowrap;}
+.pill-super{background:var(--ink);color:var(--bg);}
 .u-acts button{font-size:.78rem;padding:5px 11px;border:1px solid var(--line);
   border-radius:100px;background:none;color:var(--mid);cursor:pointer;transition:all .18s;}
 .u-acts button:hover{border-color:var(--mid);color:var(--ink);}
@@ -986,6 +992,10 @@ html{-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent;}
 .menu-order-list .mo-ikona{display:inline-flex;align-items:center;color:var(--mid);}
 .menu-order-list .mo-ikona svg{width:18px;height:18px;}
 .menu-order-list .mo-ime{font-weight:500;color:var(--ink);}
+.menu-order-list li.mo-locked{background:var(--green-m);opacity:.9;}
+.menu-order-list .mo-lock{display:inline-flex;align-items:center;justify-content:center;width:22px;color:var(--mid);}
+.menu-order-list .mo-lock svg{width:15px;height:15px;}
+.menu-order-list .mo-vrh{margin-left:auto;font-size:.7rem;letter-spacing:.04em;text-transform:uppercase;color:var(--mid);}
 .menu-order-reset{margin-top:12px;}
 
 /* ── Mreža: fiksne višine kategorij (ime/podnaslov/značka), predolgo → »…« ── */
@@ -1148,7 +1158,8 @@ html[data-view="grid"] #cenikList .sc-isolate .cgrp:not(.open){max-width:var(--t
 .pris-datum{display:flex;align-items:center;gap:8px;margin:0;}
 .pris-datum input{height:40px;box-sizing:border-box;padding:0 12px;border:1.5px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink);font-size:15px;line-height:normal;}
 .pris-datum input:focus{border-color:var(--green-l);outline:none;}
-.pris-nav{width:40px;height:40px;flex:0 0 auto;border:1.5px solid var(--line);border-radius:9px;background:var(--surface);color:var(--ink);font-size:22px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;}
+.pris-nav{width:40px;height:40px;flex:0 0 auto;border:1.5px solid var(--line);border-radius:9px;background:var(--surface);color:var(--ink);display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;}
+.pris-nav svg{width:18px;height:18px;display:block;}
 .pris-nav:hover{border-color:var(--green-l);background:var(--green-m);}
 @media(max-width:560px){.pris-barvrsta{gap:8px}.pris-datum{flex:1}.pris-datum input{flex:1;min-width:0}}
 .pris-tbl{width:100%;border-collapse:collapse;}

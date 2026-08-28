@@ -269,8 +269,8 @@ html[data-theme="light"] .sc-hex{opacity:.5}
       </section>
 
       <section class="sec hidden" id="sec-statistika">
-        <div class="head"><div><h2>Statistika</h2><p class="count">Analitika prevzemov, količin in strank</p></div></div>
-        <div class="empty"><h3>V pripravi</h3></div>
+        <div class="head"><div><h2>Statistika</h2><p class="count" id="ucPod">Kilaža perila, produktivnost in analitika</p></div></div>
+        <div id="ucList"></div>
       </section>
 
       <section class="sec hidden" id="sec-artikli">
@@ -281,11 +281,6 @@ html[data-theme="light"] .sc-hex{opacity:.5}
       <section class="sec hidden" id="sec-prisotnost">
         <div class="head"><div><h2>Prisotnost</h2><p class="count" id="prisPod">Registracija delovnega časa</p></div></div>
         <div id="prisList"></div>
-      </section>
-
-      <section class="sec hidden" id="sec-ucinek">
-        <div class="head"><div><h2>Učinkovitost</h2><p class="count" id="ucPod">Kilaža perila in produktivnost</p></div></div>
-        <div id="ucList"></div>
       </section>
 
       <section class="sec hidden" id="sec-ceniki">
@@ -385,6 +380,10 @@ html[data-theme="light"] .sc-hex{opacity:.5}
           <h3 class="sec-h">Novo obvestilo</h3>
           <form id="konzForm" novalidate>
             <div class="field">
+              <label for="konzKomu">Prejemnik</label>
+              <select id="konzKomu"><option value="">Vsi uporabniki</option></select>
+            </div>
+            <div class="field">
               <label for="konzNas">Naslov (neobvezno)</label>
               <input type="text" id="konzNas" maxlength="80" placeholder="npr. Obvestilo"/>
             </div>
@@ -392,7 +391,7 @@ html[data-theme="light"] .sc-hex{opacity:.5}
               <label for="konzTxt">Sporočilo</label>
               <textarea id="konzTxt" rows="3" maxlength="600" placeholder="Kaj želiš sporočiti vsem uporabnikom?"></textarea>
             </div>
-            <button type="submit" class="btn btn-narrow" id="konzBtn">Pošlji vsem</button>
+            <button type="submit" class="btn btn-narrow" id="konzBtn">Pošlji</button>
           </form>
           <div class="msg" id="konzMsg" role="status" aria-live="polite"></div>
         </div>

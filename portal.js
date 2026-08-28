@@ -289,6 +289,8 @@
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
   const JE_LASTNIK = () => (JAZMAIL || '').trim().toLowerCase() === 'filip@eflitte.si';
+  // Super admin = lastnik ali profil s super_admin=true. Samo super admin vidi Fakture.
+  const JE_SUPER = () => JE_LASTNIK() || !!(MOJPROFIL && MOJPROFIL.super_admin);
   function nastaviWho(ime) {
     $('who').innerHTML = '<span class="who-name">' + escape_(ime || '') + '</span>' + (OSEBJE ? '<span class="who-role">osebje</span>' : '');
   }
@@ -418,7 +420,7 @@
     if (!user) return;
     JAZ = user.id;
     let profil = null;
-    { const _pr = await sb.from('profiles').select('full_name,is_staff,nastavitve,avatar_url,phone,contact_email').eq('id', user.id).maybeSingle();
+    { const _pr = await sb.from('profiles').select('full_name,is_staff,super_admin,nastavitve,avatar_url,phone,contact_email').eq('id', user.id).maybeSingle();
       profil = _pr && _pr.data ? _pr.data : null;
       if (_pr && _pr.error) { const _pr2 = await sb.from('profiles').select('full_name,is_staff').eq('id', user.id).maybeSingle(); profil = _pr2 && _pr2.data ? _pr2.data : null; } }
     MOJPROFIL = profil || {};
@@ -473,7 +475,9 @@
   // Osnovni (privzeti) glavni razdelki menija za trenutnega uporabnika.
   function glavniMeni() {
     if (OSEBJE) {
-      var g = [['domov', 'Pregled'], ['statistika', 'Statistika'], ['arhiv', 'Arhiv'], ['fakture', 'Fakture'], ['artikli', 'Artikli'], ['stranke', 'Stranke'], ['prisotnost', 'Prisotnost'], ['ucinek', 'Učinkovitost'], ['dokumenti', 'Dokumenti'], ['aplikacija', 'Programska oprema']];
+      var g = [['domov', 'Pregled'], ['statistika', 'Statistika'], ['arhiv', 'Arhiv']];
+      if (JE_SUPER()) g.push(['fakture', 'Fakture']);
+      g = g.concat([['artikli', 'Artikli'], ['stranke', 'Stranke'], ['prisotnost', 'Prisotnost'], ['dokumenti', 'Dokumenti'], ['aplikacija', 'Programska oprema']]);
       if (JE_LASTNIK()) { g.push(['uporabniki', 'Uporabniki']); g.push(['konzola', 'Konzola']); }
       return g;
     }
@@ -481,12 +485,20 @@
   }
   function menijVrstni() { try { return JSON.parse(localStorage.getItem('sc-menu-order') || '[]') || []; } catch (e) { return []; } }
   // Uporabi shranjeni vrstni red; nove razdelke pripni na konec, neveljavne izpusti.
+  // »Pregled« (domov) je vedno prvi in ga ni mogoče premakniti.
   function urediGlavni(g) {
-    var ord = menijVrstni(); if (!ord.length) return g;
-    var poK = {}; g.forEach(function (x) { poK[x[0]] = x; });
-    var out = [];
-    ord.forEach(function (k) { if (poK[k]) { out.push(poK[k]); delete poK[k]; } });
-    g.forEach(function (x) { if (poK[x[0]]) out.push(x); });
+    var ord = menijVrstni();
+    var out;
+    if (!ord.length) { out = g.slice(); }
+    else {
+      var poK = {}; g.forEach(function (x) { poK[x[0]] = x; });
+      out = [];
+      ord.forEach(function (k) { if (poK[k]) { out.push(poK[k]); delete poK[k]; } });
+      g.forEach(function (x) { if (poK[x[0]]) out.push(x); });
+    }
+    // Prisili »domov« na prvo mesto.
+    var di = out.findIndex(function (x) { return x[0] === 'domov'; });
+    if (di > 0) { var d = out.splice(di, 1)[0]; out.unshift(d); }
     return out;
   }
   function meni() {
@@ -528,6 +540,8 @@
 
   /* ══════════ USMERJANJE ══════════ */
   function pojdi(kam) {
+    // Fakture so na voljo samo super adminom.
+    if (kam === 'fakture' && !JE_SUPER()) kam = 'domov';
     document.querySelectorAll('.sec').forEach(s => {
       s.classList.toggle('hidden', s.id !== 'sec-' + kam);
     });
@@ -549,7 +563,7 @@
     if (kam === 'dokumenti') risiDokumenti();
     if (kam === 'ceniki') risiCeniki();
     if (kam === 'prisotnost') risiPrisotnost();
-    if (kam === 'ucinek') risiUcinek();
+    if (kam === 'statistika' || kam === 'ucinek') risiUcinek();
     if (kam === 'artikli') risiArtikli();
   }
 
@@ -831,9 +845,9 @@
       '<button type="button" class="cgrp-btn ghost pris-izvoz">Izvozi (Excel)</button></div>' +
       '<div class="pris-barvrsta">' +
         '<div class="pris-datum">' +
-          '<button type="button" class="pris-nav" data-nav="-1" aria-label="Prejšnji">‹</button>' +
+          '<button type="button" class="pris-nav" data-nav="-1" aria-label="Prejšnji"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button>' +
           '<input type="' + (mesecni ? 'month' : 'date') + '" id="prisDatum" value="' + (mesecni ? _prisDan.slice(0, 7) : _prisDan) + '">' +
-          '<button type="button" class="pris-nav" data-nav="1" aria-label="Naslednji">›</button>' +
+          '<button type="button" class="pris-nav" data-nav="1" aria-label="Naslednji"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>' +
         '</div>' +
         '<span class="pris-tabs"><button type="button" class="pris-tab' + (_prisView === 'dan' ? ' on' : '') + '" data-obd="dan">Dan</button>' +
         '<button type="button" class="pris-tab' + (_prisView === 'mesec' ? ' on' : '') + '" data-obd="mesec">Mesec</button>' +
@@ -2927,12 +2941,21 @@
     var ul = panel.querySelector('.menu-order-list');
     var g = urediGlavni(glavniMeni());
     ul.innerHTML = g.map(function (x) {
+      var zaklenjen = x[0] === 'domov';
+      if (zaklenjen) {
+        return '<li class="mo-locked" data-k="' + escape_(x[0]) + '"><span class="mo-lock" title="Vedno na vrhu" aria-hidden="true">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>' +
+          '</span><span class="mo-ikona" aria-hidden="true">' + ikona(x[0]) + '</span><span class="mo-ime">' + escape_(x[1]) + '</span><span class="mo-vrh">vedno na vrhu</span></li>';
+      }
       return '<li data-k="' + escape_(x[0]) + '"><button type="button" class="art-grip dnd-handle" title="povleci za razvrščanje" aria-label="razvrsti">' + DND_ICON + '</button><span class="mo-ikona" aria-hidden="true">' + ikona(x[0]) + '</span><span class="mo-ime">' + escape_(x[1]) + '</span></li>';
     }).join('');
     dndSort(ul, 'li', '.dnd-handle', function (items) {
-      var red = items.map(function (li) { return li.dataset.k; });
+      // »domov« ostane vedno prvi, ne glede na položaj v seznamu.
+      var red = items.map(function (li) { return li.dataset.k; }).filter(function (k) { return k !== 'domov'; });
+      red.unshift('domov');
       try { localStorage.setItem('sc-menu-order', JSON.stringify(red)); } catch (e) {} shraniNastavitve();
       meni(); if (meni._drsnik) meni._drsnik();
+      risiMenijRed(); // ponovno izriši, da »Pregled« vedno ostane na vrhu
     });
   }
 
@@ -4112,9 +4135,9 @@
     }
     const [rLjudje, {
       data: clanstva
-    }] = await Promise.all([sb.from('profiles').select('id,email,full_name,is_staff,active,last_login,last_seen').order('email'), sb.from('memberships').select('user_id,org_id')]);
+    }] = await Promise.all([sb.from('profiles').select('id,email,full_name,is_staff,super_admin,active,last_login,last_seen').order('email'), sb.from('memberships').select('user_id,org_id')]);
     let ljudje = rLjudje.data;
-    if (rLjudje.error) { /* stolpca last_login/last_seen še ni — beri brez njiju */
+    if (rLjudje.error) { /* super_admin ali last_seen še ni — beri brez njiju */
       const fb = await sb.from('profiles').select('id,email,full_name,is_staff,active,last_login').order('email');
       if (fb.error) { const fb2 = await sb.from('profiles').select('id,email,full_name,is_staff,active').order('email'); ljudje = fb2.data; }
       else ljudje = fb.data;
@@ -4123,26 +4146,31 @@
     (clanstva || []).forEach(c => {
       clanPo[c.user_id] = ORGIME[c.org_id];
     });
+    const jeLastnik = JE_LASTNIK();
+    const jeSuperLastnik = function (u) { return (u.email || '').trim().toLowerCase() === 'filip@eflitte.si'; };
     $('usersList').innerHTML = (ljudje || []).map(u => {
       const jaz = u.id === JAZ;
-      const vloga = u.is_staff ? 'osebje — vidi vse stranke' : clanPo[u.id] ? 'stranka — ' + escape_(clanPo[u.id]) : 'brez dostopa';
+      const superad = jeSuperLastnik(u) || !!u.super_admin;
+      const vloga = u.is_staff ? (superad ? 'super admin — poln dostop' : 'osebje — vidi vse stranke') : clanPo[u.id] ? 'stranka — ' + escape_(clanPo[u.id]) : 'brez dostopa';
       const naSpletu = jaz || (u.last_seen && (Date.now() - new Date(u.last_seen).getTime()) < 120000);
       return `<div class="u-row ${u.active ? '' : 'u-off'}">
-      <div>
+      <div class="u-info">
         <div class="u-mail">${escape_(u.full_name || u.email || '—')}
           ${naSpletu ? '<span class="pill pill-on"><span class="dot-on"></span>na spletu</span>' : ''}
+          ${superad ? '<span class="pill pill-super">super admin</span>' : ''}
           ${jaz ? '<span class="pill">vi</span>' : ''}
           ${u.active ? '' : '<span class="pill">izklopljen</span>'}</div>
         <div class="u-sub">${u.full_name ? escape_(u.email) + ' · ' : ''}${vloga}</div>
         <div class="u-sub">Zadnja prijava: ${u.last_login ? datumcas(u.last_login) : 'še nikoli'}</div>
-      </div>
-      <div>${u.is_staff ? '<span class="u-sub">dostop do vseh strank</span>' : `<select data-org="${u.id}" ${jaz ? 'disabled' : ''}>
+        ${u.is_staff ? '' : `<select class="u-org" data-org="${u.id}" ${jaz ? 'disabled' : ''}>
              <option value="">— brez dostopa —</option>
              ${ORGSEZNAM.map(o => `<option value="${o.id}"${clanPo[u.id] === o.name ? ' selected' : ''}>${escape_(o.name)}</option>`).join('')}
-           </select>`}</div>
+           </select>`}
+      </div>
       <div class="u-acts">
         <button data-act="ime" data-id="${u.id}" data-ime="${escape_(u.full_name || '')}">preimenuj</button>
         ${jaz ? '' : `<button data-act="staff" data-id="${u.id}" data-v="${u.is_staff ? 0 : 1}">${u.is_staff ? 'v stranko' : 'v osebje'}</button>`}
+        ${(jeLastnik && !jeSuperLastnik(u) && u.is_staff) ? `<button data-act="super" data-id="${u.id}" data-v="${superad ? 0 : 1}">${superad ? 'odvzemi super' : 'v super admina'}</button>` : ''}
         ${jaz ? '' : `<button data-act="active" data-id="${u.id}" data-v="${u.active ? 0 : 1}">${u.active ? 'izklopi' : 'vklopi'}</button>`}
         <button data-act="pw" data-id="${u.id}">novo geslo</button>
         ${jaz ? '' : `<button class="danger" data-act="del" data-id="${u.id}" data-m="${escape_(u.email || '')}">izbriši</button>`}
@@ -4213,6 +4241,12 @@
         active: btn.dataset.v === '1'
       }).eq('id', id);
       uMsg(error ? 'Ni uspelo: ' + escape_(error.message) : btn.dataset.v === '1' ? 'Račun je vklopljen.' : 'Račun je izklopljen — dostopa nima več.', !!error);
+      loadUsers();
+      return;
+    }
+    if (act === 'super') {
+      const { error } = await sb.from('profiles').update({ super_admin: btn.dataset.v === '1' }).eq('id', id);
+      uMsg(error ? (/super_admin/i.test(error.message) ? 'Najprej zaženi 27_super_admin.sql v Supabase.' : 'Ni uspelo: ' + escape_(error.message)) : btn.dataset.v === '1' ? 'Uporabnik je zdaj super admin (ima Fakture).' : 'Super admin odvzet.', !!error);
       loadUsers();
       return;
     }
@@ -4501,13 +4535,15 @@
   var OBV_IKONA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>';
   function obvVerjeni() { try { var a = JSON.parse(localStorage.getItem('sc-obv-seen') || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
   function obvOznaciVerjeno(id) { try { var a = obvVerjeni(); if (a.indexOf(id) < 0) { a.push(id); if (a.length > 200) a = a.slice(-200); localStorage.setItem('sc-obv-seen', JSON.stringify(a)); } } catch (e) {} }
-  // Prikaži neprebrana aktivna obvestila kot toaste (za vse uporabnike).
+  function obvZaMene(o) { return !o.prejemnik || o.prejemnik === JAZ; }
+  // Prikaži neprebrana aktivna obvestila kot toaste (vsem ali meni osebno).
   async function pokaziObvestila() {
     if (!sb) return;
-    var r = await sb.from('obvestila').select('id,naslov,sporocilo,created_at').eq('aktivno', true).order('created_at', { ascending: false }).limit(20);
+    var r = await sb.from('obvestila').select('id,naslov,sporocilo,created_at,prejemnik').eq('aktivno', true).order('created_at', { ascending: false }).limit(20);
+    if (r && r.error) { r = await sb.from('obvestila').select('id,naslov,sporocilo,created_at').eq('aktivno', true).order('created_at', { ascending: false }).limit(20); }
     if (!r || r.error || !r.data) return;
     var vid = obvVerjeni();
-    r.data.filter(function (o) { return vid.indexOf(o.id) < 0; }).reverse().forEach(narisiToast);
+    r.data.filter(function (o) { return vid.indexOf(o.id) < 0 && obvZaMene(o); }).reverse().forEach(narisiToast);
   }
   function narisiToast(o) {
     var wrap = $('obvWrap'); if (!wrap) return;
@@ -4532,7 +4568,7 @@
           try { var tok = s && s.data && s.data.session && s.data.session.access_token; if (tok && sb.realtime && sb.realtime.setAuth) sb.realtime.setAuth(tok); } catch (e) {}
           _obvKanal = sb.channel('obvestila-live')
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'obvestila' }, function (p) {
-              var o = p && p.new; if (o && o.aktivno && obvVerjeni().indexOf(o.id) < 0) narisiToast(o);
+              var o = p && p.new; if (o && o.aktivno && obvVerjeni().indexOf(o.id) < 0 && obvZaMene(o)) narisiToast(o);
             })
             .subscribe();
         });
@@ -4546,19 +4582,38 @@
       }, 60000);
     }
   }
+  // Naloži seznam uporabnikov v izbirnik prejemnika + zgradi zemljevid imen.
+  var _konzImena = {};
+  async function naloziKonzUporabnike() {
+    var r = await sb.from('profiles').select('id,full_name,email,active').order('full_name');
+    var d = (r && r.data) ? r.data : [];
+    _konzImena = {};
+    d.forEach(function (u) { _konzImena[u.id] = u.full_name || u.email; });
+    var sel = $('konzKomu');
+    if (sel) {
+      var cur = sel.value;
+      sel.innerHTML = '<option value="">Vsi uporabniki</option>' + d.map(function (u) {
+        return '<option value="' + escape_(u.id) + '">' + escape_(u.full_name || u.email) + (u.active === false ? ' (izklopljen)' : '') + '</option>';
+      }).join('');
+      sel.value = cur;
+    }
+  }
   // ── Konzola (samo lastnik): pisanje in pregled obvestil ──
   async function risiKonzola() {
     var list = $('konzList'); if (!list) return;
+    try { await naloziKonzUporabnike(); } catch (e) {}
     list.innerHTML = '<div class="konz-txt">Nalagam …</div>';
-    var r = await sb.from('obvestila').select('id,naslov,sporocilo,aktivno,created_at').order('created_at', { ascending: false }).limit(50);
+    var r = await sb.from('obvestila').select('id,naslov,sporocilo,aktivno,created_at,prejemnik').order('created_at', { ascending: false }).limit(50);
+    if (r && r.error) { r = await sb.from('obvestila').select('id,naslov,sporocilo,aktivno,created_at').order('created_at', { ascending: false }).limit(50); }
     if (!r || r.error) { list.innerHTML = '<div class="konz-txt">Napaka pri nalaganju.</div>'; return; }
     if (!r.data || !r.data.length) { list.innerHTML = '<div class="konz-txt">Ni še poslanih obvestil.</div>'; return; }
     list.innerHTML = r.data.map(function (o) {
       var dat = new Date(o.created_at).toLocaleString('sl-SI', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+      var komu = o.prejemnik ? ('za: ' + escape_(_konzImena[o.prejemnik] || 'uporabnika')) : 'vsem';
       return '<div class="konz-row' + (o.aktivno ? '' : ' off') + '" data-id="' + o.id + '">' +
         '<div class="k-body">' + (o.naslov ? '<div class="konz-nas">' + escape_(o.naslov) + '</div>' : '') +
         '<div class="konz-txt">' + escape_(o.sporocilo || '') + '</div>' +
-        '<div class="konz-meta">' + escape_(dat) + (o.aktivno ? '' : ' · skrito') + '</div></div>' +
+        '<div class="konz-meta">' + escape_(dat) + ' · ' + komu + (o.aktivno ? '' : ' · skrito') + '</div></div>' +
         '<div class="konz-acts">' +
         '<button type="button" class="btn-mini k-tog" data-id="' + o.id + '" data-ak="' + (o.aktivno ? '1' : '0') + '">' + (o.aktivno ? 'Skrij' : 'Prikaži') + '</button>' +
         '<button type="button" class="btn-mini danger k-del" data-id="' + o.id + '">Izbriši</button>' +
@@ -4575,14 +4630,19 @@
     e.preventDefault();
     var m = $('konzMsg'), btn = $('konzBtn');
     var nas = $('konzNas').value.trim(), txt = $('konzTxt').value.trim();
+    var komu = $('konzKomu') ? $('konzKomu').value : '';
     if (!txt) { m.className = 'msg bad show'; m.textContent = 'Vpiši sporočilo.'; return; }
     btn.disabled = true; btn.textContent = 'Pošiljam …';
-    var r = await sb.from('obvestila').insert({ naslov: nas || null, sporocilo: txt, aktivno: true }).select('id,naslov,sporocilo,created_at').single();
-    btn.disabled = false; btn.textContent = 'Pošlji vsem';
+    var r = await sb.from('obvestila').insert({ naslov: nas || null, sporocilo: txt, aktivno: true, prejemnik: komu || null }).select('id,naslov,sporocilo,created_at,prejemnik').single();
+    if (r && r.error && /prejemnik/i.test(r.error.message || '')) {
+      if (komu) { btn.disabled = false; btn.textContent = 'Pošlji'; m.className = 'msg bad show'; m.textContent = 'Za pošiljanje eni osebi najprej zaženi 26_obvestila_prejemnik.sql v Supabase.'; return; }
+      r = await sb.from('obvestila').insert({ naslov: nas || null, sporocilo: txt, aktivno: true }).select('id,naslov,sporocilo,created_at').single();
+    }
+    btn.disabled = false; btn.textContent = 'Pošlji';
     if (r && r.error) { m.className = 'msg bad show'; m.textContent = 'Ni uspelo: ' + r.error.message; return; }
-    $('konzNas').value = ''; $('konzTxt').value = '';
-    m.className = 'msg show'; m.textContent = 'Obvestilo je poslano vsem uporabnikom.';
-    if (r && r.data) narisiToast(r.data); // pokaži tudi pošiljatelju
+    $('konzNas').value = ''; $('konzTxt').value = ''; if ($('konzKomu')) $('konzKomu').value = '';
+    m.className = 'msg show'; m.textContent = komu ? ('Obvestilo je poslano uporabniku ' + (_konzImena[komu] || '') + '.') : 'Obvestilo je poslano vsem uporabnikom.';
+    if (r && r.data && (!r.data.prejemnik || r.data.prejemnik === JAZ)) narisiToast(r.data); // pokaži pošiljatelju le, če je zanj
     risiKonzola();
   }); }
 
