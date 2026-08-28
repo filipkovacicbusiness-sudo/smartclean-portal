@@ -355,6 +355,15 @@ html[data-theme="light"] .sc-hex{opacity:.5}
           </div>
           <div class="msg" id="imeMsg" role="status" aria-live="polite"></div>
         </div>
+        <div class="panel hidden" id="bioPanel">
+          <h3 class="sec-h">Face ID / prstni odtis</h3>
+          <p class="bio-lead" id="bioLead">Namesto gesla se lahko prijaviš s Face ID ali prstnim odtisom te naprave.</p>
+          <div class="bio-row">
+            <button type="button" class="btn btn-narrow" id="bioOn">Omogoči na tej napravi</button>
+            <button type="button" class="btn btn-narrow bio-off hidden" id="bioOff">Odstrani s te naprave</button>
+          </div>
+          <div class="msg" id="bioMsg" role="status" aria-live="polite"></div>
+        </div>
         <div class="panel">
           <h3 class="sec-h">Sprememba gesla</h3>
           <form id="changePwForm" novalidate>

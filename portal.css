@@ -1270,14 +1270,15 @@ html[data-theme="dark"] .pris-chip-x:hover{background:rgba(255,138,122,.16);colo
 /* ══════════ IZBIRNIK PROFILOV (prijava) ══════════ */
 .profile-picker{width:100%;max-width:370px;}
 .profile-picker.hidden{display:none;}
-.pp-grid{display:flex;flex-wrap:wrap;gap:12px;margin-top:4px;}
-.pp-tile-wrap{position:relative;width:110px;}
-.pp-tile{width:100%;display:flex;flex-direction:column;align-items:center;gap:12px;padding:18px 10px 15px;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);cursor:pointer;transition:border-color .14s,box-shadow .14s,transform .06s;text-align:center;}
+.pp-grid{display:flex;flex-wrap:wrap;gap:12px;margin-top:4px;align-items:stretch;}
+.pp-tile-wrap{position:relative;width:110px;display:flex;}
+.pp-tile{width:110px;min-height:100%;display:flex;flex-direction:column;align-items:center;gap:12px;padding:18px 10px 15px;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);cursor:pointer;transition:border-color .14s,box-shadow .14s,transform .06s;text-align:center;}
+.pp-tile-wrap .pp-tile{width:100%;}
 .pp-tile:hover{border-color:var(--ink);box-shadow:var(--shadow);}
 .pp-tile:active{transform:scale(.98);}
-.pp-av{width:56px;height:56px;border-radius:50%;background:var(--green-m) center/cover no-repeat;color:var(--ink);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:600;overflow:hidden;flex:0 0 auto;}
+.pp-av{width:56px;height:56px;border-radius:50%;background:var(--ink) center/cover no-repeat;color:var(--bg);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:600;overflow:hidden;flex:0 0 auto;}
 .pp-av img{width:100%;height:100%;object-fit:cover;display:block;}
-.pp-nm{font-size:13px;font-weight:600;color:var(--ink);line-height:1.25;word-break:break-word;}
+.pp-nm{font-size:13px;font-weight:600;color:var(--ink);line-height:1.25;word-break:break-word;min-height:2.4em;display:flex;align-items:center;justify-content:center;}
 .pp-tile-x{position:absolute;top:-7px;right:-7px;width:22px;height:22px;border:1px solid var(--line);background:var(--surface);color:var(--mid);border-radius:50%;font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:0;transition:opacity .14s,color .14s,border-color .14s;box-shadow:var(--shadow);}
 .pp-tile-x:hover{color:var(--ink);border-color:var(--ink);}
 .pp-tile-wrap:hover .pp-tile-x,.pp-tile-x:focus-visible{opacity:1;}
@@ -1289,8 +1290,14 @@ html[data-theme="dark"] .pris-chip-x:hover{background:rgba(255,138,122,.16);colo
 /* ══════════ UREJANJE PROFILA (Moj račun) ══════════ */
 .prof-edit{display:flex;gap:22px;align-items:flex-start;flex-wrap:wrap;}
 .prof-av-wrap{display:flex;flex-direction:column;align-items:center;gap:10px;flex:0 0 auto;}
-.prof-av{width:96px;height:96px;border-radius:50%;background:var(--green-m) center/cover no-repeat;color:var(--green-l);display:flex;align-items:center;justify-content:center;font-size:34px;font-weight:700;overflow:hidden;}
+.prof-av{width:96px;height:96px;border-radius:50%;background:var(--ink) center/cover no-repeat;color:var(--bg);display:flex;align-items:center;justify-content:center;font-size:34px;font-weight:700;overflow:hidden;}
 .prof-av img{width:100%;height:100%;object-fit:cover;display:block;}
 .prof-fields{flex:1;min-width:240px;}
 .prof-av-del{color:#c0392b;}
 @media(max-width:560px){.prof-edit{gap:16px;}.prof-av{width:80px;height:80px;}}
+.bio-lead{color:var(--mid);font-size:.9rem;margin:0 0 16px;max-width:52ch;}
+.bio-row{display:flex;gap:10px;flex-wrap:wrap;}
+.bio-off{background:transparent;color:#c0392b;border:1px solid rgba(192,57,43,.35);}
+.bio-off:hover{background:rgba(192,57,43,.08);border-color:#c0392b;}
+.pp-bio{position:absolute;left:60%;top:53px;width:22px;height:22px;border-radius:50%;background:var(--ink);color:var(--bg);display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 3px var(--surface);pointer-events:none;}
+.pp-bio svg{width:13px;height:13px;}
