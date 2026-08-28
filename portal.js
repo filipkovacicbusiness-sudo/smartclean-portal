@@ -236,10 +236,9 @@
   });
   $('logoutBtn').addEventListener('click', async () => {
     ustaviUtrip();
-    // Če je na tej napravi omogočen Face ID, se odjavimo le lokalno (žeton na strežniku
-    // ostane veljaven), da biometrična prijava deluje brez ponovnega vpisa gesla.
-    var bioTu = bioVklopljen(JAZ);
-    try { await sb.auth.signOut(bioTu ? { scope: 'local' } : undefined); } catch (e) {}
+    // Če je na tej napravi omogočen Face ID, seje NE ukinemo (kot bančne aplikacije):
+    // ostaneš prijavljen, ob vrnitvi te Face ID le odklene. Sicer se popolnoma odjavimo.
+    if (!bioVklopljen(JAZ)) { try { await sb.auth.signOut(); } catch (e) {} }
     location.reload();
   });
 
@@ -4236,31 +4235,28 @@
     setTimeout(function () { try { (email ? $('password') : $('email')).focus(); } catch (e) {} }, 40);
   }
   async function izberiProfil(email) {
-    // 1) Če je seja še živa in pripada temu uporabniku, ga spustimo naravnost noter.
-    try {
-      var s = await sb.auth.getSession();
-      var u = s && s.data && s.data.session && s.data.session.user;
-      if (u && (u.email || '').toLowerCase() === (email || '').toLowerCase()) { start(); return; }
-    } catch (e) {}
-    // 2) Če ima ta profil omogočen Face ID / prstni odtis, poskusimo biometrično.
     var p = beriProfile().filter(function (x) { return (x.email || '').toLowerCase() === (email || '').toLowerCase(); })[0];
+    var seja = null;
+    try { var s = await sb.auth.getSession(); seja = s && s.data && s.data.session; } catch (e) {}
+    var sejaTaUporabnik = seja && seja.user && (seja.user.email || '').toLowerCase() === (email || '').toLowerCase();
+    // 1) Face ID omogočen za ta profil → vedno zahtevaj biometrijo (tudi če je seja živa).
     if (p && p.uid && bioPodprt() && bioVklopljen(p.uid)) {
       var m = $('ppMsg'); if (m) { m.className = 'msg show'; m.textContent = 'Potrjujem …'; }
       try {
         var ok = await bioOdkleni(p.uid);
         if (ok) { if (m) { m.className = 'msg'; m.textContent = ''; } start(); return; }
+        if (m) { m.className = 'msg show'; m.textContent = 'Zaradi varnosti enkrat vpiši geslo; Face ID nato spet deluje.'; }
+        pokaziPrijavo(email); return;
       } catch (e) {
         var cancel = e && /NotAllowed|abort|timed|timeout/i.test((e.name || '') + ' ' + (e.message || ''));
         var expired = e && e.code === 'expired';
-        if (m) {
-          m.className = cancel ? 'msg bad show' : 'msg show';
-          m.textContent = cancel ? 'Preklicano. Poskusi znova ali vpiši geslo.'
-            : expired ? 'Zaradi varnosti enkrat vpiši geslo; Face ID nato spet deluje.'
-            : 'Vpiši geslo.';
-        }
+        if (cancel) { if (m) { m.className = 'msg bad show'; m.textContent = 'Preklicano. Poskusi znova.'; } return; }
+        if (m) { m.className = 'msg show'; m.textContent = expired ? 'Zaradi varnosti enkrat vpiši geslo; Face ID nato spet deluje.' : 'Vpiši geslo.'; }
         pokaziPrijavo(email); return;
       }
     }
+    // 2) Brez Face ID: če je seja še živa za tega uporabnika, ga spustimo naravnost noter.
+    if (sejaTaUporabnik) { start(); return; }
     // 3) Sicer geslo.
     pokaziPrijavo(email);
   }
@@ -4287,17 +4283,9 @@
   function bioCred(uid) { try { return localStorage.getItem('sc-biocred-' + uid) || null; } catch (e) { return null; } }
   function bioSetCred(uid, c) { try { localStorage.setItem('sc-biocred-' + uid, c); } catch (e) {} }
   function bioDelCred(uid) { try { localStorage.removeItem('sc-biocred-' + uid); } catch (e) {} }
-  function bioTok(uid) { try { var r = localStorage.getItem('sc-biotok-' + uid); return r ? JSON.parse(r) : null; } catch (e) { return null; } }
-  function bioSetTok(uid, o) { try { localStorage.setItem('sc-biotok-' + uid, JSON.stringify(o)); } catch (e) {} }
-  function bioDelTok(uid) { try { localStorage.removeItem('sc-biotok-' + uid); } catch (e) {} }
   function bioVklopljen(uid) { return !!(uid && bioCred(uid)); }
-  // Ob vsaki prijavi/osvežitvi žetona posodobimo shranjeni žeton (le, če je vpis omogočen).
-  function bioOsveziZetone(session) {
-    if (!session || !session.user) return;
-    var uid = session.user.id;
-    if (bioCred(uid)) bioSetTok(uid, { at: session.access_token, rt: session.refresh_token });
-  }
   // Omogoči na tej napravi: ustvari PLATFORMNI ključ (Windows Hello / Face ID / Touch ID).
+  // Seje NE hranimo ročno — Supabase svojo sejo že obdrži; biometrija je le lokalni zaklep.
   async function bioOmogoci() {
     if (!bioPodprt()) throw new Error('Ta naprava ne podpira Face ID / prstnega odtisa.');
     var sres = await sb.auth.getSession();
@@ -4317,12 +4305,11 @@
     var cred = await navigator.credentials.create(opts);
     if (!cred) throw new Error('Ni uspelo.');
     bioSetCred(session.user.id, b64u(cred.rawId));
-    bioSetTok(session.user.id, { at: session.access_token, rt: session.refresh_token });
     zapomniProfil({ email: JAZMAIL, name: JAZIME, avatar: (MOJPROFIL && MOJPROFIL.avatar_url) || '', uid: session.user.id });
   }
-  // Odkleni: biometrična potrditev, nato obnovi Supabase sejo iz shranjenega žetona.
-  // Vrne true ob uspehu. Ob prekinitvi vrže napako (NotAllowed). Ob poteklem žetonu vrže
-  // 'expired' — a VPISA NE izbriše (biometrija ostane, potreben je le enkraten vpis gesla).
+  // Odkleni: biometrična potrditev; seja je Supabasova lastna (obstojna), le jo osvežimo.
+  // Vrne true, če je po potrditvi na voljo veljavna seja. Ob prekinitvi vrže napako.
+  // Ob potekli seji vrže 'expired' — VPIS ostane (Face ID se ne izklopi).
   async function bioOdkleni(uid) {
     var credId = bioCred(uid);
     if (!credId) return false;
@@ -4333,16 +4320,11 @@
       rpId: location.hostname,
       timeout: 60000
     } });
-    // Biometrija potrjena → obnovi sejo iz shranjenega žetona.
-    var st = bioTok(uid);
-    if (!st || !st.rt) { var e0 = new Error('expired'); e0.code = 'expired'; throw e0; }
-    var r = await sb.auth.setSession({ access_token: st.at, refresh_token: st.rt });
-    if (r && r.error) {
-      var r2 = await sb.auth.refreshSession({ refresh_token: st.rt });
-      if (r2 && r2.error) { bioDelTok(uid); var e1 = new Error('expired'); e1.code = 'expired'; throw e1; }
-    }
-    try { var s2 = await sb.auth.getSession(); if (s2 && s2.data && s2.data.session) bioOsveziZetone(s2.data.session); } catch (e) {}
-    return true;
+    // Biometrija potrjena → preveri, da je Supabasova seja še živa (getSession po potrebi osveži).
+    var s = await sb.auth.getSession();
+    var sess = s && s.data && s.data.session;
+    if (sess && sess.user) return true;
+    var e0 = new Error('expired'); e0.code = 'expired'; throw e0;
   }
   // Panel v »Moj račun«.
   function napolniBio() {
@@ -4365,7 +4347,7 @@
     this.disabled = false; this.textContent = t;
   }); }
   { var _bof = $('bioOff'); if (_bof) _bof.addEventListener('click', function () {
-    if (JAZ) { bioDelCred(JAZ); bioDelTok(JAZ); }
+    if (JAZ) { bioDelCred(JAZ); }
     zapomniProfil({ email: JAZMAIL, name: JAZIME, avatar: (MOJPROFIL && MOJPROFIL.avatar_url) || '', uid: JAZ });
     var m = $('bioMsg'); m.className = 'msg show'; m.textContent = 'Odstranjeno s te naprave.';
     napolniBio();
@@ -4383,8 +4365,6 @@
         showAuthPane('newPwForm');
         document.querySelector('.auth-box .sub').textContent = 'Vpišite novo geslo za svoj račun.';
       }
-      // Face ID: ob osvežitvi/prijavi posodobi shranjene žetone, da ostane veljavno.
-      if ((event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN') && session) { try { bioOsveziZetone(session); } catch (e) {} }
     });
     setTimeout(() => {
       if (recovery) return;
