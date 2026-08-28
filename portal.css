@@ -515,6 +515,9 @@ body,.topbar,.side,.main,.panel,.row,.a-row,.arts,.a-det,.fak-card,.fak-tot,.sta
 @media (prefers-reduced-motion:reduce){*{transition:none!important;}}
 
 .side-sep{height:1px;background:var(--line);margin:14px 10px 10px;}
+.side-eflitte{margin-top:auto;padding:14px 12px 2px;font-size:.76rem;color:var(--mid);text-decoration:none;opacity:.7;transition:opacity .15s;}
+.side-eflitte:hover{opacity:1;}
+.side-eflitte b{font-weight:600;color:var(--ink);}
 
 /* ══════════ FOOTER (vedno viden) ══════════ */
 .sc-foot{position:fixed;left:50%;transform:translateX(-50%);
@@ -1329,6 +1332,14 @@ html[data-theme="dark"] .pris-chip-x:hover{background:rgba(255,138,122,.16);colo
 .konz-txt{font-size:.88rem;color:var(--mid);line-height:1.45;white-space:pre-wrap;word-break:break-word;}
 .konz-meta{font-size:.74rem;color:var(--mid);margin-top:6px;}
 .konz-acts{display:flex;gap:6px;flex:0 0 auto;}
+/* Opomba na spremnem listu (Arhiv) */
+.opomba-blok{margin-top:14px;padding-top:14px;border-top:1px solid var(--line);}
+.opomba-h{text-transform:uppercase;font-size:.68rem;letter-spacing:.08em;color:var(--mid);font-weight:600;margin-bottom:8px;}
+.opomba-prikaz{background:var(--green-m);border:1px solid var(--line);border-radius:10px;padding:11px 13px;margin-bottom:10px;}
+.opomba-besedilo{font-size:.9rem;line-height:1.5;color:var(--ink);white-space:pre-wrap;word-break:break-word;}
+.opomba-avtor{margin-top:6px;font-size:.76rem;color:var(--mid);}
+.opomba-vnos{width:100%;padding:10px 12px;border:1.5px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:.9rem;line-height:1.5;resize:vertical;min-height:56px;box-sizing:border-box;}
+.opomba-vnos:focus{border-color:var(--green-l);background:var(--surface);outline:none;}
 .bio-lead{color:var(--mid);font-size:.9rem;margin:0 0 16px;max-width:52ch;}
 .bio-row{display:flex;gap:10px;flex-wrap:wrap;}
 .bio-off{background:transparent;color:#c0392b;border:1px solid rgba(192,57,43,.35);}

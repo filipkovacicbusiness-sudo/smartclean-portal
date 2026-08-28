@@ -236,9 +236,9 @@
   });
   $('logoutBtn').addEventListener('click', async () => {
     ustaviUtrip();
-    // Vedno počistimo lokalno sejo (scope local), da se lahko naslednji uporabnik prijavi kot
-    // on sam; žeton na strežniku ostane veljaven, zato biometrija obnovi pravega uporabnika.
-    try { await sb.auth.signOut({ scope: 'local' }); } catch (e) { try { await sb.auth.signOut(); } catch (e2) {} }
+    // Če je Face ID omogočen, seje NE ukinemo — ob vrnitvi te biometrija spusti naravnost
+    // noter (brez obnavljanja žetona). Sicer se popolnoma odjavimo (potrebno bo geslo).
+    if (!bioVklopljen(JAZ)) { try { await sb.auth.signOut(); } catch (e) {} }
     location.reload();
   });
 
@@ -494,7 +494,7 @@
     glavni = urediGlavni(glavniMeni());
     nast = OSEBJE ? [['nastavitve', 'Nastavitve'], ['racun', 'Moj račun']] : [['racun', 'Moj račun']];
     const veja = ([k, l]) => `<a data-go="${k}">${ikona(k)}${l}</a>`;
-    $('side').innerHTML = '<span class="side-slider" aria-hidden="true"></span>' + glavni.map(veja).join('') + '<div class="side-sep"></div>' + nast.map(veja).join('');
+    $('side').innerHTML = '<span class="side-slider" aria-hidden="true"></span>' + glavni.map(veja).join('') + '<div class="side-sep"></div>' + nast.map(veja).join('') + '<a class="side-eflitte" href="https://eflitte.si" target="_blank" rel="noopener">Izdelava <b>Eflitte</b></a>';
     const _side = $('side');
     const _sl = _side.querySelector('.side-slider');
     const premakniDrsnik = a => {
@@ -625,30 +625,88 @@
   }
   function decimalneUre(sek) { return (Math.round(sek / 3600 * 100) / 100).toString().replace('.', ','); }
   function csvC(s) { s = String(s == null ? '' : s); return /[";\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }
-  // Izvoz ur za trenutno izbrano obdobje v CSV (odpre se v Excelu).
+
+  /* \u2500\u2500 Minimalni zapisovalnik XLSX (pravi Excel, brez knji\u017enice) \u2500\u2500 */
+  function _xCrc32(buf) { var crc = 0xFFFFFFFF; for (var i = 0; i < buf.length; i++) { crc ^= buf[i]; for (var j = 0; j < 8; j++) crc = (crc >>> 1) ^ (0xEDB88320 & -(crc & 1)); } return (crc ^ 0xFFFFFFFF) >>> 0; }
+  function _xB(s) { return new TextEncoder().encode(s); }
+  function _xU16(n) { return [n & 255, (n >> 8) & 255]; }
+  function _xU32(n) { return [n & 255, (n >> 8) & 255, (n >> 16) & 255, (n >> 24) & 255]; }
+  function _xZip(files) {
+    var chunks = [], central = [], offset = 0;
+    files.forEach(function (f) {
+      var crc = _xCrc32(f.data), nb = _xB(f.name), sz = f.data.length;
+      var lh = [].concat(_xU32(0x04034b50), _xU16(20), _xU16(0), _xU16(0), _xU16(0), _xU16(0), _xU32(crc), _xU32(sz), _xU32(sz), _xU16(nb.length), _xU16(0));
+      var lhb = new Uint8Array(lh.length + nb.length + sz); lhb.set(lh, 0); lhb.set(nb, lh.length); lhb.set(f.data, lh.length + nb.length);
+      chunks.push(lhb);
+      var cd = [].concat(_xU32(0x02014b50), _xU16(20), _xU16(20), _xU16(0), _xU16(0), _xU16(0), _xU16(0), _xU32(crc), _xU32(sz), _xU32(sz), _xU16(nb.length), _xU16(0), _xU16(0), _xU16(0), _xU16(0), _xU32(0), _xU32(offset));
+      var cdb = new Uint8Array(cd.length + nb.length); cdb.set(cd, 0); cdb.set(nb, cd.length); central.push(cdb);
+      offset += lhb.length;
+    });
+    var cdSize = 0; central.forEach(function (c) { cdSize += c.length; });
+    var eocd = new Uint8Array([].concat(_xU32(0x06054b50), _xU16(0), _xU16(0), _xU16(files.length), _xU16(files.length), _xU32(cdSize), _xU32(offset), _xU16(0)));
+    var total = offset + cdSize + eocd.length, out = new Uint8Array(total), pos = 0;
+    chunks.forEach(function (c) { out.set(c, pos); pos += c.length; });
+    central.forEach(function (c) { out.set(c, pos); pos += c.length; });
+    out.set(eocd, pos); return out;
+  }
+  function _xEsc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+  function _xCol(c) { var s = ''; c++; while (c) { var m = (c - 1) % 26; s = String.fromCharCode(65 + m) + s; c = (c - m - 1) / 26; } return s; }
+  function _xSheet(rows) {
+    var widths = [];
+    rows.forEach(function (row) { (row || []).forEach(function (cell, ci) { var t = (cell && typeof cell === 'object') ? String(cell.v) : String(cell == null ? '' : cell); widths[ci] = Math.max(widths[ci] || 0, t.length); }); });
+    var cols = widths.length ? '<cols>' + widths.map(function (w, i) { return '<col min="' + (i + 1) + '" max="' + (i + 1) + '" width="' + Math.min(Math.max((w || 8) + 2, 10), 44) + '" customWidth="1"/>'; }).join('') + '</cols>' : '';
+    var body = '';
+    rows.forEach(function (row, ri) {
+      var cells = '';
+      (row || []).forEach(function (cell, ci) {
+        var ref = _xCol(ci) + (ri + 1);
+        if (cell === null || cell === undefined || cell === '') return;
+        if (typeof cell === 'number') { cells += '<c r="' + ref + '"><v>' + cell + '</v></c>'; }
+        else if (cell && typeof cell === 'object' && cell.bold) { cells += '<c r="' + ref + '" t="inlineStr" s="1"><is><t xml:space="preserve">' + _xEsc(cell.v) + '</t></is></c>'; }
+        else { cells += '<c r="' + ref + '" t="inlineStr"><is><t xml:space="preserve">' + _xEsc(cell) + '</t></is></c>'; }
+      });
+      body += '<row r="' + (ri + 1) + '">' + cells + '</row>';
+    });
+    return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' + cols + '<sheetData>' + body + '</sheetData></worksheet>';
+  }
+  function prenesiXlsx(ime, sheetName, rows) {
+    var files = [
+      { name: '[Content_Types].xml', data: _xB('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>') },
+      { name: '_rels/.rels', data: _xB('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>') },
+      { name: 'xl/workbook.xml', data: _xB('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="' + _xEsc(sheetName) + '" sheetId="1" r:id="rId1"/></sheets></workbook>') },
+      { name: 'xl/_rels/workbook.xml.rels', data: _xB('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>') },
+      { name: 'xl/styles.xml', data: _xB('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="1"><fill><patternFill patternType="none"/></fill></fills><borders count="1"><border/></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs></styleSheet>') },
+      { name: 'xl/worksheets/sheet1.xml', data: _xB(_xSheet(rows)) }
+    ];
+    var bytes = _xZip(files);
+    var blob = new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = ime; document.body.appendChild(a); a.click();
+    setTimeout(function () { document.body.removeChild(a); URL.revokeObjectURL(a.href); }, 100);
+  }
+
+  // Izvoz ur za trenutno izbrano obdobje v pravi Excel (.xlsx).
   function prisIzvoz() {
     var mesec = (_prisView !== 'dan'); var kljuc = mesec ? _prisDan.slice(0, 7) : _prisDan;
-    var sep = ';', aktivni = (ZAPOSLENI || []).filter(function (z) { return z.active; });
+    var aktivni = (ZAPOSLENI || []).filter(function (z) { return z.active; });
     if (_prisView === 'oseba' && _prisOseba) { aktivni = (ZAPOSLENI || []).filter(function (z) { return z.id === _prisOseba; }); }
-    var vrst = [['Zaposleni', 'Datum', 'Prihod', 'Odhod', 'Ure (h:mm)', 'Ure (decimalno)'].map(csvC).join(sep)];
+    var B = function (t) { return { v: t, bold: true }; };
+    var dec = function (sek) { return Math.round(sek / 3600 * 100) / 100; };
+    var rows = [[B('Zaposleni'), B('Datum'), B('Prihod'), B('Odhod'), B('Ure (h:mm)'), B('Ure (decimalno)')]];
     aktivni.forEach(function (z) {
       var r = prisPari(z.id, kljuc);
       r.pari.forEach(function (p) {
         var sek = (new Date(p[1].ts) - new Date(p[0].ts)) / 1000;
-        vrst.push([z.ime, p[0].ts.slice(0, 10), uraMin(p[0].ts), uraMin(p[1].ts), trajanjeH(sek), decimalneUre(sek)].map(csvC).join(sep));
+        rows.push([z.ime, p[0].ts.slice(0, 10), uraMin(p[0].ts), uraMin(p[1].ts), trajanjeH(sek), dec(sek)]);
       });
     });
-    vrst.push('');
-    vrst.push(['POVZETEK', 'Dni', '', '', 'Ure skupaj (h:mm)', 'Ure skupaj (decimalno)'].map(csvC).join(sep));
+    rows.push([]);
+    rows.push([B('POVZETEK'), B('Dni'), '', '', B('Ure skupaj (h:mm)'), B('Ure skupaj (decimalno)')]);
     aktivni.forEach(function (z) {
       var pov = prisPovzetek(z.id, kljuc);
-      vrst.push([z.ime, pov.dni, '', '', trajanjeH(pov.sek), decimalneUre(pov.sek)].map(csvC).join(sep));
+      rows.push([z.ime, pov.dni, '', '', trajanjeH(pov.sek), dec(pov.sek)]);
     });
-    var vsebina = '\ufeff' + vrst.join('\r\n');
-    var blob = new Blob([vsebina], { type: 'text/csv;charset=utf-8;' });
-    var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-    a.download = 'ure_' + kljuc + '.csv'; document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    toast('Izvoz pripravljen: ure_' + kljuc + '.csv');
+    prenesiXlsx('ure_' + kljuc + '.xlsx', 'Ure ' + kljuc, rows);
+    toast('Izvoz pripravljen: ure_' + kljuc + '.xlsx');
   }
 
   // Ročna odjava zaposlenega (če pozabi tapniti odhod). Vpiše dogodek 'out'
@@ -1328,10 +1386,16 @@
     const {
       data,
       error
-    } = await sb.from('delivery_notes').select('id,number,doc_date,total_pieces,weight_kg,org_id,issued_name,popravil,popravljeno_at,source,transport,potrjeno,legacy_id').order('doc_date', {
+    } = await sb.from('delivery_notes').select('id,number,doc_date,total_pieces,weight_kg,org_id,issued_name,popravil,popravljeno_at,source,transport,potrjeno,legacy_id,opomba,opomba_avtor,opomba_at').order('doc_date', {
       ascending: false
     }).limit(1000);
-    LISTI = error ? [] : data || [];
+    // Rezerva: če stolpci za opombo še niso dodani (SQL 25 še ni zagnan), naloži brez njih.
+    if (error) {
+      const _r = await sb.from('delivery_notes').select('id,number,doc_date,total_pieces,weight_kg,org_id,issued_name,popravil,popravljeno_at,source,transport,potrjeno,legacy_id').order('doc_date', { ascending: false }).limit(1000);
+      LISTI = (_r && !_r.error && _r.data) ? _r.data : [];
+    } else {
+      LISTI = data || [];
+    }
     const {
       count
     } = await sb.from('delivery_notes').select('id', {
@@ -1511,12 +1575,52 @@
     const ustvarjenoV = n.source === 'portal' ? `<p class="ur-ustvarjeno">✚ Ustvarjeno v portalu${n.issued_name ? ' · ' + escape_(n.issued_name) : ''}</p>` : '';
     const gumbi = '<div class="u-acts" style="margin-top:12px"><button type="button" data-natisni>Natisni</button>' +
       (OSEBJE ? '<button type="button" data-uredi>Uredi</button><button type="button" class="danger" data-izbrisi>Izbriši</button>' : '') + '</div>';
-    box.innerHTML = seznam + izdalV + ustvarjenoV + popravek + gumbi;
+    box.innerHTML = seznam + izdalV + ustvarjenoV + popravek + opombaHtml(n) + gumbi;
     box.querySelector('[data-natisni]').addEventListener('click', () => natisniList(box));
     if (OSEBJE) {
       box.querySelector('[data-uredi]').addEventListener('click', () => urediList(box));
       box.querySelector('[data-izbrisi]').addEventListener('click', () => izbrisiList(box));
     }
+    wireOpomba(box);
+  }
+
+  /* ── Pisna opomba na spremnem listu (z avtorjem) ── */
+  function opombaHtml(n) {
+    n = n || {};
+    var obst = n.opomba ? '<div class="opomba-prikaz"><div class="opomba-besedilo">' + escape_(n.opomba) + '</div>' +
+      '<div class="opomba-avtor">— ' + escape_(n.opomba_avtor || 'osebje') + (n.opomba_at ? ' · ' + datumcas(n.opomba_at) : '') + '</div></div>' : '';
+    if (!OSEBJE) {
+      return obst ? '<div class="opomba-blok"><div class="opomba-h">Opomba</div>' + obst + '</div>' : '';
+    }
+    return '<div class="opomba-blok"><div class="opomba-h">Opomba</div>' + obst +
+      '<textarea class="opomba-vnos" data-opomba rows="2" maxlength="600" placeholder="Dodaj pisno opombo …">' + escape_(n.opomba || '') + '</textarea>' +
+      '<div class="u-acts" style="margin-top:8px"><button type="button" data-opomba-shrani>' + (n.opomba ? 'Posodobi opombo' : 'Shrani opombo') + '</button>' +
+      (n.opomba ? '<button type="button" class="danger" data-opomba-brisi>Odstrani</button>' : '') +
+      '</div><div class="msg" data-opomba-msg role="status" aria-live="polite"></div></div>';
+  }
+  function wireOpomba(box) {
+    if (!OSEBJE) return;
+    var sh = box.querySelector('[data-opomba-shrani]');
+    if (sh) sh.addEventListener('click', function () { shraniOpombo(box, false); });
+    var br = box.querySelector('[data-opomba-brisi]');
+    if (br) br.addEventListener('click', function () { shraniOpombo(box, true); });
+  }
+  async function shraniOpombo(box, izbrisi) {
+    var ta = box.querySelector('[data-opomba]');
+    var m = box.querySelector('[data-opomba-msg]');
+    var txt = izbrisi ? '' : (ta ? ta.value.trim() : '');
+    if (m) { m.className = 'msg show'; m.textContent = 'Shranjujem …'; }
+    var novo = {
+      opomba: txt || null,
+      opomba_avtor: txt ? (JAZIME || 'osebje') : null,
+      opomba_at: txt ? new Date().toISOString() : null
+    };
+    var r = await sb.from('delivery_notes').update(novo).eq('id', box._id);
+    if (r && r.error) { if (m) { m.className = 'msg bad show'; m.textContent = 'Napaka: ' + r.error.message; } return; }
+    // Posodobi lokalno stanje in ponovno izriši detajl.
+    Object.assign(box._note, novo);
+    var li = LISTI.find(function (l) { return l.id === box._id; }); if (li) Object.assign(li, novo);
+    risiListDetajl(box);
   }
 
   function razcleniStevilko(s) {
@@ -1691,6 +1795,7 @@
     const kg = (n.weight_kg != null && n.weight_kg !== '') ? `<div class="t">Skupaj teža perila: <b>${String(n.weight_kg).replace('.', ',')} kg</b></div>` : '';
     const popr = n.popravljeno_at ? `<div class="popr">✎ Popravljeno v portalu · ${escape_(n.popravil || 'osebje')} · ${datumcas(n.popravljeno_at)}</div>` : '';
     const ustv = n.source === 'portal' ? `<div class="popr" style="background:#eaf4ee;color:#1f6b3b">✚ Ustvarjeno v portalu${n.issued_name ? ' · ' + escape_(n.issued_name) : ''}</div>` : '';
+    const opombaP = n.opomba ? `<div class="opomba"><div class="oh">Opomba</div><div class="ob">${escape_(n.opomba)}</div><div class="oa">— ${escape_(n.opomba_avtor || 'osebje')}${n.opomba_at ? ' · ' + datumcas(n.opomba_at) : ''}</div></div>` : '';
     const html = `<!DOCTYPE html><html lang="sl"><head><meta charset="utf-8"><title>Spremni list ${escape_(n.number || '')}</title><style>
       @page{size:A4;margin:14mm}
       *{box-sizing:border-box;font-family:-apple-system,'Segoe UI',Roboto,Arial,sans-serif;color:#16202b}
@@ -1707,13 +1812,17 @@
       td.q,th.q{text-align:right;font-variant-numeric:tabular-nums;width:120px}
       .t{margin-top:12px;font-size:14px}
       .popr{margin-top:18px;padding:9px 13px;border-radius:8px;background:#fdf3e8;color:#8a5a00;font-size:12px;font-weight:600}
+      .opomba{margin-top:18px;padding:11px 14px;border:1px solid #dce2e0;border-radius:8px;background:#f7faf9;font-size:12.5px}
+      .opomba .oh{text-transform:uppercase;font-size:10px;letter-spacing:.05em;color:#5c6873;margin-bottom:4px}
+      .opomba .ob{white-space:pre-wrap;line-height:1.5}
+      .opomba .oa{margin-top:6px;color:#5c6873;font-size:11px}
       .sign{margin-top:30px;color:#5c6873}
     </style></head><body>
       <div class="head"><img class="wm" alt="SmartClean" src="${SC_LOGO}"><div class="biz">BSMART d.o.o.<br>Luče 87, 3334 Luče<br>+386 41 209 676</div></div>
       <div class="num">Št. spremnega lista: <b>${escape_(n.number || '—')}</b></div>
       <div class="client"><div><b>Naročnik storitve:</b> ${escape_(naziv)}<div class="dates">Oddaja: ${datum(n.doc_date)}${izdal}${prevozP}</div></div><div>Podpis: ______________</div></div>
       <table><thead><tr><th>Naziv artikla</th><th class="q">Kosov</th></tr></thead><tbody>${rows}</tbody></table>
-      ${kg}${ustv}${popr}<div class="sign"></div>
+      ${kg}${ustv}${popr}${opombaP}<div class="sign"></div>
     </body></html>`;
     const w = window.open('', '_blank');
     if (!w) { toast('Za tiskanje dovoli pojavna okna.'); return; }
@@ -4230,7 +4339,7 @@
     $('profilePicker').classList.remove('hidden');
     $('authBox').classList.add('hidden');
   }
-  function pokaziPrijavo(email) {
+  function pokaziPrijavo(email, sporocilo) {
     $('profilePicker').classList.add('hidden');
     $('authBox').classList.remove('hidden');
     showAuthPane('loginForm');
@@ -4238,6 +4347,8 @@
     if ($('email')) $('email').value = email || '';
     var back = $('backToPickerBtn');
     if (back) back.style.display = beriProfile().length ? '' : 'none';
+    var lm = $('loginMsg');
+    if (lm) { if (sporocilo) { lm.className = 'msg show'; lm.textContent = sporocilo; } else { lm.className = 'msg'; lm.textContent = ''; } }
     setTimeout(function () { try { (email ? $('password') : $('email')).focus(); } catch (e) {} }, 40);
   }
   async function izberiProfil(email) {
@@ -4251,14 +4362,11 @@
       try {
         var ok = await bioOdkleni(p.uid);
         if (ok) { if (m) { m.className = 'msg'; m.textContent = ''; } start(); return; }
-        if (m) { m.className = 'msg show'; m.textContent = 'Zaradi varnosti enkrat vpiši geslo; Face ID nato spet deluje.'; }
-        pokaziPrijavo(email); return;
+        pokaziPrijavo(email, 'Zaradi varnosti enkrat vpiši geslo; Face ID nato spet deluje.'); return;
       } catch (e) {
         var cancel = e && /NotAllowed|abort|timed|timeout/i.test((e.name || '') + ' ' + (e.message || ''));
-        var expired = e && e.code === 'expired';
         if (cancel) { if (m) { m.className = 'msg bad show'; m.textContent = 'Preklicano. Poskusi znova.'; } return; }
-        if (m) { m.className = 'msg show'; m.textContent = expired ? 'Zaradi varnosti enkrat vpiši geslo; Face ID nato spet deluje.' : 'Vpiši geslo.'; }
-        pokaziPrijavo(email); return;
+        pokaziPrijavo(email, (e && e.message ? e.message + ' ' : '') + 'Vpiši geslo enkrat, Face ID nato spet deluje.'); return;
       }
     }
     // 2) Brez Face ID: če je seja še živa za tega uporabnika, ga spustimo naravnost noter.
@@ -4337,19 +4445,28 @@
       rpId: location.hostname,
       timeout: 60000
     } });
-    // Biometrija potrjena → obnovi NJEGOVO sejo (ne glede na to, kdo je bil nazadnje prijavljen).
+    // 1) Če je seja TEGA uporabnika že živa (najpogosteje), gremo naravnost noter — brez žetona.
+    try {
+      var sg = await sb.auth.getSession();
+      var ziva = sg && sg.data && sg.data.session;
+      if (ziva && ziva.user && ziva.user.id === uid) { bioSetTok(uid, { at: ziva.access_token, rt: ziva.refresh_token }); return true; }
+    } catch (e) {}
+    // 2) Sicer (preklop na drugega uporabnika) obnovimo NJEGOVO sejo iz shranjenega žetona.
     var st = bioTok(uid);
-    if (!st || !st.rt) { var e0 = new Error('expired'); e0.code = 'expired'; throw e0; }
-    var sess = null;
+    if (!st || !st.rt) { var e0 = new Error('Za ta profil na tej napravi še ni shranjene seje — vpiši geslo enkrat.'); e0.code = 'expired'; throw e0; }
+    var sess = null, zadnja = '';
     var r = await sb.auth.refreshSession({ refresh_token: st.rt });
     if (r && !r.error && r.data && r.data.session) { sess = r.data.session; }
-    else if (st.at) {
-      var r2 = await sb.auth.setSession({ access_token: st.at, refresh_token: st.rt });
-      if (r2 && !r2.error && r2.data && r2.data.session) sess = r2.data.session;
+    else {
+      zadnja = (r && r.error && r.error.message) ? r.error.message : '';
+      if (st.at) {
+        var r2 = await sb.auth.setSession({ access_token: st.at, refresh_token: st.rt });
+        if (r2 && !r2.error && r2.data && r2.data.session) sess = r2.data.session;
+        else if (r2 && r2.error && r2.error.message) zadnja = r2.error.message;
+      }
     }
-    if (!sess || !sess.user) { bioDelTok(uid); var e1 = new Error('expired'); e1.code = 'expired'; throw e1; }
-    // Varovalka: obnovljena seja se MORA ujemati s pritisnjenim profilom.
-    if (sess.user.id !== uid) { throw new Error('Napačen uporabnik — vpiši geslo.'); }
+    if (!sess || !sess.user) { bioDelTok(uid); var e1 = new Error(zadnja || 'Seja je potekla — vpiši geslo enkrat.'); e1.code = 'expired'; throw e1; }
+    if (sess.user.id !== uid) { var e3 = new Error('Napačen uporabnik.'); e3.code = 'expired'; throw e3; }
     bioSetTok(uid, { at: sess.access_token, rt: sess.refresh_token });
     return true;
   }
