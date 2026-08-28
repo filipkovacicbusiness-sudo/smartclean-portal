@@ -2943,9 +2943,7 @@
     ul.innerHTML = g.map(function (x) {
       var zaklenjen = x[0] === 'domov';
       if (zaklenjen) {
-        return '<li class="mo-locked" data-k="' + escape_(x[0]) + '"><span class="mo-lock" title="Vedno na vrhu" aria-hidden="true">' +
-          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>' +
-          '</span><span class="mo-ikona" aria-hidden="true">' + ikona(x[0]) + '</span><span class="mo-ime">' + escape_(x[1]) + '</span><span class="mo-vrh">vedno na vrhu</span></li>';
+        return '<li class="mo-locked" data-k="' + escape_(x[0]) + '"><span class="art-grip mo-spacer" aria-hidden="true"></span><span class="mo-ikona" aria-hidden="true">' + ikona(x[0]) + '</span><span class="mo-ime">' + escape_(x[1]) + '</span></li>';
       }
       return '<li data-k="' + escape_(x[0]) + '"><button type="button" class="art-grip dnd-handle" title="povleci za razvrščanje" aria-label="razvrsti">' + DND_ICON + '</button><span class="mo-ikona" aria-hidden="true">' + ikona(x[0]) + '</span><span class="mo-ime">' + escape_(x[1]) + '</span></li>';
     }).join('');

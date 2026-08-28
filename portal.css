@@ -992,10 +992,8 @@ html{-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent;}
 .menu-order-list .mo-ikona{display:inline-flex;align-items:center;color:var(--mid);}
 .menu-order-list .mo-ikona svg{width:18px;height:18px;}
 .menu-order-list .mo-ime{font-weight:500;color:var(--ink);}
-.menu-order-list li.mo-locked{background:var(--green-m);opacity:.9;}
-.menu-order-list .mo-lock{display:inline-flex;align-items:center;justify-content:center;width:22px;color:var(--mid);}
-.menu-order-list .mo-lock svg{width:15px;height:15px;}
-.menu-order-list .mo-vrh{margin-left:auto;font-size:.7rem;letter-spacing:.04em;text-transform:uppercase;color:var(--mid);}
+.menu-order-list li.mo-locked{background:var(--green-m);}
+.menu-order-list .mo-spacer{visibility:hidden;pointer-events:none;}
 .menu-order-reset{margin-top:12px;}
 
 /* ── Mreža: fiksne višine kategorij (ime/podnaslov/značka), predolgo → »…« ── */
