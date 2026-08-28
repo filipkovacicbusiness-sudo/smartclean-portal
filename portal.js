@@ -4382,17 +4382,30 @@
     el.querySelector('.obv-x').addEventListener('click', function () { obvOznaciVerjeno(o.id); el.remove(); });
     wrap.appendChild(el);
   }
-  // Živa dostava novih obvestil (če je realtime na voljo).
-  var _obvKanal = null;
+  // Živa dostava: realtime (če deluje) + zanesljiva osvežitev vsakih 60 s.
+  var _obvKanal = null, _obvTimer = null;
   function narociObvestila() {
-    if (!sb || _obvKanal) return;
-    try {
-      _obvKanal = sb.channel('obvestila-live')
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'obvestila' }, function (p) {
-          var o = p && p.new; if (o && o.aktivno && obvVerjeni().indexOf(o.id) < 0) narisiToast(o);
-        })
-        .subscribe();
-    } catch (e) {}
+    if (!sb) return;
+    // Realtime (bonus, za trenutno dostavo). Potrebuje avtorizacijo z žetonom.
+    if (!_obvKanal) {
+      try {
+        sb.auth.getSession().then(function (s) {
+          try { var tok = s && s.data && s.data.session && s.data.session.access_token; if (tok && sb.realtime && sb.realtime.setAuth) sb.realtime.setAuth(tok); } catch (e) {}
+          _obvKanal = sb.channel('obvestila-live')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'obvestila' }, function (p) {
+              var o = p && p.new; if (o && o.aktivno && obvVerjeni().indexOf(o.id) < 0) narisiToast(o);
+            })
+            .subscribe();
+        });
+      } catch (e) {}
+    }
+    // Zanesljiva rezerva: preveri nova obvestila vsakih 60 s (brez podvajanja).
+    if (!_obvTimer) {
+      _obvTimer = setInterval(function () {
+        if (document.hidden) return;
+        try { pokaziObvestila(); } catch (e) {}
+      }, 60000);
+    }
   }
   // ── Konzola (samo lastnik): pisanje in pregled obvestil ──
   async function risiKonzola() {
@@ -4425,11 +4438,12 @@
     var nas = $('konzNas').value.trim(), txt = $('konzTxt').value.trim();
     if (!txt) { m.className = 'msg bad show'; m.textContent = 'Vpiši sporočilo.'; return; }
     btn.disabled = true; btn.textContent = 'Pošiljam …';
-    var r = await sb.from('obvestila').insert({ naslov: nas || null, sporocilo: txt, aktivno: true });
+    var r = await sb.from('obvestila').insert({ naslov: nas || null, sporocilo: txt, aktivno: true }).select('id,naslov,sporocilo,created_at').single();
     btn.disabled = false; btn.textContent = 'Pošlji vsem';
     if (r && r.error) { m.className = 'msg bad show'; m.textContent = 'Ni uspelo: ' + r.error.message; return; }
     $('konzNas').value = ''; $('konzTxt').value = '';
     m.className = 'msg show'; m.textContent = 'Obvestilo je poslano vsem uporabnikom.';
+    if (r && r.data) narisiToast(r.data); // pokaži tudi pošiljatelju
     risiKonzola();
   }); }
 
