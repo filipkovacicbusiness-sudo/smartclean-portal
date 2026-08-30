@@ -144,7 +144,7 @@ h2{font-family:var(--serif);font-size:1.9rem;font-weight:700;line-height:1.15;}
 .row[aria-expanded="true"]{margin-bottom:0;border-bottom-left-radius:0;border-bottom-right-radius:0;}
 .row-name{font-weight:500;}
 .row-legal{font-size:.78rem;color:var(--mid);}
-.row-pct{font-size:.82rem;color:var(--mid);text-align:right;font-variant-numeric:tabular-nums;font-family:var(--mono);}
+.row-pct{font-size:.82rem;color:var(--mid);text-align:right;font-variant-numeric:tabular-nums;font-family:var(--sans);}
 .num{font-size:.82rem;color:var(--mid);text-align:right;font-variant-numeric:tabular-nums;}
 .chev{color:var(--mid);transition:transform .2s;justify-self:end;}
 .row[aria-expanded="true"] .chev{transform:rotate(90deg);}
@@ -318,13 +318,14 @@ h3.sec-h{font-family:var(--serif);font-size:1.05rem;font-weight:700;margin:0 0 1
 .arh-chk.on{background:var(--st-ok);border-color:var(--st-ok);}
 .arh-chk.dis{border-color:var(--st-bad);background:transparent;color:var(--st-bad);cursor:default;}
 .arh-chk.dis.leg{border-color:var(--mid);color:var(--mid);font-size:12px;}
-/* Status: nežen, zaobljen vstavljen trak (brez pisanega ozadja) */
-.arh-green .a-row,.arh-yellow .a-row,.arh-red .a-row{border-left-color:var(--line);background:var(--surface);}
-.arh-green .a-row::after,.arh-yellow .a-row::after,.arh-red .a-row::after{content:'';position:absolute;left:0;top:9px;bottom:9px;width:3px;border-radius:0 3px 3px 0;pointer-events:none;}
-.arh-green .a-row::after{background:var(--st-ok);}
-.arh-yellow .a-row::after{background:var(--st-warn);}
-.arh-red .a-row::after{background:var(--st-bad);}
-html[data-view="grid"] .arh-green .a-row::after,html[data-view="grid"] .arh-yellow .a-row::after,html[data-view="grid"] .arh-red .a-row::after{top:12px;bottom:12px;}
+/* Status — nežno obarvan cel okvir (sledi zaobljenim robovom, brez rezanja).
+   Zelena (potrjeno) je zadržana; rumena/rdeča bolj opazni ob scrollanju. */
+.arh-green .a-row{border-color:color-mix(in srgb, var(--st-ok) 30%, var(--line));background:color-mix(in srgb, var(--st-ok) 5%, var(--surface));}
+.arh-yellow .a-row{border-color:color-mix(in srgb, var(--st-warn) 55%, var(--line));background:color-mix(in srgb, var(--st-warn) 10%, var(--surface));}
+.arh-red .a-row{border-color:color-mix(in srgb, var(--st-bad) 55%, var(--line));background:color-mix(in srgb, var(--st-bad) 10%, var(--surface));}
+.arh-green .a-row:hover{border-color:color-mix(in srgb, var(--st-ok) 45%, var(--line));background:color-mix(in srgb, var(--st-ok) 9%, var(--surface));}
+.arh-yellow .a-row:hover{border-color:color-mix(in srgb, var(--st-warn) 72%, var(--line));background:color-mix(in srgb, var(--st-warn) 15%, var(--surface));}
+.arh-red .a-row:hover{border-color:color-mix(in srgb, var(--st-bad) 72%, var(--line));background:color-mix(in srgb, var(--st-bad) 15%, var(--surface));}
 html[data-view="grid"] .lcell .a-row .arh-chk{position:absolute;top:12px;right:14px;}
 .a-det{display:none;padding:6px 18px 18px;border:1px solid var(--line);border-top:none;
   border-radius:0 0 var(--radius) var(--radius);background:var(--surface);margin-bottom:10px;}
@@ -477,14 +478,14 @@ html[data-theme="dark"] .ur-ustvarjeno{background:#14311f;color:#7fd3a0}
 .fak-line:last-child{border-bottom:none;}
 .fak-line span{font-size:.95rem;color:var(--ink);}
 .fak-line b{font-size:1.02rem;font-weight:600;color:var(--ink);
-  font-variant-numeric:tabular-nums;font-family:var(--mono);}
+  font-variant-numeric:tabular-nums;font-family:var(--sans);}
 .fak-line-empty span{color:var(--mid);}
 .fak-tot{margin-top:14px;padding:14px 16px;border-radius:12px;
   background:var(--green-m);display:flex;flex-direction:column;gap:8px;}
 .fak-tot-r{display:flex;justify-content:space-between;align-items:baseline;gap:16px;}
 .fak-tot-r span{font-size:.9rem;color:var(--mid);}
 .fak-tot-r b{font-size:1rem;font-weight:700;color:var(--ink);
-  font-variant-numeric:tabular-nums;font-family:var(--mono);}
+  font-variant-numeric:tabular-nums;font-family:var(--sans);}
 
 /* ══════════ UREJANJE ARTIKLOV STRANKE ══════════ */
 .art-ur{list-style:none;margin:6px 0 0;padding:0;}
@@ -594,7 +595,7 @@ input[type=email],input[type=password],input[type=search],.field input[type=text
 .cenik-nm{grid-column:1;grid-row:1;font-size:.92rem;color:var(--ink);overflow-wrap:anywhere;}
 .cenik-meta{grid-column:1;grid-row:2;font-size:.72rem;color:var(--mid);font-family:var(--mono);}
 .cenik-cena{grid-column:2;grid-row:1 / span 2;display:flex;align-items:center;gap:8px;justify-self:end;}
-.cenik-val{font-size:1rem;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums;font-family:var(--mono);white-space:nowrap;}
+.cenik-val{font-size:1rem;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums;font-family:var(--sans);white-space:nowrap;}
 .cenik-edit{border:1px solid var(--line);background:var(--surface);color:var(--mid);width:28px;height:28px;border-radius:7px;cursor:pointer;font-size:13px;line-height:1;flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;}
 .cenik-edit:hover{border-color:var(--mid);color:var(--ink);}
 .cenik-in{width:92px;padding:6px 9px;border:1.5px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font-size:16px;text-align:right;font-variant-numeric:tabular-nums;}
@@ -638,7 +639,7 @@ input[type=email],input[type=password],input[type=search],.field input[type=text
 .fak-head-m span:first-child{text-align:left;}
 .fak-lines-m .fak-line{display:grid;grid-template-columns:1fr 90px 56px 100px;gap:8px;align-items:baseline;}
 .fak-l-nm{min-width:0;overflow-wrap:anywhere;}
-.fak-l-c,.fak-l-q,.fak-l-z{text-align:right;font-variant-numeric:tabular-nums;font-family:var(--mono);white-space:nowrap;}
+.fak-l-c,.fak-l-q,.fak-l-z{text-align:right;font-variant-numeric:tabular-nums;font-family:var(--sans);white-space:nowrap;}
 .fak-l-z{font-weight:600;}
 .fak-tot-bruto{border-top:1px solid var(--line);padding-top:8px;margin-top:2px;}
 .fak-tot-bruto b{font-size:1.05rem;}
@@ -1010,6 +1011,8 @@ html[data-theme="dark"] .art-hidden-tag{background:rgba(255,138,122,.14);color:#
 .fx-cli input,.fx-all input{width:16px;height:16px;accent-color:var(--ink);cursor:pointer;flex:0 0 auto;margin:0;}
 .fx-msg{margin:0 0 8px;}
 .fak-body-acts{margin-top:14px;display:flex;justify-content:flex-end;}
+.fak-body-acts .btn-mini{padding:9px 17px;border:1px solid var(--line);border-radius:100px;background:var(--surface);color:var(--ink);font-size:.85rem;font-weight:600;line-height:1;cursor:pointer;white-space:nowrap;transition:border-color .15s,background .15s;}
+.fak-body-acts .btn-mini:hover{border-color:var(--ink);background:var(--green-m);}
 /* Predogled dokumenta (skupni pop-up: scrollable predogled + natisni/shrani) */
 .doc-modal{max-width:880px;width:100%;max-height:92vh;display:flex;flex-direction:column;padding:16px 16px 14px;}
 .doc-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 12px;}
@@ -1309,6 +1312,15 @@ html[data-theme="dark"] .pris-chip-x:hover{background:rgba(255,138,122,.16);colo
 .adm-pill.dis{opacity:.55;cursor:default;}
 .adm-pill input:focus-visible+*,.adm-pill:focus-within{box-shadow:0 0 0 3px var(--green-m);border-radius:100px;}
 @media(max-width:560px){.adm-item{flex-wrap:wrap;gap:8px;}.adm-perms{justify-content:flex-start;}}
+/* Admin — dnevnik sprememb */
+.log-list{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:12px;overflow:hidden;}
+.log-row{display:flex;align-items:flex-start;gap:14px;padding:12px 14px;border-bottom:1px solid var(--line);}
+.log-row:last-child{border-bottom:none;}
+.log-row:nth-child(even){background:var(--green-m);}
+.log-raz{flex:0 0 auto;font-size:.68rem;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--mid);background:var(--surface);border:1px solid var(--line);border-radius:100px;padding:4px 10px;margin-top:1px;min-width:74px;text-align:center;}
+.log-mid{flex:1;min-width:0;}
+.log-op{font-size:.9rem;color:var(--ink);line-height:1.4;word-break:break-word;}
+.log-meta{font-size:.76rem;color:var(--mid);margin-top:3px;}
 .adm-role-h{display:flex;align-items:center;gap:12px;margin:0 0 12px;}
 .adm-ime{font-family:var(--serif);font-size:1.15rem;font-weight:700;color:var(--ink);background:var(--bg);border:1.5px solid var(--line);border-radius:9px;padding:8px 12px;max-width:280px;flex:1;}
 .adm-ime:focus{border-color:var(--green-l);outline:none;}

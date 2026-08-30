@@ -289,7 +289,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.4 · BETA';
+  var APP_VERZIJA = '4.5 · BETA';
   var NALAGANJE = '<div class="sc-load"><div class="sc-load-bar"></div></div>';
   var _reloadVal = null;   // vrednost 'reload' ob nalaganju (za potisnjeno osvežitev)
   const JE_LASTNIK = () => (JAZMAIL || '').trim().toLowerCase() === 'filip@eflitte.si';
@@ -331,6 +331,10 @@
       var r = await sb.from('app_config').select('vrednost').eq('kljuc', 'role_config').maybeSingle();
       if (r && r.data && r.data.vrednost) { var o = JSON.parse(r.data.vrednost); if (o && typeof o === 'object') ROLE_CFG = o; }
     } catch (e) {}
+  }
+  // Dnevnik sprememb — zapiši dejanje (tiho; če tabele ni, se ne zgodi nič).
+  function logDodaj(razdelek, akcija, opis) {
+    try { sb.from('audit_log').insert({ razdelek: razdelek, akcija: akcija, opis: (opis || '').slice(0, 500), kdo_ime: JAZIME || JAZMAIL || 'osebje' }).then(function () {}, function () {}); } catch (e) {}
   }
   function nastaviWho(ime) {
     $('who').innerHTML = '<span class="who-name">' + escape_(ime || '') + '</span>' + (OSEBJE ? '<span class="who-role">osebje</span>' : '');
@@ -1299,7 +1303,9 @@
       var e1 = (await sb.from('pricelist').update(patch).eq('sifra', sifra)).error;
       if (e1) { toast('Napaka: ' + e1.message); return; }
       if (nm !== rec.naziv) await posodobiImeArtikla(sifra, nm);
+      var _spr = []; if (nm !== rec.naziv) _spr.push('naziv'); if (cena !== rec.cena1) _spr.push('cena ' + cenaFmt(cena));
       rec.naziv = nm; rec.cena1 = cena; rec.teza = teza; if (patch.koda) rec.koda = nid; if ('cena_potrjena' in patch) rec.cena_potrjena = false; zgradiCenikMap();
+      logDodaj('Artikli', 'Urejeno', 'Artikel „' + nm + '"' + (_spr.length ? ' (' + _spr.join(', ') + ')' : ''));
       toast('Shranjeno.'); artRender();
     });
   }
@@ -1311,6 +1317,7 @@
     await sb.from('pricelist').update({ deleted_at: new Date().toISOString() }).eq('sifra', sifra);
     if (CLANI) CLANI = CLANI.filter(function (a) { return a.cena_sifra !== sifra; });
     CENIK = CENIK.filter(function (x) { return x.sifra !== sifra; }); zgradiCenikMap();
+    logDodaj('Artikli', 'Izbrisano', 'Artikel „' + (rec.naziv || ('#' + sifra)) + '"');
     toast('Artikel izbrisan.'); artRender();
   }
   async function artDodajNov(pre, wrap) {
@@ -1340,7 +1347,7 @@
       var ins = await sb.from('articles').insert({ org_id: oid, name: nm, cena_sifra: sifra, sort_order: maxo + 1 }).select('id').maybeSingle();
       if (!(ins && ins.error)) { if (CLANI) CLANI.push({ id: ins && ins.data ? ins.data.id : null, org_id: oid, name: nm, cena_sifra: sifra, sort_order: maxo + 1 }); dodanih++; }
     }
-    _artOpen = {}; _artOpen[pre] = true; toast('Artikel dodan' + (dodanih ? ' · propagirano ' + dodanih + ' strankam' : '') + '.'); artRender();
+    _artOpen = {}; _artOpen[pre] = true; logDodaj('Artikli', 'Dodano', 'Artikel „' + nm + '" (' + id + ')'); toast('Artikel dodan' + (dodanih ? ' · propagirano ' + dodanih + ' strankam' : '') + '.'); artRender();
   }
   function artNovCenik() {
     var back = document.createElement('div'); back.className = 'sc-modal-back';
@@ -1389,7 +1396,7 @@
     if (CLANI) CLANI = CLANI.filter(function (a) { return !setSif[a.cena_sifra]; });
     CENIK = CENIK.filter(function (x) { return !setSif[x.sifra]; }); zgradiCenikMap();
     delete SKUPINE_IME[pre]; delete _artOpen[pre];
-    toast('Skupina izbrisana (' + arts.length + ' art.).'); artRender();
+    logDodaj('Artikli', 'Izbrisano', 'Skupina/cenik „' + pre + '" (' + arts.length + ' art.)'); toast('Skupina izbrisana (' + arts.length + ' art.).'); artRender();
   }
   function artDodeli(pre) {
     var grupe = artikliGrupe(); var arts = grupe[pre] || []; var sifre = arts.map(function (x) { return x.sifra; });
@@ -1895,6 +1902,7 @@
     // Posodobi lokalno stanje in ponovno izriši detajl.
     Object.assign(box._note, novo);
     var li = LISTI.find(function (l) { return l.id === box._id; }); if (li) Object.assign(li, novo);
+    logDodaj('Arhiv', izbrisi ? 'Opomba odstranjena' : 'Opomba', 'Spremni list ' + ((box._note && box._note.number) || '') + (txt ? ': „' + txt + '"' : ''));
     risiListDetajl(box);
   }
 
@@ -1917,6 +1925,7 @@
       if (r.error) throw r.error;
       r = await sb.from('delivery_notes').delete().eq('id', box._id);
       if (r.error) throw r.error;
+      logDodaj('Arhiv', 'Izbrisano', 'Spremni list ' + ((box._note && box._note.number) || ''));
       toast('Spremni list izbrisan');
       await naloziListe();
       risiArhiv();
@@ -2049,6 +2058,7 @@
         r = await sb.from('delivery_note_items').insert(rows);
         if (r.error) throw r.error;
       }
+      logDodaj('Arhiv', 'Urejeno', 'Spremni list ' + ((box._note && box._note.number) || ''));
       toast('Spremni list shranjen');
       await naloziListe();
       risiArhiv();
@@ -4988,9 +4998,10 @@
       potrdi: 'Spremeni vlogo', preklici: 'Prekliči'
     });
     if (!ok) { loadUsers(); return; }
-    await nastaviVlogo(uid, nova);
+    var ime = ''; try { var row = sel.closest('.u-row'); var nm = row && row.querySelector('.u-mail'); if (nm && nm.childNodes[0]) ime = (nm.childNodes[0].textContent || '').trim(); } catch (e) {}
+    await nastaviVlogo(uid, nova, ime);
   }
-  async function nastaviVlogo(uid, vloga) {
+  async function nastaviVlogo(uid, vloga, ime) {
     var staff = (vloga === 'osebje' || vloga === 'super');
     var patch = { is_staff: staff, super_admin: vloga === 'super', zaposleni: vloga === 'zaposleni' };
     var r = await sb.from('profiles').update(patch).eq('id', uid);
@@ -5002,6 +5013,7 @@
     }
     if (r && r.error) { uMsg('Ni uspelo: ' + escape_(r.error.message), true); loadUsers(); return; }
     if (vloga !== 'stranka') { try { await sb.from('memberships').delete().eq('user_id', uid); } catch (e) {} }
+    logDodaj('Uporabniki', 'Vloga', (ime ? ime + ': ' : '') + 'nova vloga ' + roleIme(vloga));
     uMsg('Vloga je spremenjena.');
     loadUsers();
   }
@@ -5020,6 +5032,7 @@
         return;
       }
     }
+    logDodaj('Uporabniki', 'Stranka', orgId ? ('Dodeljeno podjetje ' + (ORGIME[orgId] || '')) : 'Odvzet dostop do podjetja');
     uMsg(orgId ? 'Dostop je dodeljen.' : 'Dostop je odvzet.');
     loadUsers();
   }
@@ -5404,19 +5417,59 @@
       });
     });
   }
+  var _adminView = 'pravice';
   function risiAdmin() {
     var box = $('adminList'); if (!box) return;
     if (!JE_LASTNIK()) { box.innerHTML = '<div class="msg bad show">Dostop nima na voljo.</div>'; return; }
+    box.innerHTML = '<div class="adm-top"><div class="pris-tabs" id="adminViewTabs">' +
+      '<button type="button" class="pris-tab' + (_adminView === 'pravice' ? ' on' : '') + '" data-view="pravice">Vloge in pravice</button>' +
+      '<button type="button" class="pris-tab' + (_adminView === 'dnevnik' ? ' on' : '') + '" data-view="dnevnik">Dnevnik sprememb</button>' +
+      '</div></div><div id="adminBody"></div>';
+    box.querySelectorAll('#adminViewTabs [data-view]').forEach(function (b) { b.addEventListener('click', function () { _adminView = b.dataset.view; box.querySelectorAll('#adminViewTabs [data-view]').forEach(function (x) { x.classList.toggle('on', x === b); }); adminRisiBody(); }); });
+    adminRisiBody();
+  }
+  function adminRisiBody() {
+    if (_adminView === 'dnevnik') return adminRisiDnevnik();
+    return adminRisiPravice();
+  }
+  function adminRisiPravice() {
+    var body = $('adminBody'); if (!body) return;
     _ADMIN_OSNUTEK = null;
     var o = adminOsnutek();
     if (ADMIN_VLOGE.indexOf(_adminVloga) < 0) _adminVloga = 'osebje';
     var tabs = '<div class="pris-tabs adm-tabs" id="adminTabs">' + ADMIN_VLOGE.map(function (v) { return '<button type="button" class="pris-tab' + (v === _adminVloga ? ' on' : '') + '" data-av="' + v + '">' + escape_(o.imena[v]) + '</button>'; }).join('') + '</div>';
-    box.innerHTML = '<p class="u-sub" style="margin:-4px 0 14px">Izberi vlogo, nato uredi njene pravice. »Branje« določa vidnost razdelka v meniju. (Tvoje pravice ostanejo vedno polne.)</p>' +
+    body.innerHTML = '<p class="u-sub" style="margin:8px 0 14px">Izberi vlogo, nato uredi njene pravice. Kljukica = razdelek je viden v stranskem meniju. (Tvoje pravice ostanejo vedno polne.)</p>' +
       '<div class="adm-top">' + tabs + '</div><div id="adminRolePanel"></div>' +
       '<div class="adm-save"><div class="msg" id="adminMsg" role="status"></div><button type="button" class="btn btn-narrow" id="adminShrani">Shrani pravice</button></div>';
-    box.querySelectorAll('#adminTabs [data-av]').forEach(function (b) { b.addEventListener('click', function () { _adminVloga = b.dataset.av; box.querySelectorAll('#adminTabs [data-av]').forEach(function (x) { x.classList.toggle('on', x === b); }); adminRisiPanel(); }); });
+    body.querySelectorAll('#adminTabs [data-av]').forEach(function (b) { b.addEventListener('click', function () { _adminVloga = b.dataset.av; body.querySelectorAll('#adminTabs [data-av]').forEach(function (x) { x.classList.toggle('on', x === b); }); adminRisiPanel(); }); });
     adminRisiPanel();
     var sb2 = $('adminShrani'); if (sb2) sb2.addEventListener('click', adminShrani);
+  }
+  var _adminLogFilter = '';
+  async function adminRisiDnevnik() {
+    var body = $('adminBody'); if (!body) return;
+    body.innerHTML = '<p class="u-sub" style="margin:8px 0 12px">Spremembe zadnjih 6 mesecev (artikli, stranke, arhiv, opombe, vloge). Zapisuje se samo, kaj je bilo spremenjeno — ne vsak klik.</p>' +
+      '<div class="filtri" style="margin:0 0 12px"><input type="search" id="adminLogIsci" placeholder="Iskanje po dnevniku …" aria-label="Iskanje"></div><div id="adminLogList">' + NALAGANJE + '</div>';
+    var il = $('adminLogIsci'); if (il) { il.value = _adminLogFilter; il.addEventListener('input', function () { _adminLogFilter = this.value; adminRisiLogSez(); }); }
+    var meja = new Date(Date.now() - 183 * 24 * 3600 * 1000).toISOString();
+    var r;
+    try { r = await sb.from('audit_log').select('kdo_ime,razdelek,akcija,opis,created_at').gte('created_at', meja).order('created_at', { ascending: false }).limit(1000); } catch (e) { r = { error: e }; }
+    if (r && r.error) { $('adminLogList').innerHTML = '<div class="msg bad show">Napaka pri nalaganju. Če piše, da tabela ne obstaja, zaženi <b>33_audit_log.sql</b> v Supabase.</div>'; return; }
+    _ADMIN_LOG = r.data || [];
+    adminRisiLogSez();
+  }
+  var _ADMIN_LOG = [];
+  function adminRisiLogSez() {
+    var host = $('adminLogList'); if (!host) return;
+    var q = (_adminLogFilter || '').trim().toLowerCase();
+    var vrstice = (_ADMIN_LOG || []).filter(function (l) { return !q || ((l.kdo_ime || '') + ' ' + (l.razdelek || '') + ' ' + (l.akcija || '') + ' ' + (l.opis || '')).toLowerCase().indexOf(q) >= 0; });
+    if (!vrstice.length) { host.innerHTML = '<div class="empty"><h3>' + (q ? 'Ni zadetkov' : 'Ni zapisov') + '</h3>' + (q ? '' : '<p>Spremembe se bodo tu izpisovale, ko jih uporabniki naredijo.</p>') + '</div>'; return; }
+    host.innerHTML = '<div class="log-list">' + vrstice.map(function (l) {
+      var dt = new Date(l.created_at).toLocaleString('sl-SI', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+      return '<div class="log-row"><span class="log-raz">' + escape_(l.razdelek || '—') + '</span>' +
+        '<div class="log-mid"><div class="log-op">' + escape_(l.akcija ? l.akcija + ' · ' : '') + escape_(l.opis || '') + '</div>' +
+        '<div class="log-meta">' + escape_(l.kdo_ime || 'osebje') + ' · ' + escape_(dt) + '</div></div></div>';
+    }).join('') + '</div>';
   }
   async function adminShrani() {
     var btn = $('adminShrani'), m = $('adminMsg');
