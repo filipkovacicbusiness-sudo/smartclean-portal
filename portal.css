@@ -48,9 +48,10 @@ button{-webkit-tap-highlight-color:transparent;}
 .wordmark span{color:var(--wm-green);}
 /* Prijavni zaslon — glava kot v portalu (logo + preklop teme), prijava na sredini */
 .auth{min-height:100dvh;display:flex;flex-direction:column;background:var(--bg);color:var(--ink);position:relative;}
-.auth-top{display:flex;align-items:center;justify-content:space-between;gap:16px;height:64px;
-  padding:0 clamp(20px,4vw,44px);border-bottom:1px solid var(--line);}
-.auth-top .wordmark{font-size:1.55rem;line-height:1.2;}
+.auth-top{border-bottom:1px solid var(--line);}
+.auth-top .topbar-in{justify-content:space-between;}
+.auth-top .wordmark{font-size:1.55rem;line-height:1.2;color:var(--wm-ink);}
+.auth-top .wordmark span{color:var(--wm-green);}
 /* hero + prijava skupaj, navpično na sredini */
 .auth-main{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(30px,6vh,64px);padding:24px clamp(20px,4vw,44px) clamp(56px,8vh,80px);}
 .auth-hero{text-align:center;}
@@ -1287,7 +1288,21 @@ html[data-theme="dark"] .pris-chip-x:hover{background:rgba(255,138,122,.16);colo
 
 /* ══════════ DOKUMENTI (skenirani računi) ══════════ */
 /* Admin — vloge in pravice */
+.adm-top{margin:0 0 14px;}
+.adm-tabs{flex-wrap:wrap;max-width:100%;}
 .adm-role{margin-bottom:14px;}
+.adm-chk input:disabled+span{opacity:.5;}
+.adm-list{display:flex;flex-direction:column;}
+.adm-item{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 2px;border-bottom:1px solid var(--line);}
+.adm-item:last-child{border-bottom:none;}
+.adm-item .adm-sec{font-size:.95rem;font-weight:600;color:var(--ink);}
+.adm-perms{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end;}
+.adm-pill{display:inline-flex;align-items:center;font-size:.78rem;font-weight:600;padding:6px 13px;border:1px solid var(--line);border-radius:100px;color:var(--mid);cursor:pointer;user-select:none;white-space:nowrap;transition:background .12s,color .12s,border-color .12s;}
+.adm-pill input{position:absolute;opacity:0;width:0;height:0;}
+.adm-pill.on{background:var(--ink);color:var(--bg);border-color:var(--ink);}
+.adm-pill.dis{opacity:.55;cursor:default;}
+.adm-pill input:focus-visible+*,.adm-pill:focus-within{box-shadow:0 0 0 3px var(--green-m);border-radius:100px;}
+@media(max-width:560px){.adm-item{flex-wrap:wrap;gap:8px;}.adm-perms{justify-content:flex-start;}}
 .adm-role-h{display:flex;align-items:center;gap:12px;margin:0 0 12px;}
 .adm-ime{font-family:var(--serif);font-size:1.15rem;font-weight:700;color:var(--ink);background:var(--bg);border:1.5px solid var(--line);border-radius:9px;padding:8px 12px;max-width:280px;flex:1;}
 .adm-ime:focus{border-color:var(--green-l);outline:none;}

@@ -289,7 +289,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.2 · BETA';
+  var APP_VERZIJA = '4.3 · BETA';
   var NALAGANJE = '<div class="sc-load"><div class="sc-load-bar"></div></div>';
   var _reloadVal = null;   // vrednost 'reload' ob nalaganju (za potisnjeno osvežitev)
   const JE_LASTNIK = () => (JAZMAIL || '').trim().toLowerCase() === 'filip@eflitte.si';
@@ -4487,6 +4487,11 @@
   function dokPotDeli(p) { return p ? p.split('/').filter(Boolean) : []; }
   async function risiDokumenti() {
     var box = $('dokList'); if (!box) return;
+    // Pravice: pisanje (nalaganje/mape/brisanje) & prenos.
+    var _w = sme('dokumenti', 'w');
+    var _nm = $('dokNovaMapa'), _nb = $('dokNaloziBtn');
+    if (_nm) _nm.style.display = _w ? '' : 'none';
+    if (_nb) _nb.style.display = _w ? '' : 'none';
     box.innerHTML = NALAGANJE;
     var res;
     try { res = await sb.from('documents').select('id,opomba,datum,storage_path,mime,velikost,created_at,mapa,ime,je_mapa').order('je_mapa', { ascending: false }).order('created_at', { ascending: false }); } catch (e) { res = { error: e }; }
@@ -4535,12 +4540,13 @@
       box.innerHTML = '<div class="empty"><h3>' + (q ? 'Ni zadetkov' : 'Prazna mapa') + '</h3>' + (q ? '' : '<p>Naloži datoteke (PDF, Word, Excel, slike) ali ustvari novo mapo.</p>') + '</div>';
       return;
     }
+    var _w = sme('dokumenti', 'w');
+    var _xbtn = _w ? '<button type="button" class="dok-x" title="Izbriši" aria-label="Izbriši">×</button>' : '';
     var html = '<div class="dok-grid">';
     mape.forEach(function (r) {
       html += '<div class="dok-item dok-folder" data-id="' + escape_(r.id) + '" data-mapa="' + escape_((r.mapa ? r.mapa + '/' : '') + dokImeRow(r)) + '">' +
         '<div class="dok-ic dok-ic-folder">' + _DOK_IK.mapa + '</div>' +
-        '<div class="dok-nm">' + escape_(dokImeRow(r)) + '</div>' +
-        '<button type="button" class="dok-x" title="Izbriši mapo" aria-label="Izbriši">×</button></div>';
+        '<div class="dok-nm">' + escape_(dokImeRow(r)) + '</div>' + _xbtn + '</div>';
     });
     datoteke.forEach(function (r) {
       var url = DOK_URL[r.storage_path] || '';
@@ -4550,8 +4556,7 @@
       html += '<div class="dok-item dok-file" data-id="' + escape_(r.id) + '"' + (url ? ' data-url="' + escape_(url) + '"' : '') + '>' +
         thumb +
         '<div class="dok-nm" title="' + escape_(dokImeRow(r)) + '">' + escape_(dokImeRow(r)) + '</div>' +
-        '<div class="dok-sub">' + escape_(kb) + '</div>' +
-        '<button type="button" class="dok-x" title="Izbriši" aria-label="Izbriši">×</button></div>';
+        '<div class="dok-sub">' + escape_(kb) + '</div>' + _xbtn + '</div>';
     });
     html += '</div>';
     box.innerHTML = html;
@@ -4592,6 +4597,7 @@
   }
   // Prenos datoteke z ORIGINALNIM imenom (ne s poti s časovnim žigom).
   async function dokPrenesi(r) {
+    if (!sme('dokumenti', 'd')) { toast('Za to vlogo prenos ni dovoljen.'); return; }
     var ime = dokImeRow(r);
     try {
       var s = await sb.storage.from('dokumenti').createSignedUrl(r.storage_path, 120, { download: ime });
@@ -4602,6 +4608,7 @@
     } catch (e) { var u = DOK_URL[r.storage_path]; if (u) window.open(u, '_blank', 'noopener'); }
   }
   async function dokNovaMapa() {
+    if (!sme('dokumenti', 'w')) { toast('Za to vlogo urejanje ni dovoljeno.'); return; }
     if (!_dokFsOk) { toast('Najprej zaženi 31_dokumenti_fs.sql v Supabase.'); return; }
     var ime = await vnesiModal({ naslov: 'Nova mapa', sporocilo: 'Ime mape:', placeholder: 'npr. Računi 2026', potrdi: 'Ustvari', preklici: 'Prekliči' });
     if (ime == null) return; ime = String(ime).trim().replace(/[\/\\]/g, ' ').trim();
@@ -4641,6 +4648,7 @@
   }
   async function dokNalozi(files) {
     if (!files || !files.length) return;
+    if (!sme('dokumenti', 'w')) { toast('Za to vlogo nalaganje ni dovoljeno.'); return; }
     if (!_dokFsOk) { toast('Za nalaganje najprej zaženi 31_dokumenti_fs.sql v Supabase.'); return; }
     files = Array.prototype.slice.call(files);
     // Zavrni nezdružljive tipe.
@@ -5355,37 +5363,70 @@
     });
     _ADMIN_OSNUTEK = o; return o;
   }
+  var _adminVloga = 'osebje';
+  var ADMIN_OPISI = {
+    domov: 'Začetna nadzorna plošča.', statistika: 'Analitika — kilaža, učinkovitost, grafi.', arhiv: 'Arhiv spremnih listov.',
+    fakture: 'Osnove za račun (izvoz PDF/Excel).', artikli: 'Katalog artiklov in ceniki (za osebje).', stranke: 'Upravljanje strank in njihovih cenikov.',
+    prisotnost: 'Evidenca delovnega časa.', dokumenti: 'Datoteke in mape.', aplikacija: 'Namestitev aplikacij (Skener …).',
+    uporabniki: 'Upravljanje uporabnikov in vlog.', katalog: 'Cenik/katalog, ki ga vidi stranka za svoje podjetje.'
+  };
+  var _PRAV_ADMIN = [['r', 'Branje'], ['w', 'Pisanje'], ['x', 'Izvajanje'], ['d', 'Prenos']];
+  function adminPanelHtml(o) {
+    var v = _adminVloga;
+    var jeSuper = (v === 'super');
+    var h = '<div class="panel adm-role">' +
+      '<div class="adm-role-h"><input type="text" class="adm-ime" value="' + escape_(o.imena[v]) + '" maxlength="40" aria-label="Ime vloge"><span class="adm-role-key">' + escape_(v) + '</span></div>' +
+      (jeSuper ? '<p class="u-sub" style="margin:0 0 10px">Super admin ima vedno vse pravice (jih ni mogoče omejiti).</p>' : '<p class="u-sub" style="margin:0 0 8px">Obkljukaj, kateri razdelki so vidni tej vlogi (stranski meni). Pri Dokumentih lahko ločeno določiš branje / pisanje / izvajanje / prenos.</p>') +
+      '<div class="adm-list">';
+    ADMIN_RAZDELKI.forEach(function (s) {
+      if (s[0] === 'dokumenti') {
+        h += '<div class="adm-item adm-item-dok"><span class="adm-sec" title="' + escape_(ADMIN_OPISI.dokumenti) + '">Dokumenti</span><div class="adm-perms">' +
+          _PRAV_ADMIN.map(function (p) { var on = o.perm[v].dokumenti[p[0]]; return '<label class="adm-pill' + (on ? ' on' : '') + (jeSuper ? ' dis' : '') + '"><input type="checkbox" data-s="dokumenti" data-p="' + p[0] + '"' + (on ? ' checked' : '') + (jeSuper ? ' disabled' : '') + '>' + p[1] + '</label>'; }).join('') +
+          '</div></div>';
+      } else {
+        var on = o.perm[v][s[0]].r;
+        h += '<div class="adm-item"><span class="adm-sec" title="' + escape_(ADMIN_OPISI[s[0]] || '') + '">' + escape_(s[1]) + '</span>' +
+          '<label class="adm-chk"><input type="checkbox" data-s="' + s[0] + '" data-p="r"' + (on ? ' checked' : '') + (jeSuper ? ' disabled' : '') + '><span></span></label></div>';
+      }
+    });
+    return h + '</div></div>';
+  }
+  function adminRisiPanel() {
+    var host = $('adminRolePanel'); if (!host) return;
+    var o = adminOsnutek();
+    host.innerHTML = adminPanelHtml(o);
+    var inp = host.querySelector('.adm-ime'); if (inp) inp.addEventListener('input', function () { o.imena[_adminVloga] = inp.value; var t = document.querySelector('#adminTabs [data-av="' + _adminVloga + '"]'); if (t) t.textContent = inp.value || _adminVloga; });
+    host.querySelectorAll('input[type="checkbox"][data-s]').forEach(function (cb) {
+      cb.addEventListener('change', function () {
+        o.perm[_adminVloga][cb.dataset.s][cb.dataset.p] = cb.checked;
+        var pill = cb.closest('.adm-pill'); if (pill) pill.classList.toggle('on', cb.checked);
+      });
+    });
+  }
   function risiAdmin() {
     var box = $('adminList'); if (!box) return;
     if (!JE_LASTNIK()) { box.innerHTML = '<div class="msg bad show">Dostop nima na voljo.</div>'; return; }
     _ADMIN_OSNUTEK = null;
     var o = adminOsnutek();
-    var PRAV = [['r', 'Branje'], ['w', 'Pisanje'], ['x', 'Izvajanje'], ['d', 'Prenos']];
-    var html = '<p class="u-sub" style="margin:-4px 0 16px">Nastavi, kaj posamezna vloga vidi in počne. Vloge preimenuješ zgoraj. »Branje« določa vidnost razdelka v meniju. (Tvoje pravice ostanejo vedno polne.)</p>';
-    ADMIN_VLOGE.forEach(function (v) {
-      html += '<div class="panel adm-role">' +
-        '<div class="adm-role-h"><input type="text" class="adm-ime" data-v="' + v + '" value="' + escape_(o.imena[v]) + '" maxlength="40"><span class="adm-role-key">' + escape_(v) + '</span></div>' +
-        '<div class="adm-tbl-wrap"><table class="adm-tbl"><thead><tr><th>Razdelek</th>' + PRAV.map(function (p) { return '<th>' + p[1] + '</th>'; }).join('') + '</tr></thead><tbody>';
-      ADMIN_RAZDELKI.forEach(function (s) {
-        html += '<tr><td class="adm-sec">' + escape_(s[1]) + '</td>' + PRAV.map(function (p) {
-          var on = o.perm[v][s[0]][p[0]];
-          return '<td><label class="adm-chk"><input type="checkbox" data-v="' + v + '" data-s="' + s[0] + '" data-p="' + p[0] + '"' + (on ? ' checked' : '') + '><span></span></label></td>';
-        }).join('') + '</tr>';
-      });
-      html += '</tbody></table></div></div>';
-    });
-    html += '<div class="adm-save"><div class="msg" id="adminMsg" role="status"></div><button type="button" class="btn btn-narrow" id="adminShrani">Shrani pravice</button></div>';
-    box.innerHTML = html;
-    box.querySelectorAll('.adm-ime').forEach(function (inp) { inp.addEventListener('input', function () { o.imena[inp.dataset.v] = inp.value; }); });
-    box.querySelectorAll('.adm-chk input').forEach(function (cb) { cb.addEventListener('change', function () { o.perm[cb.dataset.v][cb.dataset.s][cb.dataset.p] = cb.checked; }); });
+    if (ADMIN_VLOGE.indexOf(_adminVloga) < 0) _adminVloga = 'osebje';
+    var tabs = '<div class="pris-tabs adm-tabs" id="adminTabs">' + ADMIN_VLOGE.map(function (v) { return '<button type="button" class="pris-tab' + (v === _adminVloga ? ' on' : '') + '" data-av="' + v + '">' + escape_(o.imena[v]) + '</button>'; }).join('') + '</div>';
+    box.innerHTML = '<p class="u-sub" style="margin:-4px 0 14px">Izberi vlogo, nato uredi njene pravice. »Branje« določa vidnost razdelka v meniju. (Tvoje pravice ostanejo vedno polne.)</p>' +
+      '<div class="adm-top">' + tabs + '</div><div id="adminRolePanel"></div>' +
+      '<div class="adm-save"><div class="msg" id="adminMsg" role="status"></div><button type="button" class="btn btn-narrow" id="adminShrani">Shrani pravice</button></div>';
+    box.querySelectorAll('#adminTabs [data-av]').forEach(function (b) { b.addEventListener('click', function () { _adminVloga = b.dataset.av; box.querySelectorAll('#adminTabs [data-av]').forEach(function (x) { x.classList.toggle('on', x === b); }); adminRisiPanel(); }); });
+    adminRisiPanel();
     var sb2 = $('adminShrani'); if (sb2) sb2.addEventListener('click', adminShrani);
   }
   async function adminShrani() {
     var btn = $('adminShrani'), m = $('adminMsg');
     var o = adminOsnutek();
-    // varovalo: super admin in lastnikova vloga imata vedno polne pravice
+    // varovalo: super admin ima vedno polne pravice
     ADMIN_RAZDELKI.forEach(function (s) { if (s[0] !== 'katalog') { o.perm.super[s[0]] = _perm(1, 1, 1, 1); } });
-    ADMIN_VLOGE.forEach(function (v) { if (!o.imena[v] || !o.imena[v].trim()) o.imena[v] = ADMIN_IMENA_PRIVZ[v]; else o.imena[v] = o.imena[v].trim(); });
+    // Pri razdelkih razen Dokumentov velja samo »vpogled« (r) — ostalo poravnamo z r.
+    ADMIN_VLOGE.forEach(function (v) {
+      ADMIN_RAZDELKI.forEach(function (s) { if (s[0] !== 'dokumenti') { var r = !!o.perm[v][s[0]].r; o.perm[v][s[0]] = _perm(r, r, r, r); } });
+      if (!o.imena[v] || !o.imena[v].trim()) o.imena[v] = ADMIN_IMENA_PRIVZ[v]; else o.imena[v] = o.imena[v].trim();
+    });
     btn.disabled = true; var t = btn.textContent; btn.textContent = 'Shranjujem …';
     var up = await sb.from('app_config').upsert({ kljuc: 'role_config', vrednost: JSON.stringify(o) }, { onConflict: 'kljuc' });
     btn.disabled = false; btn.textContent = t;
