@@ -289,7 +289,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.6 · BETA';
+  var APP_VERZIJA = '4.7 · BETA';
   var NALAGANJE = '<div class="sc-load"><div class="sc-load-bar"></div></div>';
   var _reloadVal = null;   // vrednost 'reload' ob nalaganju (za potisnjeno osvežitev)
   const JE_LASTNIK = () => (JAZMAIL || '').trim().toLowerCase() === 'filip@eflitte.si';
@@ -304,7 +304,7 @@
   // Razdelki, katerih vidnost/pravice je mogoče nastavljati po vlogah.
   var ADMIN_RAZDELKI = [
     ['domov', 'Pregled'], ['statistika', 'Statistika'], ['arhiv', 'Arhiv'], ['fakture', 'Fakture'],
-    ['artikli', 'Artikli'], ['stranke', 'Stranke'], ['prisotnost', 'Prisotnost'], ['dokumenti', 'Dokumenti'],
+    ['artikli', 'Cenik & Artikli'], ['stranke', 'Stranke'], ['prisotnost', 'Prisotnost'], ['dokumenti', 'Dokumenti'],
     ['aplikacija', 'Programska oprema'], ['uporabniki', 'Uporabniki'], ['katalog', 'Katalog']
   ];
   var ADMIN_VLOGE = ['super', 'osebje', 'zaposleni', 'stranka'];
@@ -525,7 +525,7 @@
     // Lastnik: vedno vse (Admin ureja pravice ostalih, sebi jih ne more odvzeti).
     if (JE_LASTNIK()) {
       return [['domov', 'Pregled'], ['statistika', 'Statistika'], ['arhiv', 'Arhiv'], ['fakture', 'Fakture'],
-        ['artikli', 'Artikli'], ['stranke', 'Stranke'], ['prisotnost', 'Prisotnost'], ['dokumenti', 'Dokumenti'],
+        ['artikli', 'Cenik & Artikli'], ['stranke', 'Stranke'], ['prisotnost', 'Prisotnost'], ['dokumenti', 'Dokumenti'],
         ['aplikacija', 'Programska oprema'], ['uporabniki', 'Uporabniki'], ['konzola', 'Konzola']];
     }
     // Ostali: vidnost razdelkov po pravicah vloge (nastavljivo v Admin).
@@ -1264,8 +1264,11 @@
     els.forEach(function (el, i) {
       var sif = parseInt(el.dataset.s, 10); if (isNaN(sif)) return;
       upd.push(sb.from('pricelist').update({ sort_order: i }).eq('sifra', sif));
+      // vrstni red prenesi tudi na artikle vseh strank (to bere tablica)
+      upd.push(sb.from('articles').update({ sort_order: i }).eq('cena_sifra', sif));
       if (CENIKMAP[sif]) CENIKMAP[sif].sort_order = i;
       var rec = (CENIK || []).find(function (p) { return p.sifra === sif; }); if (rec) rec.sort_order = i;
+      (CLANI || []).forEach(function (a) { if (a.cena_sifra === sif) a.sort_order = i; });
     });
     try {
       var res = await Promise.all(upd);
@@ -3821,15 +3824,13 @@
       const k = (a.cena_sifra != null && CENIKMAP[a.cena_sifra]) ? CENIKMAP[a.cena_sifra].koda : null;
       return k ? '<span class="art-id">' + escape_(normId(k)) + '</span>' : '<span class="art-id art-id-none">brez ID</span>';
     }
-    html += arts.length
-      ? '<ul class="art-ur art-ur-ro">' + arts.map(a => `<li data-artid="${a.id}" data-s="${a.cena_sifra != null ? a.cena_sifra : ''}" class="${a.aktiven === false ? 'art-off' : ''}"><div class="art-main"><span class="art-nm">${escape_(a.name)}</span><span class="art-sub">${idOznaka(a)}${cenaOznaka(a)}${a.aktiven === false ? '<span class="art-hidden-tag">skrit</span>' : ''}</span></div>${OSEBJE ? `<span class="art-acts"><button type="button" class="art-vis${a.aktiven === false ? ' off' : ''}" data-art="${a.id}" data-on="${a.aktiven === false ? 0 : 1}" title="${a.aktiven === false ? 'skrit v aplikaciji — klikni za prikaz' : 'viden v aplikaciji — klikni za skritje'}" aria-label="prikaz v aplikaciji">${a.aktiven === false ? EYE_OFF : EYE_ON}</button></span>` : ''}</li>`).join('') + '</ul>'
-      : '<p class="none">Ta stranka še nima artiklov v katalogu.</p>';
-    if (OSEBJE) html += `<p class="art-cenik-hint">Artikle in cene urejaš v razdelku <button type="button" class="art-to-cenik" data-org="${orgId}">Cenik ›</button></p>`;
+    var _na = arts.length;
+    var _besed = _na === 1 ? 'artikel' : (_na === 2 ? 'artikla' : ((_na === 3 || _na === 4) ? 'artikli' : 'artiklov'));
+    html += `<p class="art-cenik-hint">${_na ? _na + ' ' + _besed + ' v ceniku' : 'Brez artiklov v ceniku'}${OSEBJE ? ` · <button type="button" class="art-to-cenik" data-org="${orgId}">Uredi v Ceniku ›</button>` : ''}</p>`;
     box.innerHTML = html;
     if (OSEBJE) {
       { const eb = box.querySelector('.str-edit'); if (eb) eb.addEventListener('click', e => { e.stopPropagation(); urediStranko(box, orgId); }); }
       { const db = box.querySelector('.str-del'); if (db) db.addEventListener('click', e => { e.stopPropagation(); izbrisiStrankoStranke(orgId, box); }); }
-      box.querySelectorAll('.art-vis').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); preklopiArtikelViden(b.dataset.art, b.dataset.on !== '1', box, orgId); }));
       { const cl = box.querySelector('.art-to-cenik'); if (cl) cl.addEventListener('click', e => { e.stopPropagation(); var pre = strankaSkupina(orgId); _artOpen = {}; if (pre) _artOpen[pre] = true; pojdi('artikli'); }); }
     }
     // sinhroniziraj značko »Splošni cenik« na vrstici stranke (živo, ob vsaki spremembi artiklov)
