@@ -289,7 +289,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.5 · BETA';
+  var APP_VERZIJA = '4.6 · BETA';
   var NALAGANJE = '<div class="sc-load"><div class="sc-load-bar"></div></div>';
   var _reloadVal = null;   // vrednost 'reload' ob nalaganju (za potisnjeno osvežitev)
   const JE_LASTNIK = () => (JAZMAIL || '').trim().toLowerCase() === 'filip@eflitte.si';
@@ -1617,8 +1617,8 @@
     var cardDonut = '<div class="uc-card uc-donut3d-card">' +
       '<div class="uc-d3-head"><div><h3 class="sec-h">Delež kg po strankah</h3><p class="u-sub" style="margin:-2px 0 0">' + rangeLbl + '</p></div>' +
       '<div class="uc-d3-ctrl">' + mesecInput +
-      '<span class="pris-tabs"><button type="button" class="pris-tab' + (_ucDonutRange === '3m' ? ' on' : '') + '" data-ucrange="3m">3 meseci</button>' +
-      '<button type="button" class="pris-tab' + (_ucDonutRange === 'mesec' ? ' on' : '') + '" data-ucrange="mesec">Mesec</button>' +
+      '<span class="pris-tabs"><button type="button" class="pris-tab' + (_ucDonutRange === 'mesec' ? ' on' : '') + '" data-ucrange="mesec">Mesec</button>' +
+      '<button type="button" class="pris-tab' + (_ucDonutRange === '3m' ? ' on' : '') + '" data-ucrange="3m">3 meseci</button>' +
       '<button type="button" class="pris-tab' + (_ucDonutRange === 'vse' ? ' on' : '') + '" data-ucrange="vse">Vse</button></span></div></div>' +
       '<div class="uc-d3-stage"><svg class="uc3d-svg" viewBox="0 0 ' + _UC3D.W + ' ' + _UC3D.H + '" preserveAspectRatio="xMidYMid meet"></svg></div></div>';
     var cardBars = '<div class="uc-card"><h3 class="sec-h">kg zadnjih 7 dni</h3><div class="bars-row" style="margin-top:14px">' +
@@ -3822,28 +3822,15 @@
       return k ? '<span class="art-id">' + escape_(normId(k)) + '</span>' : '<span class="art-id art-id-none">brez ID</span>';
     }
     html += arts.length
-      ? '<ul class="art-ur">' + arts.map(a => `<li data-artid="${a.id}" data-s="${a.cena_sifra != null ? a.cena_sifra : ''}" class="${a.aktiven === false ? 'art-off' : ''}">${OSEBJE ? `<button type="button" class="art-grip dnd-handle" title="povleci za razvrščanje" aria-label="razvrsti">${DND_ICON}</button>` : ''}<div class="art-main"><span class="art-nm">${escape_(a.name)}</span><span class="art-sub">${idOznaka(a)}${cenaOznaka(a)}${a.aktiven === false ? '<span class="art-hidden-tag">skrit</span>' : ''}</span></div>${OSEBJE ? `<span class="art-acts"><button type="button" class="art-vis${a.aktiven === false ? ' off' : ''}" data-art="${a.id}" data-on="${a.aktiven === false ? 0 : 1}" title="${a.aktiven === false ? 'skrit v aplikaciji — klikni za prikaz' : 'viden v aplikaciji — klikni za skritje'}" aria-label="prikaz v aplikaciji">${a.aktiven === false ? EYE_OFF : EYE_ON}</button></span>` : ''}</li>`).join('') + '</ul>'
+      ? '<ul class="art-ur art-ur-ro">' + arts.map(a => `<li data-artid="${a.id}" data-s="${a.cena_sifra != null ? a.cena_sifra : ''}" class="${a.aktiven === false ? 'art-off' : ''}"><div class="art-main"><span class="art-nm">${escape_(a.name)}</span><span class="art-sub">${idOznaka(a)}${cenaOznaka(a)}${a.aktiven === false ? '<span class="art-hidden-tag">skrit</span>' : ''}</span></div>${OSEBJE ? `<span class="art-acts"><button type="button" class="art-vis${a.aktiven === false ? ' off' : ''}" data-art="${a.id}" data-on="${a.aktiven === false ? 0 : 1}" title="${a.aktiven === false ? 'skrit v aplikaciji — klikni za prikaz' : 'viden v aplikaciji — klikni za skritje'}" aria-label="prikaz v aplikaciji">${a.aktiven === false ? EYE_OFF : EYE_ON}</button></span>` : ''}</li>`).join('') + '</ul>'
       : '<p class="none">Ta stranka še nima artiklov v katalogu.</p>';
-    if (OSEBJE) html += `<div class="art-add"><input type="text" class="art-new" placeholder="nov artikel"><input type="text" class="art-id-new" placeholder="ID (npr. PV001)" maxlength="5" value="${escape_(predlagajId())}"><button type="button" class="btn btn-narrow art-add-btn">+ Dodaj</button><button type="button" class="btn btn-narrow ghost art-exist-btn">+ Obstoječ</button></div><div class="art-exist-box"></div>`;
+    if (OSEBJE) html += `<p class="art-cenik-hint">Artikle in cene urejaš v razdelku <button type="button" class="art-to-cenik" data-org="${orgId}">Cenik ›</button></p>`;
     box.innerHTML = html;
     if (OSEBJE) {
       { const eb = box.querySelector('.str-edit'); if (eb) eb.addEventListener('click', e => { e.stopPropagation(); urediStranko(box, orgId); }); }
       { const db = box.querySelector('.str-del'); if (db) db.addEventListener('click', e => { e.stopPropagation(); izbrisiStrankoStranke(orgId, box); }); }
       box.querySelectorAll('.art-vis').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); preklopiArtikelViden(b.dataset.art, b.dataset.on !== '1', box, orgId); }));
-      { const ul = box.querySelector('.art-ur'); if (ul) dndSort(ul, 'li', '.art-grip', function () { shraniArtVrstniRed(ul); }); }
-      const inp = box.querySelector('.art-new'), idInp = box.querySelector('.art-id-new'), addb = box.querySelector('.art-add-btn');
-      const dodaj = () => {
-        const nm = inp.value.trim(); if (!nm) return;
-        const id = normId(idInp.value);
-        if (id) {
-          if (!veljavenId(id)) { toast('ID mora biti 2 črki + 3 številke (npr. PV001).'); idInp.focus(); return; }
-          const z = idZaseden(id, null); if (z) { toast('ID ' + id + ' že uporablja: ' + (z.naziv || '#' + z.sifra)); idInp.focus(); return; }
-        }
-        dodajArtikel(orgId, nm, box, id);
-      };
-      addb.addEventListener('click', e => { e.stopPropagation(); dodaj(); });
-      [inp, idInp].forEach(el => { el.addEventListener('click', e => e.stopPropagation()); el.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); dodaj(); } }); });
-      { const eb2 = box.querySelector('.art-exist-btn'); if (eb2) eb2.addEventListener('click', e => { e.stopPropagation(); dodajObstojecStranka(orgId, box); }); }
+      { const cl = box.querySelector('.art-to-cenik'); if (cl) cl.addEventListener('click', e => { e.stopPropagation(); var pre = strankaSkupina(orgId); _artOpen = {}; if (pre) _artOpen[pre] = true; pojdi('artikli'); }); }
     }
     // sinhroniziraj značko »Splošni cenik« na vrstici stranke (živo, ob vsaki spremembi artiklov)
     try {

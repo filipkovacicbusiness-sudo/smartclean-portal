@@ -502,6 +502,11 @@ html[data-theme="dark"] .ur-ustvarjeno{background:#14311f;color:#7fd3a0}
 .art-ren-in{flex:1;min-width:0;padding:7px 11px;border:1.5px solid var(--line);border-radius:8px;
   background:var(--bg);color:var(--ink);font-size:16px;}
 .art-ren-in:focus{border-color:var(--green-l);outline:none;}
+.art-cenik-hint{margin:12px 0 2px;font-size:.85rem;color:var(--mid);display:flex;align-items:center;gap:6px;}
+.art-to-cenik{border:1px solid var(--line);background:var(--surface);color:var(--ink);
+  padding:6px 13px;border-radius:100px;font:inherit;font-weight:600;font-size:.82rem;cursor:pointer;
+  transition:border-color .15s,background .15s;}
+.art-to-cenik:hover{border-color:var(--green-l);background:color-mix(in srgb,var(--green-l) 8%,var(--surface));}
 .art-add{display:flex;gap:8px;margin-top:12px;}
 .art-add .art-new{flex:1;min-width:0;padding:9px 12px;border:1.5px solid var(--line);border-radius:9px;
   background:var(--bg);color:var(--ink);font-size:.9rem;}
