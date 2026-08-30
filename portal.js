@@ -288,7 +288,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '3.4 · BETA';
+  var APP_VERZIJA = '3.5 · BETA';
   var NALAGANJE = '<div class="sc-load"><div class="sc-load-bar"></div></div>';
   var _reloadVal = null;   // vrednost 'reload' ob nalaganju (za potisnjeno osvežitev)
   const JE_LASTNIK = () => (JAZMAIL || '').trim().toLowerCase() === 'filip@eflitte.si';
@@ -2518,12 +2518,12 @@
     const back = document.createElement('div'); back.className = 'sc-modal-back';
     const checks = orgs.map(o => `<label class="fx-cli"><input type="checkbox" class="fx-org" value="${escape_(o.id)}" checked><span>${escape_(o.name)}</span></label>`).join('') || '<p class="u-sub">Ni strank.</p>';
     back.innerHTML = '<div class="sc-modal sc-modal-wide" role="dialog" aria-modal="true">'
-      + '<h4>Izvoz — osnova za račun</h4>'
+      + '<h4>' + (jePdf ? 'Izvoz v PDF — osnova za račun' : 'Izvoz v Excel') + '</h4>'
       + '<div class="fx-dates"><label>Od<input type="date" class="sc-modal-input fx-od"></label><label>Do<input type="date" class="sc-modal-input fx-do"></label></div>'
       + '<div class="fx-cli-head"><span>Stranke</span><label class="fx-all"><input type="checkbox" class="fx-vse" checked><span>Vse</span></label></div>'
       + '<div class="fx-cli-list">' + checks + '</div>'
       + '<div class="fx-msg msg"></div>'
-      + '<div class="sc-modal-acts"><button type="button" class="sc-modal-btn ghost" data-no>Prekliči</button><button type="button" class="sc-modal-btn primary" data-yes>Predogled</button></div>'
+      + '<div class="sc-modal-acts"><button type="button" class="sc-modal-btn ghost" data-no>Prekliči</button><button type="button" class="sc-modal-btn primary" data-yes>' + (jePdf ? 'Predogled' : 'Izvozi Excel') + '</button></div>'
       + '</div>';
     document.body.appendChild(back);
     const odI = back.querySelector('.fx-od'), doI = back.querySelector('.fx-do');
@@ -2549,17 +2549,21 @@
       const btn = this; btn.disabled = true; btn.textContent = 'Pripravljam …';
       msg.className = 'fx-msg msg'; msg.textContent = '';
       const res = await fakZberi(od, doo, vseIzbrane ? null : izbrani);
-      btn.disabled = false; btn.textContent = 'Predogled';
+      btn.disabled = false; btn.textContent = jePdf ? 'Predogled' : 'Izvozi Excel';
       if (res.error) { msg.className = 'fx-msg msg bad show'; msg.textContent = 'Napaka: ' + res.error.message; return; }
       const skupine = res.skupine || [];
       if (!skupine.length) { msg.className = 'fx-msg msg bad show'; msg.textContent = 'V izbranem obdobju ni spremnih listov.'; return; }
       zapri();
-      predogledDokument({
-        naslov: 'Osnova za račun — ' + (vseIzbrane ? 'vse stranke' : (izbrani.length + ' strank')),
-        docHtml: fakDokumentHtml(skupine, od, doo, 'Osnova za račun'),
-        pdf: function () { return fakPdfDownload(skupine, od, doo); },
-        xlsx: function () { fakIzvozXlsx(od, doo, skupine); }
-      });
+      if (jePdf) {
+        predogledDokument({
+          naslov: 'Osnova za račun — ' + (vseIzbrane ? 'vse stranke' : (izbrani.length + ' strank')),
+          docHtml: fakDokumentHtml(skupine, od, doo, 'Osnova za račun'),
+          pdf: function () { return fakPdfDownload(skupine, od, doo); }
+        });
+      } else {
+        fakIzvozXlsx(od, doo, skupine);
+        toast('Excel pripravljen: fakture_' + od + '_' + doo + '.xlsx');
+      }
     });
   }
 
