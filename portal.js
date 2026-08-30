@@ -1881,15 +1881,13 @@
     }
     const q = $('arhivIsci').value.trim().toLowerCase();
     const org = OSEBJE ? $('arhivOrg').value : '';
-    // napolni spustni seznam mesecev (ohrani izbiro)
-    { const msEl = $('arhivMesec'); if (msEl) {
-        const _tr = msEl.value;
-        const _mN = ['jan', 'feb', 'mar', 'apr', 'maj', 'jun', 'jul', 'avg', 'sep', 'okt', 'nov', 'dec'];
-        const _mm = Array.from(new Set(LISTI.map(l => String(l.doc_date || '').slice(0, 7)).filter(Boolean))).sort().reverse();
-        msEl.innerHTML = '<option value="">Vsi meseci</option>' + _mm.map(m => { const p = m.split('-'); return '<option value="' + m + '"' + (m === _tr ? ' selected' : '') + '>' + (_mN[parseInt(p[1], 10) - 1] || '') + ' ' + p[0] + '</option>'; }).join('');
-      } }
-    const mes = ($('arhivMesec') && $('arhivMesec').value) || '';
-    const vrstice = LISTI.filter(l => (!org || l.org_id === org) && (!mes || String(l.doc_date || '').slice(0, 7) === mes) && (!q || (l.number || '').toLowerCase().includes(q) || (ORGIME[l.org_id] || '').toLowerCase().includes(q)));
+    // obdobje od–do (posamičen dan = od == do); prazno = vse
+    let _od = ($('arhivOd') && $('arhivOd').value) || '';
+    let _do = ($('arhivDo') && $('arhivDo').value) || '';
+    if (_od && _do && _od > _do) { const _t = _od; _od = _do; _do = _t; }
+    { const xb = $('arhivObdX'); if (xb) xb.classList.toggle('hidden', !(_od || _do)); }
+    const vDan = d => { const s = String(d || '').slice(0, 10); return (!_od || s >= _od) && (!_do || s <= _do); };
+    const vrstice = LISTI.filter(l => (!org || l.org_id === org) && vDan(l.doc_date) && (!q || (l.number || '').toLowerCase().includes(q) || (ORGIME[l.org_id] || '').toLowerCase().includes(q)));
     const sortv = ($('arhivSort') && $('arhivSort').value) || 'st_desc';
     const imeStr = l => (OSEBJE ? (ORGIME[l.org_id] || '') : (l.issued_name || ''));
     const stK = l => { const d = String(l.number || '').split('/'); return (parseInt(d[1], 10) || 0) * 1e7 + (parseInt(d[0], 10) || 0); };
@@ -1922,7 +1920,9 @@
   }
   $('arhivIsci').addEventListener('input', risiArhiv);
   { const ss = $('arhivSort'); if (ss) ss.addEventListener('change', risiArhiv); }
-  { const mm = $('arhivMesec'); if (mm) mm.addEventListener('change', risiArhiv); }
+  { const od = $('arhivOd'); if (od) od.addEventListener('change', risiArhiv); }
+  { const dd = $('arhivDo'); if (dd) dd.addEventListener('change', risiArhiv); }
+  { const xb = $('arhivObdX'); if (xb) xb.addEventListener('click', () => { const a = $('arhivOd'), b = $('arhivDo'); if (a) a.value = ''; if (b) b.value = ''; risiArhiv(); }); }
   { const _nb = $('arhivNovBtn'); if (_nb) _nb.addEventListener('click', () => novList()); }
   async function odpriList(btn) {
     const box = btn.nextElementSibling && btn.nextElementSibling.classList.contains('a-det') ? btn.nextElementSibling : $('det' + btn.dataset.i);

@@ -59,7 +59,7 @@
   html,body,.topbar,.panel,.entry,.card,.kg-step,.prevoz-step,.seg,.seg-b,.tema-b,
   .admin-screen,.admin-sec,.login-screen,.sheet,.dialog,.kp-wrap,.tb-btn,.kg-btn,.clear{
     transition:background-color .32s ease,border-color .32s ease,color .28s ease}
-  .mono{font-family:'Geist Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums}
+  .mono{font-family:'Instrument Sans',system-ui,sans-serif;font-variant-numeric:tabular-nums;font-variant-numeric:tabular-nums}
   button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
   select{font-family:inherit}
 
@@ -125,7 +125,7 @@
   .arow:active{background:var(--press-tint)}
   .arow .an{flex:1;min-width:0;font-weight:600;font-size:15px;line-height:1.25}
   .arow .pill{min-width:52px;height:40px;padding:0 12px;border-radius:10px;display:grid;place-items:center;
-    font-family:'Geist Mono',monospace;font-weight:600;font-size:17px;
+    font-family:'Instrument Sans',system-ui,sans-serif;font-variant-numeric:tabular-nums;font-weight:600;font-size:17px;
     border:1px solid var(--line);color:#B4BCBC;background:var(--paper);flex-shrink:0;transition:all .14s}
   .arow.filled .pill{background:var(--press);border-color:var(--press);color:var(--paper)}
   .arow.filled .an{color:var(--press-deep)}
@@ -213,7 +213,7 @@
   .kp-head .art .lbl{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-soft);font-weight:600}
   .kp-head .art .name{font-size:18px;font-weight:700;margin-top:2px;line-height:1.25}
   .kp-head .art .cur{font-size:12px;color:var(--ink-soft);margin-top:3px}
-  .kp-disp{font-family:'Geist Mono',monospace;font-size:40px;font-weight:600;line-height:1;
+  .kp-disp{font-family:'Instrument Sans',system-ui,sans-serif;font-variant-numeric:tabular-nums;font-size:40px;font-weight:600;line-height:1;
     color:var(--ink);flex-shrink:0;min-width:130px;text-align:right}
   .kp-disp.is-empty{color:#B4BCBC}
   .kp-disp .u{font-size:15px;font-weight:500;color:var(--ink-soft);margin-left:4px}
@@ -280,7 +280,7 @@
   .kg-step.need{border-color:var(--warn);background:rgba(178,59,59,.08)}
   .kg-step.need .kg-lbl{color:var(--warn)}
   .kg-step .kg-lbl{font-size:14px;font-weight:600;color:var(--ink)}
-  .kg-btn{border:1px solid var(--line);border-radius:9px;padding:9px 16px;font-weight:700;font-size:15px;color:var(--press-deep);background:var(--press-tint);font-family:'Geist Mono',monospace}
+  .kg-btn{border:1px solid var(--line);border-radius:9px;padding:9px 16px;font-weight:700;font-size:15px;color:var(--press-deep);background:var(--press-tint);font-family:'Instrument Sans',system-ui,sans-serif;font-variant-numeric:tabular-nums}
   .prevoz-step{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:12px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--paper)}
   .seg{display:inline-flex;border:1px solid var(--line);border-radius:11px;padding:3px;gap:3px;background:var(--paper)}
   .seg-b{padding:9px 15px;border:none;border-radius:8px;background:none;color:var(--ink-soft);font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;transition:background .15s,color .15s}
@@ -1671,7 +1671,7 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
         .sort(function(a,b){return a.stevilka<b.stevilka?1:-1;}).slice(0,100); }
     else { rec=saved.slice().sort(function(a,b){return a.ustvarjeno<b.ustvarjeno?1:-1;}).slice(0,20); }
     document.getElementById("admRecent").innerHTML = rec.length ? rec.map(function(e){
-      return '<div class="admin-row"><input class="admin-in" data-numid="'+e.id+'" value="'+esc(e.stevilka)+'" style="max-width:118px;font-family:\'IBM Plex Mono\',monospace" /><div class="g"><small>'+esc(e.strankaNaziv)+' \u00b7 '+fmtDateHuman(e.datum)+' \u00b7 '+e.skupajKosov+' kos'+(e.kg?' \u00b7 '+String(e.kg).replace(".",",")+' kg':'')+'</small></div><button class="btn-mini" data-openrec="'+e.id+'">Odpri</button></div>';
+      return '<div class="admin-row"><input class="admin-in" data-numid="'+e.id+'" value="'+esc(e.stevilka)+'" style="max-width:118px;font-family:\'Instrument Sans\',system-ui,sans-serif;font-variant-numeric:tabular-nums" /><div class="g"><small>'+esc(e.strankaNaziv)+' \u00b7 '+fmtDateHuman(e.datum)+' \u00b7 '+e.skupajKosov+' kos'+(e.kg?' \u00b7 '+String(e.kg).replace(".",",")+' kg':'')+'</small></div><button class="btn-mini" data-openrec="'+e.id+'">Odpri</button></div>';
     }).join("") : '<div style="color:var(--ink-soft);font-size:13px">'+(q?"Ni zadetkov.":"Ni shranjenih listov.")+'</div>';
     document.querySelectorAll("[data-openrec]").forEach(function(b){ b.onclick=function(){ closeAdmin(); openSheet(b.getAttribute("data-openrec")); }; });
     document.querySelectorAll("[data-numid]").forEach(function(inp){ inp.onchange=function(){ renameEntryNumber(inp.getAttribute("data-numid"), inp.value); }; });

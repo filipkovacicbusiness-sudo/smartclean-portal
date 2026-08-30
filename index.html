@@ -12,7 +12,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="SmartClean"/>
 <link rel="apple-touch-icon" href="apple-touch-icon.png"/>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230a0a0a'/%3E%3Ctext x='32' y='45' font-family='Georgia,%27Times New Roman%27,serif' font-size='36' font-weight='700' text-anchor='middle'%3E%3Ctspan fill='%23e8f1eb'%3ES%3C/tspan%3E%3Ctspan fill='%236ed3a1'%3EC%3C/tspan%3E%3C/text%3E%3C/svg%3E"/>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230a0a0a'/%3E%3Ctext x='32' y='34' font-family='Georgia,%27Times New Roman%27,serif' font-size='30' font-weight='700' text-anchor='middle'%3E%3Ctspan fill='%23e8f1eb'%3ES%3C/tspan%3E%3Ctspan fill='%236ed3a1'%3EC%3C/tspan%3E%3C/text%3E%3Ctext x='32' y='51' font-family='%27Instrument Sans%27,system-ui,sans-serif' font-size='11' font-weight='600' letter-spacing='1.2' text-anchor='middle' fill='%238fd8b3'%3Eportal%3C/text%3E%3C/svg%3E"/>
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https://anrhtgbckxrccnafcmsz.supabase.co; connect-src 'self' https://anrhtgbckxrccnafcmsz.supabase.co wss://anrhtgbckxrccnafcmsz.supabase.co; base-uri 'none'; form-action 'none'; object-src 'none'"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
@@ -204,7 +204,12 @@ html[data-theme="light"] .sc-hex{opacity:.5}
               <option value="stranka_az">Stranka A–Ž</option>
               <option value="stranka_za">Stranka Ž–A</option>
             </select>
-            <select id="arhivMesec" class="arh-mesec" aria-label="Mesec"><option value="">Vsi meseci</option></select>
+            <span class="arh-obd">
+              <input type="date" id="arhivOd" class="arh-dan" aria-label="Od datuma"/>
+              <span class="arh-obd-sep">–</span>
+              <input type="date" id="arhivDo" class="arh-dan" aria-label="Do datuma"/>
+              <button type="button" id="arhivObdX" class="arh-obd-x hidden" aria-label="Počisti obdobje" title="Počisti">×</button>
+            </span>
             <input type="search" id="arhivIsci" placeholder="Iskanje po številki …" aria-label="Iskanje"/>
           </div>
         </div>
