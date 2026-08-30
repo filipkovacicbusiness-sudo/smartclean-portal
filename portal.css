@@ -580,6 +580,8 @@ html.sc-notrans,html.sc-notrans *,html.sc-notrans *::before,html.sc-notrans *::a
 @keyframes scLoadDelayed{from{opacity:0}to{opacity:1}}
 /* Spinner se pokaže šele, če nalaganje traja dlje kot ~0,28s — hitri (cache) prehodi ga sploh ne pokažejo. */
 .sc-load{display:flex;align-items:center;justify-content:center;min-height:46vh;padding:24px 16px;opacity:0;animation:scLoadDelayed .2s ease .28s both;}
+/* V razširjenih karticah (stranke/arhiv) naj nalaganje ne napihne kartice. */
+.arts .sc-load,.a-det .sc-load{min-height:56px;padding:12px;}
 .sc-load-bar{width:min(440px,72%);height:5px;border-radius:5px;background:var(--line);overflow:hidden;position:relative;}
 .sc-load-bar::after{content:'';position:absolute;top:0;left:-40%;height:100%;width:40%;border-radius:5px;
   background:linear-gradient(90deg,transparent,var(--ink),transparent);animation:scload 1s cubic-bezier(.65,0,.35,1) infinite;}
@@ -1238,7 +1240,7 @@ html[data-view="grid"] #cenikList .sc-isolate .cgrp:not(.open){max-width:var(--t
 .uc3d-lead{stroke:var(--mid);stroke-width:1;opacity:.55;}
 .uc3d-nm{fill:var(--ink);font-family:var(--sans);font-size:13px;font-weight:600;}
 .uc3d-pct{fill:var(--mid);font-family:var(--mono);font-size:12px;}
-@media(max-width:560px){.uc3d-nm{font-size:13px;}.uc3d-pct{font-size:12px;}}
+@media(max-width:560px){.uc3d-nm{font-size:17px;}.uc3d-pct{font-size:15px;}}
 .uc-card .sec-h{margin:0 0 6px;}
 .uc-donut-wrap{display:flex;gap:14px;align-items:center;flex-wrap:wrap;}
 .uc-donut{flex:0 0 auto;}

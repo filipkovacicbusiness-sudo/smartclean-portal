@@ -186,6 +186,7 @@ html[data-theme="light"] .sc-hex{opacity:.5}
         <div class="head">
           <div><h2 id="domovNaslov">Pregled</h2><p class="count" id="domovPod"></p></div>
         </div>
+        <div id="domovStatus"></div>
         <div id="statGrid" class="stat-grid"></div>
         <div id="mesecni"></div>
         <div id="zadnji"></div>
@@ -203,7 +204,7 @@ html[data-theme="light"] .sc-hex{opacity:.5}
               <option value="stranka_az">Stranka A–Ž</option>
               <option value="stranka_za">Stranka Ž–A</option>
             </select>
-            <input type="month" id="arhivMesec" class="arh-mesec" aria-label="Mesec"/>
+            <select id="arhivMesec" class="arh-mesec" aria-label="Mesec"><option value="">Vsi meseci</option></select>
             <input type="search" id="arhivIsci" placeholder="Iskanje po številki …" aria-label="Iskanje"/>
           </div>
         </div>

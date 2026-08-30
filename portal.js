@@ -307,7 +307,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.14 · BETA';
+  var APP_VERZIJA = '4.15 · BETA';
   var NALAGANJE = '<div class="sc-load"><div class="sc-load-bar"></div></div>';
   var _reloadVal = null;   // vrednost 'reload' ob nalaganju (za potisnjeno osvežitev)
   const JE_LASTNIK = () => (JAZMAIL || '').trim().toLowerCase() === 'filip@eflitte.si';
@@ -1645,7 +1645,7 @@
       '<span class="pris-tabs"><button type="button" class="pris-tab' + (_ucDonutRange === 'mesec' ? ' on' : '') + '" data-ucrange="mesec">Mesec</button>' +
       '<button type="button" class="pris-tab' + (_ucDonutRange === '3m' ? ' on' : '') + '" data-ucrange="3m">3 meseci</button>' +
       '<button type="button" class="pris-tab' + (_ucDonutRange === 'vse' ? ' on' : '') + '" data-ucrange="vse">Vse</button></span></div></div>' +
-      '<div class="uc-d3-stage"><svg class="uc3d-svg" viewBox="-64 0 ' + (_UC3D.W + 128) + ' ' + _UC3D.H + '" preserveAspectRatio="xMidYMid meet"></svg></div></div>';
+      '<div class="uc-d3-stage"><svg class="uc3d-svg" viewBox="-92 0 ' + (_UC3D.W + 184) + ' ' + _UC3D.H + '" preserveAspectRatio="xMidYMid meet"></svg></div></div>';
     var cardBars = '<div class="uc-card"><h3 class="sec-h">kg zadnjih 7 dni</h3><div class="bars-row" style="margin-top:14px">' +
       d7.map(function (o) { return '<div class="bars-col"><span class="bars-val">' + (o.kg ? Math.round(o.kg) : '') + '</span><div class="bars-bar" style="height:' + Math.round(o.kg / naj * 84) + 'px"></div><span class="bars-lab">' + o.lab + '</span></div>'; }).join('') + '</div></div>';
     var cardProd = '<div class="uc-card uc-stat"><h3 class="sec-h">Skupna učinkovitost</h3><div class="uc-big">' + (kgh ? fmtStevilo1(kgh) : '—') + ' <span>kg/uro</span></div>' +
@@ -1775,6 +1775,7 @@
      <div class="stat-lab">${escape_(l)}</div><div class="stat-sub">${escape_(s)}</div></div>`).join('');
 
     /* zadnjih šest mesecev */
+    if ($('domovStatus')) $('domovStatus').innerHTML = '';
     if (!LISTI.length) {
       $('mesecni').innerHTML = '';
       $('zadnji').innerHTML = prazniListi(OSEBJE ? 'osebje' : 'stranka');
@@ -1815,9 +1816,10 @@
       else if (nepotrjeni > 0) statusHtml = '<div class="preg-status ps-warn"><span class="ps-ik">●</span><span>Vsi dodani · <b>' + nepotrjeni + '</b> ' + (nepotrjeni === 1 ? 'list še ni pregledan' : 'listov še ni pregledanih') + ' (potrjenih).</span></div>';
       else statusHtml = '<div class="preg-status ps-ok"><span class="ps-ik">✓</span><span>Vse pregledano in dodano · zadnji list <b>' + (zadnjiDatum ? datum(zadnjiDatum) : '—') + '</b>.</span></div>';
     }
+    if ($('domovStatus')) $('domovStatus').innerHTML = statusHtml;
     var kolikoNaj = Math.max(6, Math.min(40, Math.floor((window.innerHeight - 230) / 62)));
     const zadnjiListi = razvrsceni.slice(0, kolikoNaj);
-    $('zadnji').innerHTML = statusHtml + '<h3 class="sec-h">Zadnji prevzemi</h3>' + tabelaListov(zadnjiListi, false);
+    $('zadnji').innerHTML = '<h3 class="sec-h">Zadnji prevzemi</h3>' + tabelaListov(zadnjiListi, false);
   }
 
   /* ══════════ ARHIV ══════════ */
@@ -1855,6 +1857,13 @@
     }
     const q = $('arhivIsci').value.trim().toLowerCase();
     const org = OSEBJE ? $('arhivOrg').value : '';
+    // napolni spustni seznam mesecev (ohrani izbiro)
+    { const msEl = $('arhivMesec'); if (msEl) {
+        const _tr = msEl.value;
+        const _mN = ['jan', 'feb', 'mar', 'apr', 'maj', 'jun', 'jul', 'avg', 'sep', 'okt', 'nov', 'dec'];
+        const _mm = Array.from(new Set(LISTI.map(l => String(l.doc_date || '').slice(0, 7)).filter(Boolean))).sort().reverse();
+        msEl.innerHTML = '<option value="">Vsi meseci</option>' + _mm.map(m => { const p = m.split('-'); return '<option value="' + m + '"' + (m === _tr ? ' selected' : '') + '>' + (_mN[parseInt(p[1], 10) - 1] || '') + ' ' + p[0] + '</option>'; }).join('');
+      } }
     const mes = ($('arhivMesec') && $('arhivMesec').value) || '';
     const vrstice = LISTI.filter(l => (!org || l.org_id === org) && (!mes || String(l.doc_date || '').slice(0, 7) === mes) && (!q || (l.number || '').toLowerCase().includes(q) || (ORGIME[l.org_id] || '').toLowerCase().includes(q)));
     const sortv = ($('arhivSort') && $('arhivSort').value) || 'st_desc';
@@ -4480,11 +4489,11 @@
     if (!p) return;
     var url = new URL(APK_POT, location.href).href;
 
-    var tabletPanel = '<div class="panel" id="apkTablet"><h3 class="sec-h">2. Aplikacija za tiskanje — tablica (Android)</h3><p class="u-sub">Preverjam …</p></div>';
+    var tabletPanel = '<div class="panel" id="apkTablet"><h3 class="sec-h">3. Aplikacija za tiskanje — tablica (Android)</h3><p class="u-sub">Preverjam …</p></div>';
 
     var telefonPanel =
       '<div class="panel">' +
-        '<h3 class="sec-h">1. Aplikacija za tiskanje — telefon (iPhone in Android)</h3>' +
+        '<h3 class="sec-h">2. Aplikacija za tiskanje — telefon (iPhone in Android)</h3>' +
         '<p class="uvoz-nav">Za vnos in tiskanje spremnih listov na telefonu. Odpre se v brskalniku; dodaj jo na začetni zaslon, da deluje kot prava aplikacija.</p>' +
         '<p><a class="btn btn-narrow" href="https://www.smartclean.si/mobile" target="_blank" rel="noopener">Odpri aplikacijo za telefon</a></p>' +
         '<div class="por"><div class="por-op">' +
@@ -4495,12 +4504,12 @@
 
     var webPanel =
       '<div class="panel">' +
-        '<h3 class="sec-h">3. Aplikacija za tiskanje — spletni pogled</h3>' +
-        '<p class="uvoz-nav">Deluje v katerem koli brskalniku, brez nameščanja — priročno za računalnik ali hiter dostop.</p>' +
-        '<p><a class="btn btn-narrow" href="tablica/" target="_blank" rel="noopener">Odpri spletni pogled</a></p>' +
+        '<h3 class="sec-h">1. Aplikacija za tiskanje — spletni pogled (Smartclean mobile)</h3>' +
+        '<p class="uvoz-nav">Deluje v katerem koli brskalniku, brez nameščanja — priročno za telefon, tablico ali računalnik.</p>' +
+        '<p><a class="btn btn-narrow" href="https://www.smartclean.si/mobile" target="_blank" rel="noopener">Odpri spletni pogled</a></p>' +
       '</div>';
 
-    p.innerHTML = telefonPanel + tabletPanel + webPanel;
+    p.innerHTML = webPanel + telefonPanel + tabletPanel;
 
     fetch(url, { method: 'HEAD' }).then(function (r) {
       if (!r.ok) throw new Error('ni ga');
