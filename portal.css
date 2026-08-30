@@ -1193,6 +1193,9 @@ html[data-view="grid"] #cenikList .sc-isolate .cgrp:not(.open){max-width:var(--t
 /* 3D krog — delež kg po strankah */
 .uc-donut3d-card{margin-bottom:14px;}
 .uc-d3-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;}
+.uc-d3-ctrl{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.uc-d3-month{padding:7px 12px;border:1.5px solid var(--line);border-radius:100px;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:.85rem;}
+.uc-d3-month:focus{border-color:var(--green-l);outline:none;}
 .uc-d3-stage{width:100%;margin-top:6px;}
 .uc3d-svg{display:block;width:100%;height:auto;max-height:420px;overflow:visible;}
 .uc3d-lead{stroke:var(--mid);stroke-width:1;opacity:.55;}
@@ -1283,27 +1286,34 @@ html[data-theme="dark"] .pris-chip-x:hover{background:rgba(255,138,122,.16);colo
 }
 
 /* ══════════ DOKUMENTI (skenirani računi) ══════════ */
-.dok-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px;margin-top:8px;}
-.dok-card{border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--surface);
-  display:flex;flex-direction:column;}
-.dok-thumb{background:#0d1f17;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;overflow:hidden;}
-.dok-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
-.dok-noimg{color:rgba(255,255,255,.6);font-size:13px;}
-.dok-meta{padding:12px 13px;display:flex;flex-direction:column;gap:6px;flex:1;}
-.dok-dat{font-weight:700;font-size:14px;color:var(--ink);}
-.dok-op{font-size:13px;color:var(--mid);line-height:1.35;word-break:break-word;flex:1;}
-.dok-op i{opacity:.6;}
-.dok-kb{font-size:11px;color:var(--mid);opacity:.75;}
-.dok-acts{display:flex;flex-wrap:wrap;gap:7px;margin-top:6px;}
-.dok-acts .btn-mini{padding:8px 13px;border:1px solid var(--line);border-radius:9px;font-size:13px;
-  font-weight:600;background:var(--surface);color:var(--ink);cursor:pointer;text-decoration:none;
-  display:inline-flex;align-items:center;justify-content:center;line-height:1;margin-top:0;width:auto;}
-.dok-acts .btn-mini:hover{border-color:var(--green-l);background:var(--green-m);}
-.dok-acts .btn-mini.sec{color:var(--mid);}
-.dok-acts .btn-mini.danger{color:#c0392b;border-color:rgba(192,57,43,.3);}
-.dok-acts .btn-mini.danger:hover{background:rgba(192,57,43,.08);border-color:#c0392b;}
-@media(max-width:560px){.dok-grid{grid-template-columns:1fr 1fr;gap:12px;}
-  .dok-op{font-size:12px;}.dok-acts .btn-mini{padding:7px 10px;font-size:12px;}}
+/* Dokumenti — datotečni sistem (Finder/Raziskovalec) */
+.dok-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:2px 0 12px;}
+.dok-pot{display:flex;align-items:center;gap:2px;flex-wrap:wrap;font-size:.9rem;min-width:0;}
+.dok-crumb{border:none;background:none;color:var(--mid);cursor:pointer;font-size:.9rem;font-weight:600;padding:4px 6px;border-radius:7px;}
+.dok-crumb:last-child{color:var(--ink);}
+.dok-crumb:hover{background:var(--green-m);color:var(--ink);}
+.dok-sep{color:var(--mid);opacity:.6;}
+.dok-drop-hint{font-size:.85rem;color:var(--green-t);font-weight:600;}
+.dok-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-top:6px;}
+.dok-item{position:relative;border:1px solid var(--line);border-radius:14px;background:var(--surface);padding:16px 12px 12px;
+  display:flex;flex-direction:column;align-items:center;gap:9px;cursor:pointer;text-align:center;
+  transition:border-color .14s,background .14s,transform .06s,box-shadow .14s;}
+.dok-item:hover{border-color:var(--ink);box-shadow:var(--shadow);}
+.dok-item:active{transform:scale(.98);}
+.dok-ic{width:56px;height:56px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;border-radius:10px;background-size:cover;background-position:center;}
+.dok-ic svg{width:44px;height:44px;}
+.dok-ic-folder{color:var(--wm-green);}
+.dok-ic-pdf{color:#e15759;}
+.dok-ic-word{color:#4e79a7;}
+.dok-ic-excel{color:#59a14f;}
+.dok-ic-file{color:var(--mid);}
+.dok-ic-img{width:64px;height:56px;border:1px solid var(--line);}
+.dok-nm{font-size:13px;font-weight:600;color:var(--ink);line-height:1.3;max-width:100%;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:break-word;}
+.dok-sub{font-size:11px;color:var(--mid);}
+.dok-x{position:absolute;top:-7px;right:-7px;width:22px;height:22px;border:1px solid var(--line);background:var(--surface);color:var(--mid);border-radius:50%;font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:0;transition:opacity .14s,color .14s,border-color .14s;box-shadow:var(--shadow);}
+.dok-x:hover{color:#c0392b;border-color:#c0392b;}
+.dok-item:hover .dok-x,.dok-x:focus-visible{opacity:1;}
+@media(max-width:560px){.dok-grid{grid-template-columns:repeat(3,1fr);gap:10px;}.dok-x{opacity:1;}}
 
 /* ── Prisotnost: pogled po zaposleni (mesec) ── */
 .pris-oseba-sel{margin:4px 0 12px}

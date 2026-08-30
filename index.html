@@ -12,7 +12,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="SmartClean"/>
 <link rel="apple-touch-icon" href="apple-touch-icon.png"/>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230a0a0a'/%3E%3Ctext x='32' y='44' font-family='Arial,Helvetica,sans-serif' font-size='38' font-weight='700' fill='%23ffffff' text-anchor='middle'%3ESC%3C/text%3E%3C/svg%3E"/>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230a0a0a'/%3E%3Ctext x='32' y='45' font-family='Georgia,%27Times New Roman%27,serif' font-size='36' font-weight='700' text-anchor='middle'%3E%3Ctspan fill='%23e8f1eb'%3ES%3C/tspan%3E%3Ctspan fill='%236ed3a1'%3EC%3C/tspan%3E%3C/text%3E%3C/svg%3E"/>
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https://anrhtgbckxrccnafcmsz.supabase.co; connect-src 'self' https://anrhtgbckxrccnafcmsz.supabase.co wss://anrhtgbckxrccnafcmsz.supabase.co; base-uri 'none'; form-action 'none'; object-src 'none'"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
@@ -284,9 +284,15 @@ html[data-theme="light"] .sc-hex{opacity:.5}
       </section>
 
       <section class="sec hidden" id="sec-dokumenti">
-        <div class="head"><div><h2>Dokumenti</h2><p class="count" id="dokPod">Skenirani računi in dokumenti</p></div>
-          <div class="filtri"><input type="search" id="dokIsci" placeholder="Iskanje po opombi …" aria-label="Iskanje po dokumentih"/></div>
+        <div class="head"><div><h2>Dokumenti</h2><p class="count" id="dokPod">Datoteke in mape</p></div>
+          <div class="filtri">
+            <input type="search" id="dokIsci" placeholder="Iskanje …" aria-label="Iskanje po datotekah"/>
+            <button type="button" id="dokNovaMapa" class="btn btn-narrow btn-alt">Nova mapa</button>
+            <button type="button" id="dokNaloziBtn" class="btn btn-narrow">Naloži datoteke</button>
+            <input type="file" id="dokFile" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,image/*,application/pdf,.csv" hidden/>
+          </div>
         </div>
+        <div class="dok-bar"><nav class="dok-pot" id="dokPot" aria-label="Pot"></nav><div class="dok-drop-hint" id="dokDropHint" hidden>Spusti datoteke sem za nalaganje</div></div>
         <div id="dokList"></div>
       </section>
 
