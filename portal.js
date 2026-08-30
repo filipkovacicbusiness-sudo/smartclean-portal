@@ -289,7 +289,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '3.7 · BETA';
+  var APP_VERZIJA = '3.8 · BETA';
   var NALAGANJE = '<div class="sc-load"><div class="sc-load-bar"></div></div>';
   var _reloadVal = null;   // vrednost 'reload' ob nalaganju (za potisnjeno osvežitev)
   const JE_LASTNIK = () => (JAZMAIL || '').trim().toLowerCase() === 'filip@eflitte.si';
@@ -1374,6 +1374,7 @@
   /* ══════════ UČINKOVITOST (kilaža + produktivnost) ══════════ */
   var UCEN_LISTI = null, UCEN_DOG = null, _ucDan = null, _ucMesec = false;
   var UC_PAL = ['#4e79a7', '#59a14f', '#f28e2b', '#e15759', '#b07aa1', '#76b7b2', '#edc948'];
+  var _ucDonutRange = '3m', _uc3dAnim = false, _kgVseMap = null, _uc3dRAF = null;
 
   async function naloziUcinek() {
     var meja = danLocal(new Date(Date.now() - 400 * 24 * 3600 * 1000).getTime());
@@ -1381,6 +1382,24 @@
     UCEN_LISTI = (rl && rl.data) ? rl.data : [];
     var rd = await vseVrstice(function (a, b) { return sb.from('att_events').select('id,employee_id,ts,type').gte('ts', meja + 'T00:00:00Z').order('ts', { ascending: true }).range(a, b); });
     UCEN_DOG = (rd && rd.data) ? rd.data : [];
+    // Vsota kg po strankah za VES čas (za 3D krog »Vse«).
+    try {
+      var rv = await vseVrstice(function (a, b) { return sb.from('delivery_notes').select('org_id,weight_kg').range(a, b); });
+      var m = {}; (rv && rv.data ? rv.data : []).forEach(function (l) { if (l.org_id) m[l.org_id] = (m[l.org_id] || 0) + (parseFloat(l.weight_kg) || 0); });
+      _kgVseMap = m;
+    } catch (e) { _kgVseMap = null; }
+  }
+  // kg po strankah za obseg 3D kroga: '3m' (zadnji 3 meseci) ali 'vse'.
+  function ucKgObseg(range) {
+    if (range === 'vse') return _kgVseMap || ucKgMesecev(3);
+    return ucKgMesecev(3);
+  }
+  function ucKgMesecev(nMes) {
+    var d = new Date(); var floor = new Date(d.getFullYear(), d.getMonth() - (nMes - 1), 1);
+    var fk = floor.getFullYear() + '-' + ('0' + (floor.getMonth() + 1)).slice(-2) + '-01';
+    var m = {};
+    (UCEN_LISTI || []).forEach(function (l) { if (l.doc_date && l.doc_date.slice(0, 10) >= fk) m[l.org_id] = (m[l.org_id] || 0) + (parseFloat(l.weight_kg) || 0); });
+    return m;
   }
   function ucKgPoStranki(kljuc) {
     var m = {};
@@ -1419,12 +1438,113 @@
     var leg = segs.map(function (s) { return '<div class="uc-leg"><span class="uc-dot" style="background:' + s.col + '"></span><span class="uc-leg-nm">' + escape_(s.ime) + '</span><span class="uc-leg-v">' + Math.round(s.kg / total * 100) + ' %</span></div>'; }).join('');
     return '<div class="uc-donut-wrap">' + svg + '<div class="uc-leg-list">' + leg + '</div></div>';
   }
+  /* ══════════ 3D KROG: delež kg po strankah (z napisi na črtah) ══════════ */
+  function _mixHex(hex, f) { // f: 0=črno, 1=barva
+    var h = hex.replace('#', ''); var r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16);
+    r = Math.round(r * f); g = Math.round(g * f); b = Math.round(b * f);
+    return 'rgb(' + r + ',' + g + ',' + b + ')';
+  }
+  function ucDonutSegs(range) {
+    var map = ucKgObseg(range) || {};
+    var arr = Object.keys(map).map(function (id) { return { ime: ORGIME[id] || '—', kg: map[id] }; }).filter(function (x) { return x.kg > 0; }).sort(function (a, b) { return b.kg - a.kg; });
+    var total = arr.reduce(function (s, x) { return s + x.kg; }, 0);
+    if (!total) return { segs: [], total: 0 };
+    var segs = arr.slice(0, 7).map(function (x, i) { return { ime: x.ime, kg: x.kg, col: UC_PAL[i % UC_PAL.length] }; });
+    var ostalo = arr.slice(7).reduce(function (s, x) { return s + x.kg; }, 0);
+    if (ostalo > 0) segs.push({ ime: 'Ostalo', kg: ostalo, col: '#bab0ac' });
+    return { segs: segs, total: total };
+  }
+  var _UC3D = { W: 560, H: 380, cx: 280, cy: 188, R: 118, r: 66, kyEnd: 0.62, depth: 34 };
+  function _uc3dPt(rad, ang, ky, cx, cy) { return [cx + rad * Math.cos(ang), cy + rad * ky * Math.sin(ang)]; }
+  function _f2(a) { return a[0].toFixed(1) + ' ' + a[1].toFixed(1); }
+  function uc3dSvgBuild(segs, total, e) {
+    var G = _UC3D, cx = G.cx, cy = G.cy, R = G.R, r = G.r;
+    var ky = 1 - (1 - G.kyEnd) * e;                 // se »uleže« iz ploskega v 3D
+    var depth = G.depth * e;                          // debelina zraste
+    var spin = (1 - e) * 0.6;                          // rahel zavrtljaj ob koncu
+    var scale = 0.92 + 0.08 * e;
+    var labelA = Math.max(0, Math.min(1, (e - 0.62) / 0.38));
+    // kumulativni koti (začnemo na vrhu, -PI/2)
+    var start = -Math.PI / 2 + spin;
+    var arr = [], a = start;
+    segs.forEach(function (s) { var ang = s.kg / total * Math.PI * 2; arr.push({ s: s, a0: a, a1: a + ang, mid: a + ang / 2 }); a += ang; });
+    function sector(a0, a1, dy, col) {
+      var large = (a1 - a0) > Math.PI ? 1 : 0;
+      var o0 = _uc3dPt(R, a0, ky, cx, cy + dy), o1 = _uc3dPt(R, a1, ky, cx, cy + dy);
+      var i1 = _uc3dPt(r, a1, ky, cx, cy + dy), i0 = _uc3dPt(r, a0, ky, cx, cy + dy);
+      return '<path d="M' + _f2(o0) + ' A' + R + ' ' + (R * ky).toFixed(1) + ' 0 ' + large + ' 1 ' + _f2(o1) +
+        ' L' + _f2(i1) + ' A' + r + ' ' + (r * ky).toFixed(1) + ' 0 ' + large + ' 0 ' + _f2(i0) + ' Z" fill="' + col + '"/>';
+    }
+    function wall(a0, a1, col) {
+      var large = (a1 - a0) > Math.PI ? 1 : 0;
+      var o0 = _uc3dPt(R, a0, ky, cx, cy), o1 = _uc3dPt(R, a1, ky, cx, cy);
+      var b1 = [o1[0], o1[1] + depth], b0 = [o0[0], o0[1] + depth];
+      return '<path d="M' + _f2(o0) + ' A' + R + ' ' + (R * ky).toFixed(1) + ' 0 ' + large + ' 1 ' + _f2(o1) +
+        ' L' + _f2(b1) + ' A' + R + ' ' + (R * ky).toFixed(1) + ' 0 ' + large + ' 0 ' + _f2(b0) + ' Z" fill="' + col + '"/>';
+    }
+    var back = '', front = '', tops = '';
+    arr.forEach(function (o) {
+      var w = wall(o.a0, o.a1, _mixHex(o.s.col, 0.6));
+      if (Math.sin(o.mid) > 0) front += w; else back += w;
+      tops += sector(o.a0, o.a1, 0, o.s.col);
+    });
+    // napisi na črtah (leader lines) — levo/desno, brez prekrivanja
+    var labels = '';
+    if (labelA > 0.01) {
+      var right = [], left = [];
+      arr.forEach(function (o) {
+        var p = _uc3dPt(R, o.mid, ky, cx, cy);
+        var e1 = _uc3dPt(R + 16, o.mid, ky, cx, cy);
+        var desno = Math.cos(o.mid) >= 0;
+        (desno ? right : left).push({ o: o, p: p, e1: e1, y: e1[1] });
+      });
+      function razporedi(list, xEdge, desno) {
+        list.sort(function (a, b) { return a.y - b.y; });
+        var minGap = 26, out = '';
+        for (var i = 1; i < list.length; i++) if (list[i].y - list[i - 1].y < minGap) list[i].y = list[i - 1].y + minGap;
+        // znotraj okvira
+        var over = list.length ? (list[list.length - 1].y - (G.H - 16)) : 0;
+        if (over > 0) list.forEach(function (it) { it.y -= over; });
+        list.forEach(function (it) {
+          var yy = Math.max(16, it.y);
+          var pct = Math.round(it.o.s.kg / total * 100);
+          var tx = desno ? xEdge : xEdge;
+          out += '<polyline points="' + it.p[0].toFixed(1) + ',' + it.p[1].toFixed(1) + ' ' + it.e1[0].toFixed(1) + ',' + it.e1[1].toFixed(1) + ' ' + (desno ? (xEdge - 10) : (xEdge + 10)).toFixed(1) + ',' + yy.toFixed(1) + ' ' + tx.toFixed(1) + ',' + yy.toFixed(1) + '" fill="none" class="uc3d-lead"/>';
+          out += '<circle cx="' + it.p[0].toFixed(1) + '" cy="' + it.p[1].toFixed(1) + '" r="2.4" fill="' + it.o.s.col + '"/>';
+          out += '<text x="' + (desno ? (xEdge + 6) : (xEdge - 6)).toFixed(1) + '" y="' + (yy - 2).toFixed(1) + '" text-anchor="' + (desno ? 'start' : 'end') + '" class="uc3d-nm">' + escape_(it.o.s.ime) + '</text>';
+          out += '<text x="' + (desno ? (xEdge + 6) : (xEdge - 6)).toFixed(1) + '" y="' + (yy + 12).toFixed(1) + '" text-anchor="' + (desno ? 'start' : 'end') + '" class="uc3d-pct">' + pct + ' %</text>';
+        });
+        return out;
+      }
+      labels = '<g style="opacity:' + labelA.toFixed(2) + '">' + razporedi(right, G.W - 96, true) + razporedi(left, 96, false) + '</g>';
+    }
+    var inner = '<g transform="translate(' + cx + ' ' + cy + ') scale(' + scale.toFixed(3) + ') translate(' + (-cx) + ' ' + (-cy) + ')" style="opacity:' + Math.min(1, e * 1.6).toFixed(2) + '">' + back + front + tops + '</g>' + labels;
+    return inner;
+  }
+  function uc3dAnimate(svgEl, range, animate) {
+    if (!svgEl) return;
+    if (_uc3dRAF) { cancelAnimationFrame(_uc3dRAF); _uc3dRAF = null; }
+    var d = ucDonutSegs(range);
+    if (!d.total) { svgEl.innerHTML = '<text x="' + (_UC3D.W / 2) + '" y="' + (_UC3D.H / 2) + '" text-anchor="middle" class="uc3d-nm">Ni podatkov za izbrano obdobje.</text>'; return; }
+    var reduce = false; try { reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion:reduce)').matches; } catch (e) {}
+    if (!animate || reduce) { svgEl.innerHTML = uc3dSvgBuild(d.segs, d.total, 1); return; }
+    var t0 = 0, dur = 1000;
+    function easeOutCubic(x) { return 1 - Math.pow(1 - x, 3); }
+    function frame(now) {
+      if (!t0) t0 = now;
+      var p = Math.min(1, (now - t0) / dur);
+      svgEl.innerHTML = uc3dSvgBuild(d.segs, d.total, easeOutCubic(p));
+      if (p < 1) _uc3dRAF = requestAnimationFrame(frame); else _uc3dRAF = null;
+    }
+    _uc3dRAF = requestAnimationFrame(frame);
+  }
   async function risiUcinek() {
     var box = $('ucList'); if (!box) return;
     box.innerHTML = NALAGANJE;
     try {
       await naloziUcinek();
       if (!_ucDan) _ucDan = danes10();
+      _uc3dAnim = true;
       ucRender();
     } catch (e) { box.innerHTML = '<div class="uc-card"><p class="u-sub">Napaka pri nalaganju: ' + escape_(e && e.message ? e.message : e) + '</p></div>'; }
   }
@@ -1438,12 +1558,17 @@
     var kgh = ureMon > 0 ? kgMon / ureMon : 0;
     var d7 = ucZadnjih7(); var naj = Math.max.apply(null, d7.map(function (o) { return o.kg; }).concat([1]));
 
-    var cardDonut = '<div class="uc-card"><h3 class="sec-h">Delež kg po strankah</h3><p class="u-sub" style="margin:-2px 0 8px">' + ucMesecIme(mesecKljuc) + '</p>' + ucDonut(mapMon) + '</div>';
+    var rangeLbl = _ucDonutRange === 'vse' ? 'ves čas' : 'zadnji 3 meseci';
+    var cardDonut = '<div class="uc-card uc-donut3d-card">' +
+      '<div class="uc-d3-head"><div><h3 class="sec-h">Delež kg po strankah</h3><p class="u-sub" style="margin:-2px 0 0">' + rangeLbl + '</p></div>' +
+      '<span class="pris-tabs"><button type="button" class="pris-tab' + (_ucDonutRange === '3m' ? ' on' : '') + '" data-ucrange="3m">3 meseci</button>' +
+      '<button type="button" class="pris-tab' + (_ucDonutRange === 'vse' ? ' on' : '') + '" data-ucrange="vse">Vse</button></span></div>' +
+      '<div class="uc-d3-stage"><svg class="uc3d-svg" viewBox="0 0 ' + _UC3D.W + ' ' + _UC3D.H + '" preserveAspectRatio="xMidYMid meet"></svg></div></div>';
     var cardBars = '<div class="uc-card"><h3 class="sec-h">kg zadnjih 7 dni</h3><div class="bars-row" style="margin-top:14px">' +
       d7.map(function (o) { return '<div class="bars-col"><span class="bars-val">' + (o.kg ? Math.round(o.kg) : '') + '</span><div class="bars-bar" style="height:' + Math.round(o.kg / naj * 84) + 'px"></div><span class="bars-lab">' + o.lab + '</span></div>'; }).join('') + '</div></div>';
     var cardProd = '<div class="uc-card uc-stat"><h3 class="sec-h">Skupna učinkovitost</h3><div class="uc-big">' + (kgh ? fmtStevilo1(kgh) : '—') + ' <span>kg/uro</span></div>' +
       '<p class="u-sub">' + fmtKg(kgMon) + ' · ' + stevilo(Math.round(ureMon)) + ' delovnih ur · ' + ucMesecIme(mesecKljuc) + '</p></div>';
-    var top = '<div class="uc-top">' + cardDonut + cardBars + cardProd + '</div>';
+    var top = cardDonut + '<div class="uc-top uc-top2">' + cardBars + cardProd + '</div>';
 
     var kljuc = _ucMesec ? _ucDan.slice(0, 7) : _ucDan;
     var mapK = ucKgPoStranki(kljuc);
@@ -1460,6 +1585,9 @@
       '<div class="pris-datum"><input type="' + (_ucMesec ? 'month' : 'date') + '" id="ucDatum" value="' + (_ucMesec ? _ucDan.slice(0, 7) : _ucDan) + '"></div>' + tbl + '</div>';
 
     box.innerHTML = top + ev;
+    var _svg3d = box.querySelector('.uc3d-svg'); if (_svg3d) uc3dAnimate(_svg3d, _ucDonutRange, _uc3dAnim);
+    _uc3dAnim = false;
+    box.querySelectorAll('[data-ucrange]').forEach(function (b) { b.addEventListener('click', function () { if (_ucDonutRange === b.dataset.ucrange) return; _ucDonutRange = b.dataset.ucrange; _uc3dAnim = true; ucRender(); }); });
     var dat = $('ucDatum'); if (dat) dat.addEventListener('change', function () { var v = this.value || danes10(); if (v.length === 7) v += '-01'; _ucDan = v; ucRender(); });
     box.querySelectorAll('[data-ucobd]').forEach(function (b) { b.addEventListener('click', function () { _ucMesec = (b.dataset.ucobd === 'mesec'); ucRender(); }); });
     var ib = box.querySelector('.uc-izvoz'); if (ib) ib.addEventListener('click', ucIzvoz);
