@@ -307,30 +307,31 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.12 · BETA';
+  var APP_VERZIJA = '4.13 · BETA';
   var NALAGANJE = '<div class="sc-load"><div class="sc-load-bar"></div></div>';
   var _reloadVal = null;   // vrednost 'reload' ob nalaganju (za potisnjeno osvežitev)
   const JE_LASTNIK = () => (JAZMAIL || '').trim().toLowerCase() === 'filip@eflitte.si';
   // Super admin = lastnik ali profil s super_admin=true. Samo super admin vidi Fakture.
   const JE_SUPER = () => JE_LASTNIK() || !!(MOJPROFIL && MOJPROFIL.super_admin);
   const JE_ZAPOSLENI = () => !OSEBJE && !!(MOJPROFIL && MOJPROFIL.zaposleni);
-  // Rang vloge (za hierarhijo urejanja): super=3, osebje=2, zaposleni=1, stranka=0.
-  function vlogaRang(v) { return v === 'super' ? 3 : v === 'osebje' ? 2 : v === 'zaposleni' ? 1 : 0; }
-  function mojRang() { if (JE_LASTNIK()) return 99; if (JE_SUPER()) return 3; if (OSEBJE) return 2; if (JE_ZAPOSLENI()) return 1; return 0; }
+  // Rang vloge (za hierarhijo urejanja): super=4, admin=3, osebje=2, zaposleni=1, stranka=0.
+  function vlogaRang(v) { return v === 'super' ? 4 : v === 'admin' ? 3 : v === 'osebje' ? 2 : v === 'zaposleni' ? 1 : 0; }
+  function mojRang() { if (JE_LASTNIK()) return 99; if (MOJPROFIL && MOJPROFIL.super_admin) return 3; if (OSEBJE) return 2; if (JE_ZAPOSLENI()) return 1; return 0; }
 
   /* ══════════ VLOGE & PRAVICE (Admin — ureja samo lastnik) ══════════ */
   // Razdelki, katerih vidnost/pravice je mogoče nastavljati po vlogah.
   var ADMIN_RAZDELKI = [
-    ['domov', 'Pregled'], ['statistika', 'Statistika'], ['arhiv', 'Arhiv'], ['fakture', 'Fakture'],
-    ['artikli', 'Cenik & Artikli'], ['stranke', 'Stranke'], ['prisotnost', 'Prisotnost'], ['dokumenti', 'Dokumenti'],
-    ['aplikacija', 'Programska oprema'], ['uporabniki', 'Uporabniki'], ['katalog', 'Katalog']
+    ['domov', 'Pregled'], ['dokumenti', 'Dokumenti'], ['prisotnost', 'Prisotnost'], ['stranke', 'Stranke'],
+    ['arhiv', 'Arhiv'], ['artikli', 'Cenik & Artikli'], ['fakture', 'Fakture'], ['uporabniki', 'Uporabniki'],
+    ['statistika', 'Statistika'], ['aplikacija', 'Programska oprema'], ['katalog', 'Katalog']
   ];
-  var ADMIN_VLOGE = ['super', 'osebje', 'zaposleni', 'stranka'];
-  var ADMIN_IMENA_PRIVZ = { super: 'Super admin', osebje: 'Osebje', zaposleni: 'Zaposleni', stranka: 'Stranka' };
+  var ADMIN_VLOGE = ['super', 'admin', 'osebje', 'zaposleni', 'stranka'];
+  var ADMIN_IMENA_PRIVZ = { super: 'Super admin', admin: 'Admin', osebje: 'Osebje', zaposleni: 'Zaposleni', stranka: 'Stranka' };
   // Privzete vidne pravice (r,w,x,d) — ujemajo se z obstajajočim obnašanjem.
   function _perm(r, w, x, d) { return { r: !!r, w: !!w, x: !!x, d: !!d }; }
   var ADMIN_PRIVZ = {
     super: { domov: _perm(1, 1, 1, 1), prisotnost: _perm(1, 1, 1, 1), arhiv: _perm(1, 1, 1, 1), katalog: _perm(0, 0, 0, 0), statistika: _perm(1, 1, 1, 1), artikli: _perm(1, 1, 1, 1), stranke: _perm(1, 1, 1, 1), dokumenti: _perm(1, 1, 1, 1), aplikacija: _perm(1, 1, 1, 1), fakture: _perm(1, 1, 1, 1), uporabniki: _perm(1, 1, 1, 1) },
+    admin: { domov: _perm(1, 1, 1, 1), prisotnost: _perm(1, 1, 1, 1), arhiv: _perm(1, 1, 1, 1), katalog: _perm(0, 0, 0, 0), statistika: _perm(1, 1, 1, 1), artikli: _perm(1, 1, 1, 1), stranke: _perm(1, 1, 1, 1), dokumenti: _perm(1, 1, 1, 1), aplikacija: _perm(1, 1, 1, 1), fakture: _perm(1, 1, 1, 1), uporabniki: _perm(1, 1, 1, 1) },
     osebje: { domov: _perm(1, 1, 1, 1), prisotnost: _perm(1, 1, 1, 1), arhiv: _perm(1, 1, 1, 1), katalog: _perm(0, 0, 0, 0), statistika: _perm(1, 1, 1, 1), artikli: _perm(1, 1, 1, 1), stranke: _perm(1, 1, 1, 1), dokumenti: _perm(1, 1, 1, 1), aplikacija: _perm(1, 1, 1, 1), fakture: _perm(0, 0, 0, 0), uporabniki: _perm(0, 0, 0, 0) },
     zaposleni: { domov: _perm(1, 0, 0, 0), prisotnost: _perm(1, 0, 0, 1), arhiv: _perm(0, 0, 0, 0), katalog: _perm(0, 0, 0, 0), statistika: _perm(0, 0, 0, 0), artikli: _perm(0, 0, 0, 0), stranke: _perm(0, 0, 0, 0), dokumenti: _perm(0, 0, 0, 0), aplikacija: _perm(0, 0, 0, 0), fakture: _perm(0, 0, 0, 0), uporabniki: _perm(0, 0, 0, 0) },
     stranka: { domov: _perm(1, 0, 0, 0), prisotnost: _perm(0, 0, 0, 0), arhiv: _perm(1, 0, 0, 1), katalog: _perm(1, 0, 0, 0), statistika: _perm(0, 0, 0, 0), artikli: _perm(0, 0, 0, 0), stranke: _perm(0, 0, 0, 0), dokumenti: _perm(0, 0, 0, 0), aplikacija: _perm(0, 0, 0, 0), fakture: _perm(0, 0, 0, 0), uporabniki: _perm(0, 0, 0, 0) }
@@ -341,7 +342,7 @@
     var base = (ROLE_CFG && ROLE_CFG.perm && ROLE_CFG.perm[v] && ROLE_CFG.perm[v][razdelek]) || (ADMIN_PRIVZ[v] && ADMIN_PRIVZ[v][razdelek]) || _perm(0, 0, 0, 0);
     return !!base[vrsta || 'r'];
   }
-  function mojaVloga() { if (JE_SUPER()) return 'super'; if (OSEBJE) return 'osebje'; if (JE_ZAPOSLENI()) return 'zaposleni'; return 'stranka'; }
+  function mojaVloga() { if (JE_LASTNIK()) return 'super'; if (MOJPROFIL && MOJPROFIL.super_admin) return 'admin'; if (OSEBJE) return 'osebje'; if (JE_ZAPOSLENI()) return 'zaposleni'; return 'stranka'; }
   // Sme trenutni uporabnik? Lastnik vedno; sicer po konfiguraciji vloge.
   function sme(razdelek, vrsta) { if (JE_LASTNIK()) return true; return rolePerm(mojaVloga(), razdelek, vrsta); }
   async function naloziRoleCfg() {
@@ -542,9 +543,9 @@
   function glavniMeni() {
     // Lastnik: vedno vse (Admin ureja pravice ostalih, sebi jih ne more odvzeti).
     if (JE_LASTNIK()) {
-      return [['domov', 'Pregled'], ['statistika', 'Statistika'], ['arhiv', 'Arhiv'], ['fakture', 'Fakture'],
-        ['artikli', 'Cenik & Artikli'], ['stranke', 'Stranke'], ['prisotnost', 'Prisotnost'], ['dokumenti', 'Dokumenti'],
-        ['aplikacija', 'Programska oprema'], ['uporabniki', 'Uporabniki'], ['konzola', 'Konzola']];
+      return [['domov', 'Pregled'], ['dokumenti', 'Dokumenti'], ['prisotnost', 'Prisotnost'], ['stranke', 'Stranke'],
+        ['arhiv', 'Arhiv'], ['artikli', 'Cenik & Artikli'], ['fakture', 'Fakture'], ['uporabniki', 'Uporabniki'],
+        ['statistika', 'Statistika'], ['konzola', 'Konzola'], ['aplikacija', 'Programska oprema']];
     }
     // Ostali: vidnost razdelkov po pravicah vloge (nastavljivo v Admin).
     var vl = mojaVloga(), out = [];
@@ -1839,7 +1840,8 @@
     }
     const q = $('arhivIsci').value.trim().toLowerCase();
     const org = OSEBJE ? $('arhivOrg').value : '';
-    const vrstice = LISTI.filter(l => (!org || l.org_id === org) && (!q || (l.number || '').toLowerCase().includes(q) || (ORGIME[l.org_id] || '').toLowerCase().includes(q)));
+    const mes = ($('arhivMesec') && $('arhivMesec').value) || '';
+    const vrstice = LISTI.filter(l => (!org || l.org_id === org) && (!mes || String(l.doc_date || '').slice(0, 7) === mes) && (!q || (l.number || '').toLowerCase().includes(q) || (ORGIME[l.org_id] || '').toLowerCase().includes(q)));
     const sortv = ($('arhivSort') && $('arhivSort').value) || 'st_desc';
     const imeStr = l => (OSEBJE ? (ORGIME[l.org_id] || '') : (l.issued_name || ''));
     const stK = l => { const d = String(l.number || '').split('/'); return (parseInt(d[1], 10) || 0) * 1e7 + (parseInt(d[0], 10) || 0); };
@@ -1872,6 +1874,7 @@
   }
   $('arhivIsci').addEventListener('input', risiArhiv);
   { const ss = $('arhivSort'); if (ss) ss.addEventListener('change', risiArhiv); }
+  { const mm = $('arhivMesec'); if (mm) mm.addEventListener('change', risiArhiv); }
   { const _nb = $('arhivNovBtn'); if (_nb) _nb.addEventListener('click', () => novList()); }
   async function odpriList(btn) {
     const box = btn.nextElementSibling && btn.nextElementSibling.classList.contains('a-det') ? btn.nextElementSibling : $('det' + btn.dataset.i);
@@ -4462,13 +4465,13 @@
     if (!p) return;
     var url = new URL(APK_POT, location.href).href;
 
-    var tabletPanel = '<div class="panel" id="apkTablet"><h3 class="sec-h">1. Aplikacija za tiskanje — tablica (Android)</h3><p class="u-sub">Preverjam …</p></div>';
+    var tabletPanel = '<div class="panel" id="apkTablet"><h3 class="sec-h">2. Aplikacija za tiskanje — tablica (Android)</h3><p class="u-sub">Preverjam …</p></div>';
 
     var telefonPanel =
       '<div class="panel">' +
-        '<h3 class="sec-h">2. Aplikacija za tiskanje — telefon (iPhone in Android)</h3>' +
+        '<h3 class="sec-h">1. Aplikacija za tiskanje — telefon (iPhone in Android)</h3>' +
         '<p class="uvoz-nav">Za vnos in tiskanje spremnih listov na telefonu. Odpre se v brskalniku; dodaj jo na začetni zaslon, da deluje kot prava aplikacija.</p>' +
-        '<p><a class="btn btn-narrow" href="mobil/" target="_blank" rel="noopener">Odpri aplikacijo za telefon</a></p>' +
+        '<p><a class="btn btn-narrow" href="https://www.smartclean.si/mobile" target="_blank" rel="noopener">Odpri aplikacijo za telefon</a></p>' +
         '<div class="por"><div class="por-op">' +
           '<b>iPhone (Safari):</b> tapni <b>Deli</b> (kvadratek s puščico) → podrsaj do <b>»Dodaj na začetni zaslon«</b> → <b>Dodaj</b>.<br><br>' +
           '<b>Android (Chrome):</b> meni (⋮) → <b>»Dodaj na začetni zaslon«</b> oz. <b>»Namesti aplikacijo«</b>.' +
@@ -4482,14 +4485,14 @@
         '<p><a class="btn btn-narrow" href="tablica/" target="_blank" rel="noopener">Odpri spletni pogled</a></p>' +
       '</div>';
 
-    p.innerHTML = tabletPanel + telefonPanel + webPanel;
+    p.innerHTML = telefonPanel + tabletPanel + webPanel;
 
     fetch(url, { method: 'HEAD' }).then(function (r) {
       if (!r.ok) throw new Error('ni ga');
       var mb = Number(r.headers.get('content-length') || 0) / 1048576;
       var t = document.getElementById('apkTablet');
       if (t) t.innerHTML =
-        '<h3 class="sec-h">1. Aplikacija za tiskanje — tablica (Android)</h3>' +
+        '<h3 class="sec-h">2. Aplikacija za tiskanje — tablica (Android)</h3>' +
         '<p class="uvoz-nav">Za vnos in tiskanje spremnih listov na tablici. <b>To stran odpri na tablici</b> in tapni gumb — Android bo vprašal za dovoljenje za namestitev, dovoli ga.</p>' +
         '<p><a class="btn btn-narrow" href="' + escape_(url) + '" download>Prenesi aplikacijo' +
         (mb ? ' (' + mb.toFixed(1) + ' MB)' : '') + '</a></p>' +
@@ -4497,7 +4500,7 @@
     }).catch(function () {
       var t = document.getElementById('apkTablet');
       if (t) t.innerHTML =
-        '<h3 class="sec-h">1. Aplikacija za tiskanje — tablica (Android)</h3>' +
+        '<h3 class="sec-h">2. Aplikacija za tiskanje — tablica (Android)</h3>' +
         '<div class="msg bad show">Namestitvenega paketa (<b>' + escape_(APK_POT) + '</b>) še ni na strežniku.</div>' +
         '<p class="u-sub" style="margin-top:12px">Medtem deluje spletni pogled (točka 4), ki ga ni treba nameščati.</p>';
     });
@@ -4529,6 +4532,19 @@
   function dokStoragePot(cilj, ime) {
     var seg = String(cilj || '').split('/').map(function (x) { return dokVarnoIme(x); }).filter(Boolean);
     return (seg.length ? seg.join('/') + '/' : '') + Date.now() + '_' + dokVarnoIme(ime);
+  }
+  // Poln zaslon pregled slike (namesto novega zavihka — brez glitchev na mobilnem).
+  function dokLightbox(url, ime) {
+    var back = document.createElement('div'); back.className = 'dok-lb';
+    back.innerHTML = '<button type="button" class="dok-lb-x" aria-label="Zapri">×</button>' +
+      '<img src="' + escape_(url) + '" alt="' + escape_(ime || '') + '">' +
+      (ime ? '<div class="dok-lb-cap">' + escape_(ime) + '</div>' : '');
+    document.body.appendChild(back);
+    requestAnimationFrame(function () { back.classList.add('show'); });
+    function zapri() { back.classList.remove('show'); document.removeEventListener('keydown', onk); setTimeout(function () { if (back.parentNode) back.parentNode.removeChild(back); }, 180); }
+    function onk(e) { if (e.key === 'Escape') zapri(); }
+    back.addEventListener('click', function (e) { if (e.target === back || e.target.closest('.dok-lb-x')) zapri(); });
+    document.addEventListener('keydown', onk);
   }
   function dokImeRow(r) { return r.ime || r.opomba || (r.storage_path ? r.storage_path.split('/').pop().replace(/^\d+_/, '') : 'datoteka'); }
   function dokPripona(r) { var n = dokImeRow(r); var m = /\.([a-z0-9]+)$/i.exec(n); return (m ? m[1] : '').toLowerCase(); }
@@ -4643,7 +4659,7 @@
         if (e.target.closest('.dok-more')) return;
         var r = (DOKUMENTI || []).filter(function (x) { return x.id === el.getAttribute('data-id'); })[0];
         if (!r || !r.storage_path) return;
-        if (dokVrsta(r) === 'slika') { var u = el.dataset.url; if (u) window.open(u, '_blank', 'noopener'); return; }
+        if (dokVrsta(r) === 'slika') { var u = el.dataset.url; if (u) dokLightbox(u, dokImeRow(r)); return; }
         dokPrenesi(r);
       });
     });
@@ -4918,13 +4934,16 @@
     if (typeof PDFDoc === 'undefined') { toast('PDF modul ni naložen (pdfgen.js).'); return; }
     _skenSlike = [];
     var mape = dokMapeSeznam(), privzeta = _dokPot || '', danes = new Date().toISOString().slice(0, 10);
-    var kam = $('dokKamera');
+    var kam = $('dokKamera'), lib = $('dokKameraLib');
     var back = document.createElement('div'); back.className = 'sc-modal-back sken-back';
     back.innerHTML = '<div class="sc-modal sken-modal" role="dialog" aria-modal="true">' +
       '<h4>Skeniraj račun</h4>' +
-      '<p class="u-sub" style="margin:0 0 12px">Slikaj račun s kamero. Dodaš lahko več strani — shrani se kot en PDF.</p>' +
+      '<p class="u-sub" style="margin:0 0 12px">Slikaj račun s kamero ali naloži sliko iz datotek. Dodaš lahko več strani — shrani se kot en PDF.</p>' +
       '<div class="sken-strani" id="skenStrani"></div>' +
+      '<div class="sken-add-row">' +
       '<button type="button" class="btn btn-narrow btn-alt sken-add" id="skenDodaj"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;vertical-align:-3px"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>Slikaj stran</button>' +
+      '<button type="button" class="btn btn-narrow btn-alt sken-add" id="skenIzDat"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;vertical-align:-3px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>Iz datotek</button>' +
+      '</div>' +
       '<div class="sken-polja">' +
       '<label class="sken-f"><span>Ime datoteke</span><input type="text" id="skenIme" value="Račun ' + escape_(danes) + '"></label>' +
       '<label class="sken-f"><span>Shrani v mapo</span><select id="skenMapa">' + mape.map(function (m) { return '<option value="' + escape_(m.pot) + '"' + (m.pot === privzeta ? ' selected' : '') + '>' + escape_(m.label) + '</option>'; }).join('') + '</select></label>' +
@@ -4932,7 +4951,8 @@
       '<div class="sc-modal-acts"><button type="button" class="sc-modal-btn ghost" id="skenPreklici">Prekliči</button><button type="button" class="sc-modal-btn primary" id="skenShrani" disabled>Shrani PDF</button></div>' +
       '</div>';
     document.body.appendChild(back); requestAnimationFrame(function () { back.classList.add('show'); });
-    function zapri() { back.classList.remove('show'); if (kam) kam.onchange = null; setTimeout(function () { if (back.parentNode) back.parentNode.removeChild(back); }, 180); _skenSlike = []; }
+    function zapri() { back.classList.remove('show'); if (kam) kam.onchange = null; if (lib) lib.onchange = null; setTimeout(function () { if (back.parentNode) back.parentNode.removeChild(back); }, 180); _skenSlike = []; }
+    function dodajDatoteke(files) { Array.prototype.slice.call(files || []).forEach(function (f) { if (!/^image\//.test(f.type || '') && !/\.(jpe?g|png|heic|heif|webp|gif)$/i.test(f.name || '')) return; var rd = new FileReader(); rd.onload = function () { _skenSlike.push(rd.result); osvezi(); }; rd.readAsDataURL(f); }); }
     function osvezi() {
       var wrap = back.querySelector('#skenStrani');
       wrap.innerHTML = _skenSlike.map(function (s, i) { return '<div class="sken-th"><img src="' + s + '" alt="stran ' + (i + 1) + '"><button type="button" class="sken-th-x" data-i="' + i + '" aria-label="Odstrani">×</button><span class="sken-th-n">' + (i + 1) + '</span></div>'; }).join('') || '<div class="sken-prazno">Ni zajetih strani.</div>';
@@ -4941,7 +4961,9 @@
     }
     osvezi();
     back.querySelector('#skenDodaj').addEventListener('click', function () { if (kam) { kam.value = ''; kam.click(); } });
-    if (kam) kam.onchange = function () { var f = this.files && this.files[0]; if (!f) return; var rd = new FileReader(); rd.onload = function () { _skenSlike.push(rd.result); osvezi(); }; rd.readAsDataURL(f); this.value = ''; };
+    back.querySelector('#skenIzDat').addEventListener('click', function () { if (lib) { lib.value = ''; lib.click(); } });
+    if (kam) kam.onchange = function () { dodajDatoteke(this.files); this.value = ''; };
+    if (lib) lib.onchange = function () { dodajDatoteke(this.files); this.value = ''; };
     back.querySelector('#skenPreklici').addEventListener('click', zapri);
     back.addEventListener('click', function (e) { if (e.target === back) zapri(); });
     back.querySelector('#skenShrani').addEventListener('click', async function () {
@@ -5242,21 +5264,23 @@
     const jeLastnik = JE_LASTNIK();
     const mr = mojRang();
     const jeSuperLastnik = function (u) { return (u.email || '').trim().toLowerCase() === 'filip@eflitte.si'; };
-    const VLOGE = [['super', roleIme('super'), 3], ['osebje', roleIme('osebje'), 2], ['zaposleni', roleIme('zaposleni'), 1], ['stranka', roleIme('stranka'), 0]];
+    // »super« (Super admin) je samo lastnik — ni ga mogoče dodeliti; dodeljive so admin in nižje.
+    const VLOGE = [['admin', roleIme('admin'), 3], ['osebje', roleIme('osebje'), 2], ['zaposleni', roleIme('zaposleni'), 1], ['stranka', roleIme('stranka'), 0]];
     $('usersList').innerHTML = (ljudje || []).map(u => {
       const jaz = u.id === JAZ;
-      const superad = jeSuperLastnik(u) || !!u.super_admin;
-      const vlogaVal = superad ? 'super' : u.is_staff ? 'osebje' : u.zaposleni ? 'zaposleni' : 'stranka';
-      const ur = superad ? 3 : u.is_staff ? 2 : u.zaposleni ? 1 : 0;
-      const lahkoUredi = !jaz && mr > ur;             // nadrejeni ureja podrejene
+      const jeLastnikU = jeSuperLastnik(u);
+      const vlogaVal = jeLastnikU ? 'super' : u.super_admin ? 'admin' : u.is_staff ? 'osebje' : u.zaposleni ? 'zaposleni' : 'stranka';
+      const ur = vlogaRang(vlogaVal);
+      const lahkoUredi = !jaz && !jeLastnikU && mr > ur;   // nadrejeni ureja podrejene; lastnika nihče
       const naSpletu = jaz || (u.last_seen && (Date.now() - new Date(u.last_seen).getTime()) < 120000);
       const roleOpts = VLOGE.filter(r => r[2] < mr).sort((a, b) => b[2] - a[2]).map(r => `<option value="${r[0]}"${vlogaVal === r[0] ? ' selected' : ''}>${r[1]}</option>`).join('');
       return `<div class="u-row ${u.active ? '' : 'u-off'}">
       <div class="u-info">
         <div class="u-mail">${escape_(u.full_name || u.email || '—')}
           ${naSpletu ? '<span class="pill pill-on"><span class="dot-on"></span>na spletu</span>' : ''}
-          ${superad ? '<span class="pill pill-super">' + escape_(roleIme('super')) + '</span>' : ''}
-          ${(!superad && !u.is_staff && u.zaposleni) ? '<span class="pill">' + escape_(roleIme('zaposleni')) + '</span>' : ''}
+          ${jeLastnikU ? '<span class="pill pill-super">' + escape_(roleIme('super')) + '</span>' : ''}
+          ${(!jeLastnikU && u.super_admin) ? '<span class="pill pill-super">' + escape_(roleIme('admin')) + '</span>' : ''}
+          ${(!u.super_admin && !u.is_staff && u.zaposleni) ? '<span class="pill">' + escape_(roleIme('zaposleni')) + '</span>' : ''}
           ${jaz ? '<span class="pill">vi</span>' : ''}
           ${u.active ? '' : '<span class="pill">izklopljen</span>'}</div>
         ${lahkoUredi ? `<div class="u-role-wrap">
@@ -5294,7 +5318,8 @@
     }, 30000);
   }
   function opisVloge(v) {
-    if (v === 'super') return 'Super admin — kot osebje, dodatno vidi in ureja Fakture ter Uporabnike.';
+    if (v === 'super') return 'Super admin — najvišja raven (samo lastnik). Vedno vse pravice.';
+    if (v === 'admin') return 'Admin — pod super adminom; privzeto vidi in ureja vse razen upravljanja pravic.';
     if (v === 'osebje') return 'Osebje — vidi vse stranke, arhiv, statistiko, prisotnost in katalog. Brez Faktur in Uporabnikov.';
     if (v === 'zaposleni') return 'Zaposleni — vidi samo svojo prisotnost (svoje ure). Brez ostalih razdelkov.';
     return 'Stranka — vidi samo svoj arhiv in katalog svojega podjetja. Brez dostopa do osebja.';
@@ -5312,13 +5337,13 @@
     await nastaviVlogo(uid, nova, ime);
   }
   async function nastaviVlogo(uid, vloga, ime) {
-    var staff = (vloga === 'osebje' || vloga === 'super');
-    var patch = { is_staff: staff, super_admin: vloga === 'super', zaposleni: vloga === 'zaposleni' };
+    var staff = (vloga === 'admin' || vloga === 'osebje' || vloga === 'super');
+    var patch = { is_staff: staff, super_admin: (vloga === 'admin' || vloga === 'super'), zaposleni: vloga === 'zaposleni' };
     var r = await sb.from('profiles').update(patch).eq('id', uid);
     if (r && r.error && /(super_admin|zaposleni)/i.test(r.error.message || '')) {
       // stolpec super_admin ali zaposleni še ne obstaja → shrani vsaj is_staff in opozori
       r = await sb.from('profiles').update({ is_staff: staff }).eq('id', uid);
-      var manjka = vloga === 'super' ? '27_super_admin.sql' : vloga === 'zaposleni' ? '28_zaposleni.sql' : null;
+      var manjka = (vloga === 'super' || vloga === 'admin') ? '27_super_admin.sql' : vloga === 'zaposleni' ? '28_zaposleni.sql' : null;
       if (manjka) { if (vloga !== 'stranka') { try { await sb.from('memberships').delete().eq('user_id', uid); } catch (e) {} } uMsg('Vloga delno spremenjena — najprej zaženi ' + manjka + ' v Supabase.', true); loadUsers(); return; }
     }
     if (r && r.error) { uMsg('Ni uspelo: ' + escape_(r.error.message), true); loadUsers(); return; }
@@ -5384,7 +5409,7 @@
     }
     if (act === 'super') {
       const { error } = await sb.from('profiles').update({ super_admin: btn.dataset.v === '1' }).eq('id', id);
-      uMsg(error ? (/super_admin/i.test(error.message) ? 'Najprej zaženi 27_super_admin.sql v Supabase.' : 'Ni uspelo: ' + escape_(error.message)) : btn.dataset.v === '1' ? 'Uporabnik je zdaj super admin (ima Fakture).' : 'Super admin odvzet.', !!error);
+      uMsg(error ? (/super_admin/i.test(error.message) ? 'Najprej zaženi 27_super_admin.sql v Supabase.' : 'Ni uspelo: ' + escape_(error.message)) : btn.dataset.v === '1' ? 'Uporabnik je zdaj Admin (ima Fakture).' : 'Admin odvzet.', !!error);
       loadUsers();
       return;
     }

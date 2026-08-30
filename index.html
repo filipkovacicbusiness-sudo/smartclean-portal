@@ -203,6 +203,7 @@ html[data-theme="light"] .sc-hex{opacity:.5}
               <option value="stranka_az">Stranka A–Ž</option>
               <option value="stranka_za">Stranka Ž–A</option>
             </select>
+            <input type="month" id="arhivMesec" class="arh-mesec" aria-label="Mesec"/>
             <input type="search" id="arhivIsci" placeholder="Iskanje po številki …" aria-label="Iskanje"/>
           </div>
         </div>
@@ -294,6 +295,7 @@ html[data-theme="light"] .sc-hex{opacity:.5}
             <button type="button" id="dokNaloziBtn" class="btn btn-narrow dok-tbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M5 20h14"/></svg>Naloži datoteke</button>
             <input type="file" id="dokFile" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.heic,.heif,image/*,application/pdf,.csv" hidden/>
             <input type="file" id="dokKamera" accept="image/*" capture="environment" hidden/>
+            <input type="file" id="dokKameraLib" accept="image/*" multiple hidden/>
           </div>
         </div>
         <div class="dok-bar">
