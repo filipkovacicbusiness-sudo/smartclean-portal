@@ -289,7 +289,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '3.6 · BETA';
+  var APP_VERZIJA = '3.7 · BETA';
   var NALAGANJE = '<div class="sc-load"><div class="sc-load-bar"></div></div>';
   var _reloadVal = null;   // vrednost 'reload' ob nalaganju (za potisnjeno osvežitev)
   const JE_LASTNIK = () => (JAZMAIL || '').trim().toLowerCase() === 'filip@eflitte.si';
@@ -4374,13 +4374,13 @@
     var url = MOJPROFIL && MOJPROFIL.avatar_url;
     if (url) {
       box.style.backgroundImage = 'url(' + encodeURI(url).replace(/"/g, '%22') + ')';
-      box.classList.add('has-img');
+      box.classList.add('has-img'); box.classList.remove('av-sc');
       var ini = $('profAvInit'); if (ini) ini.style.display = 'none';
       if (del) del.style.display = '';
     } else {
       box.style.backgroundImage = '';
-      box.classList.remove('has-img');
-      var ini2 = $('profAvInit'); if (ini2) { ini2.style.display = ''; ini2.textContent = ppIniciale(JAZIME); }
+      box.classList.remove('has-img'); box.classList.add('av-sc');
+      var ini2 = $('profAvInit'); if (ini2) { ini2.style.display = ''; ini2.innerHTML = scMarkHtml(); }
       if (del) del.style.display = 'none';
     }
   }
@@ -4816,9 +4816,11 @@
     if (!d.length) return '?';
     return (d[0][0] + (d.length > 1 ? d[d.length - 1][0] : '')).toUpperCase();
   }
+  // Znak »SC« v pisavi in barvah logotipa (S = temna, C = zelena) — enotna placeholder ikona povsod.
+  function scMarkHtml() { return '<span class="sc-s">S</span><span class="sc-c">C</span>'; }
   function ppAvatarHtml(p, cls) {
     if (p && p.avatar) return '<span class="' + cls + '" style="background-image:url(' + encodeURI(p.avatar).replace(/"/g, '%22') + ')"></span>';
-    return '<span class="' + cls + '">' + escape_(ppIniciale(p && p.name)) + '</span>';
+    return '<span class="' + cls + ' av-sc">' + scMarkHtml() + '</span>';
   }
   function narisiIzbirnik() {
     var grid = $('ppGrid'); if (!grid) return;
