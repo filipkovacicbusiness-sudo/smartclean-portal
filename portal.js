@@ -307,7 +307,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.15 · BETA';
+  var APP_VERZIJA = '4.16 · BETA';
   var NALAGANJE = '<div class="sc-load"><div class="sc-load-bar"></div></div>';
   var _reloadVal = null;   // vrednost 'reload' ob nalaganju (za potisnjeno osvežitev)
   const JE_LASTNIK = () => (JAZMAIL || '').trim().toLowerCase() === 'filip@eflitte.si';
@@ -1227,7 +1227,7 @@
     var prefs = Object.keys(preSet).sort();
     if (grupe['—']) prefs.push('—');
     var strPoGrupi = {}; (ORGSEZNAM || []).forEach(function (o) { var g = strankaSkupina(o.id); if (g) (strPoGrupi[g] = strPoGrupi[g] || []).push(o); });
-    var topbar = '<div class="art-topbar"><button type="button" class="btn btn-narrow art-nova">+ Nov cenik</button></div>';
+    var topbar = '<div class="art-topbar"><button type="button" class="btn btn-narrow art-nova">+ Nov cenik</button><button type="button" class="btn btn-narrow ghost art-uskladi" title="Poskrbi, da ima vsaka stranka vse artikle svojega cenika">Uskladi artikle</button></div>';
     box.innerHTML = topbar + (prefs.length ? prefs.map(function (pre) {
       var arts = grupe[pre] || []; var open = !!_artOpen[pre]; var str = strPoGrupi[pre] || [];
       var rows = arts.map(function (x) {
@@ -1254,6 +1254,7 @@
     }).join('') : '<div class="pris-card"><p class="u-sub">Ni artiklov. Ustvari nov cenik z gumbom zgoraj.</p></div>');
 
     { var nb = box.querySelector('.art-nova'); if (nb) nb.addEventListener('click', function () { artNovCenik(); }); }
+    { var ub = box.querySelector('.art-uskladi'); if (ub) ub.addEventListener('click', function () { artUskladiVse(); }); }
     box.querySelectorAll('[data-artgrp]').forEach(function (h) { h.addEventListener('click', function () { var k = h.dataset.artgrp; var willOpen = !_artOpen[k]; _artOpen = {}; if (willOpen) _artOpen[k] = true; artRender(); }); });
     box.querySelectorAll('[data-aedit]').forEach(function (b) { b.addEventListener('click', function (e) { e.stopPropagation(); artUredi(parseInt(b.dataset.aedit, 10)); }); });
     box.querySelectorAll('[data-adel]').forEach(function (b) { b.addEventListener('click', function (e) { e.stopPropagation(); artIzbrisi(parseInt(b.dataset.adel, 10)); }); });
@@ -1445,6 +1446,29 @@
       }
       toast('Stranke posodobljene.'); artRender();
     });
+  }
+  // Poskrbi, da ima vsaka stranka natanko vse artikle svojega cenika (doda manjkajoče).
+  async function artUskladiVse() {
+    var ok = await potrdiModal({ naslov: 'Uskladi artikle', sporocilo: 'Vsaki stranki uskladim artikle z njenim cenikom — doda manjkajoče in odstrani odvečne. Nadaljujem?', potrdi: 'Uskladi', preklici: 'Prekliči' });
+    if (!ok) return;
+    toast('Usklajujem …');
+    var grupe = artikliGrupe();
+    var dodanih = 0, obdelanih = 0;
+    for (var oi = 0; oi < (ORGSEZNAM || []).length; oi++) {
+      var org = ORGSEZNAM[oi];
+      var pre = strankaSkupina(org.id);
+      if (!pre) continue;
+      var arts = grupe[pre] || [];
+      var sifre = arts.map(function (x) { return x.sifra; });
+      var prej = (CLANI || []).filter(function (a) { return a.org_id === org.id && a.cena_sifra != null; }).length;
+      try { await nastaviSkupinoStranki(org.id, sifre); } catch (e) {}
+      var potem = (CLANI || []).filter(function (a) { return a.org_id === org.id && a.cena_sifra != null; }).length;
+      if (potem > prej) dodanih += (potem - prej);
+      obdelanih++;
+    }
+    logDodaj('Artikli', 'Urejeno', 'Uskladitev artiklov (' + obdelanih + ' strank, +' + dodanih + ' artiklov)');
+    toast(dodanih ? ('Usklajeno · dodanih ' + dodanih + ' artiklov.') : 'Vse stranke so že usklajene.');
+    artRender();
   }
 
   /* ══════════ UČINKOVITOST (kilaža + produktivnost) ══════════ */
