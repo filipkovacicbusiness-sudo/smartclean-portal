@@ -55,6 +55,7 @@
   $('themeBtn').addEventListener('click', () => {
     nastaviTemo(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
   });
+  { var _tba = $('themeBtnAuth'); if (_tba) _tba.addEventListener('click', () => { nastaviTemo(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'); }); }
 
   /* ── samodejna prijava (segment kot redni/izredni na tablici) ─────── */
   function autoLoginOn() { try { return localStorage.getItem('sc-autologin') !== '0'; } catch (e) { return true; } }
@@ -288,7 +289,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '3.5 · BETA';
+  var APP_VERZIJA = '3.6 · BETA';
   var NALAGANJE = '<div class="sc-load"><div class="sc-load-bar"></div></div>';
   var _reloadVal = null;   // vrednost 'reload' ob nalaganju (za potisnjeno osvežitev)
   const JE_LASTNIK = () => (JAZMAIL || '').trim().toLowerCase() === 'filip@eflitte.si';
@@ -2415,12 +2416,12 @@
   function predogledDokument(opt) {
     opt = opt || {};
     var back = document.createElement('div'); back.className = 'sc-modal-back';
-    var xlsxBtn = opt.xlsx ? '<button type="button" class="sc-modal-btn ghost" data-xlsx>Shrani kot Excel</button>' : '';
+    var xlsxBtn = opt.xlsx ? '<button type="button" class="sc-modal-btn primary" data-xlsx>Shrani kot Excel</button>' : '';
+    var pdfBtn = opt.pdf ? '<button type="button" class="sc-modal-btn primary" data-pdf>Shrani kot PDF</button>' : '';
     back.innerHTML = '<div class="sc-modal doc-modal" role="dialog" aria-modal="true">' +
       '<div class="doc-head"><h4></h4><button type="button" class="doc-x" aria-label="Zapri">×</button></div>' +
       '<div class="doc-stage"><iframe class="doc-frame" title="Predogled"></iframe></div>' +
-      '<div class="sc-modal-acts doc-acts"><button type="button" class="sc-modal-btn ghost" data-print>Natisni</button>' + xlsxBtn +
-      '<button type="button" class="sc-modal-btn primary" data-pdf>Shrani kot PDF</button></div></div>';
+      '<div class="sc-modal-acts doc-acts"><button type="button" class="sc-modal-btn ghost" data-print>Natisni</button>' + xlsxBtn + pdfBtn + '</div></div>';
     back.querySelector('h4').textContent = opt.naslov || 'Predogled';
     document.body.appendChild(back);
     var fr = back.querySelector('.doc-frame');
@@ -2447,6 +2448,58 @@
     document.addEventListener('keydown', onKey);
   }
   // ── Izvoz (Excel / PDF): pojavno okno z izbiro obdobja in strank ──
+  // Predogled Excel vsebine kot HTML tabele (za pop-up predogled).
+  function fakXlsxPreviewHtml(skupine, od, doo) {
+    const obd = datum(od) + ' – ' + datum(doo);
+    const anyMoney = skupine.some(g => g.cenikOn);
+    const nd = n => escape_(String(n));
+    let povR = '';
+    let sL = 0, sK = 0, sKg = 0, sN = 0, sD = 0, sB = 0;
+    skupine.forEach(g => {
+      const ime = ORGIME[g.org_id] || 'Brez stranke';
+      sL += g.listov; sK += g.kosov; sKg += g.kg;
+      let r = '<tr><td>' + nd(ime) + '</td><td class="n">' + stevilo(g.listov) + '</td><td class="n">' + stevilo(g.kosov) + '</td><td class="n">' + nd(fakKg(g.kg)) + '</td>';
+      if (anyMoney) {
+        sN += g.neto || 0; sD += g.ddv || 0; sB += g.bruto || 0;
+        r += '<td class="n">' + (g.cenikOn ? nd(cenaFmt(g.neto)) : '—') + '</td><td class="n">' + (g.cenikOn ? nd(cenaFmt(g.ddv)) : '—') + '</td><td class="n">' + (g.cenikOn ? nd(cenaFmt(g.bruto)) : '—') + '</td>';
+      }
+      povR += r + '</tr>';
+    });
+    let povHead = '<tr><th>Stranka</th><th class="n">Spr. listov</th><th class="n">Kosov</th><th class="n">Teža (kg)</th>' + (anyMoney ? '<th class="n">Neto</th><th class="n">DDV</th><th class="n">Za plačilo z DDV</th>' : '') + '</tr>';
+    let povSk = '<tr class="sk"><td>SKUPAJ</td><td class="n">' + stevilo(sL) + '</td><td class="n">' + stevilo(sK) + '</td><td class="n">' + nd(fakKg(sKg)) + '</td>' + (anyMoney ? '<td class="n">' + nd(cenaFmt(sN)) + '</td><td class="n">' + nd(cenaFmt(sD)) + '</td><td class="n">' + nd(cenaFmt(sB)) + '</td>' : '') + '</tr>';
+    let listi = '<div class="sheet"><div class="tab">Povzetek</div><table>' + povHead + povR + povSk + '</table></div>';
+    skupine.forEach(g => {
+      const ime = ORGIME[g.org_id] || 'Brez stranke';
+      const money = !!g.cenikOn;
+      const post = g.postavke || [];
+      let head = money ? '<tr><th>Artikel</th><th class="n">Cena/kos</th><th class="n">Količina</th><th class="n">Znesek</th></tr>' : '<tr><th>Artikel</th><th class="n">Količina</th></tr>';
+      let rows = post.length ? post.map(p => money
+        ? '<tr><td>' + nd(p.nm) + '</td><td class="n">' + (p.cena != null ? nd(cenaFmt(p.cena)) : '—') + '</td><td class="n">' + stevilo(p.q) + '</td><td class="n">' + (p.znesek != null ? nd(cenaFmt(p.znesek)) : '—') + '</td></tr>'
+        : '<tr><td>' + nd(p.nm) + '</td><td class="n">' + stevilo(p.q) + '</td></tr>').join('') : '<tr><td colspan="' + (money ? 4 : 2) + '" class="empty">Brez postavk</td></tr>';
+      let tot = money
+        ? '<tr class="sk"><td>Skupaj kosov</td><td class="n"></td><td class="n">' + stevilo(g.kosov) + '</td><td class="n"></td></tr>' +
+          '<tr class="sk"><td>Teža perila (kg)</td><td class="n"></td><td class="n">' + nd(fakKg(g.kg)) + '</td><td class="n"></td></tr>' +
+          '<tr class="sk"><td>Neto skupaj</td><td class="n"></td><td class="n"></td><td class="n">' + nd(cenaFmt(g.neto)) + '</td></tr>' +
+          '<tr class="sk"><td>DDV (22 %)</td><td class="n"></td><td class="n"></td><td class="n">' + nd(cenaFmt(g.ddv)) + '</td></tr>' +
+          '<tr class="sk bruto"><td>Za plačilo (z DDV)</td><td class="n"></td><td class="n"></td><td class="n">' + nd(cenaFmt(g.bruto)) + '</td></tr>'
+        : '<tr class="sk"><td>Skupaj kosov</td><td class="n">' + stevilo(g.kosov) + '</td></tr><tr class="sk"><td>Teža perila (kg)</td><td class="n">' + nd(fakKg(g.kg)) + '</td></tr>';
+      listi += '<div class="sheet"><div class="tab">' + nd(ime) + '</div><div class="per">Obdobje: ' + nd(obd) + '</div><table>' + head + rows + tot + '</table></div>';
+    });
+    return '<!DOCTYPE html><html lang="sl"><head><meta charset="utf-8"><style>' +
+      "*{box-sizing:border-box;font-family:-apple-system,'Segoe UI',Roboto,Arial,sans-serif;color:#16202b}" +
+      'body{margin:0;font-size:12.5px;padding:16px;background:#fff}' +
+      '.sheet{margin:0 0 26px}' +
+      '.tab{display:inline-block;background:#1a6644;color:#fff;font-weight:700;font-size:11.5px;padding:5px 12px;border-radius:6px 6px 0 0}' +
+      '.per{color:#5c6873;font-size:11px;margin:4px 0 6px}' +
+      'table{border-collapse:collapse;width:100%}' +
+      'th,td{border:1px solid #d7dedb;padding:5px 10px;text-align:left;white-space:nowrap}' +
+      'th{background:#eef3f1;font-size:10px;text-transform:uppercase;letter-spacing:.03em}' +
+      'td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}' +
+      'td.empty{color:#8a97a0;text-align:left}' +
+      'tr.sk td{font-weight:700;background:#f6f9f8}' +
+      'tr.bruto td{border-top:2px solid #1a6644}' +
+      '</style></head><body>' + listi + '</body></html>';
+  }
   function fakIzvozXlsx(od, doo, skupine) {
     const B = t => ({ v: t, bold: true });          // glava
     const T = t => ({ v: t, s: 2 });                 // krepko besedilo
@@ -2561,8 +2614,11 @@
           pdf: function () { return fakPdfDownload(skupine, od, doo); }
         });
       } else {
-        fakIzvozXlsx(od, doo, skupine);
-        toast('Excel pripravljen: fakture_' + od + '_' + doo + '.xlsx');
+        predogledDokument({
+          naslov: 'Izvoz v Excel — ' + (vseIzbrane ? 'vse stranke' : (izbrani.length + ' strank')),
+          docHtml: fakXlsxPreviewHtml(skupine, od, doo),
+          xlsx: function () { fakIzvozXlsx(od, doo, skupine); }
+        });
       }
     });
   }

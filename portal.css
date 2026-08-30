@@ -46,27 +46,24 @@ button{-webkit-tap-highlight-color:transparent;}
 /* ══ PRIJAVA ══ */
 .wordmark{font-family:var(--wm);font-size:1.55rem;font-weight:700;letter-spacing:-.03em;line-height:1;color:var(--wm-ink);}
 .wordmark span{color:var(--wm-green);}
-/* Prijavni zaslon — vedno temen, v stilu spletne strani; logo desno, naslov zgoraj, prijava na sredini */
-#auth{
-  --ink:#ffffff; --mid:rgba(255,255,255,.55); --bg:#0a0a0a; --surface:#141416;
-  --line:rgba(255,255,255,.14); --green-m:rgba(255,255,255,.06); --green-t:#6ed3a1;
-  --wm-ink:#e8f1eb; --wm-green:#6ed3a1; --shadow:0 20px 50px rgba(0,0,0,.5);
-}
-.auth{min-height:100dvh;display:flex;flex-direction:column;background:var(--band);color:#fff;
-  position:relative;padding:clamp(20px,3vw,34px) clamp(24px,4vw,48px) clamp(56px,8vh,80px);}
-.auth-top{display:flex;justify-content:flex-start;align-items:center;min-height:40px;}
-.auth-top .wordmark{font-size:1.55rem;color:#e8f1eb;line-height:1.2;}
-.auth-top .wordmark span{color:#6ed3a1;}
+/* Prijavni zaslon — glava kot v portalu (logo + preklop teme), prijava na sredini */
+.auth{min-height:100dvh;display:flex;flex-direction:column;background:var(--bg);color:var(--ink);position:relative;}
+.auth-top{display:flex;align-items:center;justify-content:space-between;gap:16px;height:64px;
+  padding:0 clamp(20px,4vw,44px);border-bottom:1px solid var(--line);}
+.auth-top .wordmark{font-size:1.55rem;line-height:1.2;}
 /* hero + prijava skupaj, navpično na sredini */
-.auth-main{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(30px,6vh,64px);padding:24px 8px;}
+.auth-main{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(30px,6vh,64px);padding:24px clamp(20px,4vw,44px) clamp(56px,8vh,80px);}
 .auth-hero{text-align:center;}
-.auth-claim{font-family:var(--serif);font-size:clamp(2rem,5vw,3.4rem);line-height:1.08;font-weight:700;color:#fff;}
-.auth-claim em{font-style:normal;color:#6ed3a1;}
+.auth-claim{font-family:var(--serif);font-size:clamp(2rem,5vw,3.4rem);line-height:1.08;font-weight:700;color:var(--ink);}
+.auth-claim em{font-style:normal;color:var(--wm-green);}
 .auth-box{width:100%;max-width:370px;}
-.auth-foot{position:absolute;left:clamp(24px,4vw,48px);bottom:clamp(18px,3vw,30px);font-size:.82rem;color:rgba(255,255,255,.45);}
+.auth-foot{position:absolute;left:clamp(20px,4vw,44px);bottom:clamp(18px,3vw,30px);font-size:.82rem;color:var(--mid);}
 /* prijava — sredinsko poravnana */
-#auth .profile-picker{text-align:center;}
+#auth .profile-picker{text-align:center;position:relative;padding-bottom:52px;}
+#auth .profile-picker .eyebrow{color:var(--wm-green);}
 #auth .profile-picker .pp-grid{justify-content:center;}
+/* rezerviran prostor za sporočilo (npr. »Potrjujem …« pri Face ID), da se postavitev ne premakne */
+#auth #ppMsg{position:absolute;left:0;right:0;bottom:0;margin:0;text-align:center;}
 .eyebrow{font-size:.7rem;letter-spacing:.16em;text-transform:uppercase;
   color:var(--green-t);font-weight:500;margin-bottom:10px;}
 h1{font-family:var(--serif);font-size:1.75rem;font-weight:700;line-height:1.2;margin-bottom:6px;}
@@ -164,11 +161,11 @@ h3.sec{font-family:var(--serif);font-size:1.05rem;font-weight:700;margin:26px 0 
 h3.sec:first-child{margin-top:0;}
 
 @media(max-width:820px){
-  .auth{padding-bottom:20px;}
-  .auth-top .wordmark{font-size:1.45rem;}
+  .auth-top{height:58px;}
+  .auth-top .wordmark{font-size:1.4rem;}
   .auth-claim{font-size:clamp(1.7rem,7vw,2.3rem);}
   .auth-foot{font-size:.75rem;position:static;margin:8px 0 0;text-align:center;}
-  .auth-main{gap:clamp(22px,4vh,40px);padding:16px 4px;}
+  .auth-main{gap:clamp(22px,4vh,40px);padding:18px 16px 24px;}
   .auth-box{max-width:none;}
   .arts ul{columns:2;}
   /* iOS: pod 16px brskalnik samodejno poveča (zoom) ob fokusu polja */
