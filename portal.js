@@ -288,7 +288,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '3.2 · BETA';
+  var APP_VERZIJA = '3.4 · BETA';
   var NALAGANJE = '<div class="sc-load"><div class="sc-load-bar"></div></div>';
   var _reloadVal = null;   // vrednost 'reload' ob nalaganju (za potisnjeno osvežitev)
   const JE_LASTNIK = () => (JAZMAIL || '').trim().toLowerCase() === 'filip@eflitte.si';
@@ -1183,7 +1183,7 @@
     }).join('') : '<div class="pris-card"><p class="u-sub">Ni artiklov. Ustvari nov cenik z gumbom zgoraj.</p></div>');
 
     { var nb = box.querySelector('.art-nova'); if (nb) nb.addEventListener('click', function () { artNovCenik(); }); }
-    box.querySelectorAll('[data-artgrp]').forEach(function (h) { h.addEventListener('click', function () { var k = h.dataset.artgrp; _artOpen[k] = !_artOpen[k]; artRender(); }); });
+    box.querySelectorAll('[data-artgrp]').forEach(function (h) { h.addEventListener('click', function () { var k = h.dataset.artgrp; var willOpen = !_artOpen[k]; _artOpen = {}; if (willOpen) _artOpen[k] = true; artRender(); }); });
     box.querySelectorAll('[data-aedit]').forEach(function (b) { b.addEventListener('click', function (e) { e.stopPropagation(); artUredi(parseInt(b.dataset.aedit, 10)); }); });
     box.querySelectorAll('[data-adel]').forEach(function (b) { b.addEventListener('click', function (e) { e.stopPropagation(); artIzbrisi(parseInt(b.dataset.adel, 10)); }); });
     box.querySelectorAll('.art-dodeli').forEach(function (b) { b.addEventListener('click', function (e) { e.stopPropagation(); artDodeli(b.dataset.pre); }); });
@@ -1294,7 +1294,7 @@
       var ins = await sb.from('articles').insert({ org_id: oid, name: nm, cena_sifra: sifra, sort_order: maxo + 1 }).select('id').maybeSingle();
       if (!(ins && ins.error)) { if (CLANI) CLANI.push({ id: ins && ins.data ? ins.data.id : null, org_id: oid, name: nm, cena_sifra: sifra, sort_order: maxo + 1 }); dodanih++; }
     }
-    _artOpen[pre] = true; toast('Artikel dodan' + (dodanih ? ' · propagirano ' + dodanih + ' strankam' : '') + '.'); artRender();
+    _artOpen = {}; _artOpen[pre] = true; toast('Artikel dodan' + (dodanih ? ' · propagirano ' + dodanih + ' strankam' : '') + '.'); artRender();
   }
   function artNovCenik() {
     var back = document.createElement('div'); back.className = 'sc-modal-back';
@@ -1316,7 +1316,7 @@
       var r = await sb.from('article_groups').upsert({ prefix: pre, name: ime || null, updated_at: new Date().toISOString() }, { onConflict: 'prefix' });
       if (r.error) { toast('Napaka: ' + r.error.message + (/relation|does not exist/i.test(r.error.message) ? ' (poženi migracijo 13_skupine.sql)' : '')); return; }
       if (ime) SKUPINE_IME[pre] = ime;
-      _artOpen[pre] = true; zapri(); toast('Cenik ustvarjen. Dodaj artikle.'); artRender();
+      _artOpen = {}; _artOpen[pre] = true; zapri(); toast('Cenik ustvarjen. Dodaj artikle.'); artRender();
     });
   }
   async function artPreimenujSkupino(pre) {
@@ -1877,7 +1877,7 @@
     }
   }
 
-  function natisniList(box) {
+  function spremniDocHtml(box) {
     const n = box._note || {};
     const items = box._items || [];
     const org = ORGSEZNAM.find(o => o.id === n.org_id) || {};
@@ -1919,10 +1919,10 @@
       <table><thead><tr><th>Naziv artikla</th><th class="q">Kosov</th></tr></thead><tbody>${rows}</tbody></table>
       ${kg}${ustv}${popr}${opombaP}<div class="sign"></div>
     </body></html>`;
-    const w = window.open('', '_blank');
-    if (!w) { toast('Za tiskanje dovoli pojavna okna.'); return; }
-    w.document.open(); w.document.write(html); w.document.close(); w.focus();
-    setTimeout(() => { try { w.print(); } catch (e) {} }, 300);
+    return html;
+  }
+  function natisniList(box) {
+    predogledDokument({ naslov: 'Spremni list ' + escape_((box._note || {}).number || ''), docHtml: spremniDocHtml(box), pdf: function () { return spremniPdfDownload(box); } });
   }
 
   function segPrevoz(val) {
@@ -2283,7 +2283,168 @@
   function natisniFakturo(gi) {
     if (!FAK_ZADNJI || !FAK_ZADNJI.skupine[gi]) return;
     const g = FAK_ZADNJI.skupine[gi];
-    natisniDokument(fakDokumentHtml([g], FAK_ZADNJI.od, FAK_ZADNJI.doo, 'Osnova za račun · ' + (ORGIME[g.org_id] || '')));
+    predogledDokument({
+      naslov: 'Osnova za račun · ' + (ORGIME[g.org_id] || ''),
+      docHtml: fakDokumentHtml([g], FAK_ZADNJI.od, FAK_ZADNJI.doo, 'Osnova za račun'),
+      pdf: function () { return fakPdfDownload([g], FAK_ZADNJI.od, FAK_ZADNJI.doo); }
+    });
+  }
+
+  /* ══════════ PDF (pravi prenos, brez knjižnice — pdfgen.js) ══════════ */
+  var _PDF = { INK: [0.086, 0.125, 0.169], GREY: [0.36, 0.41, 0.45], LINE: [0.902, 0.922, 0.914], HEAD: [0.949, 0.961, 0.953], GREEN: [0.102, 0.4, 0.267] };
+  var _scLogoP = null;
+  function scLogo() {
+    if (_scLogoP) return _scLogoP;
+    _scLogoP = (typeof PDFDoc !== 'undefined' && PDFDoc.imageToJpeg) ? PDFDoc.imageToJpeg(SC_LOGO, 260).catch(function () { return null; }) : Promise.resolve(null);
+    return _scLogoP;
+  }
+  function _pdfGlava(doc, logo, M) {
+    var right = doc.W - M, y = 50;
+    if (logo && logo.w) { var lh = 26, lw = lh * logo.w / logo.h; doc.image(logo.bytes, M, y - 14, lw, lh, logo.w, logo.h); }
+    doc.text(right, y - 6, 'BSMART d.o.o.', { size: 9, align: 'right', color: _PDF.GREY });
+    doc.text(right, y + 5, 'Luče 87, 3334 Luče', { size: 9, align: 'right', color: _PDF.GREY });
+    doc.text(right, y + 16, '+386 41 209 676', { size: 9, align: 'right', color: _PDF.GREY });
+    y += 26; doc.line(M, y, right, y, { width: 1.4, color: _PDF.GREEN });
+    return y + 24;
+  }
+  // Osnova za račun (fakture) → prava .pdf datoteka.
+  async function fakPdfDownload(skupine, od, doo) {
+    var logo = await scLogo();
+    var doc = new PDFDoc();
+    var M = 44, right = doc.W - M, obd = datum(od) + ' – ' + datum(doo);
+    skupine.forEach(function (g) {
+      doc.addPage();
+      var y = _pdfGlava(doc, logo, M);
+      doc.text(M, y, 'Osnova za račun', { size: 13, bold: true, color: _PDF.INK }); y += 20;
+      var org = ORGSEZNAM.find(function (o) { return o.id === g.org_id; }) || {};
+      var naziv = org.legal_name || org.name || ORGIME[g.org_id] || '—';
+      var naslov = [org.address, org.vat_id ? 'ID za DDV: ' + org.vat_id : ''].filter(Boolean).join(' · ');
+      var boxH = naslov ? 58 : 44;
+      doc.rect(M, y, right - M, boxH, { stroke: _PDF.LINE, width: 0.8 });
+      var yy = y + 17;
+      doc.text(M + 12, yy, 'Naročnik storitve: ' + naziv, { size: 10.5, bold: true, color: _PDF.INK }); yy += 14;
+      if (naslov) { doc.text(M + 12, yy, naslov, { size: 9, color: _PDF.GREY }); yy += 13; }
+      doc.text(M + 12, yy, 'Obdobje: ' + obd + ' · ' + stevilo(g.listov) + ' spremnih listov · ' + stevilo(g.redni) + ' redni' + (g.izredni ? ' · ' + stevilo(g.izredni) + ' izredni prevoz' : ''), { size: 9, color: _PDF.GREY });
+      y += boxH + 20;
+      var money = !!g.cenikOn;
+      var cZ = right, cK = right - 92, cC = right - 188, artL = M + 6;
+      function glava() {
+        doc.rect(M, y, right - M, 20, { fill: _PDF.HEAD });
+        doc.text(artL, y + 13.5, 'Naziv artikla', { size: 8.5, bold: true, color: _PDF.INK });
+        if (money) {
+          doc.text(cC, y + 13.5, 'Cena/kos', { size: 8.5, bold: true, align: 'right', color: _PDF.INK });
+          doc.text(cK, y + 13.5, 'Količina', { size: 8.5, bold: true, align: 'right', color: _PDF.INK });
+          doc.text(cZ, y + 13.5, 'Znesek', { size: 8.5, bold: true, align: 'right', color: _PDF.INK });
+        } else doc.text(cZ, y + 13.5, 'Količina (kos)', { size: 8.5, bold: true, align: 'right', color: _PDF.INK });
+        y += 20;
+      }
+      function novaStran() { doc.addPage(); y = _pdfGlava(doc, logo, M); doc.text(M, y, 'Osnova za račun — nadaljevanje', { size: 11, bold: true, color: _PDF.INK }); y += 18; glava(); }
+      glava();
+      var post = g.postavke || [];
+      if (!post.length) { doc.text(artL, y + 13, 'Ni postavk', { size: 10, color: _PDF.GREY }); y += 20; }
+      post.forEach(function (p) {
+        if (y + 18 > doc.H - 120) novaStran();
+        doc.text(artL, y + 13, p.nm, { size: 9.5, color: _PDF.INK });
+        if (money) {
+          doc.text(cC, y + 13, p.cena != null ? cenaFmt(p.cena) : '—', { size: 9.5, align: 'right', color: _PDF.INK });
+          doc.text(cK, y + 13, stevilo(p.q), { size: 9.5, align: 'right', color: _PDF.INK });
+          doc.text(cZ, y + 13, p.znesek != null ? cenaFmt(p.znesek) : '—', { size: 9.5, align: 'right', color: _PDF.INK });
+        } else doc.text(cZ, y + 13, stevilo(p.q), { size: 9.5, align: 'right', color: _PDF.INK });
+        y += 18; doc.line(M, y, right, y, { width: 0.6, color: _PDF.LINE });
+      });
+      // seštevki
+      y += 12;
+      function vrsticaSk(labela, vred, krepko, velik) {
+        doc.text(M + 6, y, labela, { size: velik ? 11 : 9.5, bold: true, color: _PDF.INK });
+        doc.text(cZ, y, vred, { size: velik ? 11 : 9.5, bold: !!krepko, color: _PDF.INK, align: 'right' });
+        y += velik ? 18 : 15;
+      }
+      if (money) {
+        vrsticaSk('Skupaj kosov', stevilo(g.kosov), true);
+        vrsticaSk('Teža perila', fakKg(g.kg), false);
+        vrsticaSk('Neto skupaj', cenaFmt(g.neto), true);
+        vrsticaSk('DDV (22 %)', cenaFmt(g.ddv), true);
+        y += 4; doc.line(M, y, right, y, { width: 1.4, color: _PDF.GREEN }); y += 15;
+        vrsticaSk('Za plačilo (z DDV)', cenaFmt(g.bruto), true, true);
+        if (g.brezCene) doc.text(M, y + 6, stevilo(g.brezCene) + ' artiklov brez cene (niso všteti) — poveži jih v Strankah.', { size: 8.5, color: _PDF.GREY });
+      } else {
+        vrsticaSk('Skupaj kosov', stevilo(g.kosov), true);
+        vrsticaSk('Teža perila', fakKg(g.kg), true);
+      }
+    });
+    doc.save('fakture_' + od + '_' + doo + '.pdf');
+  }
+  // Spremni list → prava .pdf datoteka (enak izpis kot v aplikaciji).
+  async function spremniPdfDownload(box) {
+    var logo = await scLogo();
+    var n = box._note || {}, items = box._items || [];
+    var org = ORGSEZNAM.find(function (o) { return o.id === n.org_id; }) || {};
+    var naziv = org.legal_name || org.name || ORGIME[n.org_id] || '—';
+    var doc = new PDFDoc();
+    var M = 44, right = doc.W - M;
+    doc.addPage();
+    var y = _pdfGlava(doc, logo, M);
+    doc.text(M, y, 'Št. spremnega lista: ' + (n.number || '—'), { size: 12, bold: true, color: _PDF.INK }); y += 20;
+    var boxH = 46;
+    doc.rect(M, y, right - M, boxH, { stroke: _PDF.LINE, width: 0.8 });
+    doc.text(M + 12, y + 17, 'Naročnik storitve: ' + naziv, { size: 10.5, bold: true, color: _PDF.INK });
+    doc.text(M + 12, y + 31, 'Oddaja: ' + datum(n.doc_date) + (n.issued_name ? ' · Izdal: ' + n.issued_name : '') + ' · ' + (n.transport === 'izredni' ? 'Izredni prevoz' : 'Redni prevoz'), { size: 9, color: _PDF.GREY });
+    doc.text(right - 12, y + 17, 'Podpis: ______________', { size: 9, align: 'right', color: _PDF.GREY });
+    y += boxH + 20;
+    var cK = right, artL = M + 6;
+    function glava() {
+      doc.rect(M, y, right - M, 20, { fill: _PDF.HEAD });
+      doc.text(artL, y + 13.5, 'Naziv artikla', { size: 8.5, bold: true, color: _PDF.INK });
+      doc.text(cK, y + 13.5, 'Kosov', { size: 8.5, bold: true, align: 'right', color: _PDF.INK });
+      y += 20;
+    }
+    glava();
+    if (!items.length) { doc.text(artL, y + 13, 'Ni postavk', { size: 10, color: _PDF.GREY }); y += 20; }
+    items.forEach(function (p) {
+      if (y + 18 > doc.H - 70) { doc.addPage(); y = _pdfGlava(doc, logo, M); glava(); }
+      doc.text(artL, y + 13, p.naziv, { size: 9.5, color: _PDF.INK });
+      doc.text(cK, y + 13, stevilo(p.kosov), { size: 9.5, align: 'right', color: _PDF.INK });
+      y += 18; doc.line(M, y, right, y, { width: 0.6, color: _PDF.LINE });
+    });
+    if (n.weight_kg != null && n.weight_kg !== '') { y += 14; doc.text(M, y, 'Skupaj teža perila: ' + String(n.weight_kg).replace('.', ',') + ' kg', { size: 11, bold: true, color: _PDF.INK }); }
+    if (n.opomba) { y += 22; doc.text(M, y, 'Opomba:', { size: 9, bold: true, color: _PDF.GREY }); y += 13; doc.text(M, y, n.opomba, { size: 9.5, color: _PDF.INK }); }
+    doc.save('spremni_list_' + (n.number || 'brez') + '.pdf');
+  }
+
+  /* ══════════ PREDOGLED DOKUMENTA (skupni pop-up: natisni / shrani) ══════════ */
+  function predogledDokument(opt) {
+    opt = opt || {};
+    var back = document.createElement('div'); back.className = 'sc-modal-back';
+    var xlsxBtn = opt.xlsx ? '<button type="button" class="sc-modal-btn ghost" data-xlsx>Shrani kot Excel</button>' : '';
+    back.innerHTML = '<div class="sc-modal doc-modal" role="dialog" aria-modal="true">' +
+      '<div class="doc-head"><h4></h4><button type="button" class="doc-x" aria-label="Zapri">×</button></div>' +
+      '<div class="doc-stage"><iframe class="doc-frame" title="Predogled"></iframe></div>' +
+      '<div class="sc-modal-acts doc-acts"><button type="button" class="sc-modal-btn ghost" data-print>Natisni</button>' + xlsxBtn +
+      '<button type="button" class="sc-modal-btn primary" data-pdf>Shrani kot PDF</button></div></div>';
+    back.querySelector('h4').textContent = opt.naslov || 'Predogled';
+    document.body.appendChild(back);
+    var fr = back.querySelector('.doc-frame');
+    fr.srcdoc = opt.docHtml || '';
+    requestAnimationFrame(function () { back.classList.add('show'); });
+    var done = false;
+    function zapri() { if (done) return; done = true; back.classList.remove('show'); document.removeEventListener('keydown', onKey); setTimeout(function () { if (back.parentNode) back.parentNode.removeChild(back); }, 180); }
+    function onKey(e) { if (e.key === 'Escape') zapri(); }
+    back.querySelector('.doc-x').addEventListener('click', zapri);
+    back.addEventListener('click', function (e) { if (e.target === back) zapri(); });
+    document.addEventListener('keydown', onKey);
+    back.querySelector('[data-print]').addEventListener('click', function () {
+      try { fr.contentWindow.focus(); fr.contentWindow.print(); } catch (e) { toast('Tiskanje ni uspelo.'); }
+    });
+    var pb = back.querySelector('[data-pdf]');
+    if (pb) pb.addEventListener('click', async function () {
+      if (!opt.pdf) return;
+      var t = this.textContent; this.disabled = true; this.textContent = 'Pripravljam …';
+      try { await opt.pdf(); } catch (e) { toast('PDF ni uspel: ' + (e && e.message ? e.message : e)); }
+      this.disabled = false; this.textContent = t;
+    });
+    var xb = back.querySelector('[data-xlsx]');
+    if (xb) xb.addEventListener('click', function () { try { opt.xlsx(); } catch (e) { toast('Excel ni uspel.'); } });
+    document.addEventListener('keydown', onKey);
   }
   // ── Izvoz (Excel / PDF): pojavno okno z izbiro obdobja in strank ──
   function fakIzvozXlsx(od, doo, skupine) {
@@ -2357,12 +2518,12 @@
     const back = document.createElement('div'); back.className = 'sc-modal-back';
     const checks = orgs.map(o => `<label class="fx-cli"><input type="checkbox" class="fx-org" value="${escape_(o.id)}" checked><span>${escape_(o.name)}</span></label>`).join('') || '<p class="u-sub">Ni strank.</p>';
     back.innerHTML = '<div class="sc-modal sc-modal-wide" role="dialog" aria-modal="true">'
-      + '<h4>' + (jePdf ? 'Izvoz v PDF (osnova za račun)' : 'Izvoz v Excel') + '</h4>'
+      + '<h4>Izvoz — osnova za račun</h4>'
       + '<div class="fx-dates"><label>Od<input type="date" class="sc-modal-input fx-od"></label><label>Do<input type="date" class="sc-modal-input fx-do"></label></div>'
       + '<div class="fx-cli-head"><span>Stranke</span><label class="fx-all"><input type="checkbox" class="fx-vse" checked><span>Vse</span></label></div>'
       + '<div class="fx-cli-list">' + checks + '</div>'
       + '<div class="fx-msg msg"></div>'
-      + '<div class="sc-modal-acts"><button type="button" class="sc-modal-btn ghost" data-no>Prekliči</button><button type="button" class="sc-modal-btn primary" data-yes>' + (jePdf ? 'Izvozi PDF' : 'Izvozi Excel') + '</button></div>'
+      + '<div class="sc-modal-acts"><button type="button" class="sc-modal-btn ghost" data-no>Prekliči</button><button type="button" class="sc-modal-btn primary" data-yes>Predogled</button></div>'
       + '</div>';
     document.body.appendChild(back);
     const odI = back.querySelector('.fx-od'), doI = back.querySelector('.fx-do');
@@ -2388,13 +2549,17 @@
       const btn = this; btn.disabled = true; btn.textContent = 'Pripravljam …';
       msg.className = 'fx-msg msg'; msg.textContent = '';
       const res = await fakZberi(od, doo, vseIzbrane ? null : izbrani);
-      btn.disabled = false; btn.textContent = jePdf ? 'Izvozi PDF' : 'Izvozi Excel';
+      btn.disabled = false; btn.textContent = 'Predogled';
       if (res.error) { msg.className = 'fx-msg msg bad show'; msg.textContent = 'Napaka: ' + res.error.message; return; }
       const skupine = res.skupine || [];
       if (!skupine.length) { msg.className = 'fx-msg msg bad show'; msg.textContent = 'V izbranem obdobju ni spremnih listov.'; return; }
-      if (jePdf) natisniDokument(fakDokumentHtml(skupine, od, doo, 'Osnova za račun'));
-      else fakIzvozXlsx(od, doo, skupine);
       zapri();
+      predogledDokument({
+        naslov: 'Osnova za račun — ' + (vseIzbrane ? 'vse stranke' : (izbrani.length + ' strank')),
+        docHtml: fakDokumentHtml(skupine, od, doo, 'Osnova za račun'),
+        pdf: function () { return fakPdfDownload(skupine, od, doo); },
+        xlsx: function () { fakIzvozXlsx(od, doo, skupine); }
+      });
     });
   }
 

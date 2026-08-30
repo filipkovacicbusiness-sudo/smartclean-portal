@@ -80,11 +80,12 @@ html[data-theme="light"] .sc-hex{opacity:.5}
 
 <!-- ══════════ PRIJAVA ══════════ -->
 <div class="auth" id="auth">
-  <aside class="auth-side">
+  <header class="auth-top">
     <div class="wordmark">Smart<span>Clean</span></div>
-    <p class="auth-claim">Vaše perilo, <em>vedno pregledno.</em></p>
-    <p class="auth-foot">Portal za stranke in osebje · BSMART d.o.o.</p>
-  </aside>
+  </header>
+  <div class="auth-hero">
+    <h2 class="auth-claim">Peremo, vi pa <em>blestite.</em></h2>
+  </div>
 
   <div class="auth-main">
     <div class="profile-picker hidden" id="profilePicker">
@@ -136,6 +137,7 @@ html[data-theme="light"] .sc-hex{opacity:.5}
       <div class="msg" id="loginMsg" role="status" aria-live="polite"></div>
     </div>
   </div>
+  <p class="auth-foot">Portal za stranke in osebje · BSMART d.o.o.</p>
 </div>
 
 <!-- ══════════ APLIKACIJA ══════════ -->
@@ -211,11 +213,15 @@ html[data-theme="light"] .sc-hex{opacity:.5}
             <label class="fak-lab">Do <input type="date" id="fakDo"/></label>
             <select id="fakOrg" aria-label="Stranka"><option value="">Vse stranke</option></select>
             <button type="button" id="fakBtn" class="btn btn-narrow">Prikaži</button>
+          </div>
+        </div>
+        <div class="fak-hitri-row">
+          <div class="fak-hitri" id="fakHitri"></div>
+          <div class="fak-exp">
             <button type="button" id="fakXlsxBtn" class="btn btn-narrow btn-alt">Izvozi v Excel</button>
             <button type="button" id="fakPdfBtn" class="btn btn-narrow btn-alt">Izvozi PDF</button>
           </div>
         </div>
-        <div class="fak-hitri" id="fakHitri"></div>
         <div id="fakList"></div>
       </section>
 
@@ -447,6 +453,7 @@ html[data-theme="light"] .sc-hex{opacity:.5}
 <script src="start.js"></script>
 <script src="config.js"></script>
 <script src="supabase.js"></script>
+<script src="pdfgen.js"></script>
 <script src="portal.js"></script>
 </body>
 </html>
