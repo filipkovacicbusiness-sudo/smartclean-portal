@@ -289,7 +289,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '3.9 · BETA';
+  var APP_VERZIJA = '4.0 · BETA';
   var NALAGANJE = '<div class="sc-load"><div class="sc-load-bar"></div></div>';
   var _reloadVal = null;   // vrednost 'reload' ob nalaganju (za potisnjeno osvežitev)
   const JE_LASTNIK = () => (JAZMAIL || '').trim().toLowerCase() === 'filip@eflitte.si';
@@ -4546,7 +4546,7 @@
     if (!ime) return;
     var obst = (DOKUMENTI || []).some(function (x) { return x.je_mapa && (x.mapa || '') === _dokPot && dokImeRow(x).toLowerCase() === ime.toLowerCase(); });
     if (obst) { toast('Mapa s tem imenom že obstaja.'); return; }
-    var ins = await sb.from('documents').insert({ mapa: _dokPot, ime: ime, je_mapa: true }).select('id,mapa,ime,je_mapa,created_at').single();
+    var ins = await sb.from('documents').insert({ mapa: _dokPot, ime: ime, je_mapa: true, storage_path: '' }).select('id,mapa,ime,je_mapa,storage_path,created_at').single();
     if (ins.error) { toast('Ni uspelo: ' + ins.error.message); return; }
     DOKUMENTI.unshift(ins.data); dokRisi();
   }

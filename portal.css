@@ -1286,6 +1286,9 @@ html[data-theme="dark"] .pris-chip-x:hover{background:rgba(255,138,122,.16);colo
 }
 
 /* ══════════ DOKUMENTI (skenirani računi) ══════════ */
+/* Dokumenti — orodna gumba (nova mapa / naloži) */
+.dok-tbtn{display:inline-flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap;width:auto;padding:0 18px;height:44px;}
+.dok-tbtn svg{width:17px;height:17px;flex:0 0 auto;}
 /* Dokumenti — datotečni sistem (Finder/Raziskovalec) */
 .dok-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:2px 0 12px;}
 .dok-pot{display:flex;align-items:center;gap:2px;flex-wrap:wrap;font-size:.9rem;min-width:0;}
