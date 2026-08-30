@@ -289,7 +289,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.0 · BETA';
+  var APP_VERZIJA = '4.1 · BETA';
   var NALAGANJE = '<div class="sc-load"><div class="sc-load-bar"></div></div>';
   var _reloadVal = null;   // vrednost 'reload' ob nalaganju (za potisnjeno osvežitev)
   const JE_LASTNIK = () => (JAZMAIL || '').trim().toLowerCase() === 'filip@eflitte.si';
@@ -4514,7 +4514,13 @@
       el.addEventListener('click', function (e) { if (e.target.closest('.dok-x')) return; _dokPot = el.dataset.mapa; if ($('dokIsci')) $('dokIsci').value = ''; dokRisi(); });
     });
     box.querySelectorAll('.dok-file').forEach(function (el) {
-      el.addEventListener('click', function (e) { if (e.target.closest('.dok-x')) return; var u = el.dataset.url; if (u) window.open(u, '_blank', 'noopener'); });
+      el.addEventListener('click', function (e) {
+        if (e.target.closest('.dok-x')) return;
+        var r = (DOKUMENTI || []).filter(function (x) { return x.id === el.getAttribute('data-id'); })[0];
+        if (!r || !r.storage_path) return;
+        if (dokVrsta(r) === 'slika') { var u = el.dataset.url; if (u) window.open(u, '_blank', 'noopener'); return; }
+        dokPrenesi(r);
+      });
     });
     box.querySelectorAll('.dok-x').forEach(function (b) {
       b.addEventListener('click', function (e) { e.stopPropagation(); dokIzbrisi(b.closest('.dok-item').getAttribute('data-id')); });
@@ -4538,6 +4544,17 @@
       DOKUMENTI = (DOKUMENTI || []).filter(function (x) { return ids.indexOf(x.id) < 0; });
       dokRisi();
     } catch (e) { toast('Napaka pri brisanju: ' + (e && e.message ? e.message : e)); }
+  }
+  // Prenos datoteke z ORIGINALNIM imenom (ne s poti s časovnim žigom).
+  async function dokPrenesi(r) {
+    var ime = dokImeRow(r);
+    try {
+      var s = await sb.storage.from('dokumenti').createSignedUrl(r.storage_path, 120, { download: ime });
+      var url = (s && s.data && s.data.signedUrl) ? s.data.signedUrl : (DOK_URL[r.storage_path] || '');
+      if (!url) { toast('Povezave ni bilo mogoče ustvariti.'); return; }
+      var a = document.createElement('a'); a.href = url; a.download = ime; a.rel = 'noopener';
+      document.body.appendChild(a); a.click(); setTimeout(function () { if (a.parentNode) a.parentNode.removeChild(a); }, 150);
+    } catch (e) { var u = DOK_URL[r.storage_path]; if (u) window.open(u, '_blank', 'noopener'); }
   }
   async function dokNovaMapa() {
     if (!_dokFsOk) { toast('Najprej zaženi 31_dokumenti_fs.sql v Supabase.'); return; }
