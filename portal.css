@@ -1286,6 +1286,27 @@ html[data-theme="dark"] .pris-chip-x:hover{background:rgba(255,138,122,.16);colo
 }
 
 /* ══════════ DOKUMENTI (skenirani računi) ══════════ */
+/* Admin — vloge in pravice */
+.adm-role{margin-bottom:14px;}
+.adm-role-h{display:flex;align-items:center;gap:12px;margin:0 0 12px;}
+.adm-ime{font-family:var(--serif);font-size:1.15rem;font-weight:700;color:var(--ink);background:var(--bg);border:1.5px solid var(--line);border-radius:9px;padding:8px 12px;max-width:280px;flex:1;}
+.adm-ime:focus{border-color:var(--green-l);outline:none;}
+.adm-role-key{font-family:var(--mono);font-size:.72rem;color:var(--mid);text-transform:uppercase;letter-spacing:.04em;background:var(--green-m);padding:4px 9px;border-radius:100px;}
+.adm-tbl-wrap{overflow-x:auto;}
+.adm-tbl{width:100%;border-collapse:collapse;min-width:420px;}
+.adm-tbl th,.adm-tbl td{padding:8px 6px;text-align:center;border-bottom:1px solid var(--line);}
+.adm-tbl th{font-size:.72rem;text-transform:uppercase;letter-spacing:.03em;color:var(--mid);font-weight:600;}
+.adm-tbl th:first-child,.adm-tbl td.adm-sec{text-align:left;font-weight:600;color:var(--ink);font-size:.9rem;white-space:nowrap;}
+.adm-chk{display:inline-flex;cursor:pointer;}
+.adm-chk input{position:absolute;opacity:0;width:0;height:0;}
+.adm-chk span{width:20px;height:20px;border:1.5px solid var(--line);border-radius:6px;display:inline-flex;align-items:center;justify-content:center;transition:background .12s,border-color .12s;}
+.adm-chk input:checked+span{background:var(--ink);border-color:var(--ink);}
+.adm-chk input:checked+span::after{content:'';width:5px;height:9px;border:solid var(--bg);border-width:0 2px 2px 0;transform:rotate(45deg);margin-top:-2px;}
+.adm-chk input:focus-visible+span{border-color:var(--green-l);box-shadow:0 0 0 3px var(--green-m);}
+.adm-save{display:flex;align-items:center;justify-content:flex-end;gap:14px;margin-top:6px;}
+.adm-save .msg{margin:0;flex:1;}
+.adm-save .btn{margin-top:0;width:auto;}
+@media(max-width:560px){.adm-ime{font-size:1rem;}}
 /* Dokumenti — orodna gumba (nova mapa / naloži) */
 .dok-tbtn{display:inline-flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap;width:auto;padding:0 18px;height:44px;}
 .dok-tbtn svg{width:17px;height:17px;flex:0 0 auto;}

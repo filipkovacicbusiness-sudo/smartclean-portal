@@ -289,7 +289,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.1 · BETA';
+  var APP_VERZIJA = '4.2 · BETA';
   var NALAGANJE = '<div class="sc-load"><div class="sc-load-bar"></div></div>';
   var _reloadVal = null;   // vrednost 'reload' ob nalaganju (za potisnjeno osvežitev)
   const JE_LASTNIK = () => (JAZMAIL || '').trim().toLowerCase() === 'filip@eflitte.si';
@@ -299,6 +299,39 @@
   // Rang vloge (za hierarhijo urejanja): super=3, osebje=2, zaposleni=1, stranka=0.
   function vlogaRang(v) { return v === 'super' ? 3 : v === 'osebje' ? 2 : v === 'zaposleni' ? 1 : 0; }
   function mojRang() { if (JE_LASTNIK()) return 99; if (JE_SUPER()) return 3; if (OSEBJE) return 2; if (JE_ZAPOSLENI()) return 1; return 0; }
+
+  /* ══════════ VLOGE & PRAVICE (Admin — ureja samo lastnik) ══════════ */
+  // Razdelki, katerih vidnost/pravice je mogoče nastavljati po vlogah.
+  var ADMIN_RAZDELKI = [
+    ['domov', 'Pregled'], ['statistika', 'Statistika'], ['arhiv', 'Arhiv'], ['fakture', 'Fakture'],
+    ['artikli', 'Artikli'], ['stranke', 'Stranke'], ['prisotnost', 'Prisotnost'], ['dokumenti', 'Dokumenti'],
+    ['aplikacija', 'Programska oprema'], ['uporabniki', 'Uporabniki'], ['katalog', 'Katalog']
+  ];
+  var ADMIN_VLOGE = ['super', 'osebje', 'zaposleni', 'stranka'];
+  var ADMIN_IMENA_PRIVZ = { super: 'Super admin', osebje: 'Osebje', zaposleni: 'Zaposleni', stranka: 'Stranka' };
+  // Privzete vidne pravice (r,w,x,d) — ujemajo se z obstajajočim obnašanjem.
+  function _perm(r, w, x, d) { return { r: !!r, w: !!w, x: !!x, d: !!d }; }
+  var ADMIN_PRIVZ = {
+    super: { domov: _perm(1, 1, 1, 1), prisotnost: _perm(1, 1, 1, 1), arhiv: _perm(1, 1, 1, 1), katalog: _perm(0, 0, 0, 0), statistika: _perm(1, 1, 1, 1), artikli: _perm(1, 1, 1, 1), stranke: _perm(1, 1, 1, 1), dokumenti: _perm(1, 1, 1, 1), aplikacija: _perm(1, 1, 1, 1), fakture: _perm(1, 1, 1, 1), uporabniki: _perm(1, 1, 1, 1) },
+    osebje: { domov: _perm(1, 1, 1, 1), prisotnost: _perm(1, 1, 1, 1), arhiv: _perm(1, 1, 1, 1), katalog: _perm(0, 0, 0, 0), statistika: _perm(1, 1, 1, 1), artikli: _perm(1, 1, 1, 1), stranke: _perm(1, 1, 1, 1), dokumenti: _perm(1, 1, 1, 1), aplikacija: _perm(1, 1, 1, 1), fakture: _perm(0, 0, 0, 0), uporabniki: _perm(0, 0, 0, 0) },
+    zaposleni: { domov: _perm(1, 0, 0, 0), prisotnost: _perm(1, 0, 0, 1), arhiv: _perm(0, 0, 0, 0), katalog: _perm(0, 0, 0, 0), statistika: _perm(0, 0, 0, 0), artikli: _perm(0, 0, 0, 0), stranke: _perm(0, 0, 0, 0), dokumenti: _perm(0, 0, 0, 0), aplikacija: _perm(0, 0, 0, 0), fakture: _perm(0, 0, 0, 0), uporabniki: _perm(0, 0, 0, 0) },
+    stranka: { domov: _perm(1, 0, 0, 0), prisotnost: _perm(0, 0, 0, 0), arhiv: _perm(1, 0, 0, 1), katalog: _perm(1, 0, 0, 0), statistika: _perm(0, 0, 0, 0), artikli: _perm(0, 0, 0, 0), stranke: _perm(0, 0, 0, 0), dokumenti: _perm(0, 0, 0, 0), aplikacija: _perm(0, 0, 0, 0), fakture: _perm(0, 0, 0, 0), uporabniki: _perm(0, 0, 0, 0) }
+  };
+  var ROLE_CFG = null;  // { imena:{...}, perm:{ vloga:{ razdelek:{r,w,x,d} } } }
+  function roleIme(v) { return (ROLE_CFG && ROLE_CFG.imena && ROLE_CFG.imena[v]) || ADMIN_IMENA_PRIVZ[v] || v; }
+  function rolePerm(v, razdelek, vrsta) {
+    var base = (ROLE_CFG && ROLE_CFG.perm && ROLE_CFG.perm[v] && ROLE_CFG.perm[v][razdelek]) || (ADMIN_PRIVZ[v] && ADMIN_PRIVZ[v][razdelek]) || _perm(0, 0, 0, 0);
+    return !!base[vrsta || 'r'];
+  }
+  function mojaVloga() { if (JE_SUPER()) return 'super'; if (OSEBJE) return 'osebje'; if (JE_ZAPOSLENI()) return 'zaposleni'; return 'stranka'; }
+  // Sme trenutni uporabnik? Lastnik vedno; sicer po konfiguraciji vloge.
+  function sme(razdelek, vrsta) { if (JE_LASTNIK()) return true; return rolePerm(mojaVloga(), razdelek, vrsta); }
+  async function naloziRoleCfg() {
+    try {
+      var r = await sb.from('app_config').select('vrednost').eq('kljuc', 'role_config').maybeSingle();
+      if (r && r.data && r.data.vrednost) { var o = JSON.parse(r.data.vrednost); if (o && typeof o === 'object') ROLE_CFG = o; }
+    } catch (e) {}
+  }
   function nastaviWho(ime) {
     $('who').innerHTML = '<span class="who-name">' + escape_(ime || '') + '</span>' + (OSEBJE ? '<span class="who-role">osebje</span>' : '');
   }
@@ -449,6 +482,7 @@
     $('app').classList.add('show');
     await naloziOrge();
     if (!OSEBJE && ORGSEZNAM.length === 1) MOJEPODJETJE = ORGSEZNAM[0];
+    try { await naloziRoleCfg(); } catch (e) {}
     meni();
     await naloziListe();
     pojdi('domov');
@@ -478,21 +512,23 @@
     aplikacija: '<rect x="6.5" y="2.5" width="11" height="19" rx="2.5"/><path d="M10.5 5.5h3"/><path d="M12 18.2h.01"/>',
     dokumenti: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6"/><path d="M9 17h4"/>',
     konzola: '<path d="M3 11v2a1 1 0 0 0 1 1h2l4 4V6L6 10H4a1 1 0 0 0-1 1Z"/><path d="M15 8a4 4 0 0 1 0 8"/><path d="M18 5a8 8 0 0 1 0 14"/>',
-    nastavitve: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>'
+    nastavitve: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+    admin: '<path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6z"/><path d="M9.5 12.2l1.8 1.8 3.4-3.6"/>'
   };
   const ikona = k => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' + 'stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + IKONE[k] + '</svg>';
   // Osnovni (privzeti) glavni razdelki menija za trenutnega uporabnika.
   function glavniMeni() {
-    if (OSEBJE) {
-      var g = [['domov', 'Pregled'], ['statistika', 'Statistika'], ['arhiv', 'Arhiv']];
-      if (JE_SUPER()) g.push(['fakture', 'Fakture']);
-      g = g.concat([['artikli', 'Artikli'], ['stranke', 'Stranke'], ['prisotnost', 'Prisotnost'], ['dokumenti', 'Dokumenti'], ['aplikacija', 'Programska oprema']]);
-      if (JE_SUPER()) g.push(['uporabniki', 'Uporabniki']);
-      if (JE_LASTNIK()) g.push(['konzola', 'Konzola']);
-      return g;
+    // Lastnik: vedno vse (Admin ureja pravice ostalih, sebi jih ne more odvzeti).
+    if (JE_LASTNIK()) {
+      return [['domov', 'Pregled'], ['statistika', 'Statistika'], ['arhiv', 'Arhiv'], ['fakture', 'Fakture'],
+        ['artikli', 'Artikli'], ['stranke', 'Stranke'], ['prisotnost', 'Prisotnost'], ['dokumenti', 'Dokumenti'],
+        ['aplikacija', 'Programska oprema'], ['uporabniki', 'Uporabniki'], ['konzola', 'Konzola']];
     }
-    if (JE_ZAPOSLENI()) return [['domov', 'Pregled'], ['prisotnost', 'Prisotnost']];
-    return [['domov', 'Pregled'], ['arhiv', 'Arhiv'], ['katalog', 'Katalog']];
+    // Ostali: vidnost razdelkov po pravicah vloge (nastavljivo v Admin).
+    var vl = mojaVloga(), out = [];
+    ADMIN_RAZDELKI.forEach(function (s) { if (rolePerm(vl, s[0], 'r')) out.push(s); });
+    if (!out.some(function (x) { return x[0] === 'domov'; })) out.unshift(['domov', 'Pregled']);
+    return out;
   }
   function menijVrstni() { try { return JSON.parse(localStorage.getItem('sc-menu-order') || '[]') || []; } catch (e) { return []; } }
   // Uporabi shranjeni vrstni red; nove razdelke pripni na konec, neveljavne izpusti.
@@ -516,6 +552,7 @@
     let glavni, nast;
     glavni = urediGlavni(glavniMeni());
     nast = OSEBJE ? [['nastavitve', 'Nastavitve'], ['racun', 'Moj račun']] : [['racun', 'Moj račun']];
+    if (JE_LASTNIK()) nast.push(['admin', 'Admin']);
     const veja = ([k, l]) => `<a data-go="${k}">${ikona(k)}${l}</a>`;
     $('side').innerHTML = '<span class="side-slider" aria-hidden="true"></span>' + glavni.map(veja).join('') + '<div class="side-sep"></div>' + nast.map(veja).join('') +
       '<div class="side-foot"><span class="side-ver">Različica ' + escape_(APP_VERZIJA) + '</span><a class="side-eflitte" href="https://eflitte.si" target="_blank" rel="noopener">Izdelava <b>Eflitte</b></a></div>';
@@ -552,8 +589,15 @@
 
   /* ══════════ USMERJANJE ══════════ */
   function pojdi(kam) {
+    // Admin & Konzola: samo lastnik.
+    if ((kam === 'admin' || kam === 'konzola') && !JE_LASTNIK()) kam = 'domov';
     // Fakture so na voljo samo super adminom.
     if (kam === 'fakture' && !JE_SUPER()) kam = 'domov';
+    // Dostop do razdelka po pravicah vloge (lastnik ima vedno vse).
+    if (!JE_LASTNIK() && ['racun', 'nastavitve', 'ceniki', 'ucinek'].indexOf(kam) < 0) {
+      var _r = ADMIN_RAZDELKI.some(function (s) { return s[0] === kam; });
+      if (_r && !sme(kam, 'r')) kam = 'domov';
+    }
     // Zaposleni vidi samo Pregled, Prisotnost in Moj račun.
     if (JE_ZAPOSLENI() && ['domov', 'prisotnost', 'racun'].indexOf(kam) < 0) kam = 'domov';
     document.querySelectorAll('.sec').forEach(s => {
@@ -582,6 +626,7 @@
     if (kam === 'prisotnost') risiPrisotnost();
     if (kam === 'statistika' || kam === 'ucinek') risiUcinek();
     if (kam === 'artikli') risiArtikli();
+    if (kam === 'admin') risiAdmin();
   }
 
   /* ══════════ PRISOTNOST (registracija delovnega časa) ══════════ */
@@ -4567,26 +4612,76 @@
     if (ins.error) { toast('Ni uspelo: ' + ins.error.message); return; }
     DOKUMENTI.unshift(ins.data); dokRisi();
   }
+  var DOK_DOVOLJENE = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'csv', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'heic', 'heif'];
+  function dokTipOk(f) {
+    var e = (/\.([a-z0-9]+)$/i.exec(f.name) || [])[1]; e = (e || '').toLowerCase();
+    return DOK_DOVOLJENE.indexOf(e) >= 0 || /^image\//.test(f.type || '');
+  }
+  function dokDvojnik(ime) { return (DOKUMENTI || []).filter(function (x) { return !x.je_mapa && (x.mapa || '') === _dokPot && dokImeRow(x).toLowerCase() === (ime || '').toLowerCase(); })[0]; }
+  function dokUnikatnoIme(name) {
+    if (!dokDvojnik(name)) return name;
+    var m = /^(.*?)(\.[a-z0-9]+)?$/i.exec(name), baza = m[1], ext = m[2] || '';
+    var i = 2; while (dokDvojnik(baza + ' (' + i + ')' + ext)) i++;
+    return baza + ' (' + i + ')' + ext;
+  }
+  function dokKonfliktModal(ime) {
+    return new Promise(function (resolve) {
+      var back = document.createElement('div'); back.className = 'sc-modal-back';
+      back.innerHTML = '<div class="sc-modal" role="dialog" aria-modal="true"><h4>Datoteka že obstaja</h4><p>V tej mapi že obstaja »' + escape_(ime) + '«. Kaj želiš narediti?</p><div class="sc-modal-acts" style="flex-wrap:wrap;justify-content:flex-end"><button type="button" class="sc-modal-btn ghost" data-x>Prekliči</button><button type="button" class="sc-modal-btn ghost" data-novo>Ustvari novo</button><button type="button" class="sc-modal-btn primary" data-pos>Posodobi</button></div></div>';
+      document.body.appendChild(back); requestAnimationFrame(function () { back.classList.add('show'); });
+      var done = false;
+      function zapri(v) { if (done) return; done = true; back.classList.remove('show'); document.removeEventListener('keydown', onKey); setTimeout(function () { if (back.parentNode) back.parentNode.removeChild(back); }, 180); resolve(v); }
+      function onKey(e) { if (e.key === 'Escape') zapri(null); }
+      back.querySelector('[data-x]').addEventListener('click', function () { zapri(null); });
+      back.querySelector('[data-novo]').addEventListener('click', function () { zapri('novo'); });
+      back.querySelector('[data-pos]').addEventListener('click', function () { zapri('posodobi'); });
+      back.addEventListener('click', function (e) { if (e.target === back) zapri(null); });
+      document.addEventListener('keydown', onKey);
+    });
+  }
   async function dokNalozi(files) {
     if (!files || !files.length) return;
     if (!_dokFsOk) { toast('Za nalaganje najprej zaženi 31_dokumenti_fs.sql v Supabase.'); return; }
+    files = Array.prototype.slice.call(files);
+    // Zavrni nezdružljive tipe.
+    var zavrnjene = files.filter(function (f) { return !dokTipOk(f); });
+    files = files.filter(dokTipOk);
+    if (zavrnjene.length) toast('Nezdružljiv tip datoteke: ' + zavrnjene.map(function (f) { return f.name; }).join(', ') + '. Dovoljeno: PDF, Word, Excel, CSV, slike.');
+    if (!files.length) return;
     var pod = $('dokPod'); var n = 0, napak = 0;
     for (var i = 0; i < files.length; i++) {
       var f = files[i];
+      var ime = f.name, posodobi = null;
+      var obst = dokDvojnik(f.name);
+      if (obst) {
+        var izbira = await dokKonfliktModal(f.name);
+        if (izbira == null) continue;
+        if (izbira === 'posodobi') posodobi = obst;
+        else ime = dokUnikatnoIme(f.name);
+      }
       if (pod) pod.textContent = 'Nalagam ' + (i + 1) + '/' + files.length + ' …';
       try {
         var varno = f.name.replace(/[^\w.\-]+/g, '_');
         var pot = (_dokPot ? _dokPot + '/' : '') + Date.now() + '_' + varno;
         var up = await sb.storage.from('dokumenti').upload(pot, f, { contentType: f.type || 'application/octet-stream', cacheControl: '3600', upsert: false });
         if (up.error) throw up.error;
-        var ins = await sb.from('documents').insert({ mapa: _dokPot, ime: f.name, storage_path: pot, mime: f.type || '', velikost: f.size, je_mapa: false }).select('id,mapa,ime,storage_path,mime,velikost,je_mapa,created_at').single();
-        if (ins.error) throw ins.error;
         try { var su = await sb.storage.from('dokumenti').createSignedUrl(pot, 3600); if (su && su.data) DOK_URL[pot] = su.data.signedUrl; } catch (e) {}
-        DOKUMENTI.unshift(ins.data); n++;
+        if (posodobi) {
+          var stara = posodobi.storage_path;
+          var upd = await sb.from('documents').update({ storage_path: pot, mime: f.type || '', velikost: f.size, created_at: new Date().toISOString() }).eq('id', posodobi.id).select('id,mapa,ime,storage_path,mime,velikost,je_mapa,created_at').single();
+          if (upd.error) throw upd.error;
+          if (stara) { try { await sb.storage.from('dokumenti').remove([stara]); } catch (e) {} delete DOK_URL[stara]; }
+          var ix = DOKUMENTI.findIndex(function (x) { return x.id === posodobi.id; }); if (ix >= 0) DOKUMENTI[ix] = upd.data; else DOKUMENTI.unshift(upd.data);
+        } else {
+          var ins = await sb.from('documents').insert({ mapa: _dokPot, ime: ime, storage_path: pot, mime: f.type || '', velikost: f.size, je_mapa: false }).select('id,mapa,ime,storage_path,mime,velikost,je_mapa,created_at').single();
+          if (ins.error) throw ins.error;
+          DOKUMENTI.unshift(ins.data);
+        }
+        n++;
       } catch (e) { napak++; }
     }
     dokRisi();
-    toast(n ? ('Naloženih ' + n + ' datotek' + (napak ? ' · ' + napak + ' neuspešnih' : '') + '.') : 'Nalaganje ni uspelo.');
+    if (n || napak) toast((n ? 'Naloženih ' + n + ' datotek' : 'Nič naloženo') + (napak ? ' · ' + napak + ' neuspešnih' : '') + '.');
   }
   { var _di = $('dokIsci'); if (_di) _di.addEventListener('input', function () { dokRisi(); }); }
   { var _nm = $('dokNovaMapa'); if (_nm) _nm.addEventListener('click', dokNovaMapa); }
@@ -4819,7 +4914,7 @@
     const jeLastnik = JE_LASTNIK();
     const mr = mojRang();
     const jeSuperLastnik = function (u) { return (u.email || '').trim().toLowerCase() === 'filip@eflitte.si'; };
-    const VLOGE = [['super', 'Super admin', 3], ['osebje', 'Osebje', 2], ['zaposleni', 'Zaposleni', 1], ['stranka', 'Stranka', 0]];
+    const VLOGE = [['super', roleIme('super'), 3], ['osebje', roleIme('osebje'), 2], ['zaposleni', roleIme('zaposleni'), 1], ['stranka', roleIme('stranka'), 0]];
     $('usersList').innerHTML = (ljudje || []).map(u => {
       const jaz = u.id === JAZ;
       const superad = jeSuperLastnik(u) || !!u.super_admin;
@@ -4832,8 +4927,8 @@
       <div class="u-info">
         <div class="u-mail">${escape_(u.full_name || u.email || '—')}
           ${naSpletu ? '<span class="pill pill-on"><span class="dot-on"></span>na spletu</span>' : ''}
-          ${superad ? '<span class="pill pill-super">super admin</span>' : ''}
-          ${(!superad && !u.is_staff && u.zaposleni) ? '<span class="pill">zaposleni</span>' : ''}
+          ${superad ? '<span class="pill pill-super">' + escape_(roleIme('super')) + '</span>' : ''}
+          ${(!superad && !u.is_staff && u.zaposleni) ? '<span class="pill">' + escape_(roleIme('zaposleni')) + '</span>' : ''}
           ${jaz ? '<span class="pill">vi</span>' : ''}
           ${u.active ? '' : '<span class="pill">izklopljen</span>'}</div>
         ${lahkoUredi ? `<div class="u-role-wrap">
@@ -5244,6 +5339,61 @@
     var m = $('bioMsg'); m.className = 'msg show'; m.textContent = 'Odstranjeno s te naprave.';
     napolniBio();
   }); }
+
+  /* ══════════ ADMIN — vloge in pravice (samo lastnik) ══════════ */
+  var _ADMIN_OSNUTEK = null;   // delovna kopija konfiguracije
+  function adminOsnutek() {
+    if (_ADMIN_OSNUTEK) return _ADMIN_OSNUTEK;
+    var o = { imena: {}, perm: {} };
+    ADMIN_VLOGE.forEach(function (v) {
+      o.imena[v] = roleIme(v);
+      o.perm[v] = {};
+      ADMIN_RAZDELKI.forEach(function (s) {
+        var b = (ROLE_CFG && ROLE_CFG.perm && ROLE_CFG.perm[v] && ROLE_CFG.perm[v][s[0]]) || (ADMIN_PRIVZ[v] && ADMIN_PRIVZ[v][s[0]]) || _perm(0, 0, 0, 0);
+        o.perm[v][s[0]] = _perm(b.r, b.w, b.x, b.d);
+      });
+    });
+    _ADMIN_OSNUTEK = o; return o;
+  }
+  function risiAdmin() {
+    var box = $('adminList'); if (!box) return;
+    if (!JE_LASTNIK()) { box.innerHTML = '<div class="msg bad show">Dostop nima na voljo.</div>'; return; }
+    _ADMIN_OSNUTEK = null;
+    var o = adminOsnutek();
+    var PRAV = [['r', 'Branje'], ['w', 'Pisanje'], ['x', 'Izvajanje'], ['d', 'Prenos']];
+    var html = '<p class="u-sub" style="margin:-4px 0 16px">Nastavi, kaj posamezna vloga vidi in počne. Vloge preimenuješ zgoraj. »Branje« določa vidnost razdelka v meniju. (Tvoje pravice ostanejo vedno polne.)</p>';
+    ADMIN_VLOGE.forEach(function (v) {
+      html += '<div class="panel adm-role">' +
+        '<div class="adm-role-h"><input type="text" class="adm-ime" data-v="' + v + '" value="' + escape_(o.imena[v]) + '" maxlength="40"><span class="adm-role-key">' + escape_(v) + '</span></div>' +
+        '<div class="adm-tbl-wrap"><table class="adm-tbl"><thead><tr><th>Razdelek</th>' + PRAV.map(function (p) { return '<th>' + p[1] + '</th>'; }).join('') + '</tr></thead><tbody>';
+      ADMIN_RAZDELKI.forEach(function (s) {
+        html += '<tr><td class="adm-sec">' + escape_(s[1]) + '</td>' + PRAV.map(function (p) {
+          var on = o.perm[v][s[0]][p[0]];
+          return '<td><label class="adm-chk"><input type="checkbox" data-v="' + v + '" data-s="' + s[0] + '" data-p="' + p[0] + '"' + (on ? ' checked' : '') + '><span></span></label></td>';
+        }).join('') + '</tr>';
+      });
+      html += '</tbody></table></div></div>';
+    });
+    html += '<div class="adm-save"><div class="msg" id="adminMsg" role="status"></div><button type="button" class="btn btn-narrow" id="adminShrani">Shrani pravice</button></div>';
+    box.innerHTML = html;
+    box.querySelectorAll('.adm-ime').forEach(function (inp) { inp.addEventListener('input', function () { o.imena[inp.dataset.v] = inp.value; }); });
+    box.querySelectorAll('.adm-chk input').forEach(function (cb) { cb.addEventListener('change', function () { o.perm[cb.dataset.v][cb.dataset.s][cb.dataset.p] = cb.checked; }); });
+    var sb2 = $('adminShrani'); if (sb2) sb2.addEventListener('click', adminShrani);
+  }
+  async function adminShrani() {
+    var btn = $('adminShrani'), m = $('adminMsg');
+    var o = adminOsnutek();
+    // varovalo: super admin in lastnikova vloga imata vedno polne pravice
+    ADMIN_RAZDELKI.forEach(function (s) { if (s[0] !== 'katalog') { o.perm.super[s[0]] = _perm(1, 1, 1, 1); } });
+    ADMIN_VLOGE.forEach(function (v) { if (!o.imena[v] || !o.imena[v].trim()) o.imena[v] = ADMIN_IMENA_PRIVZ[v]; else o.imena[v] = o.imena[v].trim(); });
+    btn.disabled = true; var t = btn.textContent; btn.textContent = 'Shranjujem …';
+    var up = await sb.from('app_config').upsert({ kljuc: 'role_config', vrednost: JSON.stringify(o) }, { onConflict: 'kljuc' });
+    btn.disabled = false; btn.textContent = t;
+    if (up && up.error) { m.className = 'msg bad show'; m.textContent = /app_config|relation|column/i.test(up.error.message || '') ? 'Najprej zaženi 29_app_config.sql v Supabase.' : ('Ni uspelo: ' + up.error.message); return; }
+    ROLE_CFG = JSON.parse(JSON.stringify(o));
+    m.className = 'msg show'; m.textContent = 'Pravice shranjene. Uporabniki jih vidijo ob naslednji osvežitvi.';
+    try { meni(); } catch (e) {}
+  }
 
   /* ══════════ OBVESTILA (konzola) ══════════ */
   var OBV_IKONA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>';
