@@ -2114,7 +2114,7 @@
     const list = $('fakList');
     const od = $('fakOd').value, doo = $('fakDo').value, orgFilter = $('fakOrg').value;
     if (!fakDatumOK(od, doo)) { list.innerHTML = '<div class="panel"><p class="u-sub">Izberi veljavno obdobje (od ≤ do).</p></div>'; return; }
-    list.innerHTML = '<div class="panel">' + NALAGANJE + '</div>';
+    list.innerHTML = NALAGANJE;
     let q = sb.from('delivery_notes')
       .select('id,number,doc_date,weight_kg,total_pieces,org_id,transport,delivery_note_items(article_name,pieces)')
       .gte('doc_date', od).lte('doc_date', doo).order('doc_date', { ascending: true }).limit(5000);
