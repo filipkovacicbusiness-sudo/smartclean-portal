@@ -61,7 +61,10 @@ button{-webkit-tap-highlight-color:transparent;}
 .auth-claim{font-family:var(--serif);font-size:clamp(2rem,5vw,3.4rem);line-height:1.08;font-weight:700;color:var(--ink);}
 .auth-claim em{font-style:normal;color:var(--wm-green);}
 .auth-box{width:100%;max-width:370px;}
-.auth-foot{position:absolute;left:clamp(20px,4vw,44px);bottom:clamp(18px,3vw,30px);font-size:.82rem;color:var(--mid);}
+.auth-foot{position:absolute;left:0;right:0;bottom:clamp(16px,3vw,26px);text-align:center;font-size:.82rem;color:var(--mid);text-decoration:none;}
+.auth-foot b{color:var(--wm-green);font-weight:600;}
+.auth-foot:hover b{text-decoration:underline;}
+#auth .profile-picker h1{margin-bottom:24px;}
 /* prijava — sredinsko poravnana */
 #auth .profile-picker{text-align:center;position:relative;padding-bottom:52px;}
 #auth .profile-picker .eyebrow{color:var(--wm-green);}
@@ -1371,7 +1374,8 @@ html[data-theme="dark"] .pris-chip-x:hover{background:rgba(255,138,122,.16);colo
 .dok-item:active{transform:scale(.98);}
 .dok-ic{width:56px;height:56px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;border-radius:10px;background-size:cover;background-position:center;}
 .dok-ic svg{width:44px;height:44px;}
-.dok-ic-folder{color:var(--wm-green);}
+.dok-ic-folder{color:#e6b64c;}
+.dok-ic-folder.zakl{color:#e0a53a;}
 .dok-ic-pdf{color:#e15759;}
 .dok-ic-word{color:#4e79a7;}
 .dok-ic-excel{color:#59a14f;}
@@ -1382,7 +1386,44 @@ html[data-theme="dark"] .pris-chip-x:hover{background:rgba(255,138,122,.16);colo
 .dok-x{position:absolute;top:-7px;right:-7px;width:22px;height:22px;border:1px solid var(--line);background:var(--surface);color:var(--mid);border-radius:50%;font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:0;transition:opacity .14s,color .14s,border-color .14s;box-shadow:var(--shadow);}
 .dok-x:hover{color:#c0392b;border-color:#c0392b;}
 .dok-item:hover .dok-x,.dok-x:focus-visible{opacity:1;}
-@media(max-width:560px){.dok-grid{grid-template-columns:repeat(3,1fr);gap:10px;}.dok-x{opacity:1;}}
+/* ⋯ meni gumb na kartici */
+.dok-more{position:absolute;top:6px;right:6px;width:26px;height:26px;border:1px solid var(--line);background:var(--surface);color:var(--mid);border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:0;transition:opacity .14s,color .14s,border-color .14s;box-shadow:var(--shadow);}
+.dok-more svg{width:16px;height:16px;}
+.dok-more:hover{color:var(--ink);border-color:var(--ink);}
+.dok-item:hover .dok-more,.dok-more:focus-visible{opacity:1;}
+.dok-item.dok-cut{opacity:.5;}
+/* zaklep na mapi */
+.dok-ic{position:relative;}
+.dok-lock{position:absolute;right:-2px;bottom:-2px;width:20px;height:20px;border-radius:50%;background:var(--surface);border:1px solid var(--line);color:#e0a53a;display:flex;align-items:center;justify-content:center;}
+.dok-lock svg{width:12px;height:12px;}
+/* nazaj/naprej + prilepi */
+.dok-nav{display:inline-flex;gap:6px;flex:0 0 auto;}
+.dok-navbtn{width:34px;height:34px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:9px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:border-color .15s,opacity .15s;}
+.dok-navbtn svg{width:18px;height:18px;}
+.dok-navbtn:hover:not(:disabled){border-color:var(--ink);}
+.dok-navbtn:disabled{opacity:.35;cursor:default;}
+.dok-paste{width:auto;height:34px;margin-top:0;padding:0 16px;flex:0 0 auto;display:inline-flex;align-items:center;font-size:.82rem;}
+.dok-paste[hidden]{display:none!important;}
+/* akcijski meni */
+.dok-menu{position:absolute;z-index:1200;min-width:180px;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-lg,0 18px 44px rgba(0,0,0,.4));padding:6px;display:flex;flex-direction:column;gap:2px;}
+.dok-menu-i{text-align:left;border:none;background:none;color:var(--ink);font:inherit;font-size:.88rem;padding:9px 12px;border-radius:8px;cursor:pointer;transition:background .12s;}
+.dok-menu-i:hover{background:var(--green-m);}
+.dok-menu-i.danger{color:#d9695c;}
+.dok-menu-i.danger:hover{background:rgba(217,105,92,.1);}
+@media(max-width:560px){.dok-grid{grid-template-columns:repeat(3,1fr);gap:10px;}.dok-x,.dok-more{opacity:1;}}
+/* Skener */
+.sken-modal{max-width:520px;width:100%;}
+.sken-strani{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px;min-height:96px;padding:12px;border:1px dashed var(--line);border-radius:12px;align-items:flex-start;align-content:flex-start;}
+.sken-prazno{color:var(--mid);font-size:.86rem;margin:auto;}
+.sken-th{position:relative;width:74px;height:96px;border-radius:8px;overflow:hidden;border:1px solid var(--line);background:var(--bg);}
+.sken-th img{width:100%;height:100%;object-fit:cover;display:block;}
+.sken-th-x{position:absolute;top:-6px;right:-6px;width:22px;height:22px;border:1px solid var(--line);background:var(--surface);color:#d9695c;border-radius:50%;font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:var(--shadow);}
+.sken-th-n{position:absolute;left:4px;bottom:4px;min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:rgba(0,0,0,.6);color:#fff;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;}
+.sken-add{width:100%;margin:0 0 14px;}
+.sken-polja{display:flex;flex-direction:column;gap:12px;margin-bottom:6px;}
+.sken-f{display:flex;flex-direction:column;gap:5px;font-size:.8rem;color:var(--mid);}
+.sken-f input,.sken-f select{padding:10px 12px;border:1.5px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink);font-size:15px;}
+.sken-f input:focus,.sken-f select:focus{border-color:var(--green-l);outline:none;}
 
 /* ── Prisotnost: pogled po zaposleni (mesec) ── */
 .pris-oseba-sel{margin:4px 0 12px}

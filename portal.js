@@ -298,7 +298,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.8 · BETA';
+  var APP_VERZIJA = '4.9 · BETA';
   var NALAGANJE = '<div class="sc-load"><div class="sc-load-bar"></div></div>';
   var _reloadVal = null;   // vrednost 'reload' ob nalaganju (za potisnjeno osvežitev)
   const JE_LASTNIK = () => (JAZMAIL || '').trim().toLowerCase() === 'filip@eflitte.si';
@@ -4508,7 +4508,18 @@
     var p = d.split('-'); return p.length === 3 ? (p[2] + '. ' + p[1] + '. ' + p[0]) : d;
   }
   /* ══════════ DOKUMENTI — datotečni sistem (mape + datoteke) ══════════ */
-  var DOK_URL = {}, _dokPot = '', _dokFsOk = true;
+  var DOK_URL = {}, _dokPot = '', _dokFsOk = true, _dokZaklepOk = true;
+  var _dokHist = [''], _dokHi = 0, _dokClip = null;
+  function dokPojdi(pot, noHist) {
+    pot = pot || '';
+    _dokPot = pot;
+    if (!noHist) { _dokHist = _dokHist.slice(0, _dokHi + 1); if (_dokHist[_dokHi] !== pot) { _dokHist.push(pot); _dokHi = _dokHist.length - 1; } }
+    if ($('dokIsci')) $('dokIsci').value = '';
+    dokRisi();
+  }
+  function dokNazaj() { if (_dokHi > 0) { _dokHi--; _dokPot = _dokHist[_dokHi]; if ($('dokIsci')) $('dokIsci').value = ''; dokRisi(); } }
+  function dokNaprej() { if (_dokHi < _dokHist.length - 1) { _dokHi++; _dokPot = _dokHist[_dokHi]; if ($('dokIsci')) $('dokIsci').value = ''; dokRisi(); } }
+  function dokVelikost(b) { if (b == null || b === '') return ''; b = Number(b) || 0; if (b < 1024) return b + ' B'; if (b < 1048576) return Math.round(b / 1024) + ' KB'; return (Math.round(b / 104857.6) / 10) + ' MB'; }
   function dokImeRow(r) { return r.ime || r.opomba || (r.storage_path ? r.storage_path.split('/').pop().replace(/^\d+_/, '') : 'datoteka'); }
   function dokPripona(r) { var n = dokImeRow(r); var m = /\.([a-z0-9]+)$/i.exec(n); return (m ? m[1] : '').toLowerCase(); }
   function dokVrsta(r) {
@@ -4536,11 +4547,17 @@
     if (_nb) _nb.style.display = _w ? '' : 'none';
     box.innerHTML = NALAGANJE;
     var res;
-    try { res = await sb.from('documents').select('id,opomba,datum,storage_path,mime,velikost,created_at,mapa,ime,je_mapa').order('je_mapa', { ascending: false }).order('created_at', { ascending: false }); } catch (e) { res = { error: e }; }
+    _dokFsOk = true; _dokZaklepOk = true;
+    try { res = await sb.from('documents').select('id,opomba,datum,storage_path,mime,velikost,created_at,mapa,ime,je_mapa,zaklenjeno').order('je_mapa', { ascending: false }).order('created_at', { ascending: false }); } catch (e) { res = { error: e }; }
+    if (res && res.error && /zaklenjeno/i.test(res.error.message || '')) {
+      // stolpec zaklenjeno še ne obstaja — poskusi brez njega
+      _dokZaklepOk = false;
+      try { res = await sb.from('documents').select('id,opomba,datum,storage_path,mime,velikost,created_at,mapa,ime,je_mapa').order('je_mapa', { ascending: false }).order('created_at', { ascending: false }); } catch (e) { res = { error: e }; }
+    }
     if (res && res.error && /mapa|ime|je_mapa/i.test(res.error.message || '')) {
-      _dokFsOk = false;
+      _dokFsOk = false; _dokZaklepOk = false;
       try { res = await sb.from('documents').select('id,opomba,datum,storage_path,mime,velikost,created_at').order('created_at', { ascending: false }); } catch (e) { res = { error: e }; }
-    } else _dokFsOk = true;
+    }
     if (res.error) {
       box.innerHTML = '<div class="msg bad show">Napaka pri nalaganju: ' + escape_(res.error.message || String(res.error)) +
         '<br><small>Če piše, da tabela ne obstaja, zaženi <b>19_dokumenti.sql</b>; za mape še <b>31_dokumenti_fs.sql</b>.</small></div>';
@@ -4554,9 +4571,16 @@
     }
     dokRisi();
   }
+  var _DOK_LOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
+  var _DOK_MORE = '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>';
   function dokRisi() {
     var box = $('dokList'); if (!box) return;
     var q = ($('dokIsci') && $('dokIsci').value || '').trim().toLowerCase();
+    // nazaj / naprej / prilepi
+    var _bk = $('dokBack'), _fw = $('dokFwd'), _ps = $('dokPaste');
+    if (_bk) _bk.disabled = !(_dokHi > 0);
+    if (_fw) _fw.disabled = !(_dokHi < _dokHist.length - 1);
+    if (_ps) { var canP = !!_dokClip && sme('dokumenti', 'w'); _ps.hidden = !canP; if (canP) { var cr = (DOKUMENTI || []).filter(function (x) { return x.id === _dokClip.id; })[0]; _ps.textContent = (_dokClip.mode === 'cut' ? 'Prilepi (premakni) ' : 'Prilepi ') + (cr ? '„' + dokImeRow(cr) + '"' : ''); } }
     // pot (breadcrumb)
     var potEl = $('dokPot');
     if (potEl) {
@@ -4564,12 +4588,11 @@
       var bc = '<button type="button" class="dok-crumb" data-pot="">Dokumenti</button>';
       deli.forEach(function (d) { acc = acc ? (acc + '/' + d) : d; bc += '<span class="dok-sep">›</span><button type="button" class="dok-crumb" data-pot="' + escape_(acc) + '">' + escape_(d) + '</button>'; });
       potEl.innerHTML = bc;
-      potEl.querySelectorAll('.dok-crumb').forEach(function (b) { b.addEventListener('click', function () { _dokPot = b.dataset.pot; dokRisi(); }); });
+      potEl.querySelectorAll('.dok-crumb').forEach(function (b) { b.addEventListener('click', function () { dokPojdi(b.dataset.pot); }); });
     }
     var vsi = DOKUMENTI || [];
     var mape, datoteke;
     if (q) {
-      // iskanje po vseh (ravno)
       var zad = vsi.filter(function (r) { return !r.je_mapa && dokImeRow(r).toLowerCase().indexOf(q) >= 0; });
       mape = []; datoteke = zad;
     } else {
@@ -4582,45 +4605,181 @@
       box.innerHTML = '<div class="empty"><h3>' + (q ? 'Ni zadetkov' : 'Prazna mapa') + '</h3>' + (q ? '' : '<p>Naloži datoteke (PDF, Word, Excel, slike) ali ustvari novo mapo.</p>') + '</div>';
       return;
     }
-    var _xbtn = sme('dokumenti', 'x') ? '<button type="button" class="dok-x" title="Izbriši" aria-label="Izbriši">×</button>' : '';
+    var _more = (sme('dokumenti', 'w') || sme('dokumenti', 'x') || sme('dokumenti', 'd')) ? '<button type="button" class="dok-more" title="Možnosti" aria-label="Možnosti">' + _DOK_MORE + '</button>' : '';
+    function cutCls(r) { return (_dokClip && _dokClip.mode === 'cut' && _dokClip.id === r.id) ? ' dok-cut' : ''; }
     var html = '<div class="dok-grid">';
     mape.forEach(function (r) {
-      html += '<div class="dok-item dok-folder" data-id="' + escape_(r.id) + '" data-mapa="' + escape_((r.mapa ? r.mapa + '/' : '') + dokImeRow(r)) + '">' +
-        '<div class="dok-ic dok-ic-folder">' + _DOK_IK.mapa + '</div>' +
-        '<div class="dok-nm">' + escape_(dokImeRow(r)) + '</div>' + _xbtn + '</div>';
+      var zakl = !!r.zaklenjeno;
+      html += '<div class="dok-item dok-folder' + cutCls(r) + '" data-id="' + escape_(r.id) + '" data-mapa="' + escape_((r.mapa ? r.mapa + '/' : '') + dokImeRow(r)) + '">' +
+        '<div class="dok-ic dok-ic-folder' + (zakl ? ' zakl' : '') + '">' + _DOK_IK.mapa + (zakl ? '<span class="dok-lock">' + _DOK_LOCK + '</span>' : '') + '</div>' +
+        '<div class="dok-nm">' + escape_(dokImeRow(r)) + '</div>' + _more + '</div>';
     });
     datoteke.forEach(function (r) {
       var url = DOK_URL[r.storage_path] || '';
       var vr = dokVrsta(r);
       var thumb = (vr === 'slika' && url) ? '<div class="dok-ic dok-ic-img" style="background-image:url(' + escape_(url) + ')"></div>' : '<div class="dok-ic dok-ic-' + vr + '">' + (_DOK_IK[vr] || _DOK_IK.file) + '</div>';
-      var kb = r.velikost ? (r.velikost > 1048576 ? (Math.round(r.velikost / 104857.6) / 10 + ' MB') : Math.round(r.velikost / 1024) + ' KB') : '';
-      html += '<div class="dok-item dok-file" data-id="' + escape_(r.id) + '"' + (url ? ' data-url="' + escape_(url) + '"' : '') + '>' +
+      html += '<div class="dok-item dok-file' + cutCls(r) + '" data-id="' + escape_(r.id) + '"' + (url ? ' data-url="' + escape_(url) + '"' : '') + '>' +
         thumb +
         '<div class="dok-nm" title="' + escape_(dokImeRow(r)) + '">' + escape_(dokImeRow(r)) + '</div>' +
-        '<div class="dok-sub">' + escape_(kb) + '</div>' + _xbtn + '</div>';
+        '<div class="dok-sub">' + escape_(dokVelikost(r.velikost)) + '</div>' + _more + '</div>';
     });
     html += '</div>';
     box.innerHTML = html;
     box.querySelectorAll('.dok-folder').forEach(function (el) {
-      el.addEventListener('click', function (e) { if (e.target.closest('.dok-x')) return; _dokPot = el.dataset.mapa; if ($('dokIsci')) $('dokIsci').value = ''; dokRisi(); });
+      el.addEventListener('click', function (e) { if (e.target.closest('.dok-more')) return; dokPojdi(el.dataset.mapa); });
     });
     box.querySelectorAll('.dok-file').forEach(function (el) {
       el.addEventListener('click', function (e) {
-        if (e.target.closest('.dok-x')) return;
+        if (e.target.closest('.dok-more')) return;
         var r = (DOKUMENTI || []).filter(function (x) { return x.id === el.getAttribute('data-id'); })[0];
         if (!r || !r.storage_path) return;
         if (dokVrsta(r) === 'slika') { var u = el.dataset.url; if (u) window.open(u, '_blank', 'noopener'); return; }
         dokPrenesi(r);
       });
     });
-    box.querySelectorAll('.dok-x').forEach(function (b) {
-      b.addEventListener('click', function (e) { e.stopPropagation(); dokIzbrisi(b.closest('.dok-item').getAttribute('data-id')); });
+    box.querySelectorAll('.dok-more').forEach(function (b) {
+      b.addEventListener('click', function (e) { e.stopPropagation(); dokMenu(b, b.closest('.dok-item').getAttribute('data-id')); });
     });
+  }
+  function dokZapriMenu() { var m = document.querySelector('.dok-menu'); if (m && m.parentNode) m.parentNode.removeChild(m); document.removeEventListener('click', dokZapriMenu, true); window.removeEventListener('resize', dokZapriMenu); }
+  function dokMenu(btn, id) {
+    dokZapriMenu();
+    var r = (DOKUMENTI || []).filter(function (x) { return x.id === id; })[0]; if (!r) return;
+    var jeMapa = !!r.je_mapa, w = sme('dokumenti', 'w'), x = sme('dokumenti', 'x'), d = sme('dokumenti', 'd');
+    var items = [];
+    if (!jeMapa && d) items.push(['prenesi', 'Prenesi']);
+    if (w) items.push(['preime', 'Preimenuj']);
+    if (w) items.push(['kopiraj', 'Kopiraj']);
+    if (w) items.push(['izrezi', 'Izreži']);
+    if (jeMapa && w) items.push(['zakleni', r.zaklenjeno ? 'Odkleni' : 'Zakleni']);
+    if (x) items.push(['izbrisi', r.zaklenjeno ? 'Izbriši (zaklenjeno)' : 'Izbriši', 'danger']);
+    if (!items.length) return;
+    var m = document.createElement('div'); m.className = 'dok-menu';
+    m.innerHTML = items.map(function (it) { return '<button type="button" class="dok-menu-i' + (it[2] ? ' danger' : '') + '" data-act="' + it[0] + '">' + escape_(it[1]) + '</button>'; }).join('');
+    document.body.appendChild(m);
+    var rc = btn.getBoundingClientRect();
+    var mw = 190;
+    m.style.top = (rc.bottom + window.scrollY + 4) + 'px';
+    m.style.left = Math.max(8, Math.min(rc.right + window.scrollX - mw, window.scrollX + document.documentElement.clientWidth - mw - 8)) + 'px';
+    m.querySelectorAll('[data-act]').forEach(function (b) { b.addEventListener('click', function (e) { e.stopPropagation(); var a = b.dataset.act; dokZapriMenu(); dokAkcija(a, r); }); });
+    setTimeout(function () { document.addEventListener('click', dokZapriMenu, true); window.addEventListener('resize', dokZapriMenu); }, 0);
+  }
+  function dokAkcija(a, r) {
+    if (a === 'prenesi') dokPrenesi(r);
+    else if (a === 'preime') dokPreimenuj(r);
+    else if (a === 'kopiraj') { _dokClip = { id: r.id, mode: 'copy' }; dokRisi(); toast('Kopirano: „' + dokImeRow(r) + '". Odpri ciljno mapo in klikni Prilepi.'); }
+    else if (a === 'izrezi') { _dokClip = { id: r.id, mode: 'cut' }; dokRisi(); toast('Izrezano: „' + dokImeRow(r) + '". Odpri ciljno mapo in klikni Prilepi.'); }
+    else if (a === 'zakleni') dokZakleni(r);
+    else if (a === 'izbrisi') dokIzbrisi(r.id);
+  }
+  async function dokZakleni(r) {
+    if (!sme('dokumenti', 'w')) { toast('Ni dovoljeno.'); return; }
+    if (!_dokZaklepOk) { toast('Najprej zaženi 34_dokumenti_zaklep.sql v Supabase.'); return; }
+    var nov = !r.zaklenjeno;
+    var upd = await sb.from('documents').update({ zaklenjeno: nov }).eq('id', r.id);
+    if (upd.error) { toast('Ni uspelo: ' + upd.error.message); return; }
+    r.zaklenjeno = nov; dokRisi(); toast(nov ? 'Mapa zaklenjena — je ni mogoče izbrisati.' : 'Mapa odklenjena.');
+  }
+  function dokUnikatnoImeV(name, cilj, jeMapa) {
+    function obst(nm) { return (DOKUMENTI || []).some(function (x) { return (x.mapa || '') === cilj && !!x.je_mapa === jeMapa && dokImeRow(x).toLowerCase() === nm.toLowerCase(); }); }
+    if (!obst(name)) return name;
+    var m = /^(.*?)(\.[a-z0-9]+)?$/i.exec(name), baza = m[1], ext = m[2] || '', i = 2;
+    while (obst(baza + ' (' + i + ')' + ext)) i++;
+    return baza + ' (' + i + ')' + ext;
+  }
+  async function dokPreimenuj(r) {
+    if (!sme('dokumenti', 'w')) { toast('Ni dovoljeno.'); return; }
+    var staro = dokImeRow(r);
+    var novo = await vnesiModal({ naslov: r.je_mapa ? 'Preimenuj mapo' : 'Preimenuj datoteko', sporocilo: 'Novo ime:', privzeto: staro, potrdi: 'Shrani', preklici: 'Prekliči' });
+    if (novo == null) return; novo = String(novo).trim().replace(/[\/\\]/g, ' ').trim();
+    if (!novo || novo === staro) return;
+    var dvojnik = (DOKUMENTI || []).some(function (x) { return x.id !== r.id && (x.mapa || '') === (r.mapa || '') && !!x.je_mapa === !!r.je_mapa && dokImeRow(x).toLowerCase() === novo.toLowerCase(); });
+    if (dvojnik) { toast((r.je_mapa ? 'Mapa' : 'Datoteka') + ' s tem imenom že obstaja.'); return; }
+    if (r.je_mapa) {
+      var stariPot = (r.mapa ? r.mapa + '/' : '') + staro, noviPot = (r.mapa ? r.mapa + '/' : '') + novo;
+      var otroci = (DOKUMENTI || []).filter(function (x) { return x.id !== r.id && ((x.mapa || '') === stariPot || (x.mapa || '').indexOf(stariPot + '/') === 0); });
+      var upd = await sb.from('documents').update({ ime: novo }).eq('id', r.id);
+      if (upd.error) { toast('Ni uspelo: ' + upd.error.message); return; }
+      r.ime = novo;
+      for (var i = 0; i < otroci.length; i++) { var c = otroci[i]; var nova = noviPot + (c.mapa || '').slice(stariPot.length); var u = await sb.from('documents').update({ mapa: nova }).eq('id', c.id); if (!u.error) c.mapa = nova; }
+      if (_dokPot === stariPot || _dokPot.indexOf(stariPot + '/') === 0) { _dokPot = noviPot + _dokPot.slice(stariPot.length); }
+    } else {
+      var upd2 = await sb.from('documents').update({ ime: novo }).eq('id', r.id);
+      if (upd2.error) { toast('Ni uspelo: ' + upd2.error.message); return; }
+      r.ime = novo;
+    }
+    dokRisi(); toast('Preimenovano.');
+  }
+  async function dokPrilepi() {
+    if (!_dokClip) return;
+    if (!sme('dokumenti', 'w')) { toast('Ni dovoljeno.'); return; }
+    var r = (DOKUMENTI || []).filter(function (x) { return x.id === _dokClip.id; })[0];
+    if (!r) { _dokClip = null; dokRisi(); return; }
+    var cilj = _dokPot, mode = _dokClip.mode;
+    if (r.je_mapa) { var potMape = (r.mapa ? r.mapa + '/' : '') + dokImeRow(r); if (cilj === potMape || cilj.indexOf(potMape + '/') === 0) { toast('Mape ni mogoče prilepiti vase.'); return; } }
+    if (mode === 'cut') {
+      if ((r.mapa || '') === cilj) { toast('Element je že v tej mapi.'); return; }
+      await dokPremakni(r, cilj);
+    } else { await dokKopirajV(r, cilj); }
+    _dokClip = null; dokRisi();
+  }
+  async function dokPremakni(r, cilj) {
+    var ime = dokImeRow(r), jeMapa = !!r.je_mapa;
+    var novoIme = dokUnikatnoImeV(ime, cilj, jeMapa);
+    if (jeMapa) {
+      var stariPot = (r.mapa ? r.mapa + '/' : '') + ime, noviPot = (cilj ? cilj + '/' : '') + novoIme;
+      var otroci = (DOKUMENTI || []).filter(function (x) { return x.id !== r.id && ((x.mapa || '') === stariPot || (x.mapa || '').indexOf(stariPot + '/') === 0); });
+      var u = await sb.from('documents').update({ mapa: cilj, ime: novoIme }).eq('id', r.id);
+      if (u.error) { toast('Ni uspelo: ' + u.error.message); return; }
+      r.mapa = cilj; r.ime = novoIme;
+      for (var i = 0; i < otroci.length; i++) { var c = otroci[i]; var nova = noviPot + (c.mapa || '').slice(stariPot.length); var uu = await sb.from('documents').update({ mapa: nova }).eq('id', c.id); if (!uu.error) c.mapa = nova; }
+    } else {
+      var u2 = await sb.from('documents').update({ mapa: cilj, ime: novoIme }).eq('id', r.id);
+      if (u2.error) { toast('Ni uspelo: ' + u2.error.message); return; }
+      r.mapa = cilj; r.ime = novoIme;
+    }
+    toast('Premaknjeno.');
+  }
+  async function dokKopirajV(r, cilj) {
+    var jeMapa = !!r.je_mapa, ime = dokImeRow(r);
+    var novoIme = dokUnikatnoImeV(ime, cilj, jeMapa);
+    if (!jeMapa) { await dokKopirajDatoteko(r, cilj, novoIme); return; }
+    var ins = await sb.from('documents').insert({ mapa: cilj, ime: novoIme, je_mapa: true, storage_path: '' }).select('id,mapa,ime,je_mapa,storage_path,created_at').single();
+    if (ins.error) { toast('Ni uspelo: ' + ins.error.message); return; }
+    DOKUMENTI.unshift(ins.data);
+    var stariPot = (r.mapa ? r.mapa + '/' : '') + ime, noviPot = (cilj ? cilj + '/' : '') + novoIme;
+    var neposredni = (DOKUMENTI || []).filter(function (x) { return x.id !== ins.data.id && (x.mapa || '') === stariPot; });
+    for (var i = 0; i < neposredni.length; i++) { await dokKopirajV(neposredni[i], noviPot); }
+    toast('Kopirano.');
+  }
+  async function dokKopirajDatoteko(r, cilj, novoIme) {
+    try {
+      var varno = (novoIme || 'kopija').replace(/[^\w.\-]+/g, '_');
+      var novaPot = (cilj ? cilj + '/' : '') + Date.now() + '_' + varno;
+      var cp = await sb.storage.from('dokumenti').copy(r.storage_path, novaPot);
+      if (cp.error) throw cp.error;
+      var ins = await sb.from('documents').insert({ mapa: cilj, ime: novoIme, storage_path: novaPot, mime: r.mime || '', velikost: r.velikost || null, je_mapa: false }).select('id,mapa,ime,storage_path,mime,velikost,je_mapa,created_at').single();
+      if (ins.error) throw ins.error;
+      try { var su = await sb.storage.from('dokumenti').createSignedUrl(novaPot, 3600); if (su && su.data) DOK_URL[novaPot] = su.data.signedUrl; } catch (e) {}
+      DOKUMENTI.unshift(ins.data); toast('Kopirano.');
+    } catch (e) { toast('Kopiranje ni uspelo: ' + (e && e.message ? e.message : e)); }
+  }
+  function dokZakljenjen(r) {
+    // je r (ali katera koli njegova prednica-mapa) zaklenjen(a)?
+    var zakl = {};
+    (DOKUMENTI || []).forEach(function (f) { if (f.je_mapa && f.zaklenjeno) zakl[(f.mapa ? f.mapa + '/' : '') + dokImeRow(f)] = true; });
+    if (r.je_mapa && r.zaklenjeno) return true;
+    var mp = r.mapa || '';
+    if (zakl[mp]) return true;
+    var deli = mp.split('/').filter(Boolean), acc = '';
+    for (var i = 0; i < deli.length; i++) { acc = acc ? acc + '/' + deli[i] : deli[i]; if (zakl[acc]) return true; }
+    return false;
   }
   async function dokIzbrisi(id) {
     if (!sme('dokumenti', 'x')) { toast('Za to vlogo brisanje ni dovoljeno.'); return; }
     var r = (DOKUMENTI || []).filter(function (x) { return x.id === id; })[0];
     if (!r) return;
+    if (dokZakljenjen(r)) { toast(r.je_mapa && r.zaklenjeno ? 'Mapa je zaklenjena. Najprej jo odkleni.' : 'Element je v zaklenjeni mapi in ga ni mogoče izbrisati.'); return; }
     var jeMapa = !!r.je_mapa;
     var potMape = (r.mapa ? r.mapa + '/' : '') + dokImeRow(r);
     var otroci = jeMapa ? (DOKUMENTI || []).filter(function (x) { return x.id !== id && ((x.mapa || '') === potMape || (x.mapa || '').indexOf(potMape + '/') === 0); }) : [];
@@ -4688,12 +4847,113 @@
       document.addEventListener('keydown', onKey);
     });
   }
+  // Stisni sliko (JPEG, max 1600px, kakovost 0.7) — varčuje prostor. Vrne {blob,ime} ali null (brez stiskanja).
+  function dokStisniSliko(file) {
+    return new Promise(function (resolve) {
+      var jeSlika = /^image\//.test(file.type || '') || /\.(jpe?g|png|heic|heif|webp|gif|bmp)$/i.test(file.name || '');
+      if (!jeSlika) { resolve(null); return; }
+      var url = URL.createObjectURL(file), img = new Image();
+      img.onload = function () {
+        try {
+          var maxW = 1600, scale = img.width > maxW ? maxW / img.width : 1;
+          var w = Math.max(1, Math.round(img.width * scale)), h = Math.max(1, Math.round(img.height * scale));
+          var cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+          var ctx = cv.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h); ctx.drawImage(img, 0, 0, w, h);
+          cv.toBlob(function (blob) {
+            URL.revokeObjectURL(url);
+            if (!blob || (file.size && blob.size >= file.size && /\.jpe?g$/i.test(file.name || ''))) { resolve(null); return; }
+            resolve({ blob: blob, ime: (file.name || 'slika').replace(/\.[a-z0-9]+$/i, '') + '.jpg' });
+          }, 'image/jpeg', 0.7);
+        } catch (e) { URL.revokeObjectURL(url); resolve(null); }
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); resolve(null); };
+      img.src = url;
+    });
+  }
+  // Seznam vseh map (za izbiro cilja skeniranja).
+  function dokMapeSeznam() {
+    var out = [{ pot: '', label: 'Dokumenti (koren)' }];
+    (DOKUMENTI || []).filter(function (x) { return x.je_mapa; }).forEach(function (f) { var pot = (f.mapa ? f.mapa + '/' : '') + dokImeRow(f); out.push({ pot: pot, label: pot.replace(/\//g, ' › ') }); });
+    out.sort(function (a, b) { return a.label.localeCompare(b.label, 'sl'); });
+    return out;
+  }
+  // Sestavi PDF iz zajetih slik (vsaka svoja stran, A4, centrirano).
+  async function dokSlikeVPdf(urls) {
+    var doc = new PDFDoc(), M = 28, W = doc.W, H = doc.H;
+    for (var i = 0; i < urls.length; i++) {
+      var j = await PDFDoc.imageToJpeg(urls[i], 1600);
+      var availW = W - 2 * M, availH = H - 2 * M;
+      var sc = Math.min(availW / j.w, availH / j.h); if (sc > 1) sc = 1;
+      var dw = j.w * sc, dh = j.h * sc, x = (W - dw) / 2, y = (H - dh) / 2;
+      doc.addPage(); doc.image(j.bytes, x, y, dw, dh, j.w, j.h);
+    }
+    return doc.build();
+  }
+  // Shrani poljuben Blob kot datoteko v izbrano mapo.
+  async function dokShraniBlob(blob, ime, cilj, mime) {
+    var koncno = ime;
+    if ((DOKUMENTI || []).some(function (x) { return !x.je_mapa && (x.mapa || '') === cilj && dokImeRow(x).toLowerCase() === koncno.toLowerCase(); })) koncno = dokUnikatnoImeV(koncno, cilj, false);
+    var varno = koncno.replace(/[^\w.\-]+/g, '_');
+    var pot = (cilj ? cilj + '/' : '') + Date.now() + '_' + varno;
+    var up = await sb.storage.from('dokumenti').upload(pot, blob, { contentType: mime || 'application/octet-stream', cacheControl: '3600', upsert: false });
+    if (up.error) throw up.error;
+    try { var su = await sb.storage.from('dokumenti').createSignedUrl(pot, 3600); if (su && su.data) DOK_URL[pot] = su.data.signedUrl; } catch (e) {}
+    var ins = await sb.from('documents').insert({ mapa: cilj, ime: koncno, storage_path: pot, mime: mime || '', velikost: blob.size, je_mapa: false }).select('id,mapa,ime,storage_path,mime,velikost,je_mapa,created_at').single();
+    if (ins.error) throw ins.error;
+    DOKUMENTI.unshift(ins.data);
+    return ins.data;
+  }
+  var _skenSlike = [];
+  function dokSkenirajOdpri() {
+    if (!sme('dokumenti', 'w')) { toast('Za to vlogo nalaganje ni dovoljeno.'); return; }
+    if (!_dokFsOk) { toast('Najprej zaženi 31_dokumenti_fs.sql v Supabase.'); return; }
+    if (typeof PDFDoc === 'undefined') { toast('PDF modul ni naložen (pdfgen.js).'); return; }
+    _skenSlike = [];
+    var mape = dokMapeSeznam(), privzeta = _dokPot || '', danes = new Date().toISOString().slice(0, 10);
+    var kam = $('dokKamera');
+    var back = document.createElement('div'); back.className = 'sc-modal-back sken-back';
+    back.innerHTML = '<div class="sc-modal sken-modal" role="dialog" aria-modal="true">' +
+      '<h4>Skeniraj račun</h4>' +
+      '<p class="u-sub" style="margin:0 0 12px">Slikaj račun s kamero. Dodaš lahko več strani — shrani se kot en PDF.</p>' +
+      '<div class="sken-strani" id="skenStrani"></div>' +
+      '<button type="button" class="btn btn-narrow btn-alt sken-add" id="skenDodaj"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;vertical-align:-3px"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>Slikaj stran</button>' +
+      '<div class="sken-polja">' +
+      '<label class="sken-f"><span>Ime datoteke</span><input type="text" id="skenIme" value="Račun ' + escape_(danes) + '"></label>' +
+      '<label class="sken-f"><span>Shrani v mapo</span><select id="skenMapa">' + mape.map(function (m) { return '<option value="' + escape_(m.pot) + '"' + (m.pot === privzeta ? ' selected' : '') + '>' + escape_(m.label) + '</option>'; }).join('') + '</select></label>' +
+      '</div>' +
+      '<div class="sc-modal-acts"><button type="button" class="sc-modal-btn ghost" id="skenPreklici">Prekliči</button><button type="button" class="sc-modal-btn primary" id="skenShrani" disabled>Shrani PDF</button></div>' +
+      '</div>';
+    document.body.appendChild(back); requestAnimationFrame(function () { back.classList.add('show'); });
+    function zapri() { back.classList.remove('show'); if (kam) kam.onchange = null; setTimeout(function () { if (back.parentNode) back.parentNode.removeChild(back); }, 180); _skenSlike = []; }
+    function osvezi() {
+      var wrap = back.querySelector('#skenStrani');
+      wrap.innerHTML = _skenSlike.map(function (s, i) { return '<div class="sken-th"><img src="' + s + '" alt="stran ' + (i + 1) + '"><button type="button" class="sken-th-x" data-i="' + i + '" aria-label="Odstrani">×</button><span class="sken-th-n">' + (i + 1) + '</span></div>'; }).join('') || '<div class="sken-prazno">Ni zajetih strani.</div>';
+      wrap.querySelectorAll('.sken-th-x').forEach(function (b) { b.addEventListener('click', function () { _skenSlike.splice(+b.dataset.i, 1); osvezi(); }); });
+      back.querySelector('#skenShrani').disabled = !_skenSlike.length;
+    }
+    osvezi();
+    back.querySelector('#skenDodaj').addEventListener('click', function () { if (kam) { kam.value = ''; kam.click(); } });
+    if (kam) kam.onchange = function () { var f = this.files && this.files[0]; if (!f) return; var rd = new FileReader(); rd.onload = function () { _skenSlike.push(rd.result); osvezi(); }; rd.readAsDataURL(f); this.value = ''; };
+    back.querySelector('#skenPreklici').addEventListener('click', zapri);
+    back.addEventListener('click', function (e) { if (e.target === back) zapri(); });
+    back.querySelector('#skenShrani').addEventListener('click', async function () {
+      var btn = this; if (!_skenSlike.length) return;
+      var ime = (back.querySelector('#skenIme').value || 'Račun').trim().replace(/[\/\\]/g, ' ').trim() || 'Račun';
+      if (!/\.pdf$/i.test(ime)) ime += '.pdf';
+      var cilj = back.querySelector('#skenMapa').value || '';
+      btn.disabled = true; btn.textContent = 'Shranjujem …';
+      try {
+        var bytes = await dokSlikeVPdf(_skenSlike);
+        await dokShraniBlob(new Blob([bytes], { type: 'application/pdf' }), ime, cilj, 'application/pdf');
+        zapri(); dokPojdi(cilj); toast('Račun shranjen kot PDF.');
+      } catch (e) { btn.disabled = false; btn.textContent = 'Shrani PDF'; toast('Napaka pri shranjevanju: ' + (e && e.message ? e.message : e)); }
+    });
+  }
   async function dokNalozi(files) {
     if (!files || !files.length) return;
     if (!sme('dokumenti', 'w')) { toast('Za to vlogo nalaganje ni dovoljeno.'); return; }
     if (!_dokFsOk) { toast('Za nalaganje najprej zaženi 31_dokumenti_fs.sql v Supabase.'); return; }
     files = Array.prototype.slice.call(files);
-    // Zavrni nezdružljive tipe.
     var zavrnjene = files.filter(function (f) { return !dokTipOk(f); });
     files = files.filter(dokTipOk);
     if (zavrnjene.length) toast('Nezdružljiv tip datoteke: ' + zavrnjene.map(function (f) { return f.name; }).join(', ') + '. Dovoljeno: PDF, Word, Excel, CSV, slike.');
@@ -4701,29 +4961,36 @@
     var pod = $('dokPod'); var n = 0, napak = 0;
     for (var i = 0; i < files.length; i++) {
       var f = files[i];
-      var ime = f.name, posodobi = null;
-      var obst = dokDvojnik(f.name);
+      if (pod) pod.textContent = 'Pripravljam ' + (i + 1) + '/' + files.length + ' …';
+      // stiskanje slik (varčuje prostor); PDF/Word/Excel ostanejo nespremenjeni
+      var stis = await dokStisniSliko(f);
+      var upBlob = stis ? stis.blob : f;
+      var upIme = stis ? stis.ime : f.name;
+      var upMime = stis ? 'image/jpeg' : (f.type || 'application/octet-stream');
+      var upSize = stis ? stis.blob.size : f.size;
+      var ime = upIme, posodobi = null;
+      var obst = dokDvojnik(upIme);
       if (obst) {
-        var izbira = await dokKonfliktModal(f.name);
+        var izbira = await dokKonfliktModal(upIme);
         if (izbira == null) continue;
         if (izbira === 'posodobi') posodobi = obst;
-        else ime = dokUnikatnoIme(f.name);
+        else ime = dokUnikatnoIme(upIme);
       }
       if (pod) pod.textContent = 'Nalagam ' + (i + 1) + '/' + files.length + ' …';
       try {
-        var varno = f.name.replace(/[^\w.\-]+/g, '_');
+        var varno = ime.replace(/[^\w.\-]+/g, '_');
         var pot = (_dokPot ? _dokPot + '/' : '') + Date.now() + '_' + varno;
-        var up = await sb.storage.from('dokumenti').upload(pot, f, { contentType: f.type || 'application/octet-stream', cacheControl: '3600', upsert: false });
+        var up = await sb.storage.from('dokumenti').upload(pot, upBlob, { contentType: upMime, cacheControl: '3600', upsert: false });
         if (up.error) throw up.error;
         try { var su = await sb.storage.from('dokumenti').createSignedUrl(pot, 3600); if (su && su.data) DOK_URL[pot] = su.data.signedUrl; } catch (e) {}
         if (posodobi) {
           var stara = posodobi.storage_path;
-          var upd = await sb.from('documents').update({ storage_path: pot, mime: f.type || '', velikost: f.size, created_at: new Date().toISOString() }).eq('id', posodobi.id).select('id,mapa,ime,storage_path,mime,velikost,je_mapa,created_at').single();
+          var upd = await sb.from('documents').update({ storage_path: pot, mime: upMime, velikost: upSize, created_at: new Date().toISOString() }).eq('id', posodobi.id).select('id,mapa,ime,storage_path,mime,velikost,je_mapa,created_at').single();
           if (upd.error) throw upd.error;
           if (stara) { try { await sb.storage.from('dokumenti').remove([stara]); } catch (e) {} delete DOK_URL[stara]; }
           var ix = DOKUMENTI.findIndex(function (x) { return x.id === posodobi.id; }); if (ix >= 0) DOKUMENTI[ix] = upd.data; else DOKUMENTI.unshift(upd.data);
         } else {
-          var ins = await sb.from('documents').insert({ mapa: _dokPot, ime: ime, storage_path: pot, mime: f.type || '', velikost: f.size, je_mapa: false }).select('id,mapa,ime,storage_path,mime,velikost,je_mapa,created_at').single();
+          var ins = await sb.from('documents').insert({ mapa: _dokPot, ime: ime, storage_path: pot, mime: upMime, velikost: upSize, je_mapa: false }).select('id,mapa,ime,storage_path,mime,velikost,je_mapa,created_at').single();
           if (ins.error) throw ins.error;
           DOKUMENTI.unshift(ins.data);
         }
@@ -4736,6 +5003,10 @@
   { var _di = $('dokIsci'); if (_di) _di.addEventListener('input', function () { dokRisi(); }); }
   { var _nm = $('dokNovaMapa'); if (_nm) _nm.addEventListener('click', dokNovaMapa); }
   { var _nb = $('dokNaloziBtn'), _fi = $('dokFile'); if (_nb && _fi) { _nb.addEventListener('click', function () { _fi.click(); }); _fi.addEventListener('change', function () { dokNalozi(this.files); this.value = ''; }); } }
+  { var _bk = $('dokBack'); if (_bk) _bk.addEventListener('click', dokNazaj); }
+  { var _fw = $('dokFwd'); if (_fw) _fw.addEventListener('click', dokNaprej); }
+  { var _pp = $('dokPaste'); if (_pp) _pp.addEventListener('click', dokPrilepi); }
+  { var _sk = $('dokSkenirajBtn'); if (_sk) _sk.addEventListener('click', dokSkenirajOdpri); }
   { var _sd = $('sec-dokumenti'); if (_sd) {
     _sd.addEventListener('dragover', function (e) { e.preventDefault(); var h = $('dokDropHint'); if (h) h.hidden = false; });
     _sd.addEventListener('dragleave', function (e) { if (e.target === _sd) { var h = $('dokDropHint'); if (h) h.hidden = true; } });

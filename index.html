@@ -143,6 +143,7 @@ html[data-theme="light"] .sc-hex{opacity:.5}
     </div>
     </div>
   </div>
+  <a class="auth-foot" href="https://eflitte.si" target="_blank" rel="noopener">Izdelava <b>eflitte</b></a>
 </div>
 
 <!-- ══════════ APLIKACIJA ══════════ -->
@@ -288,12 +289,22 @@ html[data-theme="light"] .sc-hex{opacity:.5}
         <div class="head"><div><h2>Dokumenti</h2><p class="count" id="dokPod">Datoteke in mape</p></div>
           <div class="filtri">
             <input type="search" id="dokIsci" placeholder="Iskanje …" aria-label="Iskanje po datotekah"/>
+            <button type="button" id="dokSkenirajBtn" class="btn btn-narrow dok-tbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8V6a2 2 0 0 1 2-2h2M17 4h2a2 2 0 0 1 2 2v2M21 16v2a2 2 0 0 1-2 2h-2M7 20H5a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="3.2"/></svg>Skeniraj račun</button>
             <button type="button" id="dokNovaMapa" class="btn btn-narrow btn-alt dok-tbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 11v5M9.5 13.5h5"/></svg>Nova mapa</button>
             <button type="button" id="dokNaloziBtn" class="btn btn-narrow dok-tbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M5 20h14"/></svg>Naloži datoteke</button>
-            <input type="file" id="dokFile" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,image/*,application/pdf,.csv" hidden/>
+            <input type="file" id="dokFile" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.heic,.heif,image/*,application/pdf,.csv" hidden/>
+            <input type="file" id="dokKamera" accept="image/*" capture="environment" hidden/>
           </div>
         </div>
-        <div class="dok-bar"><nav class="dok-pot" id="dokPot" aria-label="Pot"></nav><div class="dok-drop-hint" id="dokDropHint" hidden>Spusti datoteke sem za nalaganje</div></div>
+        <div class="dok-bar">
+          <div class="dok-nav">
+            <button type="button" id="dokBack" class="dok-navbtn" title="Nazaj" aria-label="Nazaj"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+            <button type="button" id="dokFwd" class="dok-navbtn" title="Naprej" aria-label="Naprej"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
+          </div>
+          <nav class="dok-pot" id="dokPot" aria-label="Pot"></nav>
+          <button type="button" id="dokPaste" class="btn btn-narrow dok-paste" hidden>Prilepi</button>
+          <div class="dok-drop-hint" id="dokDropHint" hidden>Spusti datoteke sem za nalaganje</div>
+        </div>
         <div id="dokList"></div>
       </section>
 
