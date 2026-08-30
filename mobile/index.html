@@ -3,14 +3,15 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-<title>Pralnica — Spremni listi</title>
+<title>Smartclean mobile</title>
 <link rel="manifest" href="manifest.json" />
 <meta name="theme-color" content="#0C7C8C" />
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-<meta name="apple-mobile-web-app-title" content="Pralnica" />
+<meta name="apple-mobile-web-app-title" content="Smartclean mobile" />
 <link rel="apple-touch-icon" href="icon-192.png" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230a0a0a'/%3E%3Ctext x='32' y='45' font-family='Georgia,serif' font-size='36' font-weight='700' text-anchor='middle'%3E%3Ctspan fill='%23e8f1eb'%3ES%3C/tspan%3E%3Ctspan fill='%236ed3a1'%3EC%3C/tspan%3E%3C/text%3E%3C/svg%3E" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet" />
@@ -545,6 +546,24 @@
     #clientBackdrop .sheet{max-width:900px}
     #clientBackdrop .client-grid{grid-template-columns:repeat(3,1fr)}
   }
+
+/* === Uskladitev z portalom (login, tema, overscroll) === */
+html,body{overscroll-behavior:none}
+.tb-btn.ic .i-sun,.tb-btn.ic .i-moon{width:19px;height:19px;display:block}
+.tb-btn.ic .i-sun{display:none}
+html[data-theme="dark"] .tb-btn.ic .i-sun{display:block}
+html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
+.login-screen{flex-direction:column!important;justify-content:flex-start!important;padding:0!important}
+.lg-top{display:flex;align-items:center;justify-content:space-between;width:100%;padding:14px clamp(16px,4vw,24px);border-bottom:1px solid var(--line)}
+.lg-top .sc-wordmark{font-size:1.5rem}
+.lg-theme{width:40px;height:40px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:11px;background:var(--paper);color:var(--ink)}
+.lg-claim{margin:auto auto 0;font-family:'Instrument Sans',system-ui,sans-serif;font-weight:450;letter-spacing:-.028em;line-height:1.03;font-size:clamp(1.9rem,7.5vw,2.7rem);text-align:center;color:var(--ink);padding:0 18px clamp(24px,5vh,40px);max-width:14ch}
+.lg-claim em{font-style:normal;color:var(--sc-green)}
+.login-box{background:none!important;border:none!important;box-shadow:none!important;padding:0 20px!important;max-width:400px;margin:0 auto auto}
+.login-mark{display:none}
+.lg-foot{padding:0 0 calc(16px + env(safe-area-inset-bottom));text-align:center;color:var(--ink-soft);text-decoration:none;font-size:.85rem}
+.lg-foot b{color:var(--sc-green);font-weight:600}
+
 </style>
 </head>
 <body>
@@ -560,7 +579,7 @@
     </div>
     <div class="tb-actions">
       <button class="tb-btn" id="adminBtn" style="display:none">Admin</button>
-      <button class="tb-btn ic" id="themeBtn" title="Svetel / temen način">☾</button>
+      <button class="tb-btn ic" id="themeBtn" title="Svetel / temen način"><svg class="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.4 1.4M17.6 17.6L19 19M19 5l-1.4 1.4M6.4 17.6L5 19"/></svg><svg class="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
       <span class="tb-sep"></span>
       <button class="tb-btn" id="logoutBtn">Odjava</button>
       <button class="tb-btn exit ic-power" id="exitBtn" title="Izklop aplikacije" aria-label="Izklop">
@@ -666,8 +685,9 @@
 </div>
 <!-- LOGIN -->
 <div class="login-screen show" id="loginScreen">
+  <header class="lg-top"><span class="sc-wordmark">Smart<span>Clean</span></span><button class="tb-btn ic lg-theme" id="themeBtnLogin" title="Svetel / temen način"><svg class="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.4 1.4M17.6 17.6L19 19M19 5l-1.4 1.4M6.4 17.6L5 19"/></svg><svg class="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button></header>
+  <h2 class="lg-claim">Peremo, vi pa <em>blestite.</em></h2>
   <div class="login-box">
-    <div class="sc-wordmark login-mark">Smart<span>Clean</span></div>
     <form id="acctForm" class="acct-form" autocomplete="on">
       <div class="login-sub">Prijava</div>
       <input type="email" id="acctEmail" class="acct-in" placeholder="E-naslov" inputmode="email" autocapitalize="none" autocorrect="off" autocomplete="username" />
@@ -682,6 +702,7 @@
     <div class="login-users" id="loginUsers"><div style="grid-column:1/-1;color:var(--ink-soft);font-size:13px">Nalaganje\u2026</div></div>
     </div>
   </div>
+  <a class="lg-foot" href="https://eflitte.si" target="_blank" rel="noopener">Izdelava <b>eflitte</b></a>
 </div>
 <!-- ADMIN -->
 <div class="admin-screen" id="adminScreen">
@@ -1450,7 +1471,7 @@
     var dark = pref==="auto" ? autoDark() : (pref!=="light");
     document.documentElement.setAttribute("data-theme", dark?"dark":"light");
     var b=document.getElementById("themeBtn");
-    if(b){ b.textContent = dark ? "\u2600" : "\u263e"; }
+    if(b){ /* sonce/luna prek CSS */ }
     var m=document.querySelector('meta[name="theme-color"]');
     if(m) m.setAttribute("content", dark?"#0a0a0a":"#ffffff");
     try{ markThemeButtons(); }catch(e){}
@@ -1728,6 +1749,7 @@
   // ===== O\u017dI\u010cENJE AUTH/ADMIN =====
   document.getElementById("logoutBtn").onclick=logout;
   document.getElementById("themeBtn").onclick=toggleTheme;
+  { var _tbl=document.getElementById("themeBtnLogin"); if(_tbl) _tbl.onclick=toggleTheme; }
   document.getElementById("exitBtn").onclick=function(){ askConfirm("Izklop aplikacije?","Aplikacija se bo zaprla.","Izklop",exitApp,false,"Prekli\u010di"); };
   document.getElementById("adminBtn").onclick=openAdmin;
   document.getElementById("adminClose").onclick=closeAdmin;

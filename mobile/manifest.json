@@ -1,13 +1,13 @@
 {
-  "name": "Pralnica — Spremni listi",
-  "short_name": "Pralnica",
-  "description": "Vnos in tiskanje spremnih listov za pralnico.",
+  "name": "Smartclean mobile",
+  "short_name": "Smartclean",
+  "description": "Vnos in tiskanje spremnih listov — SmartClean.",
   "start_url": "index.html",
   "scope": ".",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#EDF0EE",
-  "theme_color": "#0C7C8C",
+  "background_color": "#0a0a0a",
+  "theme_color": "#0a0a0a",
   "icons": [
     { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
     { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
