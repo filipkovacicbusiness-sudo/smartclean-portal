@@ -289,7 +289,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.3 · BETA';
+  var APP_VERZIJA = '4.4 · BETA';
   var NALAGANJE = '<div class="sc-load"><div class="sc-load-bar"></div></div>';
   var _reloadVal = null;   // vrednost 'reload' ob nalaganju (za potisnjeno osvežitev)
   const JE_LASTNIK = () => (JAZMAIL || '').trim().toLowerCase() === 'filip@eflitte.si';
@@ -4540,8 +4540,7 @@
       box.innerHTML = '<div class="empty"><h3>' + (q ? 'Ni zadetkov' : 'Prazna mapa') + '</h3>' + (q ? '' : '<p>Naloži datoteke (PDF, Word, Excel, slike) ali ustvari novo mapo.</p>') + '</div>';
       return;
     }
-    var _w = sme('dokumenti', 'w');
-    var _xbtn = _w ? '<button type="button" class="dok-x" title="Izbriši" aria-label="Izbriši">×</button>' : '';
+    var _xbtn = sme('dokumenti', 'x') ? '<button type="button" class="dok-x" title="Izbriši" aria-label="Izbriši">×</button>' : '';
     var html = '<div class="dok-grid">';
     mape.forEach(function (r) {
       html += '<div class="dok-item dok-folder" data-id="' + escape_(r.id) + '" data-mapa="' + escape_((r.mapa ? r.mapa + '/' : '') + dokImeRow(r)) + '">' +
@@ -4577,6 +4576,7 @@
     });
   }
   async function dokIzbrisi(id) {
+    if (!sme('dokumenti', 'x')) { toast('Za to vlogo brisanje ni dovoljeno.'); return; }
     var r = (DOKUMENTI || []).filter(function (x) { return x.id === id; })[0];
     if (!r) return;
     var jeMapa = !!r.je_mapa;
@@ -5371,17 +5371,18 @@
     uporabniki: 'Upravljanje uporabnikov in vlog.', katalog: 'Cenik/katalog, ki ga vidi stranka za svoje podjetje.'
   };
   var _PRAV_ADMIN = [['r', 'Branje'], ['w', 'Pisanje'], ['x', 'Izvajanje'], ['d', 'Prenos']];
+  var _PRAV_DOK = [['r', 'Branje'], ['w', 'Nalaganje'], ['x', 'Brisanje'], ['d', 'Prenos']];
   function adminPanelHtml(o) {
     var v = _adminVloga;
     var jeSuper = (v === 'super');
     var h = '<div class="panel adm-role">' +
       '<div class="adm-role-h"><input type="text" class="adm-ime" value="' + escape_(o.imena[v]) + '" maxlength="40" aria-label="Ime vloge"><span class="adm-role-key">' + escape_(v) + '</span></div>' +
-      (jeSuper ? '<p class="u-sub" style="margin:0 0 10px">Super admin ima vedno vse pravice (jih ni mogoče omejiti).</p>' : '<p class="u-sub" style="margin:0 0 8px">Obkljukaj, kateri razdelki so vidni tej vlogi (stranski meni). Pri Dokumentih lahko ločeno določiš branje / pisanje / izvajanje / prenos.</p>') +
+      (jeSuper ? '<p class="u-sub" style="margin:0 0 10px">Super admin ima vedno vse pravice (jih ni mogoče omejiti).</p>' : '<p class="u-sub" style="margin:0 0 8px">Obkljukaj, kateri razdelki so vidni tej vlogi (stranski meni). Pri Dokumentih lahko ločeno določiš branje / nalaganje / brisanje / prenos.</p>') +
       '<div class="adm-list">';
     ADMIN_RAZDELKI.forEach(function (s) {
       if (s[0] === 'dokumenti') {
         h += '<div class="adm-item adm-item-dok"><span class="adm-sec" title="' + escape_(ADMIN_OPISI.dokumenti) + '">Dokumenti</span><div class="adm-perms">' +
-          _PRAV_ADMIN.map(function (p) { var on = o.perm[v].dokumenti[p[0]]; return '<label class="adm-pill' + (on ? ' on' : '') + (jeSuper ? ' dis' : '') + '"><input type="checkbox" data-s="dokumenti" data-p="' + p[0] + '"' + (on ? ' checked' : '') + (jeSuper ? ' disabled' : '') + '>' + p[1] + '</label>'; }).join('') +
+          _PRAV_DOK.map(function (p) { var on = o.perm[v].dokumenti[p[0]]; return '<label class="adm-pill' + (on ? ' on' : '') + (jeSuper ? ' dis' : '') + '"><input type="checkbox" data-s="dokumenti" data-p="' + p[0] + '"' + (on ? ' checked' : '') + (jeSuper ? ' disabled' : '') + '>' + p[1] + '</label>'; }).join('') +
           '</div></div>';
       } else {
         var on = o.perm[v][s[0]].r;
