@@ -307,7 +307,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.13 · BETA';
+  var APP_VERZIJA = '4.14 · BETA';
   var NALAGANJE = '<div class="sc-load"><div class="sc-load-bar"></div></div>';
   var _reloadVal = null;   // vrednost 'reload' ob nalaganju (za potisnjeno osvežitev)
   const JE_LASTNIK = () => (JAZMAIL || '').trim().toLowerCase() === 'filip@eflitte.si';
@@ -1801,8 +1801,23 @@
         <div class="bars-bar" style="height:${Math.round(m.kos / naj * 88)}px"></div>
         <span class="bars-lab">${escape_(m.ime)}</span></div>`).join('') + '</div></div>';
     const stKljuc = l => { const d = String(l.number || '').split('/'); return (parseInt(d[1], 10) || 0) * 1e7 + (parseInt(d[0], 10) || 0); };
-    const zadnjiListi = LISTI.slice().sort((a, b) => stKljuc(b) - stKljuc(a)).slice(0, 5);
-    $('zadnji').innerHTML = '<h3 class="sec-h">Zadnji prevzemi</h3>' + tabelaListov(zadnjiListi, false);
+    const razvrsceni = LISTI.slice().sort((a, b) => stKljuc(b) - stKljuc(a));
+    // Status ažurnosti arhiva (samo osebje): zadnji list naj bo od včeraj (razen če je bila včeraj nedelja → sobota).
+    var statusHtml = '';
+    if (OSEBJE) {
+      var _iso = function (dt) { return dt.getFullYear() + '-' + ('0' + (dt.getMonth() + 1)).slice(-2) + '-' + ('0' + dt.getDate()).slice(-2); };
+      var zadnjiDatum = LISTI.reduce(function (m, l) { return (l.doc_date && l.doc_date > m) ? l.doc_date : m; }, '');
+      var _d = new Date(); _d.setHours(0, 0, 0, 0); _d.setDate(_d.getDate() - 1); if (_d.getDay() === 0) _d.setDate(_d.getDate() - 1);
+      var pricakovan = _iso(_d);
+      var azuren = zadnjiDatum && zadnjiDatum >= pricakovan;
+      var nepotrjeni = LISTI.filter(function (l) { return (l.total_pieces > 0) && l.potrjeno !== true && !STAR_SET.has(l.id); }).length;
+      if (!azuren) statusHtml = '<div class="preg-status ps-warn"><span class="ps-ik">!</span><span>Zadnji spremni list je od <b>' + (zadnjiDatum ? datum(zadnjiDatum) : '—') + '</b> — morda manjkajo novejši.</span></div>';
+      else if (nepotrjeni > 0) statusHtml = '<div class="preg-status ps-warn"><span class="ps-ik">●</span><span>Vsi dodani · <b>' + nepotrjeni + '</b> ' + (nepotrjeni === 1 ? 'list še ni pregledan' : 'listov še ni pregledanih') + ' (potrjenih).</span></div>';
+      else statusHtml = '<div class="preg-status ps-ok"><span class="ps-ik">✓</span><span>Vse pregledano in dodano · zadnji list <b>' + (zadnjiDatum ? datum(zadnjiDatum) : '—') + '</b>.</span></div>';
+    }
+    var kolikoNaj = Math.max(6, Math.min(40, Math.floor((window.innerHeight - 230) / 62)));
+    const zadnjiListi = razvrsceni.slice(0, kolikoNaj);
+    $('zadnji').innerHTML = statusHtml + '<h3 class="sec-h">Zadnji prevzemi</h3>' + tabelaListov(zadnjiListi, false);
   }
 
   /* ══════════ ARHIV ══════════ */
