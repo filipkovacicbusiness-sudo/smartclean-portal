@@ -288,7 +288,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '3.1 · BETA';
+  var APP_VERZIJA = '3.2 · BETA';
   var NALAGANJE = '<div class="sc-load"><div class="sc-load-bar"></div></div>';
   var _reloadVal = null;   // vrednost 'reload' ob nalaganju (za potisnjeno osvežitev)
   const JE_LASTNIK = () => (JAZMAIL || '').trim().toLowerCase() === 'filip@eflitte.si';
@@ -704,7 +704,7 @@
     var views = freeze ? '<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/><selection pane="bottomLeft"/></sheetView></sheetViews>' : '';
     return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' + views + cols + '<sheetData>' + body + '</sheetData></worksheet>';
   }
-  var _XSTYLES = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFEDF2F0"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="1"><border/></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="3"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs></styleSheet>';
+  var _XSTYLES = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="3"><numFmt numFmtId="164" formatCode="#,##0.00&quot; €&quot;"/><numFmt numFmtId="165" formatCode="#,##0"/><numFmt numFmtId="166" formatCode="#,##0.00"/></numFmts><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFEDF2F0"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="1"><border/></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="9"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="164" fontId="1" fillId="0" borderId="0" xfId="0" applyNumberFormat="1" applyFont="1"/><xf numFmtId="165" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="165" fontId="1" fillId="0" borderId="0" xfId="0" applyNumberFormat="1" applyFont="1"/><xf numFmtId="166" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="166" fontId="1" fillId="0" borderId="0" xfId="0" applyNumberFormat="1" applyFont="1"/></cellXfs></styleSheet>';
   function _xImeSheeta(ime, i, vzeti) {
     var n = String(ime || ('List ' + (i + 1))).replace(/[\\\/\?\*\[\]:]/g, ' ').trim().slice(0, 31) || ('List ' + (i + 1));
     var base = n, k = 2;
@@ -2088,6 +2088,8 @@
     }
     if (!risiFakture._wired) {
       $('fakBtn').addEventListener('click', () => nalozifakture());
+      var _fx = $('fakXlsxBtn'); if (_fx) _fx.addEventListener('click', () => fakIzvozModal('xlsx'));
+      var _fp = $('fakPdfBtn'); if (_fp) _fp.addEventListener('click', () => fakIzvozModal('pdf'));
       risiFakture._wired = true;
     }
     risiHitreMesece();
@@ -2110,17 +2112,15 @@
       $('fakOd').value = b.dataset.od; $('fakDo').value = b.dataset.do; nalozifakture();
     }));
   }
-  async function nalozifakture() {
-    const list = $('fakList');
-    const od = $('fakOd').value, doo = $('fakDo').value, orgFilter = $('fakOrg').value;
-    if (!fakDatumOK(od, doo)) { list.innerHTML = '<div class="panel"><p class="u-sub">Izberi veljavno obdobje (od ≤ do).</p></div>'; return; }
-    list.innerHTML = NALAGANJE;
+  // Zberi in izračunaj skupine po strankah za obdobje (orgIds: null/[] = vse, sicer seznam ID-jev).
+  async function fakZberi(od, doo, orgIds) {
     let q = sb.from('delivery_notes')
       .select('id,number,doc_date,weight_kg,total_pieces,org_id,transport,delivery_note_items(article_name,pieces)')
       .gte('doc_date', od).lte('doc_date', doo).order('doc_date', { ascending: true }).limit(5000);
-    if (orgFilter) q = q.eq('org_id', orgFilter);
+    if (orgIds && orgIds.length === 1) q = q.eq('org_id', orgIds[0]);
+    else if (orgIds && orgIds.length) q = q.in('org_id', orgIds);
     const { data, error } = await q;
-    if (error) { list.innerHTML = '<div class="panel"><p class="u-sub">Napaka: ' + escape_(error.message) + '</p></div>'; return; }
+    if (error) return { error: error };
     const notes = data || [];
     const poOrg = {};
     notes.forEach(n => {
@@ -2139,7 +2139,7 @@
     const skupine = Object.values(poOrg).sort((a, b) => (ORGIME[a.org_id] || '').localeCompare(ORGIME[b.org_id] || '', 'sl', { sensitivity: 'base' }));
     // ── cene: poveži postavke s cenikom (prek povezave artikel → cenik) ──
     await nalozicenik();
-    const artmap = await naloziArtMap(orgFilter);
+    const artmap = await naloziArtMap(orgIds && orgIds.length === 1 ? orgIds[0] : null);
     const cenikOn = !!(CENIK && CENIK.length);
     skupine.forEach(g => {
       g.postavke = Object.entries(g.artikli).map(([nm, q]) => {
@@ -2153,6 +2153,16 @@
       g.ddv = Math.round(g.neto * DDV_STOPNJA * 100) / 100;
       g.bruto = Math.round((g.neto + g.ddv) * 100) / 100;
     });
+    return { skupine: skupine };
+  }
+  async function nalozifakture() {
+    const list = $('fakList');
+    const od = $('fakOd').value, doo = $('fakDo').value, orgFilter = $('fakOrg').value;
+    if (!fakDatumOK(od, doo)) { list.innerHTML = '<div class="panel"><p class="u-sub">Izberi veljavno obdobje (od ≤ do).</p></div>'; return; }
+    list.innerHTML = NALAGANJE;
+    const res = await fakZberi(od, doo, orgFilter ? [orgFilter] : null);
+    if (res.error) { list.innerHTML = '<div class="panel"><p class="u-sub">Napaka: ' + escape_(res.error.message) + '</p></div>'; return; }
+    const skupine = res.skupine;
     FAK_ZADNJI = { od, doo, skupine };
     $('fakPod').textContent = skupine.length ? '' : 'V izbranem obdobju ni spremnih listov';
     if (!skupine.length) { list.innerHTML = '<div class="panel"><p class="u-sub">V izbranem obdobju ni spremnih listov.</p></div>'; return; }
@@ -2196,7 +2206,6 @@
     return `<div class="fak-card">
       <div class="fak-card-h" data-faktoggle="${gi}">
         <div class="fak-card-info"><h3>${escape_(ime)}</h3><p class="u-sub">${stevilo(g.listov)} spremnih listov · ${stevilo(g.kosov)} kosov · ${fakKg(g.kg)}${g.izredni ? ' · ' + stevilo(g.izredni) + '× izredni prevoz' : ''}${povzetek}</p></div>
-        <button type="button" class="btn-mini fak-print" data-fakprint="${gi}">Natisni</button>
         <span class="fak-chev" aria-hidden="true">›</span>
       </div>
       <div class="fak-body" id="fakbody${gi}">
@@ -2209,13 +2218,13 @@
             ${prevoz}
             ${denar}
           </div>
+          <div class="fak-body-acts"><button type="button" class="btn-mini fak-print" data-fakprint="${gi}">Natisni osnovo za račun</button></div>
         </div>
       </div>
     </div>`;
   }
-  function natisniFakturo(gi) {
-    if (!FAK_ZADNJI || !FAK_ZADNJI.skupine[gi]) return;
-    const g = FAK_ZADNJI.skupine[gi];
+  // HTML za eno stran »osnove za račun« (ena stranka).
+  function fakStranHtml(g, od, doo) {
     const org = ORGSEZNAM.find(o => o.id === g.org_id) || {};
     const naziv = org.legal_name || org.name || ORGIME[g.org_id] || '—';
     const naslov = [org.address, org.vat_id ? 'ID za DDV: ' + org.vat_id : ''].filter(Boolean).join(' · ');
@@ -2225,12 +2234,33 @@
     const rows = post.length ? post.map(p => money
       ? `<tr><td>${escape_(p.nm)}</td><td class="q">${p.cena != null ? cenaFmt(p.cena) : '—'}</td><td class="q">${stevilo(p.q)}</td><td class="q">${p.znesek != null ? cenaFmt(p.znesek) : '—'}</td></tr>`
       : `<tr><td>${escape_(p.nm)}</td><td class="q">${stevilo(p.q)}</td></tr>`).join('') : `<tr><td colspan="${kolonc}" style="color:#888">Ni postavk</td></tr>`;
-    const html = `<!DOCTYPE html><html lang="sl"><head><meta charset="utf-8"><title>Osnova za račun · ${escape_(naziv)}</title><style>
+    return `<div class="stran">
+      <div class="head"><img class="wm" alt="SmartClean" src="${SC_LOGO}"><div class="biz">BSMART d.o.o.<br>Luče 87, 3334 Luče<br>+386 41 209 676</div></div>
+      <div class="num"><b>Osnova za račun</b></div>
+      <div class="client"><b>Naročnik storitve:</b> ${escape_(naziv)}${naslov ? '<br>' + escape_(naslov) : ''}<div class="dates">Obdobje: ${datum(od)} – ${datum(doo)} · ${stevilo(g.listov)} spremnih listov · ${stevilo(g.redni)} redni${g.izredni ? ' · ' + stevilo(g.izredni) + ' izredni prevoz' : ''}</div></div>
+      <table><thead>${money
+        ? '<tr><th>Naziv artikla</th><th class="q">Cena/kos</th><th class="q">Količina</th><th class="q">Znesek</th></tr>'
+        : '<tr><th>Naziv artikla</th><th class="q">Količina (kos)</th></tr>'}</thead><tbody>${rows}</tbody>
+        <tfoot>${money ? `
+          <tr><td colspan="3">Skupaj kosov</td><td class="q">${stevilo(g.kosov)}</td></tr>
+          <tr><td colspan="3">Neto skupaj</td><td class="q">${cenaFmt(g.neto)}</td></tr>
+          <tr><td colspan="3">DDV (22 %)</td><td class="q">${cenaFmt(g.ddv)}</td></tr>
+          <tr class="bruto"><td colspan="3">Za plačilo (z DDV)</td><td class="q">${cenaFmt(g.bruto)}</td></tr>`
+        : `<tr><td>Skupaj kosov</td><td class="q">${stevilo(g.kosov)}</td></tr><tr><td>Skupaj teža perila</td><td class="q">${fakKg(g.kg)}</td></tr>`}</tfoot></table>
+      ${money && g.brezCene ? `<div class="sign">Opomba: ${stevilo(g.brezCene)} artiklov še nima cene (poveži jih v razdelku Stranke). Ti niso vključeni v znesek.</div>` : ''}
+    </div>`;
+  }
+  // Cel dokument (ena ali več strank, vsaka na svojo stran).
+  function fakDokumentHtml(skupine, od, doo, naslovDok) {
+    const strani = skupine.map(g => fakStranHtml(g, od, doo)).join('');
+    return `<!DOCTYPE html><html lang="sl"><head><meta charset="utf-8"><title>${escape_(naslovDok || 'Osnova za račun')}</title><style>
       @page{size:A4;margin:14mm}
       *{box-sizing:border-box;font-family:-apple-system,'Segoe UI',Roboto,Arial,sans-serif;color:#16202b}
       body{margin:0;font-size:13px}
-      .head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #1a6644;padding-bottom:11px;margin-bottom:18px}
-      .wm{height:30px;width:auto;display:block}.head{align-items:center}
+      .stran{page-break-after:always}
+      .stran:last-child{page-break-after:auto}
+      .head{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #1a6644;padding-bottom:11px;margin-bottom:18px}
+      .wm{height:30px;width:auto;display:block}
       .biz{font-size:11px;text-align:right;color:#5c6873;line-height:1.5}
       .num{font-size:15px;margin:4px 0 6px}
       .client{border:1px solid #dce2e0;border-radius:8px;padding:12px 14px;margin:12px 0 14px}
@@ -2242,25 +2272,130 @@
       tfoot td{font-weight:700;border-top:1px solid #e6ebe9}
       tfoot tr.bruto td{border-top:2px solid #1a6644;font-size:14px}
       .sign{margin-top:22px;color:#5c6873;font-size:11px}
-    </style></head><body>
-      <div class="head"><img class="wm" alt="SmartClean" src="${SC_LOGO}"><div class="biz">BSMART d.o.o.<br>Luče 87, 3334 Luče<br>+386 41 209 676</div></div>
-      <div class="num"><b>Osnova za račun</b></div>
-      <div class="client"><b>Naročnik storitve:</b> ${escape_(naziv)}${naslov ? '<br>' + escape_(naslov) : ''}<div class="dates">Obdobje: ${datum(FAK_ZADNJI.od)} – ${datum(FAK_ZADNJI.doo)} · ${stevilo(g.listov)} spremnih listov · ${stevilo(g.redni)} redni${g.izredni ? ' · ' + stevilo(g.izredni) + ' izredni prevoz' : ''}</div></div>
-      <table><thead>${money
-        ? '<tr><th>Naziv artikla</th><th class="q">Cena/kos</th><th class="q">Količina</th><th class="q">Znesek</th></tr>'
-        : '<tr><th>Naziv artikla</th><th class="q">Količina (kos)</th></tr>'}</thead><tbody>${rows}</tbody>
-        <tfoot>${money ? `
-          <tr><td colspan="3">Skupaj kosov</td><td class="q">${stevilo(g.kosov)}</td></tr>
-          <tr><td colspan="3">Neto skupaj</td><td class="q">${cenaFmt(g.neto)}</td></tr>
-          <tr><td colspan="3">DDV (22 %)</td><td class="q">${cenaFmt(g.ddv)}</td></tr>
-          <tr class="bruto"><td colspan="3">Za plačilo (z DDV)</td><td class="q">${cenaFmt(g.bruto)}</td></tr>`
-        : `<tr><td>Skupaj kosov</td><td class="q">${stevilo(g.kosov)}</td></tr><tr><td>Skupaj teža perila</td><td class="q">${fakKg(g.kg)}</td></tr>`}</tfoot></table>
-      ${money && g.brezCene ? `<div class="sign">Opomba: ${stevilo(g.brezCene)} artiklov še nima cene (poveži jih v razdelku Stranke). Ti niso vključeni v znesek.</div>` : ''}
-    </body></html>`;
+    </style></head><body>${strani}</body></html>`;
+  }
+  function natisniDokument(html) {
     const w = window.open('', '_blank');
     if (!w) { toast('Za tiskanje dovoli pojavna okna.'); return; }
     w.document.open(); w.document.write(html); w.document.close(); w.focus();
-    setTimeout(() => { try { w.print(); } catch (e) {} }, 300);
+    setTimeout(() => { try { w.print(); } catch (e) {} }, 350);
+  }
+  function natisniFakturo(gi) {
+    if (!FAK_ZADNJI || !FAK_ZADNJI.skupine[gi]) return;
+    const g = FAK_ZADNJI.skupine[gi];
+    natisniDokument(fakDokumentHtml([g], FAK_ZADNJI.od, FAK_ZADNJI.doo, 'Osnova za račun · ' + (ORGIME[g.org_id] || '')));
+  }
+  // ── Izvoz (Excel / PDF): pojavno okno z izbiro obdobja in strank ──
+  function fakIzvozXlsx(od, doo, skupine) {
+    const B = t => ({ v: t, bold: true });          // glava
+    const T = t => ({ v: t, s: 2 });                 // krepko besedilo
+    const EUR = n => ({ v: Math.round((Number(n) || 0) * 100) / 100, s: 3 });
+    const EURb = n => ({ v: Math.round((Number(n) || 0) * 100) / 100, s: 4 });
+    const INT = n => ({ v: Number(n) || 0, s: 5 });
+    const INTb = n => ({ v: Number(n) || 0, s: 6 });
+    const KG = n => ({ v: Math.round((Number(n) || 0) * 100) / 100, s: 7 });
+    const KGb = n => ({ v: Math.round((Number(n) || 0) * 100) / 100, s: 8 });
+    const obd = datum(od) + ' – ' + datum(doo);
+    const anyMoney = skupine.some(g => g.cenikOn);
+    const sheets = [];
+    // 1) Povzetek — vse stranke skupaj
+    let pov = [[{ v: 'Fakture — povzetek', s: 2 }], ['Obdobje:', obd], []];
+    pov.push(anyMoney
+      ? [B('Stranka'), B('Spr. listov'), B('Kosov'), B('Teža (kg)'), B('Neto'), B('DDV'), B('Za plačilo z DDV')]
+      : [B('Stranka'), B('Spr. listov'), B('Kosov'), B('Teža (kg)')]);
+    let sL = 0, sK = 0, sKg = 0, sN = 0, sD = 0, sB = 0;
+    skupine.forEach(g => {
+      const ime = ORGIME[g.org_id] || 'Brez stranke';
+      sL += g.listov; sK += g.kosov; sKg += g.kg;
+      if (anyMoney) {
+        sN += g.neto || 0; sD += g.ddv || 0; sB += g.bruto || 0;
+        pov.push([ime, INT(g.listov), INT(g.kosov), KG(g.kg), g.cenikOn ? EUR(g.neto) : '—', g.cenikOn ? EUR(g.ddv) : '—', g.cenikOn ? EUR(g.bruto) : '—']);
+      } else pov.push([ime, INT(g.listov), INT(g.kosov), KG(g.kg)]);
+    });
+    pov.push([]);
+    pov.push(anyMoney
+      ? [T('SKUPAJ'), INTb(sL), INTb(sK), KGb(sKg), EURb(sN), EURb(sD), EURb(sB)]
+      : [T('SKUPAJ'), INTb(sL), INTb(sK), KGb(sKg)]);
+    sheets.push({ name: 'Povzetek', rows: pov, freeze: false });
+    // 2) Sheet za vsako stranko — celoten izpis artiklov + skupna cena
+    skupine.forEach(g => {
+      const ime = ORGIME[g.org_id] || 'Brez stranke';
+      const money = !!g.cenikOn;
+      const post = g.postavke || [];
+      let rows = [[{ v: ime + ' — osnova za račun', s: 2 }], ['Obdobje:', obd],
+        ['Spremnih listov:', INT(g.listov), '', 'Prevozi:', stevilo(g.redni) + ' redni' + (g.izredni ? ' · ' + stevilo(g.izredni) + ' izredni' : '')], []];
+      rows.push(money ? [B('Artikel'), B('Cena/kos'), B('Količina'), B('Znesek')] : [B('Artikel'), B('Količina')]);
+      if (post.length) post.forEach(p => {
+        rows.push(money
+          ? [p.nm, p.cena != null ? EUR(p.cena) : '—', INT(p.q), p.znesek != null ? EUR(p.znesek) : '—']
+          : [p.nm, INT(p.q)]);
+      });
+      else rows.push(['Brez postavk']);
+      rows.push([]);
+      if (money) {
+        rows.push([T('Skupaj kosov'), '', INTb(g.kosov), '']);
+        rows.push([T('Teža perila (kg)'), '', KGb(g.kg), '']);
+        rows.push([T('Neto skupaj'), '', '', EURb(g.neto)]);
+        rows.push([T('DDV (22 %)'), '', '', EURb(g.ddv)]);
+        rows.push([T('Za plačilo (z DDV)'), '', '', EURb(g.bruto)]);
+        if (g.brezCene) rows.push([{ v: stevilo(g.brezCene) + ' artiklov brez cene (niso všteti) — poveži jih v Strankah', s: 0 }]);
+      } else {
+        rows.push([T('Skupaj kosov'), INTb(g.kosov)]);
+        rows.push([T('Teža perila (kg)'), KGb(g.kg)]);
+      }
+      sheets.push({ name: ime, rows: rows });
+    });
+    prenesiXlsx('fakture_' + od + '_' + doo + '.xlsx', sheets);
+  }
+  function fakIzvozModal(nacin) {
+    const orgs = ORGSEZNAM.slice().sort((a, b) => (a.name || '').localeCompare(b.name || '', 'sl', { sensitivity: 'base' }));
+    const pad = n => String(n).padStart(2, '0');
+    const iso = d => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+    let od0 = ($('fakOd') && $('fakOd').value) || '', do0 = ($('fakDo') && $('fakDo').value) || '';
+    if (!od0 || !do0) { const z = new Date(); od0 = iso(new Date(z.getFullYear(), z.getMonth(), 1)); do0 = iso(z); }
+    const jePdf = nacin === 'pdf';
+    const back = document.createElement('div'); back.className = 'sc-modal-back';
+    const checks = orgs.map(o => `<label class="fx-cli"><input type="checkbox" class="fx-org" value="${escape_(o.id)}" checked><span>${escape_(o.name)}</span></label>`).join('') || '<p class="u-sub">Ni strank.</p>';
+    back.innerHTML = '<div class="sc-modal sc-modal-wide" role="dialog" aria-modal="true">'
+      + '<h4>' + (jePdf ? 'Izvoz v PDF (osnova za račun)' : 'Izvoz v Excel') + '</h4>'
+      + '<div class="fx-dates"><label>Od<input type="date" class="sc-modal-input fx-od"></label><label>Do<input type="date" class="sc-modal-input fx-do"></label></div>'
+      + '<div class="fx-cli-head"><span>Stranke</span><label class="fx-all"><input type="checkbox" class="fx-vse" checked><span>Vse</span></label></div>'
+      + '<div class="fx-cli-list">' + checks + '</div>'
+      + '<div class="fx-msg msg"></div>'
+      + '<div class="sc-modal-acts"><button type="button" class="sc-modal-btn ghost" data-no>Prekliči</button><button type="button" class="sc-modal-btn primary" data-yes>' + (jePdf ? 'Izvozi PDF' : 'Izvozi Excel') + '</button></div>'
+      + '</div>';
+    document.body.appendChild(back);
+    const odI = back.querySelector('.fx-od'), doI = back.querySelector('.fx-do');
+    odI.value = od0; doI.value = do0;
+    const vse = back.querySelector('.fx-vse');
+    const orgi = () => Array.prototype.slice.call(back.querySelectorAll('.fx-org'));
+    vse.addEventListener('change', () => orgi().forEach(c => { c.checked = vse.checked; }));
+    back.querySelector('.fx-cli-list').addEventListener('change', () => { vse.checked = orgi().every(c => c.checked); });
+    requestAnimationFrame(() => back.classList.add('show'));
+    let done = false;
+    function zapri() { if (done) return; done = true; back.classList.remove('show'); document.removeEventListener('keydown', onKey); setTimeout(() => { if (back.parentNode) back.parentNode.removeChild(back); }, 180); }
+    function onKey(e) { if (e.key === 'Escape') zapri(); }
+    back.querySelector('[data-no]').addEventListener('click', zapri);
+    back.addEventListener('click', e => { if (e.target === back) zapri(); });
+    document.addEventListener('keydown', onKey);
+    const msg = back.querySelector('.fx-msg');
+    back.querySelector('[data-yes]').addEventListener('click', async function () {
+      const od = odI.value, doo = doI.value;
+      if (!fakDatumOK(od, doo)) { msg.className = 'fx-msg msg bad show'; msg.textContent = 'Izberi veljavno obdobje (od ≤ do).'; return; }
+      const izbrani = orgi().filter(c => c.checked).map(c => c.value);
+      if (!izbrani.length) { msg.className = 'fx-msg msg bad show'; msg.textContent = 'Izberi vsaj eno stranko.'; return; }
+      const vseIzbrane = izbrani.length === orgi().length;
+      const btn = this; btn.disabled = true; btn.textContent = 'Pripravljam …';
+      msg.className = 'fx-msg msg'; msg.textContent = '';
+      const res = await fakZberi(od, doo, vseIzbrane ? null : izbrani);
+      btn.disabled = false; btn.textContent = jePdf ? 'Izvozi PDF' : 'Izvozi Excel';
+      if (res.error) { msg.className = 'fx-msg msg bad show'; msg.textContent = 'Napaka: ' + res.error.message; return; }
+      const skupine = res.skupine || [];
+      if (!skupine.length) { msg.className = 'fx-msg msg bad show'; msg.textContent = 'V izbranem obdobju ni spremnih listov.'; return; }
+      if (jePdf) natisniDokument(fakDokumentHtml(skupine, od, doo, 'Osnova za račun'));
+      else fakIzvozXlsx(od, doo, skupine);
+      zapri();
+    });
   }
 
   /* ══════════ NASTAVITVE ══════════ */
@@ -4921,11 +5056,12 @@
       // Face ID: ob prijavi/osvežitvi posodobi žeton tega uporabnika, da ostane veljaven.
       if ((event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN') && session) { try { bioOsveziZetone(session); } catch (e) {} }
     });
-    setTimeout(() => {
-      if (recovery) return;
+    // Takoj pokaži pravi zaslon (brez utripa napačnega). Če je to obnovitev gesla,
+    // spodnji onAuthStateChange to prepiše na obrazec za novo geslo.
+    if (!recovery) {
       if (beriProfile().length) pokaziIzbirnik();
       else pokaziPrijavo('');
-    }, 60);
+    }
   })();
 
   /* Šele tu vemo, da se je celotna skripta prevedla in izvedla. */

@@ -94,7 +94,7 @@ html[data-theme="light"] .sc-hex{opacity:.5}
       <div class="pp-grid" id="ppGrid"></div>
       <div class="msg" id="ppMsg" role="status" aria-live="polite"></div>
     </div>
-    <div class="auth-box" id="authBox">
+    <div class="auth-box hidden" id="authBox">
       <p class="eyebrow">Prijava</p>
       <h1>Dobrodošli nazaj</h1>
       <p class="sub">Vpišite se s podatki, ki ste jih prejeli od nas.</p>
@@ -211,6 +211,8 @@ html[data-theme="light"] .sc-hex{opacity:.5}
             <label class="fak-lab">Do <input type="date" id="fakDo"/></label>
             <select id="fakOrg" aria-label="Stranka"><option value="">Vse stranke</option></select>
             <button type="button" id="fakBtn" class="btn btn-narrow">Prikaži</button>
+            <button type="button" id="fakXlsxBtn" class="btn btn-narrow btn-alt">Izvozi v Excel</button>
+            <button type="button" id="fakPdfBtn" class="btn btn-narrow btn-alt">Izvozi PDF</button>
           </div>
         </div>
         <div class="fak-hitri" id="fakHitri"></div>
