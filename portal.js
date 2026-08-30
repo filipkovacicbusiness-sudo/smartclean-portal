@@ -31,11 +31,20 @@
     const eff = p === 'auto' ? (autoTemna() ? 'dark' : 'light') : (p === 'light' ? 'light' : 'dark');
     var de = document.documentElement;
     if (de.dataset.theme && de.dataset.theme !== eff) {
-      // preklop teme naj bo hipen (brez zatikajočega prehoda čez vse elemente)
-      de.classList.add('sc-notrans');
-      de.dataset.theme = eff;
-      void de.offsetWidth;
-      requestAnimationFrame(function () { requestAnimationFrame(function () { de.classList.remove('sc-notrans'); }); });
+      // Gladka animacija preklopa teme brez zatikanja:
+      // View Transitions naredi GPU-navzkrižno pretapljanje (smooth), fallback je hipen preklop.
+      if (document.startViewTransition && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        de.classList.add('sc-notrans');
+        try {
+          var vt = document.startViewTransition(function () { de.dataset.theme = eff; });
+          vt.finished.then(function () { de.classList.remove('sc-notrans'); }, function () { de.classList.remove('sc-notrans'); });
+        } catch (e) { de.dataset.theme = eff; de.classList.remove('sc-notrans'); }
+      } else {
+        de.classList.add('sc-notrans');
+        de.dataset.theme = eff;
+        void de.offsetWidth;
+        requestAnimationFrame(function () { requestAnimationFrame(function () { de.classList.remove('sc-notrans'); }); });
+      }
     } else {
       de.dataset.theme = eff;
     }
@@ -298,7 +307,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.9 · BETA';
+  var APP_VERZIJA = '4.11 · BETA';
   var NALAGANJE = '<div class="sc-load"><div class="sc-load-bar"></div></div>';
   var _reloadVal = null;   // vrednost 'reload' ob nalaganju (za potisnjeno osvežitev)
   const JE_LASTNIK = () => (JAZMAIL || '').trim().toLowerCase() === 'filip@eflitte.si';
@@ -926,9 +935,9 @@
         }
       }
       telo = '<div class="pris-oseba-sel"><select id="prisOsebaSel" class="sc-modal-input">' + (opts || '') + '</select></div>' +
-        '<table class="pris-tbl pris-tbl-oseba"><thead><tr><th>Dan</th><th>Prihod–odhod</th><th>Ur</th><th></th></tr></thead><tbody>' +
+        '<div class="pris-scroll"><table class="pris-tbl pris-tbl-oseba"><thead><tr><th>Dan</th><th>Prihod–odhod</th><th>Ur</th><th></th></tr></thead><tbody>' +
         (oRows || '<tr><td colspan="4" class="u-sub">Ni zaposlenih.</td></tr>') + '</tbody>' +
-        '<tfoot><tr><td>Skupaj (' + oDni + ' dni)</td><td></td><td class="pris-ure">' + (oTot ? trajanjeH(oTot) : '—') + '</td><td></td></tr></tfoot></table>';
+        '<tfoot><tr><td>Skupaj (' + oDni + ' dni)</td><td></td><td class="pris-ure">' + (oTot ? trajanjeH(oTot) : '—') + '</td><td></td></tr></tfoot></table></div>';
     } else if (_prisView === 'mesec') {
       var mSek = 0, mDni = 0;
       var mVrst = aktivni.map(function (z) {
@@ -936,10 +945,10 @@
         mSek += pov.sek; mDni += pov.dni;
         return '<tr><td>' + escape_(z.ime) + '</td><td class="pris-ure">' + pov.dni + '</td><td class="pris-ure">' + (pov.sek ? trajanjeH(pov.sek) : '—') + '</td></tr>';
       }).join('');
-      telo = '<table class="pris-tbl"><thead><tr><th>Zaposleni</th><th>Dni</th><th>Ur skupaj</th></tr></thead><tbody>' +
+      telo = '<div class="pris-scroll"><table class="pris-tbl"><thead><tr><th>Zaposleni</th><th>Dni</th><th>Ur skupaj</th></tr></thead><tbody>' +
         (mVrst || '<tr><td colspan="3" class="u-sub">Ni podatkov.</td></tr>') + '</tbody>' +
         (mVrst ? '<tfoot><tr><td>Skupaj</td><td class="pris-ure">' + mDni + '</td><td class="pris-ure">' + (mSek ? trajanjeH(mSek) : '—') + '</td></tr></tfoot>' : '') +
-        '</table>';
+        '</table></div>';
     } else {
       var dSek = 0;
       var dVrst = aktivni.map(function (z) {
@@ -948,10 +957,10 @@
         return '<tr><td>' + escape_(z.ime) + '</td><td class="pris-pairs">' + c.html + '</td><td class="pris-ure">' + (c.sek ? trajanjeH(c.sek) : '—') + '</td>' +
           '<td class="pris-act"><button type="button" class="cgrp-btn ghost" data-rocni="' + z.id + '">+ ročno</button></td></tr>';
       }).join('');
-      telo = '<table class="pris-tbl pris-tbl-dan"><thead><tr><th>Zaposleni</th><th>Prihod–odhod</th><th>Ur skupaj</th><th></th></tr></thead><tbody>' +
+      telo = '<div class="pris-scroll"><table class="pris-tbl pris-tbl-dan"><thead><tr><th>Zaposleni</th><th>Prihod–odhod</th><th>Ur skupaj</th><th></th></tr></thead><tbody>' +
         (dVrst || '<tr><td colspan="4" class="u-sub">Ni podatkov.</td></tr>') + '</tbody>' +
         (dVrst ? '<tfoot><tr><td>Skupaj</td><td></td><td class="pris-ure">' + (dSek ? trajanjeH(dSek) : '—') + '</td><td></td></tr></tfoot>' : '') +
-        '</table>';
+        '</table></div>';
     }
     var blok2 = '<div class="pris-card"><div class="pris-h"><h3 class="sec-h">Evidenca</h3>' +
       '<button type="button" class="cgrp-btn ghost pris-izvoz">Izvozi ' + escape_(_mesecLabel(_prisDan.slice(0, 7))) + '</button></div>' +
@@ -1016,7 +1025,7 @@
         var c = prisChipiDan(moj.id, dayISO); tot += c.sek; if (c.sek) dni++;
         rows += '<tr' + (wd === 0 || wd === 6 ? ' class="pris-vikend"' : '') + '><td class="pris-dan-c">' + DNEVI_KR[wd] + ' ' + di + '.</td><td class="pris-pairs">' + c.html + '</td><td class="pris-ure">' + (c.sek ? trajanjeH(c.sek) : '—') + '</td></tr>';
       }
-      telo = '<table class="pris-tbl pris-tbl-oseba"><thead><tr><th>Dan</th><th>Prihod–odhod</th><th>Ur</th></tr></thead><tbody>' + rows + '</tbody><tfoot><tr><td>Skupaj (' + dni + ' dni)</td><td></td><td class="pris-ure">' + (tot ? trajanjeH(tot) : '—') + '</td></tr></tfoot></table>';
+      telo = '<div class="pris-scroll"><table class="pris-tbl pris-tbl-oseba"><thead><tr><th>Dan</th><th>Prihod–odhod</th><th>Ur</th></tr></thead><tbody>' + rows + '</tbody><tfoot><tr><td>Skupaj (' + dni + ' dni)</td><td></td><td class="pris-ure">' + (tot ? trajanjeH(tot) : '—') + '</td></tr></tfoot></table></div>';
     }
     box.innerHTML = '<div class="pris-card"><div class="pris-h"><h3 class="sec-h">Moje ure — ' + escape_(_mesecLabel(mk)) + '</h3></div>' +
       '<div class="pris-barvrsta"><div class="pris-datum">' +
@@ -1633,7 +1642,7 @@
       '<span class="pris-tabs"><button type="button" class="pris-tab' + (_ucDonutRange === 'mesec' ? ' on' : '') + '" data-ucrange="mesec">Mesec</button>' +
       '<button type="button" class="pris-tab' + (_ucDonutRange === '3m' ? ' on' : '') + '" data-ucrange="3m">3 meseci</button>' +
       '<button type="button" class="pris-tab' + (_ucDonutRange === 'vse' ? ' on' : '') + '" data-ucrange="vse">Vse</button></span></div></div>' +
-      '<div class="uc-d3-stage"><svg class="uc3d-svg" viewBox="0 0 ' + _UC3D.W + ' ' + _UC3D.H + '" preserveAspectRatio="xMidYMid meet"></svg></div></div>';
+      '<div class="uc-d3-stage"><svg class="uc3d-svg" viewBox="-64 0 ' + (_UC3D.W + 128) + ' ' + _UC3D.H + '" preserveAspectRatio="xMidYMid meet"></svg></div></div>';
     var cardBars = '<div class="uc-card"><h3 class="sec-h">kg zadnjih 7 dni</h3><div class="bars-row" style="margin-top:14px">' +
       d7.map(function (o) { return '<div class="bars-col"><span class="bars-val">' + (o.kg ? Math.round(o.kg) : '') + '</span><div class="bars-bar" style="height:' + Math.round(o.kg / naj * 84) + 'px"></div><span class="bars-lab">' + o.lab + '</span></div>'; }).join('') + '</div></div>';
     var cardProd = '<div class="uc-card uc-stat"><h3 class="sec-h">Skupna učinkovitost</h3><div class="uc-big">' + (kgh ? fmtStevilo1(kgh) : '—') + ' <span>kg/uro</span></div>' +
@@ -4451,19 +4460,11 @@
     if (!p) return;
     var url = new URL(APK_POT, location.href).href;
 
-    var skenerPanel =
-      '<div class="panel">' +
-        '<h3 class="sec-h">1. Aplikacija za skeniranje računov</h3>' +
-        '<p class="uvoz-nav">Fotografiraj fizični račun s telefonom, dodaj opombo — shrani se med <b>Dokumente</b>. Prijava je ista kot v portalu.</p>' +
-        '<p><a class="btn btn-narrow" href="skener/" target="_blank" rel="noopener">Odpri skener</a></p>' +
-        '<p class="u-sub" style="margin-top:12px">Namig: v skenerju tapni »Deli → Dodaj na začetni zaslon« za ikono kot prava aplikacija.</p>' +
-      '</div>';
-
-    var tabletPanel = '<div class="panel" id="apkTablet"><h3 class="sec-h">2. Aplikacija za tiskanje — tablica (Android)</h3><p class="u-sub">Preverjam …</p></div>';
+    var tabletPanel = '<div class="panel" id="apkTablet"><h3 class="sec-h">1. Aplikacija za tiskanje — tablica (Android)</h3><p class="u-sub">Preverjam …</p></div>';
 
     var telefonPanel =
       '<div class="panel">' +
-        '<h3 class="sec-h">3. Aplikacija za tiskanje — telefon (iPhone in Android)</h3>' +
+        '<h3 class="sec-h">2. Aplikacija za tiskanje — telefon (iPhone in Android)</h3>' +
         '<p class="uvoz-nav">Za vnos in tiskanje spremnih listov na telefonu. Odpre se v brskalniku; dodaj jo na začetni zaslon, da deluje kot prava aplikacija.</p>' +
         '<p><a class="btn btn-narrow" href="mobil/" target="_blank" rel="noopener">Odpri aplikacijo za telefon</a></p>' +
         '<div class="por"><div class="por-op">' +
@@ -4474,19 +4475,19 @@
 
     var webPanel =
       '<div class="panel">' +
-        '<h3 class="sec-h">4. Aplikacija za tiskanje — spletni pogled</h3>' +
+        '<h3 class="sec-h">3. Aplikacija za tiskanje — spletni pogled</h3>' +
         '<p class="uvoz-nav">Deluje v katerem koli brskalniku, brez nameščanja — priročno za računalnik ali hiter dostop.</p>' +
         '<p><a class="btn btn-narrow" href="tablica/" target="_blank" rel="noopener">Odpri spletni pogled</a></p>' +
       '</div>';
 
-    p.innerHTML = skenerPanel + tabletPanel + telefonPanel + webPanel;
+    p.innerHTML = tabletPanel + telefonPanel + webPanel;
 
     fetch(url, { method: 'HEAD' }).then(function (r) {
       if (!r.ok) throw new Error('ni ga');
       var mb = Number(r.headers.get('content-length') || 0) / 1048576;
       var t = document.getElementById('apkTablet');
       if (t) t.innerHTML =
-        '<h3 class="sec-h">2. Aplikacija za tiskanje — tablica (Android)</h3>' +
+        '<h3 class="sec-h">1. Aplikacija za tiskanje — tablica (Android)</h3>' +
         '<p class="uvoz-nav">Za vnos in tiskanje spremnih listov na tablici. <b>To stran odpri na tablici</b> in tapni gumb — Android bo vprašal za dovoljenje za namestitev, dovoli ga.</p>' +
         '<p><a class="btn btn-narrow" href="' + escape_(url) + '" download>Prenesi aplikacijo' +
         (mb ? ' (' + mb.toFixed(1) + ' MB)' : '') + '</a></p>' +
@@ -4494,7 +4495,7 @@
     }).catch(function () {
       var t = document.getElementById('apkTablet');
       if (t) t.innerHTML =
-        '<h3 class="sec-h">2. Aplikacija za tiskanje — tablica (Android)</h3>' +
+        '<h3 class="sec-h">1. Aplikacija za tiskanje — tablica (Android)</h3>' +
         '<div class="msg bad show">Namestitvenega paketa (<b>' + escape_(APK_POT) + '</b>) še ni na strežniku.</div>' +
         '<p class="u-sub" style="margin-top:12px">Medtem deluje spletni pogled (točka 4), ki ga ni treba nameščati.</p>';
     });

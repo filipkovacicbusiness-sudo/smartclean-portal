@@ -64,7 +64,7 @@ button{-webkit-tap-highlight-color:transparent;}
 .auth-foot{position:absolute;left:0;right:0;bottom:clamp(16px,3vw,26px);text-align:center;font-size:.82rem;color:var(--mid);text-decoration:none;}
 .auth-foot b{color:var(--wm-green);font-weight:600;}
 .auth-foot:hover b{text-decoration:underline;}
-#auth .profile-picker h1{margin-bottom:24px;}
+#auth .profile-picker h1{margin-bottom:22px;font-size:1.02rem;font-weight:500;letter-spacing:.01em;color:var(--mid);}
 /* prijava — sredinsko poravnana */
 #auth .profile-picker{text-align:center;position:relative;padding-bottom:52px;}
 #auth .profile-picker .eyebrow{color:var(--wm-green);}
@@ -561,18 +561,23 @@ body,.topbar,.side,.main,.panel,.row,.a-row,.arts,.a-det,.fak-card,.fak-tot,.sta
   transition:background-color .32s ease,border-color .32s ease,color .28s ease;}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;}}
 html.sc-notrans,html.sc-notrans *,html.sc-notrans *::before,html.sc-notrans *::after{transition:none!important;}
+/* Gladko pretapljanje ob preklopu teme (GPU, brez janka). */
+::view-transition-old(root),::view-transition-new(root){animation-duration:.34s;animation-timing-function:ease;mix-blend-mode:normal;}
 
 .side-sep{height:1px;background:var(--line);margin:14px 10px 10px;}
 /* Širok, centriran nalagalni trak (namesto »Nalagam«) */
-.sc-load{display:flex;align-items:center;justify-content:center;min-height:46vh;padding:24px 16px;animation:scfadein .18s ease;}
+@keyframes scLoadDelayed{from{opacity:0}to{opacity:1}}
+/* Spinner se pokaže šele, če nalaganje traja dlje kot ~0,28s — hitri (cache) prehodi ga sploh ne pokažejo. */
+.sc-load{display:flex;align-items:center;justify-content:center;min-height:46vh;padding:24px 16px;opacity:0;animation:scLoadDelayed .2s ease .28s both;}
 .sc-load-bar{width:min(440px,72%);height:5px;border-radius:5px;background:var(--line);overflow:hidden;position:relative;}
 .sc-load-bar::after{content:'';position:absolute;top:0;left:-40%;height:100%;width:40%;border-radius:5px;
   background:linear-gradient(90deg,transparent,var(--ink),transparent);animation:scload 1s cubic-bezier(.65,0,.35,1) infinite;}
 @keyframes scload{0%{left:-40%}100%{left:100%}}
 @keyframes scfadein{from{opacity:0}to{opacity:1}}
 /* Gladek prehod na razdelek ob menjavi */
-@keyframes secIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
-.sec.sec-anim{animation:secIn .2s ease;}
+@keyframes secIn{from{opacity:0;transform:translateX(-18px)}to{opacity:1;transform:none}}
+.sec.sec-anim{animation:secIn .22s cubic-bezier(.22,.61,.36,1);}
+@media (prefers-reduced-motion:reduce){.sec.sec-anim{animation:none;}}
 
 /* ══════════ FOOTER (vedno viden) ══════════ */
 .sc-foot{position:fixed;right:calc(16px + env(safe-area-inset-right));
@@ -1065,7 +1070,8 @@ html{-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent;}
 .scrim{top:calc(64px + env(safe-area-inset-top));}
 .auth{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);}
 @media(max-width:900px){
-  .side{top:calc(64px + env(safe-area-inset-top));padding-bottom:calc(24px + env(safe-area-inset-bottom));overflow-y:auto;}
+  .side{top:calc(64px + env(safe-area-inset-top));padding-bottom:calc(40px + env(safe-area-inset-bottom));overflow-y:auto;-webkit-overflow-scrolling:touch;}
+  .side-foot{padding-bottom:calc(16px + env(safe-area-inset-bottom));}
   .main{padding-left:calc(18px + env(safe-area-inset-left));padding-right:calc(18px + env(safe-area-inset-right));padding-bottom:calc(80px + env(safe-area-inset-bottom));}
 }
 
@@ -1221,7 +1227,7 @@ html[data-view="grid"] #cenikList .sc-isolate .cgrp:not(.open){max-width:var(--t
 .uc3d-lead{stroke:var(--mid);stroke-width:1;opacity:.55;}
 .uc3d-nm{fill:var(--ink);font-family:var(--sans);font-size:13px;font-weight:600;}
 .uc3d-pct{fill:var(--mid);font-family:var(--mono);font-size:12px;}
-@media(max-width:560px){.uc3d-nm{font-size:15px;}.uc3d-pct{font-size:14px;}}
+@media(max-width:560px){.uc3d-nm{font-size:13px;}.uc3d-pct{font-size:12px;}}
 .uc-card .sec-h{margin:0 0 6px;}
 .uc-donut-wrap{display:flex;gap:14px;align-items:center;flex-wrap:wrap;}
 .uc-donut{flex:0 0 auto;}
@@ -1246,6 +1252,7 @@ html[data-view="grid"] #cenikList .sc-isolate .cgrp:not(.open){max-width:var(--t
 .pris-badge.in{background:rgba(47,143,111,.16);color:var(--wm-green,#3f9f6f);}
 .pris-badge.out{background:var(--green-m);color:var(--mid);}
 .pris-hbtns{display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;}
+@media(max-width:560px){.pris-h{flex-direction:column;align-items:stretch;gap:10px;}.pris-hbtns{justify-content:flex-start;}.pris-h .uc-sort{width:100%;}}
 .pris-tabs{display:inline-flex;gap:4px;background:var(--green-m);border-radius:100px;padding:3px;}
 .pris-tab{border:none;background:none;color:var(--mid);font-size:.82rem;font-weight:600;padding:5px 14px;border-radius:100px;cursor:pointer;}
 .pris-tab.on{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12);}
@@ -1271,7 +1278,7 @@ html[data-view="grid"] #cenikList .sc-isolate .cgrp:not(.open){max-width:var(--t
 .pris-chip-x:hover{background:rgba(192,57,43,.12);color:#c0392b;}
 html[data-theme="dark"] .pris-chip-x:hover{background:rgba(255,138,122,.16);color:#ff8a7a;}
 .pris-ure{font-family:var(--mono);font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap;}
-.pris-tbl th:nth-child(2),.pris-tbl th:nth-child(3),.pris-tbl td:nth-child(2),.pris-tbl td:nth-child(3){text-align:right;}
+#sec-statistika .pris-tbl th:nth-child(2),#sec-statistika .pris-tbl th:nth-child(3),#sec-statistika .pris-tbl td:nth-child(2),#sec-statistika .pris-tbl td:nth-child(3){text-align:right;}
 .uc-eur{color:var(--mid);}
 .uc-sort{height:32px;padding:0 30px 0 12px;border:1px solid var(--line);border-radius:100px;background:var(--surface);color:var(--ink);font:inherit;font-size:.8rem;font-weight:600;cursor:pointer;
   -webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 11px center;}
@@ -1291,8 +1298,17 @@ html[data-theme="dark"] .pris-chip-x:hover{background:rgba(255,138,122,.16);colo
 .pris-r-cas>div{flex:1;min-width:0;}
 .pris-r-cas input{width:100%;}
 @media(max-width:600px){
-  .pris-emp{flex-wrap:wrap;}
-  .pris-tbl th:nth-child(2),.pris-tbl td:nth-child(2){display:none;}
+  .pris-emp{flex-direction:column;align-items:stretch;gap:9px;}
+  .pris-emp .pris-nm{white-space:normal;overflow:visible;text-overflow:clip;}
+  .pris-emp-act{display:grid;grid-template-columns:1fr 1fr;gap:6px;justify-content:stretch;}
+  .pris-emp-act .cgrp-btn{width:100%;text-align:center;padding:9px 8px;}
+  /* Prisotnost tabele: časi prihodov/odhodov ostanejo vidni; vodoravni scroll, imena v eni vrstici */
+  #sec-prisotnost .pris-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -4px;}
+  #sec-prisotnost .pris-tbl{min-width:420px;}
+  #sec-prisotnost .pris-tbl th{font-size:.64rem;padding:6px 6px;white-space:nowrap;}
+  #sec-prisotnost .pris-tbl td{padding:8px 6px;font-size:.82rem;}
+  #sec-prisotnost .pris-tbl td:first-child,#sec-prisotnost .pris-tbl th:first-child{white-space:nowrap;max-width:34vw;overflow:hidden;text-overflow:ellipsis;}
+  #sec-prisotnost .pris-pairs{white-space:nowrap;}
 }
 
 /* Mobilno: skrij vrstico z davčno št. in naslovom v okvirčku stranke */
@@ -1360,7 +1376,8 @@ html[data-theme="dark"] .pris-chip-x:hover{background:rgba(255,138,122,.16);colo
 .dok-tbtn svg{width:17px;height:17px;flex:0 0 auto;}
 /* Dokumenti — datotečni sistem (Finder/Raziskovalec) */
 .dok-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:2px 0 12px;}
-.dok-pot{display:flex;align-items:center;gap:2px;flex-wrap:wrap;font-size:.9rem;min-width:0;}
+.dok-pot{display:flex;align-items:center;gap:2px;flex-wrap:wrap;font-size:.9rem;min-width:0;flex:1 1 auto;}
+@media(max-width:560px){.head .filtri .dok-tbtn{width:100%;}}
 .dok-crumb{border:none;background:none;color:var(--mid);cursor:pointer;font-size:.9rem;font-weight:600;padding:4px 6px;border-radius:7px;}
 .dok-crumb:last-child{color:var(--ink);}
 .dok-crumb:hover{background:var(--green-m);color:var(--ink);}
