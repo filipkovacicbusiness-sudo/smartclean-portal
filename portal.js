@@ -29,7 +29,16 @@
   function uporabiTemo() {
     const p = temaPref();
     const eff = p === 'auto' ? (autoTemna() ? 'dark' : 'light') : (p === 'light' ? 'light' : 'dark');
-    document.documentElement.dataset.theme = eff;
+    var de = document.documentElement;
+    if (de.dataset.theme && de.dataset.theme !== eff) {
+      // preklop teme naj bo hipen (brez zatikajočega prehoda čez vse elemente)
+      de.classList.add('sc-notrans');
+      de.dataset.theme = eff;
+      void de.offsetWidth;
+      requestAnimationFrame(function () { requestAnimationFrame(function () { de.classList.remove('sc-notrans'); }); });
+    } else {
+      de.dataset.theme = eff;
+    }
   }
   function oznaciTemo() {
     const p = temaPref();
@@ -289,7 +298,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.7 · BETA';
+  var APP_VERZIJA = '4.8 · BETA';
   var NALAGANJE = '<div class="sc-load"><div class="sc-load-bar"></div></div>';
   var _reloadVal = null;   // vrednost 'reload' ob nalaganju (za potisnjeno osvežitev)
   const JE_LASTNIK = () => (JAZMAIL || '').trim().toLowerCase() === 'filip@eflitte.si';
@@ -1428,6 +1437,7 @@
 
   /* ══════════ UČINKOVITOST (kilaža + produktivnost) ══════════ */
   var UCEN_LISTI = null, UCEN_DOG = null, _ucDan = null, _ucMesec = false;
+  var _ucEur = {}, _ucEurTot = null, _ucEurKljuc = null, _ucEurLoading = false, _ucSort = 'kg_desc';
   var UC_PAL = ['#4e79a7', '#59a14f', '#f28e2b', '#e15759', '#b07aa1', '#76b7b2', '#edc948'];
   var _ucDonutRange = '3m', _uc3dAnim = false, _kgVseMap = null, _uc3dRAF = null, _ucDonutMonth = null;
 
@@ -1631,15 +1641,32 @@
     var top = cardDonut + '<div class="uc-top uc-top2">' + cardBars + cardProd + '</div>';
 
     var kljuc = _ucMesec ? _ucDan.slice(0, 7) : _ucDan;
+    var ekljuc = (_ucMesec ? 'M' : 'D') + kljuc;
+    var evOd, evDo;
+    if (_ucMesec) { evOd = kljuc + '-01'; evDo = kljuc + '-' + ('0' + dniVMesecu(kljuc)).slice(-2); }
+    else { evOd = evDo = kljuc; }
+    var eurReady = _ucEurKljuc === ekljuc;
+    var eurMap = eurReady ? _ucEur : {};
     var mapK = ucKgPoStranki(kljuc);
-    var arr = Object.keys(mapK).map(function (id) { return { ime: ORGIME[id] || '—', kg: mapK[id] }; }).filter(function (x) { return x.kg > 0; }).sort(function (a, b) { return b.kg - a.kg; });
+    var arr = Object.keys(mapK).map(function (id) { return { ime: ORGIME[id] || '—', kg: mapK[id], eur: (eurMap[id] != null ? eurMap[id] : null) }; }).filter(function (x) { return x.kg > 0; });
+    arr.sort(function (a, b) {
+      if (_ucSort === 'kg_asc') return a.kg - b.kg;
+      if (_ucSort === 'eur_asc' || _ucSort === 'eur_desc') { var ea = a.eur == null ? -1 : a.eur, eb = b.eur == null ? -1 : b.eur; return _ucSort === 'eur_asc' ? ea - eb : eb - ea; }
+      return b.kg - a.kg;
+    });
     var kgSkup = arr.reduce(function (s, x) { return s + x.kg; }, 0);
-    var rows = arr.map(function (x) { return '<tr><td>' + escape_(x.ime) + '</td><td class="pris-ure">' + fmtKg(x.kg) + '</td></tr>'; }).join('');
-    var tbl = '<table class="pris-tbl"><thead><tr><th>Stranka</th><th>Kilaža</th></tr></thead><tbody>' +
-      (rows || '<tr><td colspan="2" class="u-sub">Ni podatkov.</td></tr>') + '</tbody>' +
-      (rows ? '<tfoot><tr><td>Skupaj</td><td class="pris-ure">' + fmtKg(kgSkup) + '</td></tr></tfoot>' : '') + '</table>';
+    function eurCela(v) { return !eurReady ? '<span class="u-sub">…</span>' : (v != null ? cenaFmt(v) : '<span class="u-sub">—</span>'); }
+    var rows = arr.map(function (x) { return '<tr><td>' + escape_(x.ime) + '</td><td class="pris-ure">' + fmtKg(x.kg) + '</td><td class="pris-ure uc-eur">' + eurCela(x.eur) + '</td></tr>'; }).join('');
+    var tbl = '<table class="pris-tbl"><thead><tr><th>Stranka</th><th>Kilaža</th><th>€/kg</th></tr></thead><tbody>' +
+      (rows || '<tr><td colspan="3" class="u-sub">Ni podatkov.</td></tr>') + '</tbody>' +
+      (rows ? '<tfoot><tr><td>Skupaj</td><td class="pris-ure">' + fmtKg(kgSkup) + '</td><td class="pris-ure uc-eur">' + eurCela(eurReady ? _ucEurTot : null) + '</td></tr></tfoot>' : '') + '</table>';
+    var sortSel = '<select class="uc-sort" aria-label="Razvrsti">' +
+      '<option value="kg_desc"' + (_ucSort === 'kg_desc' ? ' selected' : '') + '>Kilaža ↓</option>' +
+      '<option value="kg_asc"' + (_ucSort === 'kg_asc' ? ' selected' : '') + '>Kilaža ↑</option>' +
+      '<option value="eur_desc"' + (_ucSort === 'eur_desc' ? ' selected' : '') + '>€/kg ↓</option>' +
+      '<option value="eur_asc"' + (_ucSort === 'eur_asc' ? ' selected' : '') + '>€/kg ↑</option></select>';
     var ev = '<div class="pris-card"><div class="pris-h"><h3 class="sec-h">Evidenca kg</h3>' +
-      '<span class="pris-hbtns"><button type="button" class="cgrp-btn ghost uc-izvoz">Izvozi (Excel)</button>' +
+      '<span class="pris-hbtns">' + sortSel + '<button type="button" class="cgrp-btn ghost uc-izvoz">Izvozi (Excel)</button>' +
       '<span class="pris-tabs"><button type="button" class="pris-tab' + (!_ucMesec ? ' on' : '') + '" data-ucobd="dan">Dan</button>' +
       '<button type="button" class="pris-tab' + (_ucMesec ? ' on' : '') + '" data-ucobd="mesec">Mesec</button></span></span></div>' +
       '<div class="pris-datum"><input type="' + (_ucMesec ? 'month' : 'date') + '" id="ucDatum" value="' + (_ucMesec ? _ucDan.slice(0, 7) : _ucDan) + '"></div>' + tbl + '</div>';
@@ -1652,7 +1679,24 @@
     var dat = $('ucDatum'); if (dat) dat.addEventListener('change', function () { var v = this.value || danes10(); if (v.length === 7) v += '-01'; _ucDan = v; ucRender(); });
     box.querySelectorAll('[data-ucobd]').forEach(function (b) { b.addEventListener('click', function () { _ucMesec = (b.dataset.ucobd === 'mesec'); ucRender(); }); });
     var ib = box.querySelector('.uc-izvoz'); if (ib) ib.addEventListener('click', ucIzvoz);
+    var _us = box.querySelector('.uc-sort'); if (_us) _us.addEventListener('change', function () { _ucSort = this.value; ucRender(); });
+    if (!eurReady && !_ucEurLoading) ucNaloziPrihodek(evOd, evDo, ekljuc);
     requestAnimationFrame(function () { window.scrollTo(0, _sy); });
+  }
+  async function ucNaloziPrihodek(od, doo, ekljuc) {
+    _ucEurLoading = true;
+    var m = {}, tn = 0, tk = 0;
+    try {
+      var res = await fakZberi(od, doo, null);
+      if (res && res.skupine) res.skupine.forEach(function (g) {
+        if (g.kg > 0 && g.neto != null) m[g.org_id] = g.neto / g.kg;
+        tn += g.neto || 0; tk += g.kg || 0;
+      });
+    } catch (e) {}
+    _ucEur = m; _ucEurTot = tk > 0 ? tn / tk : null; _ucEurKljuc = ekljuc;
+    _ucEurLoading = false;
+    var box = $('ucList'), sec = $('sec-statistika');
+    if (box && sec && !sec.classList.contains('hidden')) { _uc3dAnim = false; ucRender(); }
   }
   function ucIzvoz() {
     var kljuc = _ucMesec ? _ucDan.slice(0, 7) : _ucDan;

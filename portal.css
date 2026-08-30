@@ -55,8 +55,8 @@ button{-webkit-tap-highlight-color:transparent;}
 .auth-top .wordmark{font-size:1.55rem;line-height:1.2;color:var(--wm-ink);}
 .auth-top .wordmark span{color:var(--wm-green);}
 /* hero + prijava skupaj, navpično na sredini */
-.auth-main{flex:1;display:grid;grid-template-rows:1fr 1fr;justify-items:center;gap:0;padding:24px clamp(20px,4vw,44px) clamp(56px,8vh,80px);overflow:auto;}
-.auth-hero{text-align:center;align-self:end;padding-bottom:clamp(30px,6vh,64px);}
+.auth-main{flex:1;display:grid;grid-template-rows:0.8fr 1fr;justify-items:center;gap:0;padding:24px clamp(20px,4vw,44px) clamp(40px,6vh,64px);overflow:auto;}
+.auth-hero{text-align:center;align-self:end;padding-bottom:clamp(26px,5vh,52px);}
 .auth-slot{align-self:start;width:100%;display:flex;flex-direction:column;align-items:center;}
 .auth-claim{font-family:var(--serif);font-size:clamp(2rem,5vw,3.4rem);line-height:1.08;font-weight:700;color:var(--ink);}
 .auth-claim em{font-style:normal;color:var(--wm-green);}
@@ -130,8 +130,8 @@ input:focus,.field textarea:focus{border-color:var(--green-l);background:var(--s
 
 main{max-width:1100px;margin:0 auto;padding:34px 24px 80px;width:100%;}
 .head{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;
-  flex-wrap:wrap;margin-bottom:22px;}
-h2{font-family:var(--serif);font-size:1.9rem;font-weight:700;line-height:1.15;}
+  flex-wrap:wrap;margin-bottom:26px;}
+h2{font-family:var(--serif);font-size:2.15rem;font-weight:450;letter-spacing:-.028em;line-height:1.03;}
 .count{color:var(--mid);font-size:.86rem;margin-top:4px;}
 .search{max-width:260px;}
 
@@ -557,6 +557,7 @@ body,.topbar,.side,.main,.panel,.row,.a-row,.arts,.a-det,.fak-card,.fak-tot,.sta
 .rows .empty,.seg,.seg-b,.tema-b,input,select,textarea,.btn,.btn-narrow,.fak-chip,.chip{
   transition:background-color .32s ease,border-color .32s ease,color .28s ease;}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;}}
+html.sc-notrans,html.sc-notrans *,html.sc-notrans *::before,html.sc-notrans *::after{transition:none!important;}
 
 .side-sep{height:1px;background:var(--line);margin:14px 10px 10px;}
 /* Širok, centriran nalagalni trak (namesto »Nalagam«) */
@@ -1017,8 +1018,8 @@ html[data-theme="dark"] .art-hidden-tag{background:rgba(255,138,122,.14);color:#
 .fx-cli input,.fx-all input{width:16px;height:16px;accent-color:var(--ink);cursor:pointer;flex:0 0 auto;margin:0;}
 .fx-msg{margin:0 0 8px;}
 .fak-body-acts{margin-top:14px;display:flex;justify-content:flex-end;}
-.fak-body-acts .btn-mini{padding:9px 17px;border:1px solid var(--line);border-radius:100px;background:var(--surface);color:var(--ink);font-size:.85rem;font-weight:600;line-height:1;cursor:pointer;white-space:nowrap;transition:border-color .15s,background .15s;}
-.fak-body-acts .btn-mini:hover{border-color:var(--ink);background:var(--green-m);}
+.fak-body-acts .btn-mini{padding:10px 20px;border:none;border-radius:100px;background:var(--green);color:var(--btn-ink);font-size:.85rem;font-weight:600;line-height:1;cursor:pointer;white-space:nowrap;transition:background .15s,opacity .15s;}
+.fak-body-acts .btn-mini:hover{background:var(--green-l);}
 /* Predogled dokumenta (skupni pop-up: scrollable predogled + natisni/shrani) */
 .doc-modal{max-width:880px;width:100%;max-height:92vh;display:flex;flex-direction:column;padding:16px 16px 14px;}
 .doc-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 12px;}
@@ -1267,6 +1268,11 @@ html[data-view="grid"] #cenikList .sc-isolate .cgrp:not(.open){max-width:var(--t
 .pris-chip-x:hover{background:rgba(192,57,43,.12);color:#c0392b;}
 html[data-theme="dark"] .pris-chip-x:hover{background:rgba(255,138,122,.16);color:#ff8a7a;}
 .pris-ure{font-family:var(--mono);font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.pris-tbl th:nth-child(2),.pris-tbl th:nth-child(3),.pris-tbl td:nth-child(2),.pris-tbl td:nth-child(3){text-align:right;}
+.uc-eur{color:var(--mid);}
+.uc-sort{height:32px;padding:0 30px 0 12px;border:1px solid var(--line);border-radius:100px;background:var(--surface);color:var(--ink);font:inherit;font-size:.8rem;font-weight:600;cursor:pointer;
+  -webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 11px center;}
+.uc-sort:hover{border-color:var(--mid);}
 .pris-act{text-align:right;white-space:nowrap;}
 .pris-emp{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--line);}
 .pris-emp:last-of-type{border-bottom:none;}
