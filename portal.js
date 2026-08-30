@@ -307,7 +307,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.11 · BETA';
+  var APP_VERZIJA = '4.12 · BETA';
   var NALAGANJE = '<div class="sc-load"><div class="sc-load-bar"></div></div>';
   var _reloadVal = null;   // vrednost 'reload' ob nalaganju (za potisnjeno osvežitev)
   const JE_LASTNIK = () => (JAZMAIL || '').trim().toLowerCase() === 'filip@eflitte.si';
@@ -600,12 +600,14 @@
     $('scrim').classList.remove('on');
     $('burger').classList.remove('open');
     $('burger').setAttribute('aria-expanded', 'false');
+    document.body.classList.remove('meni-odprt');
   }
   $('burger').addEventListener('click', () => {
     const on = $('side').classList.toggle('on');
     $('scrim').classList.toggle('on', on);
     $('burger').classList.toggle('open', on);
     $('burger').setAttribute('aria-expanded', on ? 'true' : 'false');
+    document.body.classList.toggle('meni-odprt', on);
   });
   $('scrim').addEventListener('click', zapriMeni);
 
@@ -4521,6 +4523,13 @@
   function dokNazaj() { if (_dokHi > 0) { _dokHi--; _dokPot = _dokHist[_dokHi]; if ($('dokIsci')) $('dokIsci').value = ''; dokRisi(); } }
   function dokNaprej() { if (_dokHi < _dokHist.length - 1) { _dokHi++; _dokPot = _dokHist[_dokHi]; if ($('dokIsci')) $('dokIsci').value = ''; dokRisi(); } }
   function dokVelikost(b) { if (b == null || b === '') return ''; b = Number(b) || 0; if (b < 1024) return b + ' B'; if (b < 1048576) return Math.round(b / 1024) + ' KB'; return (Math.round(b / 104857.6) / 10) + ' MB'; }
+  // Supabase shramba ne dovoli šumnikov/posebnih znakov v ključu → pretvori v ASCII.
+  function dokTranslit(s) { return String(s == null ? '' : s).normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D'); }
+  function dokVarnoIme(s) { var v = dokTranslit(s).replace(/[^\w.\-]+/g, '_').replace(/_+/g, '_').replace(/^_+|_+$/g, ''); return v || 'datoteka'; }
+  function dokStoragePot(cilj, ime) {
+    var seg = String(cilj || '').split('/').map(function (x) { return dokVarnoIme(x); }).filter(Boolean);
+    return (seg.length ? seg.join('/') + '/' : '') + Date.now() + '_' + dokVarnoIme(ime);
+  }
   function dokImeRow(r) { return r.ime || r.opomba || (r.storage_path ? r.storage_path.split('/').pop().replace(/^\d+_/, '') : 'datoteka'); }
   function dokPripona(r) { var n = dokImeRow(r); var m = /\.([a-z0-9]+)$/i.exec(n); return (m ? m[1] : '').toLowerCase(); }
   function dokVrsta(r) {
@@ -4755,8 +4764,7 @@
   }
   async function dokKopirajDatoteko(r, cilj, novoIme) {
     try {
-      var varno = (novoIme || 'kopija').replace(/[^\w.\-]+/g, '_');
-      var novaPot = (cilj ? cilj + '/' : '') + Date.now() + '_' + varno;
+      var novaPot = dokStoragePot(cilj, novoIme || 'kopija');
       var cp = await sb.storage.from('dokumenti').copy(r.storage_path, novaPot);
       if (cp.error) throw cp.error;
       var ins = await sb.from('documents').insert({ mapa: cilj, ime: novoIme, storage_path: novaPot, mime: r.mime || '', velikost: r.velikost || null, je_mapa: false }).select('id,mapa,ime,storage_path,mime,velikost,je_mapa,created_at').single();
@@ -4894,8 +4902,7 @@
   async function dokShraniBlob(blob, ime, cilj, mime) {
     var koncno = ime;
     if ((DOKUMENTI || []).some(function (x) { return !x.je_mapa && (x.mapa || '') === cilj && dokImeRow(x).toLowerCase() === koncno.toLowerCase(); })) koncno = dokUnikatnoImeV(koncno, cilj, false);
-    var varno = koncno.replace(/[^\w.\-]+/g, '_');
-    var pot = (cilj ? cilj + '/' : '') + Date.now() + '_' + varno;
+    var pot = dokStoragePot(cilj, koncno);
     var up = await sb.storage.from('dokumenti').upload(pot, blob, { contentType: mime || 'application/octet-stream', cacheControl: '3600', upsert: false });
     if (up.error) throw up.error;
     try { var su = await sb.storage.from('dokumenti').createSignedUrl(pot, 3600); if (su && su.data) DOK_URL[pot] = su.data.signedUrl; } catch (e) {}
@@ -4979,8 +4986,7 @@
       }
       if (pod) pod.textContent = 'Nalagam ' + (i + 1) + '/' + files.length + ' …';
       try {
-        var varno = ime.replace(/[^\w.\-]+/g, '_');
-        var pot = (_dokPot ? _dokPot + '/' : '') + Date.now() + '_' + varno;
+        var pot = dokStoragePot(_dokPot, ime);
         var up = await sb.storage.from('dokumenti').upload(pot, upBlob, { contentType: upMime, cacheControl: '3600', upsert: false });
         if (up.error) throw up.error;
         try { var su = await sb.storage.from('dokumenti').createSignedUrl(pot, 3600); if (su && su.data) DOK_URL[pot] = su.data.signedUrl; } catch (e) {}
