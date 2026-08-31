@@ -1586,97 +1586,116 @@
     if (ostalo > 0) segs.push({ ime: 'Ostalo', kg: ostalo, col: '#bab0ac' });
     return { segs: segs, total: total };
   }
-  var _UC3D = { W: 580, H: 440, cx: 290, cy: 210, R: 116, r: 64, kyEnd: 0.62, depth: 32 };
+  var _UC3D = { W: 580, H: 460, cx: 290, cy: 210, R: 150, r: 86, depth: 34 };
+  var _UC3D_NEUTRAL = [91, 101, 112];               // #5b6570 — siva za začetni obroč
   function _uc3dPt(rad, ang, ky, cx, cy) { return [cx + rad * Math.cos(ang), cy + rad * ky * Math.sin(ang)]; }
   function _f2(a) { return a[0].toFixed(1) + ' ' + a[1].toFixed(1); }
+  function _uc3dHx(hex) { var h = hex.replace('#', ''); return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)]; }
+  function _uc3dScale(rgb, f) { return 'rgb(' + Math.round(rgb[0] * f) + ',' + Math.round(rgb[1] * f) + ',' + Math.round(rgb[2] * f) + ')'; }
+  function _uc3dBlend(c1, c2, t) { return [c1[0] + (c2[0] - c1[0]) * t, c1[1] + (c2[1] - c1[1]) * t, c1[2] + (c2[2] - c1[2]) * t]; }
+  function _uc3dEio(x) { x = Math.max(0, Math.min(1, x)); return x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2; }
+  function _uc3dEoc(x) { x = Math.max(0, Math.min(1, x)); return 1 - Math.pow(1 - x, 3); }
+  function _uc3dSub(p, a, b) { return Math.max(0, Math.min(1, (p - a) / (b - a))); }
+  /* progres 0..1 → parametri koreografije: krog → razdelitev → barvanje+napisi → nagib v 3D */
+  function _uc3dFrame(e) {
+    var pSplit = _uc3dEio(_uc3dSub(e, 0.18, 0.44));
+    var pColor = _uc3dEoc(_uc3dSub(e, 0.38, 0.68));
+    var pTilt = _uc3dEio(_uc3dSub(e, 0.60, 1.0));
+    return { gap: 0.055 * pSplit, cmix: pColor, ky: 1 - (1 - 0.58) * pTilt, depth: _UC3D.depth * pTilt, labo: pColor, rot: pTilt * 0.10 };
+  }
   function uc3dSvgBuild(segs, total, e) {
+    var P = _uc3dFrame(e);
     var G = _UC3D, cx = G.cx, cy = G.cy, R = G.R, r = G.r;
-    var ky = 1 - (1 - G.kyEnd) * e;                 // se »uleže« iz ploskega v 3D
-    var depth = G.depth * e;                          // debelina zraste
-    var spin = (1 - e) * 0.6;                          // rahel zavrtljaj ob koncu
-    var scale = 0.92 + 0.08 * e;
-    var labelA = Math.max(0, Math.min(1, (e - 0.62) / 0.38));
-    // kumulativni koti (začnemo na vrhu, -PI/2)
-    var start = -Math.PI / 2 + spin;
-    var arr = [], a = start;
+    var ky = P.ky, depth = P.depth, gap = P.gap, cmix = P.cmix, labo = P.labo, rot = P.rot || 0;
+    var start = -Math.PI / 2 + rot, arr = [], a = start;
     segs.forEach(function (s) { var ang = s.kg / total * Math.PI * 2; arr.push({ s: s, a0: a, a1: a + ang, mid: a + ang / 2 }); a += ang; });
-    var POLN = Math.PI * 1.999;   // ~360° → polni krog (lok od-do iste točke ne izriše nič)
-    function sector(a0, a1, dy, col) {
-      if (a1 - a0 > POLN) {       // polni obroč (annulus) prek dveh 180° lokov
-        var am = a0 + Math.PI;
-        var o0 = _uc3dPt(R, a0, ky, cx, cy + dy), om = _uc3dPt(R, am, ky, cx, cy + dy), o1 = _uc3dPt(R, a1, ky, cx, cy + dy);
-        var i1 = _uc3dPt(r, a1, ky, cx, cy + dy), im = _uc3dPt(r, am, ky, cx, cy + dy), i0 = _uc3dPt(r, a0, ky, cx, cy + dy);
-        return '<path d="M' + _f2(o0) + ' A' + R + ' ' + (R * ky).toFixed(1) + ' 0 0 1 ' + _f2(om) + ' A' + R + ' ' + (R * ky).toFixed(1) + ' 0 0 1 ' + _f2(o1) +
-          ' L' + _f2(i1) + ' A' + r + ' ' + (r * ky).toFixed(1) + ' 0 0 0 ' + _f2(im) + ' A' + r + ' ' + (r * ky).toFixed(1) + ' 0 0 0 ' + _f2(i0) + ' Z" fill="' + col + '"/>';
-      }
+    // vsak del skrčimo za gap/2 na vsaki strani (nikoli se ne obrne)
+    function edges(o) { var g = Math.min(gap, (o.a1 - o.a0) * 0.4); return [o.a0 + g / 2, o.a1 - g / 2]; }
+    function topFace(a0, a1, col) {
       var large = (a1 - a0) > Math.PI ? 1 : 0;
-      var o0 = _uc3dPt(R, a0, ky, cx, cy + dy), o1 = _uc3dPt(R, a1, ky, cx, cy + dy);
-      var i1 = _uc3dPt(r, a1, ky, cx, cy + dy), i0 = _uc3dPt(r, a0, ky, cx, cy + dy);
+      var o0 = _uc3dPt(R, a0, ky, cx, cy), o1 = _uc3dPt(R, a1, ky, cx, cy), i1 = _uc3dPt(r, a1, ky, cx, cy), i0 = _uc3dPt(r, a0, ky, cx, cy);
       return '<path d="M' + _f2(o0) + ' A' + R + ' ' + (R * ky).toFixed(1) + ' 0 ' + large + ' 1 ' + _f2(o1) +
         ' L' + _f2(i1) + ' A' + r + ' ' + (r * ky).toFixed(1) + ' 0 ' + large + ' 0 ' + _f2(i0) + ' Z" fill="' + col + '"/>';
     }
-    function wall(a0, a1, col) {
-      if (a1 - a0 > POLN) {       // polni zunanji plašč prek dveh 180° lokov
-        var am = a0 + Math.PI;
-        var o0 = _uc3dPt(R, a0, ky, cx, cy), om = _uc3dPt(R, am, ky, cx, cy), o1 = _uc3dPt(R, a1, ky, cx, cy);
-        var b0 = [o0[0], o0[1] + depth], bm = [om[0], om[1] + depth], b1 = [o1[0], o1[1] + depth];
-        return '<path d="M' + _f2(o0) + ' A' + R + ' ' + (R * ky).toFixed(1) + ' 0 0 1 ' + _f2(om) + ' A' + R + ' ' + (R * ky).toFixed(1) + ' 0 0 1 ' + _f2(o1) +
-          ' L' + _f2(b1) + ' A' + R + ' ' + (R * ky).toFixed(1) + ' 0 0 0 ' + _f2(bm) + ' A' + R + ' ' + (R * ky).toFixed(1) + ' 0 0 0 ' + _f2(b0) + ' Z" fill="' + col + '"/>';
-      }
+    function outerWall(a0, a1, col) {
       var large = (a1 - a0) > Math.PI ? 1 : 0;
-      var o0 = _uc3dPt(R, a0, ky, cx, cy), o1 = _uc3dPt(R, a1, ky, cx, cy);
-      var b1 = [o1[0], o1[1] + depth], b0 = [o0[0], o0[1] + depth];
+      var o0 = _uc3dPt(R, a0, ky, cx, cy), o1 = _uc3dPt(R, a1, ky, cx, cy), b1 = [o1[0], o1[1] + depth], b0 = [o0[0], o0[1] + depth];
       return '<path d="M' + _f2(o0) + ' A' + R + ' ' + (R * ky).toFixed(1) + ' 0 ' + large + ' 1 ' + _f2(o1) +
         ' L' + _f2(b1) + ' A' + R + ' ' + (R * ky).toFixed(1) + ' 0 ' + large + ' 0 ' + _f2(b0) + ' Z" fill="' + col + '"/>';
     }
-    // Za risanje polni krog razdelimo na dve polovici — da je vsak bok (stena)
-    // pravilno v ospredju/ozadju in animacija ne »skače«. Napisi ostanejo enkratni (iz arr).
-    var arrDraw = [];
-    arr.forEach(function (o) {
-      if (o.a1 - o.a0 > POLN) {
-        var amid = o.a0 + Math.PI;
-        arrDraw.push({ s: o.s, a0: o.a0, a1: amid, mid: o.a0 + Math.PI / 2 });
-        arrDraw.push({ s: o.s, a0: amid, a1: o.a1, mid: amid + Math.PI / 2 });
-      } else arrDraw.push(o);
-    });
-    var back = '', front = '', tops = '';
-    arrDraw.forEach(function (o) {
-      var w = wall(o.a0, o.a1, _mixHex(o.s.col, 0.6));
-      if (Math.sin(o.mid) > 0) front += w; else back += w;
-      tops += sector(o.a0, o.a1, 0, o.s.col);
+    function innerWall(a0, a1, col) {
+      var large = (a1 - a0) > Math.PI ? 1 : 0;
+      var i0 = _uc3dPt(r, a0, ky, cx, cy), i1 = _uc3dPt(r, a1, ky, cx, cy), b1 = [i1[0], i1[1] + depth], b0 = [i0[0], i0[1] + depth];
+      return '<path d="M' + _f2(i0) + ' A' + r + ' ' + (r * ky).toFixed(1) + ' 0 ' + large + ' 1 ' + _f2(i1) +
+        ' L' + _f2(b1) + ' A' + r + ' ' + (r * ky).toFixed(1) + ' 0 ' + large + ' 0 ' + _f2(b0) + ' Z" fill="' + col + '"/>';
+    }
+    function radialFace(ang, col) {
+      var o = _uc3dPt(R, ang, ky, cx, cy), i = _uc3dPt(r, ang, ky, cx, cy), ob = [o[0], o[1] + depth], ib = [i[0], i[1] + depth];
+      return '<path d="M' + _f2(o) + ' L' + _f2(i) + ' L' + _f2(ib) + ' L' + _f2(ob) + ' Z" fill="' + col + '"/>';
+    }
+    // slikarjev algoritem: od zadaj naprej po sin(sredina)
+    var order = arr.map(function (o, i) { return { o: o, i: i }; }).sort(function (A, B) { return Math.sin(A.o.mid) - Math.sin(B.o.mid); });
+    var segOut = [];
+    order.forEach(function (rec) {
+      var o = rec.o, e2 = edges(o), a0 = e2[0], a1 = e2[1];
+      var base = _uc3dBlend(_UC3D_NEUTRAL, _uc3dHx(o.s.col), cmix);
+      var top = _uc3dScale(base, 1), wallC = _uc3dScale(base, 0.62), sideC = _uc3dScale(base, 0.5);
+      var g = '';
+      if (depth > 0.5) { g += innerWall(a0, a1, wallC) + radialFace(a0, sideC) + radialFace(a1, sideC) + outerWall(a0, a1, wallC); }
+      g += topFace(a0, a1, top);
+      segOut.push('<g class="uc3d-seg" data-i="' + rec.i + '">' + g + '</g>');
     });
     // napisi na črtah (leader lines) — levo/desno, brez prekrivanja
     var labels = '';
-    if (labelA > 0.01) {
+    if (labo > 0.01) {
       var right = [], left = [];
-      arr.forEach(function (o) {
-        var p = _uc3dPt(R, o.mid, ky, cx, cy);
-        var e1 = _uc3dPt(R + 16, o.mid, ky, cx, cy);
-        var desno = Math.cos(o.mid) >= 0;
-        (desno ? right : left).push({ o: o, p: p, e1: e1, y: e1[1] });
+      arr.forEach(function (o, i) {
+        var mid = (edges(o)[0] + edges(o)[1]) / 2;
+        var p = _uc3dPt(R, mid, ky, cx, cy), e1 = _uc3dPt(R + 18, mid, ky, cx, cy);
+        var desno = Math.cos(mid) >= 0;
+        (desno ? right : left).push({ o: o, i: i, p: p, e1: e1, y: e1[1] });
       });
       function razporedi(list, xEdge, desno) {
         list.sort(function (a, b) { return a.y - b.y; });
-        var minGap = 40, out = '';
+        var minGap = 44;
         for (var i = 1; i < list.length; i++) if (list[i].y - list[i - 1].y < minGap) list[i].y = list[i - 1].y + minGap;
-        // znotraj okvira
-        var over = list.length ? (list[list.length - 1].y - (G.H - 20)) : 0;
+        var over = list.length ? (list[list.length - 1].y - (G.H - 16)) : 0;
         if (over > 0) list.forEach(function (it) { it.y -= over; });
+        var out = '';
         list.forEach(function (it) {
-          var yy = Math.max(22, it.y);
-          var pct = Math.round(it.o.s.kg / total * 100);
-          var tx = desno ? xEdge : xEdge;
-          out += '<polyline points="' + it.p[0].toFixed(1) + ',' + it.p[1].toFixed(1) + ' ' + it.e1[0].toFixed(1) + ',' + it.e1[1].toFixed(1) + ' ' + (desno ? (xEdge - 10) : (xEdge + 10)).toFixed(1) + ',' + yy.toFixed(1) + ' ' + tx.toFixed(1) + ',' + yy.toFixed(1) + '" fill="none" class="uc3d-lead"/>';
-          out += '<circle cx="' + it.p[0].toFixed(1) + '" cy="' + it.p[1].toFixed(1) + '" r="2.4" fill="' + it.o.s.col + '"/>';
+          var yy = Math.max(24, it.y), pct = Math.round(it.o.s.kg / total * 100);
+          out += '<g class="uc3d-lab" data-i="' + it.i + '">';
+          out += '<polyline class="uc3d-lead" points="' + it.p[0].toFixed(1) + ',' + it.p[1].toFixed(1) + ' ' + it.e1[0].toFixed(1) + ',' + it.e1[1].toFixed(1) + ' ' + (desno ? (xEdge - 10) : (xEdge + 10)).toFixed(1) + ',' + yy.toFixed(1) + ' ' + xEdge.toFixed(1) + ',' + yy.toFixed(1) + '"/>';
+          out += '<circle cx="' + it.p[0].toFixed(1) + '" cy="' + it.p[1].toFixed(1) + '" r="2.6" fill="' + it.o.s.col + '"/>';
           out += '<text x="' + (desno ? (xEdge + 6) : (xEdge - 6)).toFixed(1) + '" y="' + (yy - 4).toFixed(1) + '" text-anchor="' + (desno ? 'start' : 'end') + '" class="uc3d-nm">' + escape_(it.o.s.ime) + '</text>';
-          out += '<text x="' + (desno ? (xEdge + 6) : (xEdge - 6)).toFixed(1) + '" y="' + (yy + 11).toFixed(1) + '" text-anchor="' + (desno ? 'start' : 'end') + '" class="uc3d-pct">' + pct + ' %</text>';
+          out += '<text x="' + (desno ? (xEdge + 6) : (xEdge - 6)).toFixed(1) + '" y="' + (yy + 12).toFixed(1) + '" text-anchor="' + (desno ? 'start' : 'end') + '" class="uc3d-pct">' + pct + ' %</text>';
+          out += '</g>';
         });
         return out;
       }
-      labels = '<g style="opacity:' + labelA.toFixed(2) + '">' + razporedi(right, G.W - 96, true) + razporedi(left, 96, false) + '</g>';
+      labels = '<g style="opacity:' + labo.toFixed(2) + '">' + razporedi(right, G.W - 70, true) + razporedi(left, 70, false) + '</g>';
     }
-    var inner = '<g transform="translate(' + cx + ' ' + cy + ') scale(' + scale.toFixed(3) + ') translate(' + (-cx) + ' ' + (-cy) + ')" style="opacity:' + Math.min(1, e * 1.6).toFixed(2) + '">' + back + front + tops + '</g>' + labels;
-    return inner;
+    return segOut.join('') + labels;
+  }
+  /* hover: del kroga in njegov napis se rahlo povečata */
+  function uc3dHover(svgEl) {
+    if (!svgEl) return;
+    var cx = _UC3D.cx, cy = _UC3D.cy;
+    function set(i, on) {
+      svgEl.querySelectorAll('.uc3d-seg[data-i="' + i + '"]').forEach(function (el) {
+        el.style.transform = on ? ('translate(' + cx + 'px,' + cy + 'px) scale(1.06) translate(' + (-cx) + 'px,' + (-cy) + 'px)') : '';
+      });
+      svgEl.querySelectorAll('.uc3d-lab[data-i="' + i + '"]').forEach(function (el) {
+        el.classList.toggle('hot', on);
+        if (on) { var b = el.getBBox(), lx = b.x + b.width / 2, ly = b.y + b.height / 2; el.style.transform = 'translate(' + lx + 'px,' + ly + 'px) scale(1.14) translate(' + (-lx) + 'px,' + (-ly) + 'px)'; }
+        else el.style.transform = '';
+      });
+    }
+    svgEl.querySelectorAll('.uc3d-seg,.uc3d-lab').forEach(function (el) {
+      var i = el.getAttribute('data-i');
+      el.addEventListener('mouseenter', function () { set(i, true); });
+      el.addEventListener('mouseleave', function () { set(i, false); });
+    });
   }
   function uc3dAnimate(svgEl, range, animate) {
     if (!svgEl) return;
@@ -1684,14 +1703,14 @@
     var d = ucDonutSegs(range);
     if (!d.total) { svgEl.innerHTML = '<text x="' + (_UC3D.W / 2) + '" y="' + (_UC3D.H / 2) + '" text-anchor="middle" class="uc3d-nm">Ni podatkov za izbrano obdobje.</text>'; return; }
     var reduce = false; try { reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion:reduce)').matches; } catch (e) {}
-    if (!animate || reduce) { svgEl.innerHTML = uc3dSvgBuild(d.segs, d.total, 1); return; }
-    var t0 = 0, dur = 1000;
-    function easeOutCubic(x) { return 1 - Math.pow(1 - x, 3); }
+    if (!animate || reduce) { svgEl.innerHTML = uc3dSvgBuild(d.segs, d.total, 1); uc3dHover(svgEl); return; }
+    var t0 = 0, dur = 1900;
     function frame(now) {
       if (!t0) t0 = now;
       var p = Math.min(1, (now - t0) / dur);
-      svgEl.innerHTML = uc3dSvgBuild(d.segs, d.total, easeOutCubic(p));
-      if (p < 1) _uc3dRAF = requestAnimationFrame(frame); else _uc3dRAF = null;
+      svgEl.innerHTML = uc3dSvgBuild(d.segs, d.total, p);
+      if (p < 1) { _uc3dRAF = requestAnimationFrame(frame); }
+      else { _uc3dRAF = null; uc3dHover(svgEl); }   // po animaciji poveži hover
     }
     _uc3dRAF = requestAnimationFrame(frame);
   }
@@ -1724,7 +1743,7 @@
       '<span class="pris-tabs"><button type="button" class="pris-tab' + (_ucDonutRange === 'mesec' ? ' on' : '') + '" data-ucrange="mesec">Mesec</button>' +
       '<button type="button" class="pris-tab' + (_ucDonutRange === '3m' ? ' on' : '') + '" data-ucrange="3m">3 meseci</button>' +
       '<button type="button" class="pris-tab' + (_ucDonutRange === 'vse' ? ' on' : '') + '" data-ucrange="vse">Vse</button></span></div></div>' +
-      '<div class="uc-d3-stage"><svg class="uc3d-svg" viewBox="-92 0 ' + (_UC3D.W + 184) + ' ' + _UC3D.H + '" preserveAspectRatio="xMidYMid meet"></svg></div></div>';
+      '<div class="uc-d3-stage"><svg class="uc3d-svg" viewBox="-110 0 ' + (_UC3D.W + 220) + ' ' + _UC3D.H + '" preserveAspectRatio="xMidYMid meet"></svg></div></div>';
     var cardBars = '<div class="uc-card"><h3 class="sec-h">kg zadnjih 7 dni</h3><div class="bars-row" style="margin-top:14px">' +
       d7.map(function (o) { return '<div class="bars-col"><span class="bars-val">' + (o.kg ? Math.round(o.kg) : '') + '</span><div class="bars-bar" style="height:' + Math.round(o.kg / naj * 84) + 'px"></div><span class="bars-lab">' + o.lab + '</span></div>'; }).join('') + '</div></div>';
     var cardProd = '<div class="uc-card uc-stat"><h3 class="sec-h">Skupna učinkovitost</h3><div class="uc-big">' + (kgh ? fmtStevilo1(kgh) : '—') + ' <span>kg/uro</span></div>' +

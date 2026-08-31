@@ -1250,8 +1250,11 @@ html[data-view="grid"] #cenikList .sc-isolate .cgrp:not(.open){max-width:var(--t
 .uc-d3-month{padding:7px 12px;border:1.5px solid var(--line);border-radius:100px;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:.85rem;}
 .uc-d3-month:focus{border-color:var(--green-l);outline:none;}
 .uc-d3-stage{width:100%;margin-top:6px;}
-.uc3d-svg{display:block;width:100%;height:auto;max-height:420px;overflow:visible;}
-.uc3d-lead{stroke:var(--mid);stroke-width:1;opacity:.55;}
+.uc3d-svg{display:block;width:100%;height:auto;max-height:460px;overflow:visible;}
+.uc3d-seg,.uc3d-lab{transition:transform .22s cubic-bezier(.34,1.15,.5,1);transform-box:view-box;transform-origin:0 0;}
+.uc3d-seg{cursor:pointer;}
+.uc3d-lab.hot .uc3d-nm{fill:var(--ink);}
+.uc3d-lead{stroke:var(--mid);stroke-width:1;opacity:.55;fill:none;}
 .uc3d-nm{fill:var(--ink);font-family:var(--sans);font-size:13px;font-weight:600;}
 .uc3d-pct{fill:var(--mid);font-family:var(--mono);font-size:12px;}
 @media(max-width:560px){.uc3d-nm{font-size:17px;}.uc3d-pct{font-size:15px;}}

@@ -285,7 +285,7 @@
   .sm-btn.active{background:var(--press);color:var(--paper);border-color:var(--press)}
   .sm-clear{border:1px solid var(--line);background:var(--paper);border-radius:9px;padding:9px 12px;color:var(--ink-soft);font-size:12.5px;font-weight:600}
   .sm-date-wrap{position:relative;display:inline-flex}
-  .sm-date-over{position:absolute;inset:0;width:100%;height:100%;opacity:0;border:0;margin:0;padding:0;background:transparent;-webkit-appearance:none;appearance:none;pointer-events:auto}
+  .sm-date-over{position:absolute;inset:0;width:100%;height:100%;opacity:0;border:0;margin:0;padding:0;background:transparent;-webkit-appearance:none;appearance:none;pointer-events:none}
   .search-chip{margin-top:8px;font-size:13px;color:var(--press-deep);background:var(--press-tint);display:inline-block;padding:5px 12px;border-radius:20px;font-weight:600}
   .kg-step{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--paper)}
   .kg-step.need{border-color:var(--warn);background:rgba(178,59,59,.08)}
@@ -1273,8 +1273,10 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
   function currentListEntries(){
     var arr=null;
     if(searchMode==="id" && searchQuery){
-      var q=searchQuery.toLowerCase().replace(/[^a-z0-9]/gi,"");
-      arr=entries.filter(function(e){ return String(e.stevilka).toLowerCase().replace(/[^a-z0-9]/gi,"").indexOf(q)>=0; });
+      /* Išči SAMO po zaporedni številki (del pred »/«), ne po združeni št.+leto —
+         drugače se je npr. 1452 ujel tudi z 1145/2026 (»1145«+»2026« vsebuje »1452«). */
+      var q=String(searchQuery).replace(/[^0-9]/g,"");
+      arr=entries.filter(function(e){ var seq=String(e.stevilka||"").split("/")[0].replace(/[^0-9]/g,""); return q && seq.indexOf(q)>=0; });
     } else if(searchMode==="date" && searchDate){
       arr=entries.filter(function(e){ return e.datum===searchDate; });
     } else if(searchMode==="client" && searchClientId){
@@ -1813,10 +1815,21 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
     var nm=((session&&session.user)||"").trim().toLowerCase();
     return nm==="filip";
   }
+  /* Spletni pogled (brskalnik na portalu) — NE tablica-APK. Tam admin ni potreben
+     (Supabase/naprava se nastavlja na tablici), zato ga skrijemo. */
+  function jeSpletniPogled(){
+    try{
+      if(location.protocol==="file:") return false;                                   // APK (file://)
+      var h=(location.hostname||"").toLowerCase();
+      if(h==="localhost"||h==="127.0.0.1"||h==="") return false;                       // APK (localhost shema)
+      if(window.cordova && window.cordova.platformId && window.cordova.platformId!=="browser") return false; // Cordova native
+      return true;                                                                      // http(s) na pravi domeni = web view
+    }catch(e){ return false; }
+  }
   function doLogin(u){
     session={user:u.name,role:u.role,start:new Date().toISOString()};
     hideLogin();
-    document.getElementById("adminBtn").style.display=(u.role==="admin" && jeFilip())?"":"none";
+    document.getElementById("adminBtn").style.display=(u.role==="admin" && jeFilip() && !jeSpletniPogled())?"":"none";
     { var _tu=document.getElementById("tbUser"); if(_tu) _tu.textContent = u.name || ""; }
     { var _lb=document.getElementById("logoutBtn"); if(_lb) _lb.textContent = "Zamenjaj"; }
     selectedId=null; draftQty={}; editingId=null; searchQuery="";
@@ -1860,7 +1873,7 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
     document.querySelectorAll("[data-opendanes]").forEach(function(b){ b.onclick=function(){ closeDanes(); openSheet(b.getAttribute("data-opendanes")); }; });
   }
   var APP_VERZIJA="8.4";
-  function openAdmin(){ if(!session||session.role!=="admin"||!jeFilip()) return; var av=document.getElementById("admVerz"); if(av) av.textContent="v"+APP_VERZIJA; var vf=document.getElementById("verzFoot"); if(vf) vf.textContent=APP_VERZIJA; renderAdmin(); document.getElementById("adminScreen").classList.add("show"); }
+  function openAdmin(){ if(!session||session.role!=="admin"||!jeFilip()||jeSpletniPogled()) return; var av=document.getElementById("admVerz"); if(av) av.textContent="v"+APP_VERZIJA; var vf=document.getElementById("verzFoot"); if(vf) vf.textContent=APP_VERZIJA; renderAdmin(); document.getElementById("adminScreen").classList.add("show"); }
   function closeAdmin(){ document.getElementById("adminScreen").classList.remove("show"); }
   function renderAdmRecent(){
     var q=(admListQuery||"").trim().toLowerCase();
@@ -2672,8 +2685,12 @@ async function potegniIzPortala(){
   try{
     /* 1. cel arhiv iz portala (naprava vidi vse), po straneh */
     var pl = [], off = 0;
+    var _selPoln="id,legacy_id,doc_year,doc_seq,doc_date,weight_kg,transport,issued_name,opomba_stranka,opomba_evidenca,popravil,popravljeno_at,potrjeno,orgs(id,name,legal_name,address,vat_id,legacy_id)";
+    var _selOsn ="id,legacy_id,doc_year,doc_seq,doc_date,weight_kg,transport,issued_name,popravil,popravljeno_at,potrjeno,orgs(id,name,legal_name,address,vat_id,legacy_id)";
     while(true){
-      var page = await api("delivery_notes?select=id,legacy_id,doc_year,doc_seq,doc_date,weight_kg,transport,issued_name,opomba_stranka,opomba_evidenca,popravil,popravljeno_at,potrjeno,orgs(id,name,legal_name,address,vat_id,legacy_id)&order=doc_date.desc&limit=1000&offset=" + off);
+      var page;
+      try{ page = await api("delivery_notes?select=" + _selPoln + "&order=doc_date.desc&limit=1000&offset=" + off); }
+      catch(_e){ /* stolpci za opombo (42_opombe.sql) še niso dodani — naloži brez njih */ page = await api("delivery_notes?select=" + _selOsn + "&order=doc_date.desc&limit=1000&offset=" + off); }
       if(!Array.isArray(page) || !page.length) break;
       pl = pl.concat(page);
       if(page.length < 1000) break;
@@ -2694,8 +2711,17 @@ async function potegniIzPortala(){
         if(r.orgs.address) e.strankaNaslov = r.orgs.address;
         if(r.orgs.vat_id) e.strankaDavcna = r.orgs.vat_id;
       }
-      e.opombaStranka = r.opomba_stranka || "";
-      e.opombaEvidenca = r.opomba_evidenca || "";
+      /* Opombe: če baza NIMA opombe (stolpca ni ali je prazna), lokalne NE zbriši —
+         obdrži jo in jo označi za ponovno pošiljanje, da se razširi povsod (cross-sync).
+         Če baza ima opombo, prevzemi njeno vrednost. */
+      var _imaStolpce = ("opomba_stranka" in r) || ("opomba_evidenca" in r);
+      var _dbStr = r.opomba_stranka || "", _dbEv = r.opomba_evidenca || "";
+      if(_dbStr){ e.opombaStranka = _dbStr; }
+      else if(e.opombaStranka){ if(_imaStolpce) e.syncedAt = null; /* baza prazna, lokalno imamo → znova pošlji */ }
+      else { e.opombaStranka = ""; }
+      if(_dbEv){ e.opombaEvidenca = _dbEv; }
+      else if(e.opombaEvidenca){ if(_imaStolpce) e.syncedAt = null; }
+      else { e.opombaEvidenca = ""; }
       e.popravil = r.popravil || null;
       e.potrjeno = (r.potrjeno === true);
       e.zaklenjen = (r.potrjeno === true);
