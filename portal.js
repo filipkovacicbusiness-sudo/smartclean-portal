@@ -1497,6 +1497,26 @@
   var UC_PAL = ['#4e79a7', '#59a14f', '#f28e2b', '#e15759', '#b07aa1', '#76b7b2', '#edc948'];
   var _ucDonutRange = '3m', _uc3dAnim = false, _kgVseMap = null, _uc3dRAF = null, _ucDonutMonth = null;
   var _ucLestSort = 'desc';   // lestvica kg/uro po dnevih: 'desc' padajoče / 'asc' naraščajoče
+  var _ucLestEurSort = 'desc'; // lestvica €/kg po strankah: 'desc' padajoče / 'asc' naraščajoče
+  /* Vrstice lestvice €/kg po strankah (na osnovi opranega perila v izbranem obdobju).
+     Uporablja isto obdobje kot Evidenca kg; €/kg se dopolni, ko se naloži prihodek. */
+  function ucLestEurRows() {
+    var k = _ucMesec ? _ucDan.slice(0, 7) : _ucDan;
+    var ek = (_ucMesec ? 'M' : 'D') + k;
+    var ready = _ucEurKljuc === ek;
+    if (!ready) return '<p class="u-sub" style="padding:10px 2px">Računam €/kg…</p>';
+    var map = ucKgPoStranki(k);
+    var arr = Object.keys(map).map(function (id) { return { id: id, ime: ORGIME[id] || '—', kg: map[id], eur: (_ucEur[id] != null ? _ucEur[id] : null) }; }).filter(function (x) { return x.kg > 0; });
+    if (!arr.length) return '<p class="u-sub" style="padding:10px 2px">Ni opranega perila v izbranem obdobju.</p>';
+    arr.sort(function (a, b) { var ea = a.eur == null ? -1 : a.eur, eb = b.eur == null ? -1 : b.eur; return _ucLestEurSort === 'asc' ? ea - eb : eb - ea; });
+    function eurKg(v) { return v == null ? '—' : (Math.round(v * 100) / 100).toFixed(2).replace('.', ','); }
+    return arr.map(function (o, i) {
+      return '<div class="uc-lest-row"><span class="uc-lest-rank">' + (i + 1) + '.</span>' +
+        '<span class="uc-lest-dan">' + escape_(o.ime) + '</span>' +
+        '<span class="uc-lest-sub">' + fmtKg(o.kg) + '</span>' +
+        '<b class="uc-lest-v">' + eurKg(o.eur) + '<span> €/kg</span></b></div>';
+    }).join('');
+  }
 
   async function naloziUcinek() {
     var meja = danLocal(new Date(Date.now() - 400 * 24 * 3600 * 1000).getTime());
@@ -1586,7 +1606,7 @@
     if (ostalo > 0) segs.push({ ime: 'Ostalo', kg: ostalo, col: '#bab0ac' });
     return { segs: segs, total: total };
   }
-  var _UC3D = { W: 580, H: 460, cx: 290, cy: 210, R: 150, r: 86, depth: 34 };
+  var _UC3D = { W: 580, H: 460, cx: 290, cy: 210, R: 150, r: 86, depth: 46 };
   var _UC3D_NEUTRAL = [91, 101, 112];               // #5b6570 — siva za začetni obroč
   function _uc3dPt(rad, ang, ky, cx, cy) { return [cx + rad * Math.cos(ang), cy + rad * ky * Math.sin(ang)]; }
   function _f2(a) { return a[0].toFixed(1) + ' ' + a[1].toFixed(1); }
@@ -1601,7 +1621,7 @@
     var pSplit = _uc3dEio(_uc3dSub(e, 0.18, 0.44));
     var pColor = _uc3dEoc(_uc3dSub(e, 0.38, 0.68));
     var pTilt = _uc3dEio(_uc3dSub(e, 0.60, 1.0));
-    return { gap: 0.055 * pSplit, cmix: pColor, ky: 1 - (1 - 0.58) * pTilt, depth: _UC3D.depth * pTilt, labo: pColor, rot: pTilt * 0.10 };
+    return { gap: 0.055 * pSplit, cmix: pColor, ky: 1 - (1 - 0.55) * pTilt, depth: _UC3D.depth * pTilt, labo: pColor, rot: pTilt * 0.10 };
   }
   function uc3dSvgBuild(segs, total, e) {
     var P = _uc3dFrame(e);
@@ -1639,9 +1659,9 @@
     order.forEach(function (rec) {
       var o = rec.o, e2 = edges(o), a0 = e2[0], a1 = e2[1];
       var base = _uc3dBlend(_UC3D_NEUTRAL, _uc3dHx(o.s.col), cmix);
-      var top = _uc3dScale(base, 1), wallC = _uc3dScale(base, 0.62), sideC = _uc3dScale(base, 0.5);
+      var top = _uc3dScale(base, 1), outC = _uc3dScale(base, 0.74), inC = _uc3dScale(base, 0.58), sideC = _uc3dScale(base, 0.5);
       var g = '';
-      if (depth > 0.5) { g += innerWall(a0, a1, wallC) + radialFace(a0, sideC) + radialFace(a1, sideC) + outerWall(a0, a1, wallC); }
+      if (depth > 0.5) { g += innerWall(a0, a1, inC) + radialFace(a0, sideC) + radialFace(a1, sideC) + outerWall(a0, a1, outC); }
       g += topFace(a0, a1, top);
       segOut.push('<g class="uc3d-seg" data-i="' + rec.i + '">' + g + '</g>');
     });
@@ -1662,18 +1682,22 @@
         var over = list.length ? (list[list.length - 1].y - (G.H - 16)) : 0;
         if (over > 0) list.forEach(function (it) { it.y -= over; });
         var out = '';
+        // Napisi pripeti na SKRAJNI rob (desni/levi), poravnani; vodilna črta se konča
+        // z RAVNIM vodoravnim odsekom do roba, napis stoji tik nad njim (brez »kota«).
+        var elbow = desno ? (xEdge - 50) : (xEdge + 50);
+        var anchor = desno ? 'end' : 'start';
         list.forEach(function (it) {
-          var yy = Math.max(24, it.y), pct = Math.round(it.o.s.kg / total * 100);
+          var yy = Math.max(30, it.y), pct = Math.round(it.o.s.kg / total * 100);
           out += '<g class="uc3d-lab" data-i="' + it.i + '">';
-          out += '<polyline class="uc3d-lead" points="' + it.p[0].toFixed(1) + ',' + it.p[1].toFixed(1) + ' ' + it.e1[0].toFixed(1) + ',' + it.e1[1].toFixed(1) + ' ' + (desno ? (xEdge - 10) : (xEdge + 10)).toFixed(1) + ',' + yy.toFixed(1) + ' ' + xEdge.toFixed(1) + ',' + yy.toFixed(1) + '"/>';
+          out += '<polyline class="uc3d-lead" points="' + it.p[0].toFixed(1) + ',' + it.p[1].toFixed(1) + ' ' + it.e1[0].toFixed(1) + ',' + it.e1[1].toFixed(1) + ' ' + elbow.toFixed(1) + ',' + yy.toFixed(1) + ' ' + xEdge.toFixed(1) + ',' + yy.toFixed(1) + '"/>';
           out += '<circle cx="' + it.p[0].toFixed(1) + '" cy="' + it.p[1].toFixed(1) + '" r="2.6" fill="' + it.o.s.col + '"/>';
-          out += '<text x="' + (desno ? (xEdge + 6) : (xEdge - 6)).toFixed(1) + '" y="' + (yy - 4).toFixed(1) + '" text-anchor="' + (desno ? 'start' : 'end') + '" class="uc3d-nm">' + escape_(it.o.s.ime) + '</text>';
-          out += '<text x="' + (desno ? (xEdge + 6) : (xEdge - 6)).toFixed(1) + '" y="' + (yy + 12).toFixed(1) + '" text-anchor="' + (desno ? 'start' : 'end') + '" class="uc3d-pct">' + pct + ' %</text>';
+          out += '<text x="' + xEdge.toFixed(1) + '" y="' + (yy - 19).toFixed(1) + '" text-anchor="' + anchor + '" class="uc3d-nm">' + escape_(it.o.s.ime) + '</text>';
+          out += '<text x="' + xEdge.toFixed(1) + '" y="' + (yy - 5).toFixed(1) + '" text-anchor="' + anchor + '" class="uc3d-pct">' + pct + ' %</text>';
           out += '</g>';
         });
         return out;
       }
-      labels = '<g style="opacity:' + labo.toFixed(2) + '">' + razporedi(right, G.W - 70, true) + razporedi(left, 70, false) + '</g>';
+      labels = '<g style="opacity:' + labo.toFixed(2) + '">' + razporedi(right, G.W + 96, true) + razporedi(left, -96, false) + '</g>';
     }
     return segOut.join('') + labels;
   }
@@ -1760,7 +1784,15 @@
     var cardLestvica = '<div class="uc-card uc-lest-card"><div class="uc-lest-h"><h3 class="sec-h">kg/uro po dnevih</h3>' +
       '<button type="button" class="pris-tab uc-lest-toggle" data-uclest>' + (_ucLestSort === 'desc' ? 'Padajoče ↓' : 'Naraščajoče ↑') + '</button></div>' +
       '<div class="uc-lest-list">' + lestVrst + '</div></div>';
-    var top = cardDonut + '<div class="uc-top uc-top2">' + cardBars + cardProd + cardLestvica + '</div>';
+    // Lestvica €/kg po strankah — DESNO od tortnega diagrama (na osnovi opranega perila).
+    var cardLestEur = '<div class="uc-card uc-lest-card uc-lest-eur"><div class="uc-lest-h"><h3 class="sec-h">€/kg po strankah</h3>' +
+      '<button type="button" class="pris-tab uc-lest-toggle" data-uclesteur>' + (_ucLestEurSort === 'desc' ? 'Padajoče ↓' : 'Naraščajoče ↑') + '</button></div>' +
+      '<div class="uc-lest-list uc-lest-eur-list">' + ucLestEurRows() + '</div></div>';
+    // Zgoraj: diagram LEVO + lestvica €/kg po strankah DESNO. Spodaj: kg 7 dni + učinkovitost.
+    // (Kartica »kg/uro po dnevih« odstranjena — nadomešča jo lestvica €/kg po strankah desno.)
+    void cardLestvica;
+    var top = '<div class="uc-donut-row">' + cardDonut + cardLestEur + '</div>' +
+      '<div class="uc-top uc-top2">' + cardBars + cardProd + '</div>';
 
     var kljuc = _ucMesec ? _ucDan.slice(0, 7) : _ucDan;
     var ekljuc = (_ucMesec ? 'M' : 'D') + kljuc;
@@ -1798,6 +1830,7 @@
     _uc3dAnim = false;
     box.querySelectorAll('[data-ucrange]').forEach(function (b) { b.addEventListener('click', function () { if (_ucDonutRange === b.dataset.ucrange) return; _ucDonutRange = b.dataset.ucrange; _uc3dAnim = true; ucRender(); }); });
     { var _lt = box.querySelector('[data-uclest]'); if (_lt) _lt.addEventListener('click', function () { _ucLestSort = (_ucLestSort === 'desc' ? 'asc' : 'desc'); ucRender(); }); }
+    { var _le = box.querySelector('[data-uclesteur]'); if (_le) _le.addEventListener('click', function () { _ucLestEurSort = (_ucLestEurSort === 'desc' ? 'asc' : 'desc'); var l = box.querySelector('.uc-lest-eur-list'); if (l) l.innerHTML = ucLestEurRows(); this.textContent = (_ucLestEurSort === 'desc' ? 'Padajoče ↓' : 'Naraščajoče ↑'); }); }
     var _dm = $('ucDonutMesec'); if (_dm) _dm.addEventListener('change', function () { if (!this.value) return; _ucDonutMonth = this.value; _uc3dAnim = true; ucRender(); });
     var dat = $('ucDatum'); if (dat) dat.addEventListener('change', function () { var v = this.value || danes10(); if (v.length === 7) v += '-01'; _ucDan = v; ucRender(); });
     box.querySelectorAll('[data-ucobd]').forEach(function (b) { b.addEventListener('click', function () { _ucMesec = (b.dataset.ucobd === 'mesec'); ucRender(); }); });
@@ -1829,6 +1862,9 @@
       });
       var totTd = box.querySelector('.uc-eur-tot');
       if (totTd) totTd.innerHTML = eurCela2(_ucEurTot);
+      /* Osveži tudi lestvico €/kg po strankah (desno od diagrama) — brez diranja diagrama. */
+      var lst = box.querySelector('.uc-lest-eur-list');
+      if (lst) lst.innerHTML = ucLestEurRows();
     }
   }
   function ucIzvoz() {
