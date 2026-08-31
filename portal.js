@@ -1861,6 +1861,56 @@
     <div class="a-det" id="det${i}"></div></div>`;
     }).join('') + '</div>';
   }
+  // ── Prekrivanja (offline urejanje na tablici) ──────────────────────────
+  var KONFLIKTI = [];
+  async function naloziKonflikte() {
+    if (!OSEBJE) { KONFLIKTI = []; return; }
+    try {
+      var r = await sb.from('delivery_note_conflicts').select('*').order('created_at', { ascending: true });
+      KONFLIKTI = (r && !r.error && r.data) ? r.data : [];
+    } catch (e) { KONFLIKTI = []; }
+  }
+  function risiKonflikti() {
+    var box = $('arhivKonflikti'); if (!box) return;
+    if (!OSEBJE || !KONFLIKTI.length) { box.innerHTML = ''; box.className = ''; box.removeAttribute('data-open'); return; }
+    var open = box.dataset.open === '1';
+    box.className = 'konf-card';
+    box.innerHTML = '<div class="konf-head"><span class="konf-warn">⚠ ' + KONFLIKTI.length + ' ' + (KONFLIKTI.length === 1 ? 'prekrivanje' : 'prekrivanj') + ' · offline urejanje na tablici</span><button type="button" class="btn-mini konf-toggle">' + (open ? 'Skrij' : 'Reši') + '</button></div>' +
+      (open ? '<div class="konf-list">' + KONFLIKTI.map(risiEnKonflikt).join('') + '</div>' : '');
+    box.querySelector('.konf-toggle').addEventListener('click', function () { box.dataset.open = open ? '0' : '1'; risiKonflikti(); });
+    if (open) box.querySelectorAll('[data-keep]').forEach(function (b) { b.addEventListener('click', function () { resiKonflikt(b.dataset.id, b.dataset.keep); }); });
+  }
+  function risiEnKonflikt(k) {
+    var post = Array.isArray(k.postavke) ? k.postavke : [];
+    var tItems = post.length ? post.map(function (p) { return '<li><span>' + escape_(p.naziv) + '</span><b>' + stevilo(p.kosov) + '</b></li>'; }).join('') : '<li class="u-sub">brez postavk</li>';
+    var pn = (LISTI || []).find(function (l) { return l.id === k.note_id; });
+    var ime = k.org_name || (pn ? (ORGIME[pn.org_id] || '') : '');
+    return '<div class="konf-row"><div class="konf-title">' + escape_(k.number || '—') + ' · ' + escape_(ime) + '</div><div class="konf-cols">' +
+      '<div class="konf-col"><div class="konf-h">Portal (trenutno)</div>' + (pn ? ('<div class="u-sub">' + stevilo(pn.total_pieces) + ' kos · ' + (pn.weight_kg != null ? String(pn.weight_kg).replace('.', ',') + ' kg' : '—') + ' · ' + (pn.transport === 'izredni' ? 'izredni' : 'redni') + '</div>') : '<div class="u-sub">list ni najden</div>') + '<button type="button" class="btn-mini konf-keep" data-keep="portal" data-id="' + escape_(String(k.id)) + '">Obdrži portal</button></div>' +
+      '<div class="konf-col"><div class="konf-h">Tablica' + (k.popravil ? ' · ' + escape_(k.popravil) : '') + '</div><ul class="konf-items">' + tItems + '</ul><div class="u-sub">teža ' + (k.weight_kg != null ? String(k.weight_kg).replace('.', ',') + ' kg' : '—') + ' · ' + (k.transport === 'izredni' ? 'izredni' : 'redni') + '</div>' + (k.popravki ? '<div class="konf-log">' + escape_(k.popravki).replace(/\n/g, '<br>') + '</div>' : '') + '<button type="button" class="btn-mini primary konf-keep" data-keep="tablica" data-id="' + escape_(String(k.id)) + '">Obdrži tablico</button></div>' +
+      '</div></div>';
+  }
+  async function resiKonflikt(id, keep) {
+    var k = KONFLIKTI.find(function (x) { return String(x.id) === String(id); }); if (!k) return;
+    var ok = await potrdiModal({ naslov: keep === 'tablica' ? 'Obdrži tablično verzijo' : 'Obdrži portalno verzijo', sporocilo: keep === 'tablica' ? ('Spremni list ' + (k.number || '') + ' se prepiše z verzijo s tablice. Nadaljujem?') : ('Obdržim trenutno portalno verzijo in zavržem tablično. Nadaljujem?'), potrdi: 'Potrdi', preklici: 'Prekliči' });
+    if (!ok) return;
+    try {
+      if (keep === 'tablica' && k.note_id) {
+        var patch = { weight_kg: k.weight_kg, transport: (k.transport === 'izredni' ? 'izredni' : 'redni'), issued_name: k.issued_name, popravil: k.popravil, popravljeno_at: new Date().toISOString() };
+        var e1 = (await sb.from('delivery_notes').update(patch).eq('id', k.note_id)).error; if (e1) throw e1;
+        try { await sb.from('delivery_notes').update({ popravki: k.popravki }).eq('id', k.note_id); } catch (_p) {}
+        await sb.from('delivery_note_items').delete().eq('note_id', k.note_id);
+        var items = (Array.isArray(k.postavke) ? k.postavke : []).filter(function (p) { return p && p.naziv; }).map(function (p, i) { return { note_id: k.note_id, article_name: String(p.naziv), pieces: Number(p.kosov) || 0, sort_order: i }; });
+        if (items.length) { var e2 = (await sb.from('delivery_note_items').insert(items)).error; if (e2) throw e2; }
+        logDodaj('Arhiv', 'Urejeno', 'Prekrivanje rešeno (tablica) · ' + (k.number || ''));
+      } else {
+        logDodaj('Arhiv', 'Urejeno', 'Prekrivanje rešeno (portal) · ' + (k.number || ''));
+      }
+      await sb.from('delivery_note_conflicts').delete().eq('id', k.id);
+      toast('Prekrivanje rešeno.');
+      await naloziListe(); await naloziKonflikte(); risiArhiv();
+    } catch (e) { toast('Napaka: ' + (e.message || e)); }
+  }
   function risiArhiv() {
     if (OSEBJE) {
       const sel = $('arhivOrg');
@@ -1889,6 +1939,7 @@
     else if (sortv === 'stranka_za') vrstice.sort((a, b) => imeStr(b).localeCompare(imeStr(a), 'sl', { sensitivity: 'base' }));
     $('arhivPod').textContent = LISTI.length ? vrstice.length + ' od ' + stevilo(VSEHLISTOV) + ' spremnih listov' : 'v bazi še ni spremnih listov';
     $('arhivList').innerHTML = tabelaListov(vrstice, true);
+    naloziKonflikte().then(risiKonflikti);
     document.querySelectorAll('#arhivList .a-row').forEach(b => {
       b.addEventListener('click', () => odpriList(b));
     });

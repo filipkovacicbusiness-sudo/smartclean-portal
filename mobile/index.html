@@ -2121,10 +2121,10 @@ async function posljiEnega(e){
     popravljeno_at: e.popravljeno_at || null
   };
 
-  var obst = await api("delivery_notes?legacy_id=eq." + encodeURIComponent(e.id) + "&select=id,potrjeno&limit=1");
+  var obst = await api("delivery_notes?legacy_id=eq." + encodeURIComponent(e.id) + "&select=id,potrjeno,popravljeno_at&limit=1");
   /* če ni zadetka po legacy_id, poišči obstoječi list po isti številki (leto+zap.št.) */
   if(!obst.length){
-    obst = await api("delivery_notes?doc_year=eq." + leto + "&doc_seq=eq." + seq + "&select=id,potrjeno&limit=1");
+    obst = await api("delivery_notes?doc_year=eq." + leto + "&doc_seq=eq." + seq + "&select=id,potrjeno,popravljeno_at&limit=1");
   }
   var noteId;
   if(obst.length){
@@ -2135,13 +2135,35 @@ async function posljiEnega(e){
       e.potrjeno = true; e.zaklenjen = true; e.syncedAt = e.syncedAt || new Date().toISOString();
       return true;
     }
+    /* PREKRIVANJE: če se je portalna verzija spremenila od tablici znane osnove
+       (nekdo je urejal v portalu, medtem ko je bila tablica offline), NE povozi —
+       zapiši tablično verzijo kot prekrivanje; v portalu se reši ročno. */
+    var portalP = obst[0].popravljeno_at || null;
+    var baza = e.portalPopravljenoAt || null;
+    if(e.popravil && baza && portalP && portalP !== baza){
+      try{
+        await api("delivery_note_conflicts", { method: "POST", body: {
+          note_id: noteId, legacy_id: e.id, org_id: orgId, org_name: e.strankaNaziv || null,
+          doc_year: leto, doc_seq: seq, doc_date: e.datum, number: e.stevilka,
+          weight_kg: (e.kg === "" || e.kg == null) ? null : Number(e.kg),
+          transport: (e.prevoz === "izredni" ? "izredni" : "redni"),
+          issued_name: e.izdal || null, popravil: e.popravil || null, popravki: e.popravki || null,
+          postavke: (e.postavke || []).filter(function(p){return p && p.naziv;}).map(function(p){ return { naziv: String(p.naziv), kosov: Number(p.kosov)||0 }; }),
+          base_popravljeno_at: baza, portal_popravljeno_at: portalP
+        } });
+        e.vSporu = true; e.syncedAt = new Date().toISOString(); e.syncNapaka = "prekrivanje — reši v portalu";
+        return true;
+      }catch(_c){ /* če zapis prekrivanja ne uspe, pusti v vrsti za kasneje */ throw _c; }
+    }
     await api("delivery_notes?id=eq." + noteId, { method: "PATCH", body: vrstica });
     await api("delivery_note_items?note_id=eq." + noteId, { method: "DELETE" });
+    e.portalPopravljenoAt = vrstica.popravljeno_at || portalP || e.portalPopravljenoAt || null;
   }else{
     var nova = await api("delivery_notes", {
       method: "POST", body: vrstica, prefer: "return=representation"
     });
     noteId = nova[0].id;
+    e.portalPopravljenoAt = vrstica.popravljeno_at || e.portalPopravljenoAt || null;
   }
 
   /* dnevnik urejanj (popravki) — best-effort; če stolpca ni, tiho spusti */
