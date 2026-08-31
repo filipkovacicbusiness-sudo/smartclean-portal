@@ -1199,7 +1199,7 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
         '<div class="pcs mono">'+e.skupajKosov+'<small>kos</small></div>'+
         '<button class="iconbtn" data-view="'+e.id+'" title="Predogled / natisni"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></button>'+
         '<button class="iconbtn" data-edit="'+e.id+'" title="Uredi"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg></button>'+
-        '<button class="iconbtn del" data-del="'+e.id+'" title="Izbriši"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 10v6M14 10v6"/></svg></button></li>';
+        ((e.syncedAt || e.prenesenIzPortala || e.potrjeno) ? '' : '<button class="iconbtn del" data-del="'+e.id+'" title="Izbriši osnutek"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 10v6M14 10v6"/></svg></button>')+'</li>';
     }).join("")+'</ul>';
     el.querySelectorAll("[data-view]").forEach(function(b){ b.onclick=function(){openSheet(b.getAttribute("data-view"));}; });
     el.querySelectorAll("[data-edit]").forEach(function(b){ b.onclick=function(){startEdit(b.getAttribute("data-edit"));}; });

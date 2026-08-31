@@ -5408,7 +5408,7 @@
       </div>
       <div class="u-acts">
         ${(jaz || lahkoUredi) ? `<button data-act="ime" data-id="${u.id}" data-ime="${escape_(u.full_name || '')}">preimenuj</button>` : ''}
-        ${(jaz || lahkoUredi) ? `<button class="u-web${webOn ? ' on' : ''}" data-act="web" data-id="${u.id}" data-v="${webOn ? 0 : 1}" title="Prikaz v Web view izbiri oseb">Web view: ${webOn ? 'da' : 'ne'}</button>` : ''}
+        ${(jaz || lahkoUredi) ? `<button class="u-web${webOn ? ' on' : ''}" data-act="web" data-id="${u.id}" data-v="${webOn ? 0 : 1}" title="Dovoljenje za prijavo v aplikacijo / spletni pogled (izbira oseb)">Dostop app: ${webOn ? 'da' : 'ne'}</button>` : ''}
         ${lahkoUredi ? `<button data-act="active" data-id="${u.id}" data-v="${u.active ? 0 : 1}">${u.active ? 'izklopi' : 'vklopi'}</button>` : ''}
         ${(jaz || lahkoUredi) ? `<button data-act="pw" data-id="${u.id}">novo geslo</button>` : ''}
         ${(jeLastnik && !jaz) ? `<button class="danger" data-act="del" data-id="${u.id}" data-m="${escape_(u.email || '')}">izbriši</button>` : ''}
@@ -5513,7 +5513,7 @@
     }
     if (act === 'web') {
       const { error } = await sb.from('profiles').update({ web_dostop: btn.dataset.v === '1' }).eq('id', id);
-      uMsg(error ? 'Ni uspelo: ' + escape_(error.message) : (btn.dataset.v === '1' ? 'Dostop do Web view vključen.' : 'Dostop do Web view izključen.'), !!error);
+      uMsg(error ? 'Ni uspelo: ' + escape_(error.message) : (btn.dataset.v === '1' ? 'Dostop do aplikacije vključen.' : 'Dostop do aplikacije izključen.'), !!error);
       loadUsers();
       return;
     }
