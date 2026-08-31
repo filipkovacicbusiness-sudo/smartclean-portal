@@ -1654,3 +1654,7 @@ h3.sec,h3.sec-h,.empty h3,.fak-card-h h3,.adm-ime,.stat-num,.auth-claim,
 
 /* samodejno izračunana teža v obrazcu novega lista */
 .ur-kg-auto{display:flex;align-items:center;min-height:44px;padding:0 12px;border:1.5px dashed var(--line);border-radius:9px;background:var(--green-m);color:var(--ink);font-variant-numeric:tabular-nums;font-weight:600;}
+
+/* Web view dostop (toggle v Uporabnikih) */
+.u-acts .u-web.on{border-color:transparent;background:rgba(52,199,110,.16);color:#1a7d43;}
+html[data-theme="dark"] .u-acts .u-web.on{background:rgba(52,199,110,.16);color:#4fd07f;}

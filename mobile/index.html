@@ -1611,8 +1611,11 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
     box.innerHTML = '<div style="grid-column:1/-1;color:var(--ink-soft);font-size:13px">Nalaganje\u2026</div>';
     var imena = [];
     try{
-      var emps = await api("employees?select=ime,active&order=ime") || [];
-      imena = emps.filter(function(e){ return e && e.active !== false && e.ime; }).map(function(e){ return e.ime; });
+      /* uporabniki portala z dostopom do Web viewa (privzeto vsi) */
+      var rows;
+      try{ rows = await api("profiles?select=full_name,active,web_dostop&web_dostop=eq.true&order=full_name"); }
+      catch(e0){ rows = await api("profiles?select=full_name,active&order=full_name"); }   /* če stolpca še ni */
+      imena = (rows||[]).filter(function(r){ return r && r.active !== false && r.full_name; }).map(function(r){ return r.full_name; });
       settings.empCache = imena; try{ await saveSettings(); }catch(e){}
     }catch(e){ imena = settings.empCache || []; }   /* offline → iz predpomnilnika */
     box.innerHTML = imena.length

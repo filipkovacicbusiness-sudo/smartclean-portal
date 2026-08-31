@@ -5362,7 +5362,7 @@
     }
     const [rLjudje, {
       data: clanstva
-    }] = await Promise.all([sb.from('profiles').select('id,email,full_name,is_staff,super_admin,zaposleni,active,last_login,last_seen').order('email'), sb.from('memberships').select('user_id,org_id')]);
+    }] = await Promise.all([sb.from('profiles').select('id,email,full_name,is_staff,super_admin,zaposleni,active,last_login,last_seen,web_dostop').order('email'), sb.from('memberships').select('user_id,org_id')]);
     let ljudje = rLjudje.data;
     if (rLjudje.error) { /* super_admin/zaposleni ali last_seen še ni — beri brez njih */
       const fb = await sb.from('profiles').select('id,email,full_name,is_staff,active,last_login').order('email');
@@ -5385,6 +5385,7 @@
       const ur = vlogaRang(vlogaVal);
       const lahkoUredi = !jaz && !jeLastnikU && mr > ur;   // nadrejeni ureja podrejene; lastnika nihče
       const naSpletu = jaz || (u.last_seen && (Date.now() - new Date(u.last_seen).getTime()) < 120000);
+      const webOn = u.web_dostop !== false;   // privzeto vključen
       const roleOpts = VLOGE.filter(r => r[2] < mr).sort((a, b) => b[2] - a[2]).map(r => `<option value="${r[0]}"${vlogaVal === r[0] ? ' selected' : ''}>${r[1]}</option>`).join('');
       return `<div class="u-row ${u.active ? '' : 'u-off'}">
       <div class="u-info">
@@ -5407,6 +5408,7 @@
       </div>
       <div class="u-acts">
         ${(jaz || lahkoUredi) ? `<button data-act="ime" data-id="${u.id}" data-ime="${escape_(u.full_name || '')}">preimenuj</button>` : ''}
+        ${(jaz || lahkoUredi) ? `<button class="u-web${webOn ? ' on' : ''}" data-act="web" data-id="${u.id}" data-v="${webOn ? 0 : 1}" title="Prikaz v Web view izbiri oseb">Web view: ${webOn ? 'da' : 'ne'}</button>` : ''}
         ${lahkoUredi ? `<button data-act="active" data-id="${u.id}" data-v="${u.active ? 0 : 1}">${u.active ? 'izklopi' : 'vklopi'}</button>` : ''}
         ${(jaz || lahkoUredi) ? `<button data-act="pw" data-id="${u.id}">novo geslo</button>` : ''}
         ${(jeLastnik && !jaz) ? `<button class="danger" data-act="del" data-id="${u.id}" data-m="${escape_(u.email || '')}">izbriši</button>` : ''}
@@ -5506,6 +5508,12 @@
       }).eq('id', id);
       if (btn.dataset.v === '1') await sb.from('memberships').delete().eq('user_id', id);
       uMsg(error ? 'Ni uspelo: ' + escape_(error.message) : 'Vloga je spremenjena.', !!error);
+      loadUsers();
+      return;
+    }
+    if (act === 'web') {
+      const { error } = await sb.from('profiles').update({ web_dostop: btn.dataset.v === '1' }).eq('id', id);
+      uMsg(error ? 'Ni uspelo: ' + escape_(error.message) : (btn.dataset.v === '1' ? 'Dostop do Web view vključen.' : 'Dostop do Web view izključen.'), !!error);
       loadUsers();
       return;
     }
