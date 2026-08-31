@@ -2533,7 +2533,7 @@
   // Zberi in izračunaj skupine po strankah za obdobje (orgIds: null/[] = vse, sicer seznam ID-jev).
   async function fakZberi(od, doo, orgIds) {
     let q = sb.from('delivery_notes')
-      .select('id,number,doc_date,weight_kg,total_pieces,org_id,transport,delivery_note_items(article_name,pieces)')
+      .select('id,number,doc_date,weight_kg,total_pieces,org_id,transport,delivery_note_items(article_name,article_id,pieces)')
       .gte('doc_date', od).lte('doc_date', doo).order('doc_date', { ascending: true }).limit(5000);
     if (orgIds && orgIds.length === 1) q = q.eq('org_id', orgIds[0]);
     else if (orgIds && orgIds.length) q = q.in('org_id', orgIds);
@@ -2543,7 +2543,7 @@
     const poOrg = {};
     notes.forEach(n => {
       const oid = n.org_id || '—';
-      if (!poOrg[oid]) poOrg[oid] = { org_id: oid, listov: 0, kg: 0, kosov: 0, redni: 0, izredni: 0, artikli: {} };
+      if (!poOrg[oid]) poOrg[oid] = { org_id: oid, listov: 0, kg: 0, kosov: 0, redni: 0, izredni: 0, artikli: {}, artAid: {} };
       const g = poOrg[oid];
       g.listov++;
       if (n.transport === 'izredni') g.izredni++; else g.redni++;
@@ -2552,6 +2552,7 @@
       (n.delivery_note_items || []).forEach(it => {
         const ime = (it.article_name || '—').trim() || '—';
         g.artikli[ime] = (g.artikli[ime] || 0) + (it.pieces || 0);
+        if (it.article_id && !g.artAid[ime]) g.artAid[ime] = it.article_id;
       });
     });
     const skupine = Object.values(poOrg).sort((a, b) => (ORGIME[a.org_id] || '').localeCompare(ORGIME[b.org_id] || '', 'sl', { sensitivity: 'base' }));
@@ -2562,9 +2563,12 @@
     skupine.forEach(g => {
       g.postavke = Object.entries(g.artikli).map(([nm, q]) => {
         const key = g.org_id + '|' + nm.trim().toLowerCase();
-        const s = artmap[key];
+        const aid = g.artAid ? g.artAid[nm] : null;
+        const byId = (aid && artmap.__byId) ? artmap.__byId[aid] : null;
+        // primarno prek article_id (zanesljivo), sicer po imenu
+        const s = (byId && byId.sifra != null) ? byId.sifra : artmap[key];
         const cena = cenaZaArtikel(s);
-        const tzKos = artmap.__teza ? artmap.__teza[key] : null;
+        const tzKos = (byId && byId.teza != null) ? byId.teza : (artmap.__teza ? artmap.__teza[key] : null);
         const teza = (tzKos != null && !isNaN(tzKos)) ? Math.round(tzKos * q * 1000) / 1000 : null;
         return { nm, q, cena, teza, znesek: cena != null ? Math.round(cena * q * 100) / 100 : null };
       }).sort((a, b) => a.nm.localeCompare(b.nm, 'sl', { sensitivity: 'base' }));
@@ -3155,16 +3159,23 @@
   }
   function produktPoId(id) { id = normId(id); if (!id || !CENIK) return null; return CENIK.find(function (x) { return normId(x.koda) === id; }) || null; }
   async function naloziArtMap(orgFilter) {
-    let q = sb.from('articles').select('org_id,name,cena_sifra,teza');
-    if (orgFilter) q = q.eq('org_id', orgFilter);
-    const { data, error } = await q;
-    const map = {}; const tez = {};
-    if (!error) (data || []).forEach(a => {
+    // POZOR: brez paginacije PostgREST vrne največ 1000 vrstic; vseh artiklov je
+    // lahko več (vse stranke) → nekateri odpadejo in fakture kažejo »—«. Zato beri po straneh.
+    const r = await vseVrstice(function (a, b) {
+      let q = sb.from('articles').select('id,org_id,name,cena_sifra,teza').order('id', { ascending: true }).range(a, b);
+      if (orgFilter) q = q.eq('org_id', orgFilter);
+      return q;
+    });
+    const data = r.error ? [] : (r.data || []);
+    const map = {}; const tez = {}; const byId = {};
+    data.forEach(a => {
       var key = a.org_id + '|' + String(a.name || '').trim().toLowerCase();
       if (a.cena_sifra != null) map[key] = a.cena_sifra;
       if (a.teza != null && a.teza !== '') tez[key] = parseFloat(a.teza);
+      if (a.id) byId[a.id] = { sifra: a.cena_sifra, teza: (a.teza != null && a.teza !== '') ? parseFloat(a.teza) : null };
     });
     map.__teza = tez;
+    map.__byId = byId;
     return map;
   }
   function cenaZaArtikel(sifra) { return (sifra != null && CENIKMAP && CENIKMAP[sifra]) ? CENIKMAP[sifra].cena1 : null; }
