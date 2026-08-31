@@ -1770,7 +1770,7 @@
     var eurReady = _ucEurKljuc === ekljuc;
     var eurMap = eurReady ? _ucEur : {};
     var mapK = ucKgPoStranki(kljuc);
-    var arr = Object.keys(mapK).map(function (id) { return { ime: ORGIME[id] || '—', kg: mapK[id], eur: (eurMap[id] != null ? eurMap[id] : null) }; }).filter(function (x) { return x.kg > 0; });
+    var arr = Object.keys(mapK).map(function (id) { return { id: id, ime: ORGIME[id] || '—', kg: mapK[id], eur: (eurMap[id] != null ? eurMap[id] : null) }; }).filter(function (x) { return x.kg > 0; });
     arr.sort(function (a, b) {
       if (_ucSort === 'kg_asc') return a.kg - b.kg;
       if (_ucSort === 'eur_asc' || _ucSort === 'eur_desc') { var ea = a.eur == null ? -1 : a.eur, eb = b.eur == null ? -1 : b.eur; return _ucSort === 'eur_asc' ? ea - eb : eb - ea; }
@@ -1778,10 +1778,10 @@
     });
     var kgSkup = arr.reduce(function (s, x) { return s + x.kg; }, 0);
     function eurCela(v) { return !eurReady ? '<span class="u-sub">…</span>' : (v != null ? cenaFmt(v) : '<span class="u-sub">—</span>'); }
-    var rows = arr.map(function (x) { return '<tr><td>' + escape_(x.ime) + '</td><td class="pris-ure">' + fmtKg(x.kg) + '</td><td class="pris-ure uc-eur">' + eurCela(x.eur) + '</td></tr>'; }).join('');
+    var rows = arr.map(function (x) { return '<tr><td>' + escape_(x.ime) + '</td><td class="pris-ure">' + fmtKg(x.kg) + '</td><td class="pris-ure uc-eur" data-org="' + escape_(x.id) + '">' + eurCela(x.eur) + '</td></tr>'; }).join('');
     var tbl = '<table class="pris-tbl"><thead><tr><th>Stranka</th><th>Kilaža</th><th>€/kg</th></tr></thead><tbody>' +
       (rows || '<tr><td colspan="3" class="u-sub">Ni podatkov.</td></tr>') + '</tbody>' +
-      (rows ? '<tfoot><tr><td>Skupaj</td><td class="pris-ure">' + fmtKg(kgSkup) + '</td><td class="pris-ure uc-eur">' + eurCela(eurReady ? _ucEurTot : null) + '</td></tr></tfoot>' : '') + '</table>';
+      (rows ? '<tfoot><tr><td>Skupaj</td><td class="pris-ure">' + fmtKg(kgSkup) + '</td><td class="pris-ure uc-eur uc-eur-tot">' + eurCela(eurReady ? _ucEurTot : null) + '</td></tr></tfoot>' : '') + '</table>';
     var sortSel = '<select class="uc-sort" aria-label="Razvrsti">' +
       '<option value="kg_desc"' + (_ucSort === 'kg_desc' ? ' selected' : '') + '>Kilaža ↓</option>' +
       '<option value="kg_asc"' + (_ucSort === 'kg_asc' ? ' selected' : '') + '>Kilaža ↑</option>' +
@@ -1819,7 +1819,17 @@
     _ucEur = m; _ucEurTot = tk > 0 ? tn / tk : null; _ucEurKljuc = ekljuc;
     _ucEurLoading = false;
     var box = $('ucList'), sec = $('sec-statistika');
-    if (box && sec && !sec.classList.contains('hidden')) { _uc3dAnim = false; ucRender(); }
+    if (box && sec && !sec.classList.contains('hidden')) {
+      /* Posodobi SAMO stolpec €/kg — NE prezidaj cele kartice, drugače bi prekinili
+         animacijo tortnega diagrama (zato je bila ob prvem vstopu »broken«). */
+      var eurCela2 = function (v) { return v != null ? cenaFmt(v) : '<span class="u-sub">—</span>'; };
+      box.querySelectorAll('.uc-eur[data-org]').forEach(function (td) {
+        var oid = td.getAttribute('data-org');
+        td.innerHTML = eurCela2(m[oid] != null ? m[oid] : null);
+      });
+      var totTd = box.querySelector('.uc-eur-tot');
+      if (totTd) totTd.innerHTML = eurCela2(_ucEurTot);
+    }
   }
   function ucIzvoz() {
     var kljuc = _ucMesec ? _ucDan.slice(0, 7) : _ucDan;
