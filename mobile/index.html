@@ -346,6 +346,18 @@
   .login-user{border:1px solid var(--line);background:var(--paper);border-radius:16px;padding:24px 14px;font-size:17px;font-weight:600;color:var(--ink);transition:border-color .14s,background .14s,transform .06s}
   .login-user:hover{border-color:var(--press)} .login-user:active{background:var(--press-tint);transform:scale(.985)}
   .login-user .role{display:block;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--warn);font-weight:700;margin-top:4px}
+  /* profilne ikone (kot v portalu) */
+  .login-users{grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:16px;align-items:start}
+  .lp-wrap{position:relative}
+  .lp-tile{width:100%;display:flex;flex-direction:column;align-items:center;gap:10px;border:1px solid var(--line);background:var(--paper);border-radius:18px;padding:20px 10px;color:var(--ink);cursor:pointer;transition:border-color .14s,background .14s,transform .06s}
+  .lp-tile:hover{border-color:var(--press)} .lp-tile:active{background:var(--press-tint);transform:scale(.98)}
+  .lp-av{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--press-tint);font-family:'Playfair Display',Georgia,serif;font-weight:800;font-size:26px;line-height:1;background-size:cover;background-position:center}
+  .av-sc .sc-s{color:var(--ink)} .av-sc .sc-c{color:var(--sc-green)}
+  .lp-plus{font-family:'Instrument Sans',system-ui,sans-serif;font-weight:400;font-size:34px;color:var(--ink-soft)}
+  .lp-add{border-style:dashed}
+  .lp-nm{font-size:15px;font-weight:600;color:var(--ink);text-align:center;line-height:1.2;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+  .lp-x{position:absolute;top:-6px;right:-6px;width:24px;height:24px;border-radius:50%;border:1px solid var(--line);background:var(--paper);color:var(--ink-soft);font-size:15px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer}
+  .lp-x:hover{color:var(--ink);border-color:var(--ink)}
   .login-back{background:none;color:var(--press);font-weight:600;font-size:14px;float:left;margin-bottom:6px}
   .acct-form{display:flex;flex-direction:column;gap:12px;text-align:left}
   .acct-form .login-sub{margin-bottom:4px;text-align:center}
@@ -696,11 +708,11 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
       <input type="password" id="acctPass" class="acct-in" placeholder="Geslo" autocomplete="current-password" />
       <button type="submit" class="acct-btn" id="acctBtn">Prijava</button>
       <div class="acct-err" id="acctErr"></div>
-      <div class="acct-note">Prijava je ista kot v portalu. Po prijavi se aplikacija samodejno poveže in sinhronizira.</div>
+      <button type="button" class="login-back" id="acctBack" style="display:none">‹ Nazaj na profile</button>
+      <div class="acct-note">Prijava je ista kot v portalu. Profil se shrani na tablico — nato en pritisk za vstop.</div>
     </form>
     <div id="loginUsersWrap" style="display:none">
-      <button class="login-back" id="usersBack">‹ Odjava računa</button>
-      <div class="login-sub">Izberi uporabnika</div>
+      <div class="login-sub">Izberi profil</div>
     <div class="login-users" id="loginUsers"><div style="grid-column:1/-1;color:var(--ink-soft);font-size:13px">Nalaganje\u2026</div></div>
     </div>
   </div>
@@ -1551,17 +1563,45 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
      Ob odprtju: e-naslov + geslo. Po prijavi je naprava povezana in
      sinhronizirana. Tablica (profil is_tablet=true) \u2192 izbira uporabnika;
      osebni ra\u010dun \u2192 uporabnik = ime iz profila (brez izbire). */
-  var accountMode = null, accountEmail = "";
-  function showAccountLogin(msg){
+  var accountMode = "tablet", accountEmail = "";
+  var PROFILES_KEY = "pralnica:profiles", savedProfs = [];
+  async function loadProfs(){ try{ var v = await dbRead(PROFILES_KEY); savedProfs = v ? JSON.parse(v) : []; }catch(e){ savedProfs = []; } }
+  async function saveProfs(){ try{ await dbWrite(PROFILES_KEY, JSON.stringify(savedProfs)); }catch(e){} }
+
+  function showAccountLogin(msg){   /* obrazec e-naslov + geslo ("+") */
     session = null; clearTimeout(idleTimer);
     var uw = document.getElementById("loginUsersWrap"); if(uw) uw.style.display = "none";
     var af = document.getElementById("acctForm"); if(af) af.style.display = "";
     var er = document.getElementById("acctErr"); if(er) er.textContent = msg || "";
     var pw = document.getElementById("acctPass"); if(pw) pw.value = "";
+    var bb = document.getElementById("acctBack"); if(bb) bb.style.display = savedProfs.length ? "" : "none";
     document.getElementById("loginScreen").classList.add("show");
   }
-  function showLogin(){ showAccountLogin(); }   /* zdru\u017eljivost s starimi klici */
+  function showLogin(){ prikaziProfile(); }   /* privzeti vstop = mre\u017ea profilov */
 
+  /* Mre\u017ea shranjenih profilov (kot v portalu) + gumb \u00bbDodaj\u00ab. */
+  function prikaziProfile(){
+    if(!savedProfs.length){ showAccountLogin(""); return; }
+    session = null; clearTimeout(idleTimer);
+    document.getElementById("acctForm").style.display = "none";
+    document.getElementById("loginUsersWrap").style.display = "";
+    document.getElementById("loginScreen").classList.add("show");
+    var box = document.getElementById("loginUsers");
+    box.innerHTML = savedProfs.map(function(p){
+      return '<div class="lp-wrap"><button class="lp-tile" data-em="' + esc(p.email) + '">' +
+        '<span class="lp-av av-sc"><span class="sc-s">S</span><span class="sc-c">C</span></span>' +
+        '<span class="lp-nm">' + esc(p.name || p.email) + '</span></button>' +
+        '<button class="lp-x" data-forget="' + esc(p.email) + '" aria-label="Odstrani profil" title="Odstrani profil">\u00d7</button></div>';
+    }).join("") + '<button class="lp-tile lp-add" id="lpAdd"><span class="lp-av lp-plus">+</span><span class="lp-nm">Dodaj</span></button>';
+    box.querySelectorAll(".lp-tile[data-em]").forEach(function(b){ b.onclick = function(){ izberiProfil(b.getAttribute("data-em")); }; });
+    box.querySelectorAll(".lp-x").forEach(function(b){ b.onclick = function(e){ e.stopPropagation(); pozabiProfil(b.getAttribute("data-forget")); }; });
+    var add = document.getElementById("lpAdd"); if(add) add.onclick = function(){ showAccountLogin(""); };
+  }
+  async function pozabiProfil(em){ savedProfs = savedProfs.filter(function(p){ return p.email !== em; }); await saveProfs(); prikaziProfile(); }
+
+  async function vstopiKot(nm){ accountEmail = nm; settings.acctName = nm; try{ await saveSettings(); }catch(e){} doLogin({ name: nm, role: "admin" }); }
+
+  /* "+" prijava z e-naslovom in geslom \u2192 shrani profil za en-pritisk vstop */
   async function acctSubmit(){
     var em = (document.getElementById("acctEmail").value || "").trim();
     var pw = document.getElementById("acctPass").value || "";
@@ -1570,19 +1610,50 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
     btn.disabled = true; btn.textContent = "Prijavljam\u2026"; er.textContent = "";
     try{
       await portalLogin(em, pw);
-      await poPrijavi();
+      var prof = await portalProfil();
+      if(!prof.is_staff){ try{ await portalOdjava(); }catch(e){} er.textContent = "Ta ra\u010dun ni osebje."; return; }
+      if(prof.web_dostop === false){ try{ await portalOdjava(); }catch(e){} er.textContent = "Ta uporabnik nima dostopa do Web viewa."; return; }
+      var nm = prof.full_name || prof.email || em;
+      savedProfs = savedProfs.filter(function(p){ return p.email !== prof.email; });
+      savedProfs.push({ email: prof.email, name: nm, uid: prof.id, refresh_token: portalAuth.refresh_token });
+      await saveProfs();
+      try{ await osveziKatalog(true); }catch(e){}
+      try{ await potegniIzPortala(); }catch(e){}
+      try{ zaziviRealtime(); }catch(e){}
+      await vstopiKot(nm);
     }catch(e){ er.textContent = (e && e.message) || "Prijava ni uspela."; }
     finally{ btn.disabled = false; btn.textContent = "Prijava"; }
+  }
+
+  /* Tap na shranjen profil \u2192 tiha osve\u017eitev seje \u2192 vstop (brez gesla). */
+  async function izberiProfil(em){
+    var p = savedProfs.find(function(x){ return x.email === em; }); if(!p) return;
+    var box = document.getElementById("loginUsers"); if(box) box.innerHTML = '<div style="grid-column:1/-1;color:var(--ink-soft);font-size:13px">Prijavljam\u2026</div>';
+    try{
+      portalAuth = { refresh_token: p.refresh_token, access_token: null, expires_at: 0 };
+      await portalRefresh();
+      p.refresh_token = portalAuth.refresh_token; await savePortalAuth();
+      var prof = await portalProfil();
+      if(!prof.is_staff || prof.web_dostop === false) throw new Error("nima dostopa");
+      p.name = prof.full_name || p.name; await saveProfs();
+      try{ await osveziKatalog(true); }catch(e){}
+      try{ await potegniIzPortala(); }catch(e){}
+      try{ zaziviRealtime(); }catch(e){}
+      await vstopiKot(p.name);
+    }catch(e){
+      showAccountLogin("Prijava je potekla \u2014 vpi\u0161i geslo za " + (p.name || p.email));
+      var ie = document.getElementById("acctEmail"); if(ie) ie.value = p.email;
+    }
   }
 
   async function portalProfil(){
     var ur = await fetch(settings.portalUrl + "/auth/v1/user", { headers: { apikey: settings.portalKey, Authorization: "Bearer " + portalAuth.access_token } });
     var u = await ur.json().catch(function(){ return {}; });
     if(!ur.ok) throw new Error("seja ni veljavna");
-    var out = { id: u.id, email: u.email || "", is_staff: false, full_name: "", is_tablet: false };
+    var out = { id: u.id, email: u.email || "", is_staff: false, full_name: "", web_dostop: true };
     try{
-      var rows = await api("profiles?select=is_staff,full_name,is_tablet&id=eq." + u.id);
-      if(Array.isArray(rows) && rows[0]){ out.is_staff = !!rows[0].is_staff; out.full_name = rows[0].full_name || ""; out.is_tablet = !!rows[0].is_tablet; }
+      var rows = await api("profiles?select=is_staff,full_name,web_dostop&id=eq." + u.id);
+      if(Array.isArray(rows) && rows[0]){ out.is_staff = !!rows[0].is_staff; out.full_name = rows[0].full_name || ""; out.web_dostop = rows[0].web_dostop !== false; }
     }catch(e){
       try{ var r2 = await api("profiles?select=is_staff,full_name&id=eq." + u.id); if(Array.isArray(r2) && r2[0]){ out.is_staff = !!r2[0].is_staff; out.full_name = r2[0].full_name || ""; } }catch(e2){}
     }
@@ -1600,8 +1671,8 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
     try{ await osveziKatalog(true); }catch(e){}
     try{ await potegniIzPortala(); }catch(e){}
     try{ zaziviRealtime(); }catch(e){}
-    if(prof.is_tablet){ accountMode = "tablet"; await pokaziIzbiroUporabnika(); }
-    else{ accountMode = "person"; doLogin({ name: settings.acctName, role: "admin" }); }
+    /* Web view / tablica: vedno izbira osebe (kdo dela na listu). */
+    accountMode = "tablet"; await pokaziIzbiroUporabnika();
   }
 
   async function pokaziIzbiroUporabnika(){
@@ -1629,7 +1700,7 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
     hideLogin();
     document.getElementById("adminBtn").style.display=(u.role==="admin")?"":"none";
     { var _tu=document.getElementById("tbUser"); if(_tu) _tu.textContent = u.name || ""; }
-    { var _lb=document.getElementById("logoutBtn"); if(_lb) _lb.textContent = (accountMode==="tablet") ? "Zamenjaj" : "Odjava"; }
+    { var _lb=document.getElementById("logoutBtn"); if(_lb) _lb.textContent = "Zamenjaj"; }
     selectedId=null; draftQty={}; editingId=null; searchQuery="";
     lockSelector(false); setClientLabel(); searchMode=""; searchQuery=""; searchDate=""; searchClientId=""; updateSearchChip();
     renderEntry(); renderSummary(); render();
@@ -1638,11 +1709,10 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
       askConfirm("Dovoljenje za PDF","Za samodejno shranjevanje PDF v Datoteke omogoči \u201eDostop do vseh datotek\u201c.","Odpri nastavitve",function(){ try{ pdfPlugin().requestPermission(); }catch(e){} },false,"Pozneje"); }
   }
   async function logout(){
-    /* Odjava uporabnika (ne računa). Tablica → nazaj na izbiro uporabnika
-       (račun tablice ostane prijavljen). Osebni račun → prijavni zaslon. */
+    /* Zamenjava osebe: nazaj na mrežo profilov. Profili ostanejo shranjeni (en pritisk = vstop). */
     closeAllOverlays();
-    if(accountMode === "tablet" && portalAuth && portalAuth.access_token){ session = null; clearTimeout(idleTimer); pokaziIzbiroUporabnika(); }
-    else{ showAccountLogin(); }
+    session = null; clearTimeout(idleTimer);
+    prikaziProfile();
   }
   function closeAllOverlays(){
     ["kpBackdrop","backdrop","clientBackdrop","confirmBackdrop","reviewBackdrop"].forEach(function(id){ var el=document.getElementById(id); if(el) el.classList.remove("open"); });
@@ -1772,7 +1842,7 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
     if(_ct) _ct.onclick=function(){ var ps=document.getElementById("portalSetup"); if(ps) ps.classList.toggle("open"); }; }
   document.getElementById("syncBtn").onclick=function(){ syncPush(false); };
   { var _af=document.getElementById("acctForm"); if(_af) _af.addEventListener("submit", function(e){ e.preventDefault(); acctSubmit(); }); }
-  { var _ub=document.getElementById("usersBack"); if(_ub) _ub.onclick=async function(){ try{ await portalOdjava(); }catch(e){} accountMode=null; showAccountLogin(); }; }
+  { var _ab=document.getElementById("acctBack"); if(_ab) _ab.onclick=function(){ prikaziProfile(); }; }
   document.getElementById("admUserAdd").onclick=addUser;
   document.getElementById("admNextSave").onclick=saveNextSeq;
   var editingClientId=null;
@@ -1841,7 +1911,7 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
 
   (async function init(){
     await loadSettings(); applyTheme();
-    await loadUsers(); await loadLogins(); await loadClients(); await loadEntries();
+    await loadUsers(); await loadLogins(); await loadProfs(); await loadClients(); await loadEntries();
     await ensurePdfPerm(); await reconcileSync();
     await loadPortalAuth();
     await loadBrisanja();
@@ -1853,16 +1923,10 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
   /* Ob zagonu: če je račun že prijavljen (shranjena seja), preskoči vpis
      in nadaljuj (tablica → izbira uporabnika, oseba → naravnost v app). */
   async function ensureLoginFlow(){
-    if(portalAuth && portalAuth.access_token){
-      function vstopiIzShrambe(){
-        if(settings.acctIsTablet){ accountMode = "tablet"; return pokaziIzbiroUporabnika(); }
-        accountMode = "person"; return doLogin({ name: settings.acctName || "Uporabnik", role: "admin" });
-      }
-      if(navigator.onLine === false){ try{ realtimeKlient(); }catch(e){} return vstopiIzShrambe(); }
-      try{ await poPrijavi(); return; }
-      catch(e){ if(settings.acctName || settings.acctIsTablet) return vstopiIzShrambe(); }
-    }
-    showAccountLogin();
+    /* Ob zagonu vedno pokaži mrežo profilov (če obstajajo), sicer obrazec za prijavo.
+       Operater z enim pritiskom izbere sebe; profili so shranjeni na tablici. */
+    try{ realtimeKlient(); }catch(e){}
+    prikaziProfile();
   }
 
 /* ══════════ SUPABASE SYNC (portal) ══════════ */

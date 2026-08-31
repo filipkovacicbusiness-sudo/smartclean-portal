@@ -1660,3 +1660,7 @@ h3.sec,h3.sec-h,.empty h3,.fak-card-h h3,.adm-ime,.stat-num,.auth-claim,
 /* Web view dostop (toggle v Uporabnikih) */
 .u-acts .u-web.on{border-color:transparent;background:rgba(52,199,110,.16);color:#1a7d43;}
 html[data-theme="dark"] .u-acts .u-web.on{background:rgba(52,199,110,.16);color:#4fd07f;}
+
+/* Arhiv: kdo je izdelal spremni list */
+.a-izdal{font-size:.76rem;color:var(--mid);display:inline-flex;align-items:center;gap:4px;}
+.a-izdal::before{content:"·";color:var(--line);}
