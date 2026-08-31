@@ -1264,6 +1264,19 @@ html[data-view="grid"] #cenikList .sc-isolate .cgrp:not(.open){max-width:var(--t
 .uc-stat{display:flex;flex-direction:column;justify-content:center;}
 .uc-big{font-size:2.3rem;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;line-height:1.1;margin:8px 0 6px;}
 .uc-big span{font-size:.98rem;font-weight:500;color:var(--mid);}
+/* ── lestvica kg/uro po dnevih ── */
+.uc-lest-card{display:flex;flex-direction:column;min-height:0;}
+.uc-lest-h{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;}
+.uc-lest-h .sec-h{margin:0;}
+.uc-lest-toggle{cursor:pointer;white-space:nowrap;}
+.uc-lest-list{display:flex;flex-direction:column;max-height:320px;overflow-y:auto;}
+.uc-lest-row{display:grid;grid-template-columns:24px 1fr auto;grid-template-areas:"rank dan v" "rank sub v";column-gap:9px;align-items:center;padding:7px 2px;border-bottom:1px solid var(--line);}
+.uc-lest-row:last-child{border-bottom:none;}
+.uc-lest-rank{grid-area:rank;color:var(--mid);font-variant-numeric:tabular-nums;font-size:.85rem;}
+.uc-lest-dan{grid-area:dan;font-weight:600;color:var(--ink);}
+.uc-lest-sub{grid-area:sub;color:var(--mid);font-size:.8rem;}
+.uc-lest-v{grid-area:v;text-align:right;font-variant-numeric:tabular-nums;color:var(--ink);white-space:nowrap;font-size:1.05rem;font-weight:600;}
+.uc-lest-v span{font-size:.76rem;font-weight:500;color:var(--mid);}
 
 /* ── PRISOTNOST ── */
 .pris-card{border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);padding:16px 18px;margin-bottom:14px;}
@@ -1500,10 +1513,14 @@ html[data-theme="dark"] .pris-chip-x:hover{background:rgba(255,138,122,.16);colo
 .art-chk.dis{cursor:not-allowed;opacity:.35;}
 
 /* ── Prisotnost: potrjevanje ur (kljukica na paru prihod–odhod) ── */
-.pris-pair{display:inline-flex;align-items:center;gap:6px;}
-.pris-pair-chk{width:17px;height:17px;flex:0 0 auto;margin:0;cursor:pointer;accent-color:#1a6644;}
-.pris-pair.pot-ni .pris-chip-t{color:#e0a82e;font-weight:600;}   /* rumeno: še ni potrjeno */
-.pris-pair.pot-ok .pris-chip-t{color:var(--ink);}               /* normalno (črno/belo glede na temo): potrjeno */
+.pris-pair{display:inline-flex;align-items:center;gap:5px;}
+/* Potrditvena oznaka — čist, monokromatski okrogli gumb (ne surov zeleni checkbox) */
+.pris-pair-chk{appearance:none;-webkit-appearance:none;width:16px;height:16px;flex:0 0 auto;margin:0 0 0 4px;cursor:pointer;border:1.5px solid var(--line);border-radius:50%;background:var(--surface);position:relative;transition:border-color .15s,background .15s;}
+.pris-pair-chk:hover{border-color:var(--mid);}
+.pris-pair-chk:checked{background:var(--ink);border-color:var(--ink);}
+.pris-pair-chk:checked::after{content:"";position:absolute;left:5px;top:2px;width:3.5px;height:7px;border:solid var(--surface);border-width:0 1.6px 1.6px 0;transform:rotate(45deg);}
+.pris-pair.pot-ni .pris-chip-t{color:var(--mid);}               /* nepotrjeno: prigušeno (prazen krogec levo) */
+.pris-pair.pot-ok .pris-chip-t{color:var(--ink);}               /* potrjeno: polna oznaka + ink besedilo */
 
 /* ── Prisotnost: stabilna postavitev (stolpci se ne premikajo med dnevi) ── */
 .pris-tbl-dan,.pris-tbl-oseba{table-layout:fixed;}
