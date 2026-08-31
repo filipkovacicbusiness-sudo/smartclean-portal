@@ -1255,9 +1255,8 @@ html[data-view="grid"] #cenikList .sc-isolate .cgrp:not(.open){max-width:var(--t
 .uc-d3-month:focus{border-color:var(--green-l);outline:none;}
 .uc-d3-stage{width:100%;margin-top:6px;}
 .uc3d-svg{display:block;width:100%;height:auto;max-height:460px;overflow:visible;}
-.uc3d-seg,.uc3d-lab{transition:transform .22s cubic-bezier(.34,1.15,.5,1);transform-box:view-box;transform-origin:0 0;}
-.uc3d-seg{cursor:pointer;}
-.uc3d-seg path{stroke:rgba(0,0,0,.3);stroke-width:.8px;stroke-linejoin:round;}
+.uc3d-p,.uc3d-lab{transition:transform .22s cubic-bezier(.34,1.15,.5,1);transform-box:view-box;transform-origin:0 0;}
+.uc3d-p{cursor:pointer;stroke:rgba(0,0,0,.28);stroke-width:.8px;stroke-linejoin:round;}
 .uc3d-lab.hot .uc3d-nm{fill:var(--ink);}
 .uc3d-lead{stroke:var(--mid);stroke-width:1;opacity:.55;fill:none;}
 .uc3d-nm{fill:var(--ink);font-family:var(--sans);font-size:13px;font-weight:600;}
@@ -1287,6 +1286,10 @@ html[data-view="grid"] #cenikList .sc-isolate .cgrp:not(.open){max-width:var(--t
 .uc-lest-sub{grid-area:sub;color:var(--mid);font-size:.8rem;}
 .uc-lest-v{grid-area:v;text-align:right;font-variant-numeric:tabular-nums;color:var(--ink);white-space:nowrap;font-size:1.05rem;font-weight:600;}
 .uc-lest-v span{font-size:.76rem;font-weight:500;color:var(--mid);}
+.uc-lest-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:auto;padding:11px 2px 2px;border-top:1px solid var(--line);}
+.uc-lest-foot:empty{display:none;}
+.uc-lest-foot-k{color:var(--mid);font-size:.82rem;text-transform:uppercase;letter-spacing:.04em;}
+.uc-lest-foot-v{font-variant-numeric:tabular-nums;font-size:1.05rem;font-weight:700;color:var(--ink);}
 
 /* ── PRISOTNOST ── */
 .pris-card{border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);padding:16px 18px;margin-bottom:14px;}

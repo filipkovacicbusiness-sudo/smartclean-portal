@@ -1195,7 +1195,7 @@
     kg = Math.round((Number(kg) || 0) * 100) / 100;
     var v, u;
     if (kg >= 1000) { v = kg / 1000; u = 't'; } else { v = kg; u = 'kg'; }
-    var s = (u === 't' ? v.toFixed(5) : v.toFixed(2));
+    var s = v.toFixed(2);                 // max 2 decimalki povsod (kg in t)
     s = s.replace(/0+$/, '').replace(/\.$/, '').replace('.', ',');
     return s + u;
   }
@@ -1498,24 +1498,57 @@
   var _ucDonutRange = '3m', _uc3dAnim = false, _kgVseMap = null, _uc3dRAF = null, _ucDonutMonth = null;
   var _ucLestSort = 'desc';   // lestvica kg/uro po dnevih: 'desc' padajoče / 'asc' naraščajoče
   var _ucLestEurSort = 'desc'; // lestvica €/kg po strankah: 'desc' padajoče / 'asc' naraščajoče
-  /* Vrstice lestvice €/kg po strankah (na osnovi opranega perila v izbranem obdobju).
-     Uporablja isto obdobje kot Evidenca kg; €/kg se dopolni, ko se naloži prihodek. */
+  // Prihodek po strankah za OBSEG diagrama (Mesec/3m/Vse) — ločeno od Evidence kg.
+  var _ucDonutEur = {}, _ucDonutEurTot = null, _ucDonutEurKljuc = null, _ucDonutEurLoading = false;
+  function ucDonutObdobje() {
+    var r = _ucDonutRange;
+    if (r === 'mesec') {
+      var mk = _ucDonutMonth || danes10().slice(0, 7);
+      var y = parseInt(mk.slice(0, 4), 10), m = parseInt(mk.slice(5, 7), 10);
+      var last = new Date(y, m, 0).getDate();
+      return { od: mk + '-01', do: mk + '-' + ('0' + last).slice(-2), key: 'M' + mk };
+    }
+    if (r === 'vse') return { od: '2000-01-01', do: danes10(), key: 'V' };
+    var d = new Date(), f = new Date(d.getFullYear(), d.getMonth() - 2, 1);
+    return { od: f.getFullYear() + '-' + ('0' + (f.getMonth() + 1)).slice(-2) + '-01', do: danes10(), key: '3M' };
+  }
+  /* Vrstice lestvice €/kg po strankah — na osnovi OPRANEGA perila v obsegu diagrama.
+     kg iz istega vira kot diagram (ucKgObseg), €/kg iz prihodka za isto obdobje. */
   function ucLestEurRows() {
-    var k = _ucMesec ? _ucDan.slice(0, 7) : _ucDan;
-    var ek = (_ucMesec ? 'M' : 'D') + k;
-    var ready = _ucEurKljuc === ek;
+    var o = ucDonutObdobje(), ready = _ucDonutEurKljuc === o.key;
     if (!ready) return '<p class="u-sub" style="padding:10px 2px">Računam €/kg…</p>';
-    var map = ucKgPoStranki(k);
-    var arr = Object.keys(map).map(function (id) { return { id: id, ime: ORGIME[id] || '—', kg: map[id], eur: (_ucEur[id] != null ? _ucEur[id] : null) }; }).filter(function (x) { return x.kg > 0; });
+    var map = ucKgObseg(_ucDonutRange) || {};
+    var arr = Object.keys(map).map(function (id) { return { id: id, ime: ORGIME[id] || '—', kg: map[id], eur: (_ucDonutEur[id] != null ? _ucDonutEur[id] : null) }; }).filter(function (x) { return x.kg > 0; });
     if (!arr.length) return '<p class="u-sub" style="padding:10px 2px">Ni opranega perila v izbranem obdobju.</p>';
     arr.sort(function (a, b) { var ea = a.eur == null ? -1 : a.eur, eb = b.eur == null ? -1 : b.eur; return _ucLestEurSort === 'asc' ? ea - eb : eb - ea; });
     function eurKg(v) { return v == null ? '—' : (Math.round(v * 100) / 100).toFixed(2).replace('.', ','); }
-    return arr.map(function (o, i) {
+    return arr.map(function (o2, i) {
       return '<div class="uc-lest-row"><span class="uc-lest-rank">' + (i + 1) + '.</span>' +
-        '<span class="uc-lest-dan">' + escape_(o.ime) + '</span>' +
-        '<span class="uc-lest-sub">' + fmtKg(o.kg) + '</span>' +
-        '<b class="uc-lest-v">' + eurKg(o.eur) + '<span> €/kg</span></b></div>';
+        '<span class="uc-lest-dan">' + escape_(o2.ime) + '</span>' +
+        '<span class="uc-lest-sub">' + fmtKg(o2.kg) + '</span>' +
+        '<b class="uc-lest-v">' + eurKg(o2.eur) + '<span> €/kg</span></b></div>';
     }).join('');
+  }
+  function ucLestEurTot() {
+    var o = ucDonutObdobje();
+    if (_ucDonutEurKljuc !== o.key || _ucDonutEurTot == null) return '';
+    return '<span class="uc-lest-foot-k">Skupaj cena</span><b class="uc-lest-foot-v">' + cenaFmt(_ucDonutEurTot) + '</b>';
+  }
+  async function ucNaloziPrihodekObseg() {
+    var o = ucDonutObdobje();
+    if (_ucDonutEurKljuc === o.key || _ucDonutEurLoading) return;
+    _ucDonutEurLoading = true;
+    var m = {}, tot = 0;
+    try {
+      var res = await fakZberi(o.od, o.do, null);
+      if (res && res.skupine) res.skupine.forEach(function (g) { if (g.kg > 0 && g.neto != null) m[g.org_id] = g.neto / g.kg; tot += g.neto || 0; });
+    } catch (e) {}
+    _ucDonutEur = m; _ucDonutEurTot = tot; _ucDonutEurKljuc = o.key; _ucDonutEurLoading = false;
+    var box = $('ucList'), sec = $('sec-statistika');
+    if (box && sec && !sec.classList.contains('hidden')) {
+      var l = box.querySelector('.uc-lest-eur-list'); if (l) l.innerHTML = ucLestEurRows();
+      var t = box.querySelector('.uc-lest-eur-tot'); if (t) t.innerHTML = ucLestEurTot();
+    }
   }
 
   async function naloziUcinek() {
@@ -1618,59 +1651,60 @@
   function _uc3dSub(p, a, b) { return Math.max(0, Math.min(1, (p - a) / (b - a))); }
   /* progres 0..1 → parametri koreografije: krog → razdelitev → barvanje+napisi → nagib v 3D */
   function _uc3dFrame(e) {
-    var pSplit = _uc3dEio(_uc3dSub(e, 0.18, 0.44));
-    var pColor = _uc3dEoc(_uc3dSub(e, 0.38, 0.68));
-    var pTilt = _uc3dEio(_uc3dSub(e, 0.60, 1.0));
-    return { gap: 0.055 * pSplit, cmix: pColor, ky: 1 - (1 - 0.55) * pTilt, depth: _UC3D.depth * pTilt, labo: pColor, rot: pTilt * 0.10 };
+    var pColor = _uc3dEoc(_uc3dSub(e, 0.30, 0.62));
+    var pTilt = _uc3dEio(_uc3dSub(e, 0.55, 1.0));
+    return { cmix: pColor, ky: 1 - (1 - 0.55) * pTilt, depth: _UC3D.depth * pTilt, labo: pColor, rot: pTilt * 0.10 };
   }
   function uc3dSvgBuild(segs, total, e) {
     var P = _uc3dFrame(e);
     var G = _UC3D, cx = G.cx, cy = G.cy, R = G.R, r = G.r;
-    var ky = P.ky, depth = P.depth, gap = P.gap, cmix = P.cmix, labo = P.labo, rot = P.rot || 0;
+    var ky = P.ky, depth = P.depth, cmix = P.cmix, labo = P.labo, rot = P.rot || 0;
     var start = -Math.PI / 2 + rot, arr = [], a = start;
     segs.forEach(function (s) { var ang = s.kg / total * Math.PI * 2; arr.push({ s: s, a0: a, a1: a + ang, mid: a + ang / 2 }); a += ang; });
-    // vsak del skrčimo za gap/2 na vsaki strani (nikoli se ne obrne)
-    function edges(o) { var g = Math.min(gap, (o.a1 - o.a0) * 0.4); return [o.a0 + g / 2, o.a1 - g / 2]; }
-    function topFace(a0, a1, col) {
+    // Poln obroč: deli se STIKAJO (brez rež). Stene se rišejo po vidljivosti —
+    // ZUNANJA le na sprednjem loku (sin>0), NOTRANJA le na zadnjem loku (sin<0, skozi luknjo).
+    function pathP(d, col, i) { return '<path class="uc3d-p" data-i="' + i + '" d="' + d + '" fill="' + col + '"/>'; }
+    function topFace(a0, a1, col, i) {
       var large = (a1 - a0) > Math.PI ? 1 : 0;
       var o0 = _uc3dPt(R, a0, ky, cx, cy), o1 = _uc3dPt(R, a1, ky, cx, cy), i1 = _uc3dPt(r, a1, ky, cx, cy), i0 = _uc3dPt(r, a0, ky, cx, cy);
-      return '<path d="M' + _f2(o0) + ' A' + R + ' ' + (R * ky).toFixed(1) + ' 0 ' + large + ' 1 ' + _f2(o1) +
-        ' L' + _f2(i1) + ' A' + r + ' ' + (r * ky).toFixed(1) + ' 0 ' + large + ' 0 ' + _f2(i0) + ' Z" fill="' + col + '"/>';
+      return pathP('M' + _f2(o0) + ' A' + R + ' ' + (R * ky).toFixed(1) + ' 0 ' + large + ' 1 ' + _f2(o1) +
+        ' L' + _f2(i1) + ' A' + r + ' ' + (r * ky).toFixed(1) + ' 0 ' + large + ' 0 ' + _f2(i0) + ' Z', col, i);
     }
-    function outerWall(a0, a1, col) {
-      var large = (a1 - a0) > Math.PI ? 1 : 0;
-      var o0 = _uc3dPt(R, a0, ky, cx, cy), o1 = _uc3dPt(R, a1, ky, cx, cy), b1 = [o1[0], o1[1] + depth], b0 = [o0[0], o0[1] + depth];
-      return '<path d="M' + _f2(o0) + ' A' + R + ' ' + (R * ky).toFixed(1) + ' 0 ' + large + ' 1 ' + _f2(o1) +
-        ' L' + _f2(b1) + ' A' + R + ' ' + (R * ky).toFixed(1) + ' 0 ' + large + ' 0 ' + _f2(b0) + ' Z" fill="' + col + '"/>';
+    function bandWall(rad, a0, a1, col, i) {         // navpična stena med lokom (rad) in istim lokom, spuščenim za depth
+      var large = (a1 - a0) > Math.PI ? 1 : 0, rr = (rad * ky).toFixed(1);
+      var p0 = _uc3dPt(rad, a0, ky, cx, cy), p1 = _uc3dPt(rad, a1, ky, cx, cy), b1 = [p1[0], p1[1] + depth], b0 = [p0[0], p0[1] + depth];
+      return pathP('M' + _f2(p0) + ' A' + rad + ' ' + rr + ' 0 ' + large + ' 1 ' + _f2(p1) +
+        ' L' + _f2(b1) + ' A' + rad + ' ' + rr + ' 0 ' + large + ' 0 ' + _f2(b0) + ' Z', col, i);
     }
-    function innerWall(a0, a1, col) {
-      var large = (a1 - a0) > Math.PI ? 1 : 0;
-      var i0 = _uc3dPt(r, a0, ky, cx, cy), i1 = _uc3dPt(r, a1, ky, cx, cy), b1 = [i1[0], i1[1] + depth], b0 = [i0[0], i0[1] + depth];
-      return '<path d="M' + _f2(i0) + ' A' + r + ' ' + (r * ky).toFixed(1) + ' 0 ' + large + ' 1 ' + _f2(i1) +
-        ' L' + _f2(b1) + ' A' + r + ' ' + (r * ky).toFixed(1) + ' 0 ' + large + ' 0 ' + _f2(b0) + ' Z" fill="' + col + '"/>';
+    // Razdeli lok na podloke ob prehodih skozi horizont (večkratniki π), da je vsak povsem spredaj ali zadaj.
+    function subArcs(a0, a1) {
+      var pts = [a0], x = Math.ceil(a0 / Math.PI) * Math.PI;
+      for (; x < a1; x += Math.PI) { if (x > a0 + 1e-6 && x < a1 - 1e-6) pts.push(x); }
+      pts.push(a1);
+      var segs2 = [];
+      for (var k = 1; k < pts.length; k++) segs2.push([pts[k - 1], pts[k]]);
+      return segs2;
     }
-    function radialFace(ang, col) {
-      var o = _uc3dPt(R, ang, ky, cx, cy), i = _uc3dPt(r, ang, ky, cx, cy), ob = [o[0], o[1] + depth], ib = [i[0], i[1] + depth];
-      return '<path d="M' + _f2(o) + ' L' + _f2(i) + ' L' + _f2(ib) + ' L' + _f2(ob) + ' Z" fill="' + col + '"/>';
-    }
-    // slikarjev algoritem: od zadaj naprej po sin(sredina)
-    var order = arr.map(function (o, i) { return { o: o, i: i }; }).sort(function (A, B) { return Math.sin(A.o.mid) - Math.sin(B.o.mid); });
-    var segOut = [];
-    order.forEach(function (rec) {
-      var o = rec.o, e2 = edges(o), a0 = e2[0], a1 = e2[1];
+    var backW = [], tops = [], frontW = [];   // globalno slojenje: zadnje notranje stene → vrhi → sprednje zunanje stene
+    arr.forEach(function (o, i) {
       var base = _uc3dBlend(_UC3D_NEUTRAL, _uc3dHx(o.s.col), cmix);
-      var top = _uc3dScale(base, 1), outC = _uc3dScale(base, 0.74), inC = _uc3dScale(base, 0.58), sideC = _uc3dScale(base, 0.5);
-      var g = '';
-      if (depth > 0.5) { g += innerWall(a0, a1, inC) + radialFace(a0, sideC) + radialFace(a1, sideC) + outerWall(a0, a1, outC); }
-      g += topFace(a0, a1, top);
-      segOut.push('<g class="uc3d-seg" data-i="' + rec.i + '">' + g + '</g>');
+      var topC = _uc3dScale(base, 1), outC = _uc3dScale(base, 0.72), inC = _uc3dScale(base, 0.5);
+      if (depth > 0.5) {
+        subArcs(o.a0, o.a1).forEach(function (sa) {
+          var spredaj = Math.sin((sa[0] + sa[1]) / 2) > 0;
+          if (spredaj) frontW.push(bandWall(R, sa[0], sa[1], outC, i));   // zunanja stena spredaj
+          else backW.push(bandWall(r, sa[0], sa[1], inC, i));            // notranja stena zadaj (skozi luknjo)
+        });
+      }
+      tops.push(topFace(o.a0, o.a1, topC, i));
     });
+    var segOut = [backW.join('') + tops.join('') + frontW.join('')];
     // napisi na črtah (leader lines) — levo/desno, brez prekrivanja
     var labels = '';
     if (labo > 0.01) {
       var right = [], left = [];
       arr.forEach(function (o, i) {
-        var mid = (edges(o)[0] + edges(o)[1]) / 2;
+        var mid = o.mid;
         var p = _uc3dPt(R, mid, ky, cx, cy), e1 = _uc3dPt(R + 18, mid, ky, cx, cy);
         var desno = Math.cos(mid) >= 0;
         (desno ? right : left).push({ o: o, i: i, p: p, e1: e1, y: e1[1] });
@@ -1706,8 +1740,8 @@
     if (!svgEl) return;
     var cx = _UC3D.cx, cy = _UC3D.cy;
     function set(i, on) {
-      svgEl.querySelectorAll('.uc3d-seg[data-i="' + i + '"]').forEach(function (el) {
-        el.style.transform = on ? ('translate(' + cx + 'px,' + cy + 'px) scale(1.06) translate(' + (-cx) + 'px,' + (-cy) + 'px)') : '';
+      svgEl.querySelectorAll('.uc3d-p[data-i="' + i + '"]').forEach(function (el) {
+        el.style.transform = on ? ('translate(' + cx + 'px,' + cy + 'px) scale(1.055) translate(' + (-cx) + 'px,' + (-cy) + 'px)') : '';
       });
       svgEl.querySelectorAll('.uc3d-lab[data-i="' + i + '"]').forEach(function (el) {
         el.classList.toggle('hot', on);
@@ -1715,7 +1749,7 @@
         else el.style.transform = '';
       });
     }
-    svgEl.querySelectorAll('.uc3d-seg,.uc3d-lab').forEach(function (el) {
+    svgEl.querySelectorAll('.uc3d-p,.uc3d-lab').forEach(function (el) {
       var i = el.getAttribute('data-i');
       el.addEventListener('mouseenter', function () { set(i, true); });
       el.addEventListener('mouseleave', function () { set(i, false); });
@@ -1787,7 +1821,8 @@
     // Lestvica €/kg po strankah — DESNO od tortnega diagrama (na osnovi opranega perila).
     var cardLestEur = '<div class="uc-card uc-lest-card uc-lest-eur"><div class="uc-lest-h"><h3 class="sec-h">€/kg po strankah</h3>' +
       '<button type="button" class="pris-tab uc-lest-toggle" data-uclesteur>' + (_ucLestEurSort === 'desc' ? 'Padajoče ↓' : 'Naraščajoče ↑') + '</button></div>' +
-      '<div class="uc-lest-list uc-lest-eur-list">' + ucLestEurRows() + '</div></div>';
+      '<div class="uc-lest-list uc-lest-eur-list">' + ucLestEurRows() + '</div>' +
+      '<div class="uc-lest-foot uc-lest-eur-tot">' + ucLestEurTot() + '</div></div>';
     // Zgoraj: diagram LEVO + lestvica €/kg po strankah DESNO. Spodaj: kg 7 dni + učinkovitost.
     // (Kartica »kg/uro po dnevih« odstranjena — nadomešča jo lestvica €/kg po strankah desno.)
     void cardLestvica;
@@ -1837,6 +1872,7 @@
     var ib = box.querySelector('.uc-izvoz'); if (ib) ib.addEventListener('click', ucIzvoz);
     var _us = box.querySelector('.uc-sort'); if (_us) _us.addEventListener('change', function () { _ucSort = this.value; ucRender(); });
     if (!eurReady && !_ucEurLoading) ucNaloziPrihodek(evOd, evDo, ekljuc);
+    ucNaloziPrihodekObseg();   // prihodek/€kg za obseg diagrama (lestvica €/kg po strankah)
     requestAnimationFrame(function () { window.scrollTo(0, _sy); });
   }
   async function ucNaloziPrihodek(od, doo, ekljuc) {

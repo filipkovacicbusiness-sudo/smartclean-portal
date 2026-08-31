@@ -912,7 +912,7 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
   function tezaFmt(kg){
     kg=Math.round((Number(kg)||0)*100)/100;
     var v,u; if(kg>=1000){v=kg/1000;u="t";}else{v=kg;u="kg";}
-    var s=(u==="t"?v.toFixed(5):v.toFixed(2));
+    var s=v.toFixed(2);                   // max 2 decimalki povsod (kg in t)
     s=s.replace(/0+$/,"").replace(/\.$/,"").replace(".",",");
     return s+u;
   }
