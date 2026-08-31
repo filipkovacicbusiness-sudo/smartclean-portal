@@ -1607,8 +1607,18 @@
       return '<path d="M' + _f2(o0) + ' A' + R + ' ' + (R * ky).toFixed(1) + ' 0 ' + large + ' 1 ' + _f2(o1) +
         ' L' + _f2(b1) + ' A' + R + ' ' + (R * ky).toFixed(1) + ' 0 ' + large + ' 0 ' + _f2(b0) + ' Z" fill="' + col + '"/>';
     }
-    var back = '', front = '', tops = '';
+    // Za risanje polni krog razdelimo na dve polovici — da je vsak bok (stena)
+    // pravilno v ospredju/ozadju in animacija ne »skače«. Napisi ostanejo enkratni (iz arr).
+    var arrDraw = [];
     arr.forEach(function (o) {
+      if (o.a1 - o.a0 > POLN) {
+        var amid = o.a0 + Math.PI;
+        arrDraw.push({ s: o.s, a0: o.a0, a1: amid, mid: o.a0 + Math.PI / 2 });
+        arrDraw.push({ s: o.s, a0: amid, a1: o.a1, mid: amid + Math.PI / 2 });
+      } else arrDraw.push(o);
+    });
+    var back = '', front = '', tops = '';
+    arrDraw.forEach(function (o) {
       var w = wall(o.a0, o.a1, _mixHex(o.s.col, 0.6));
       if (Math.sin(o.mid) > 0) front += w; else back += w;
       tops += sector(o.a0, o.a1, 0, o.s.col);
