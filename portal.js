@@ -4099,7 +4099,7 @@
     const org = ORGSEZNAM.find(o => o.id === orgId) || {};
     await nalozicenik();
     let arts;
-    const r = await sb.from('articles').select('id,name,cena_sifra,aktiven,teza').eq('org_id', orgId).order('sort_order');
+    const r = await sb.from('articles').select('id,name,cena_sifra,aktiven,teza,viden_app').eq('org_id', orgId).order('sort_order');
     if (r.error) {
       const r1b = await sb.from('articles').select('id,name,cena_sifra').eq('org_id', orgId).order('sort_order');
       if (r1b.error) {
@@ -4117,6 +4117,9 @@
       if (pa == null && pb != null) return 1;
       return (a.name || '').localeCompare(b.name || '', 'sl');
     });
+    // Skupno število opranih kosov posameznega artikla (vseh časov) — prek RPC.
+    var kosMap = {};
+    try { var _kr = await sb.rpc('stranka_kosi', { p_org: orgId }); if (_kr && !_kr.error) (_kr.data || []).forEach(function (x) { kosMap[x.article_id] = Number(x.kosov) || 0; }); } catch (e) {}
     const meta = [org.vat_id ? 'Davčna <b>' + escape_(org.vat_id) + '</b>' : 'Brez davčne številke', org.address ? escape_(org.address) : 'Brez naslova'].join(' · ');
     let html = '<p class="meta">' + meta + '</p>';
     if (OSEBJE) html += `<div class="u-acts" style="margin:2px 0 10px"><button type="button" class="str-edit">Uredi podatke stranke</button><button type="button" class="str-del cgrp-btn danger" data-org="${orgId}">Izbriši stranko</button></div>`;
@@ -4135,12 +4138,21 @@
     function tezaOznaka(a, idx) {
       if (OSEBJE) {
         var tv = (a.teza != null && a.teza !== '') ? String(a.teza).replace('.', ',') : '';
-        return '<span class="str-art-teza"><input type="text" inputmode="decimal" class="str-teza-in" data-idx="' + idx + '" value="' + escape_(tv) + '" placeholder="kg" aria-label="Teža na kos"><span class="str-teza-u">kg</span></span>';
+        return '<span class="str-art-teza"><input type="text" inputmode="decimal" class="str-teza-in" data-idx="' + idx + '" value="' + escape_(tv) + '" placeholder="0,00" aria-label="Teža na kos"><span class="str-teza-u">kg</span></span>';
       }
-      return '<span class="str-art-teza u-sub">' + (a.teza != null && a.teza !== '' ? fmtTeza(a.teza) : '— kg') + '</span>';
+      return '<span class="str-art-teza u-sub">' + (a.teza != null && a.teza !== '' ? fmtTeza(a.teza) : '—') + '</span>';
+    }
+    function kosovOznaka(a) {
+      var n = kosMap[a.id] || 0;
+      return '<span class="str-art-kos" title="Skupno opranih kosov (vseh časov)">' + (n ? stevilo(n) + ' kos' : '—') + '</span>';
+    }
+    function appOznaka(a, idx) {
+      var on = a.viden_app !== false;
+      if (OSEBJE) return '<label class="str-art-app" title="Viden v aplikaciji za to stranko"><input type="checkbox" class="str-app-chk" data-idx="' + idx + '"' + (on ? ' checked' : '') + '><span>app</span></label>';
+      return on ? '' : '<span class="str-art-app off" title="Skrit v aplikaciji">skrit</span>';
     }
     var artRows = arts.map(function (a, i) {
-      return '<div class="str-art">' + idOznaka(a) + '<span class="str-art-nm">' + escape_(a.name || '') + '</span>' + tezaOznaka(a, i) + cenaOznaka(a) + '</div>';
+      return '<div class="str-art">' + idOznaka(a) + '<span class="str-art-nm">' + escape_(a.name || '') + '</span>' + kosovOznaka(a) + tezaOznaka(a, i) + appOznaka(a, i) + '</div>';
     }).join('');
     html += '<div class="str-arts">' + (arts.length ? artRows : '<p class="meta">Brez artiklov v ceniku.</p>') + '</div>';
     html += `<p class="art-cenik-hint">${_na ? _na + ' ' + _besed + ' v ceniku' : ''}${OSEBJE ? `${_na ? ' · ' : ''}<button type="button" class="art-to-cenik" data-org="${orgId}">Uredi v Ceniku ›</button>` : ''}</p>`;
@@ -4161,6 +4173,18 @@
           a.teza = teza;
           logDodaj('Artikli', 'Urejeno', 'Teža „' + (a.name || '') + '" · ' + (teza != null ? tezaFmt(teza) : '—'));
           toast('Teža shranjena.');
+        });
+      });
+      box.querySelectorAll('.str-app-chk').forEach(function (chk) {
+        chk.addEventListener('click', function (e) { e.stopPropagation(); });
+        chk.addEventListener('change', async function () {
+          var a = arts[+chk.dataset.idx]; if (!a) return;
+          var val = chk.checked;
+          var e1 = (await sb.from('articles').update({ viden_app: val }).eq('id', a.id)).error;
+          if (e1) { toast('Napaka: ' + e1.message); chk.checked = !val; return; }
+          a.viden_app = val;
+          logDodaj('Artikli', 'Urejeno', (val ? 'Viden v app' : 'Skrit v app') + ' · „' + (a.name || '') + '"');
+          toast(val ? 'Artikel viden v aplikaciji.' : 'Artikel skrit v aplikaciji.');
         });
       });
     }

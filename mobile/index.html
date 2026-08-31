@@ -942,8 +942,10 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
       var orgs = await apiVse("orgs?select=id,name,legacy_id&order=name");
       var org = orgs.find(function(o){ return (o.legacy_id && o.legacy_id === c.id) || (o.name||"").trim().toLowerCase() === (c.naziv||"").trim().toLowerCase(); });
       if(!org){ toast("Stranke »" + c.naziv + "« ni v portalu (id " + c.id + ")"); return false; }
-      var arts = await apiVse("articles?select=id,name,legacy_id,sort_order,teza&org_id=eq." + org.id + "&order=sort_order,id");
-      c.artikli = (arts||[]).map(function(a){ return { id: a.legacy_id || ("s" + a.id.slice(0,8)), naziv: a.name, sy: true, teza: (a.teza==null||a.teza==='')?null:parseFloat(a.teza) }; });
+      var arts;
+      try{ arts = await apiVse("articles?select=id,name,legacy_id,sort_order,teza,viden_app&org_id=eq." + org.id + "&order=sort_order,id"); }
+      catch(_e){ arts = await apiVse("articles?select=id,name,legacy_id,sort_order,teza&org_id=eq." + org.id + "&order=sort_order,id"); }
+      c.artikli = (arts||[]).filter(function(a){ return a.viden_app !== false; }).map(function(a){ return { id: a.legacy_id || ("s" + a.id.slice(0,8)), naziv: a.name, sy: true, teza: (a.teza==null||a.teza==='')?null:parseFloat(a.teza) }; });
       try{ await dbWrite(CLIENTS_KEY, JSON.stringify(CLIENTS)); }catch(e){}
       if(selectedId === cid) renderEntry();
       if(glasno) toast(c.naziv + ": " + c.artikli.length + " artiklov iz portala");
@@ -2346,7 +2348,9 @@ async function osveziKatalog(tiho){
   if(!tiho) toast("Osvežujem katalog…");
   try{
     var orgs = await apiVse("orgs?select=id,name,legal_name,address,vat_id,legacy_id&order=name");
-    var arts = await apiVse("articles?select=id,org_id,name,legacy_id,sort_order,teza&order=sort_order,id");
+    var arts;
+    try{ arts = await apiVse("articles?select=id,org_id,name,legacy_id,sort_order,teza,viden_app&order=sort_order,id"); }
+    catch(_e){ arts = await apiVse("articles?select=id,org_id,name,legacy_id,sort_order,teza&order=sort_order,id"); }
     var artPoOrg = {};
     (arts || []).forEach(function(a){ (artPoOrg[a.org_id] = artPoOrg[a.org_id] || []).push(a); });
 
@@ -2356,7 +2360,7 @@ async function osveziKatalog(tiho){
         return (o.legacy_id && c.id === o.legacy_id) ||
                (c.naziv || "").toLowerCase() === (o.name || "").toLowerCase();
       });
-      var portalArts = (artPoOrg[o.id] || []).map(function(a){
+      var portalArts = (artPoOrg[o.id] || []).filter(function(a){ return a.viden_app !== false; }).map(function(a){
         return { id: a.legacy_id || ("s" + a.id.slice(0, 8)), naziv: a.name, sy: true, teza: (a.teza==null||a.teza==='')?null:parseFloat(a.teza) };
       });
       if(lok){

@@ -1676,7 +1676,16 @@ h3.sec,h3.sec-h,.empty h3,.fak-card-h h3,.adm-ime,.stat-num,.auth-claim,
 .str-teza-in:focus{border-color:var(--green-l);outline:none;}
 .str-teza-u{font-size:.8rem;color:var(--mid);}
 .str-art .art-cena{flex:0 0 auto;min-width:64px;text-align:right;}
-@media(max-width:560px){.str-art-nm{white-space:normal;}}
+/* skupno št. opranih kosov (vseh časov) */
+.str-art-kos{flex:0 0 auto;min-width:74px;text-align:right;font-size:.78rem;color:var(--mid);font-variant-numeric:tabular-nums;}
+/* kljukica »viden v aplikaciji« (monokromatski kvadratni checkbox) */
+.str-art-app{flex:0 0 auto;display:inline-flex;align-items:center;gap:5px;cursor:pointer;font-size:.72rem;color:var(--mid);user-select:none;min-width:48px;}
+.str-art-app.off{color:var(--mid);opacity:.7;font-style:italic;}
+.str-app-chk{appearance:none;-webkit-appearance:none;width:16px;height:16px;margin:0;flex:0 0 auto;border:1.5px solid var(--line);border-radius:5px;background:var(--surface);position:relative;cursor:pointer;transition:background .15s,border-color .15s;}
+.str-app-chk:hover{border-color:var(--mid);}
+.str-app-chk:checked{background:var(--ink);border-color:var(--ink);}
+.str-app-chk:checked::after{content:"";position:absolute;left:5px;top:2px;width:3.5px;height:7px;border:solid var(--surface);border-width:0 1.6px 1.6px 0;transform:rotate(45deg);}
+@media(max-width:560px){.str-art-nm{white-space:normal;}.str-art-kos{min-width:56px;}}
 
 /* samodejno izračunana teža v obrazcu novega lista */
 .ur-kg-auto{display:flex;align-items:center;min-height:44px;padding:0 12px;border:1.5px dashed var(--line);border-radius:9px;background:var(--green-m);color:var(--ink);font-variant-numeric:tabular-nums;font-weight:600;}
