@@ -1180,7 +1180,17 @@
   async function naloziSkupineImena() {
     try { var r = await sb.from('article_groups').select('prefix,name'); if (!r.error) { SKUPINE_IME = {}; (r.data || []).forEach(function (x) { if (x.name) SKUPINE_IME[x.prefix] = x.name; }); } } catch (e) {}
   }
-  function fmtTeza(t) { return (Math.round((t || 0) * 1000) / 1000).toLocaleString('sl-SI') + ' kg'; }
+  // Enoten prikaz teže: brez presledka, vejica, nad 1000 kg v tonah.
+  // 1kg · 12,45kg · 123,45kg · 1,2345t · 12,345t
+  function tezaFmt(kg) {
+    kg = Math.round((Number(kg) || 0) * 100) / 100;
+    var v, u;
+    if (kg >= 1000) { v = kg / 1000; u = 't'; } else { v = kg; u = 'kg'; }
+    var s = (u === 't' ? v.toFixed(5) : v.toFixed(2));
+    s = s.replace(/0+$/, '').replace(/\.$/, '').replace('.', ',');
+    return s + u;
+  }
+  function fmtTeza(t) { return tezaFmt(t); }
   function artNextNum(pre) { var max = 0; (CENIK || []).forEach(function (x) { var s = normId(x.koda); if (s.slice(0, 2) === pre) { var n = parseInt(s.slice(2), 10); if (!isNaN(n) && n > max) max = n; } }); return pad3(max + 1); }
   function artikliGrupe() {
     var g = {};
@@ -1568,7 +1578,15 @@
     var start = -Math.PI / 2 + spin;
     var arr = [], a = start;
     segs.forEach(function (s) { var ang = s.kg / total * Math.PI * 2; arr.push({ s: s, a0: a, a1: a + ang, mid: a + ang / 2 }); a += ang; });
+    var POLN = Math.PI * 1.999;   // ~360° → polni krog (lok od-do iste točke ne izriše nič)
     function sector(a0, a1, dy, col) {
+      if (a1 - a0 > POLN) {       // polni obroč (annulus) prek dveh 180° lokov
+        var am = a0 + Math.PI;
+        var o0 = _uc3dPt(R, a0, ky, cx, cy + dy), om = _uc3dPt(R, am, ky, cx, cy + dy), o1 = _uc3dPt(R, a1, ky, cx, cy + dy);
+        var i1 = _uc3dPt(r, a1, ky, cx, cy + dy), im = _uc3dPt(r, am, ky, cx, cy + dy), i0 = _uc3dPt(r, a0, ky, cx, cy + dy);
+        return '<path d="M' + _f2(o0) + ' A' + R + ' ' + (R * ky).toFixed(1) + ' 0 0 1 ' + _f2(om) + ' A' + R + ' ' + (R * ky).toFixed(1) + ' 0 0 1 ' + _f2(o1) +
+          ' L' + _f2(i1) + ' A' + r + ' ' + (r * ky).toFixed(1) + ' 0 0 0 ' + _f2(im) + ' A' + r + ' ' + (r * ky).toFixed(1) + ' 0 0 0 ' + _f2(i0) + ' Z" fill="' + col + '"/>';
+      }
       var large = (a1 - a0) > Math.PI ? 1 : 0;
       var o0 = _uc3dPt(R, a0, ky, cx, cy + dy), o1 = _uc3dPt(R, a1, ky, cx, cy + dy);
       var i1 = _uc3dPt(r, a1, ky, cx, cy + dy), i0 = _uc3dPt(r, a0, ky, cx, cy + dy);
@@ -1576,6 +1594,13 @@
         ' L' + _f2(i1) + ' A' + r + ' ' + (r * ky).toFixed(1) + ' 0 ' + large + ' 0 ' + _f2(i0) + ' Z" fill="' + col + '"/>';
     }
     function wall(a0, a1, col) {
+      if (a1 - a0 > POLN) {       // polni zunanji plašč prek dveh 180° lokov
+        var am = a0 + Math.PI;
+        var o0 = _uc3dPt(R, a0, ky, cx, cy), om = _uc3dPt(R, am, ky, cx, cy), o1 = _uc3dPt(R, a1, ky, cx, cy);
+        var b0 = [o0[0], o0[1] + depth], bm = [om[0], om[1] + depth], b1 = [o1[0], o1[1] + depth];
+        return '<path d="M' + _f2(o0) + ' A' + R + ' ' + (R * ky).toFixed(1) + ' 0 0 1 ' + _f2(om) + ' A' + R + ' ' + (R * ky).toFixed(1) + ' 0 0 1 ' + _f2(o1) +
+          ' L' + _f2(b1) + ' A' + R + ' ' + (R * ky).toFixed(1) + ' 0 0 0 ' + _f2(bm) + ' A' + R + ' ' + (R * ky).toFixed(1) + ' 0 0 0 ' + _f2(b0) + ' Z" fill="' + col + '"/>';
+      }
       var large = (a1 - a0) > Math.PI ? 1 : 0;
       var o0 = _uc3dPt(R, a0, ky, cx, cy), o1 = _uc3dPt(R, a1, ky, cx, cy);
       var b1 = [o1[0], o1[1] + depth], b0 = [o0[0], o0[1] + depth];
@@ -1892,8 +1917,8 @@
     var pn = (LISTI || []).find(function (l) { return l.id === k.note_id; });
     var ime = k.org_name || (pn ? (ORGIME[pn.org_id] || '') : '');
     return '<div class="konf-row"><div class="konf-title">' + escape_(k.number || '—') + ' · ' + escape_(ime) + '</div><div class="konf-cols">' +
-      '<div class="konf-col"><div class="konf-h">Portal (trenutno)</div>' + (pn ? ('<div class="u-sub">' + stevilo(pn.total_pieces) + ' kos · ' + (pn.weight_kg != null ? String(pn.weight_kg).replace('.', ',') + ' kg' : '—') + ' · ' + (pn.transport === 'izredni' ? 'izredni' : 'redni') + '</div>') : '<div class="u-sub">list ni najden</div>') + '<button type="button" class="btn-mini konf-keep" data-keep="portal" data-id="' + escape_(String(k.id)) + '">Obdrži portal</button></div>' +
-      '<div class="konf-col"><div class="konf-h">Tablica' + (k.popravil ? ' · ' + escape_(k.popravil) : '') + '</div><ul class="konf-items">' + tItems + '</ul><div class="u-sub">teža ' + (k.weight_kg != null ? String(k.weight_kg).replace('.', ',') + ' kg' : '—') + ' · ' + (k.transport === 'izredni' ? 'izredni' : 'redni') + '</div>' + (k.popravki ? '<div class="konf-log">' + escape_(k.popravki).replace(/\n/g, '<br>') + '</div>' : '') + '<button type="button" class="btn-mini primary konf-keep" data-keep="tablica" data-id="' + escape_(String(k.id)) + '">Obdrži tablico</button></div>' +
+      '<div class="konf-col"><div class="konf-h">Portal (trenutno)</div>' + (pn ? ('<div class="u-sub">' + stevilo(pn.total_pieces) + ' kos · ' + (pn.weight_kg != null ? tezaFmt(pn.weight_kg) : '—') + ' · ' + (pn.transport === 'izredni' ? 'izredni' : 'redni') + '</div>') : '<div class="u-sub">list ni najden</div>') + '<button type="button" class="btn-mini konf-keep" data-keep="portal" data-id="' + escape_(String(k.id)) + '">Obdrži portal</button></div>' +
+      '<div class="konf-col"><div class="konf-h">Tablica' + (k.popravil ? ' · ' + escape_(k.popravil) : '') + '</div><ul class="konf-items">' + tItems + '</ul><div class="u-sub">teža ' + (k.weight_kg != null ? tezaFmt(k.weight_kg) : '—') + ' · ' + (k.transport === 'izredni' ? 'izredni' : 'redni') + '</div>' + (k.popravki ? '<div class="konf-log">' + escape_(k.popravki).replace(/\n/g, '<br>') + '</div>' : '') + '<button type="button" class="btn-mini primary konf-keep" data-keep="tablica" data-id="' + escape_(String(k.id)) + '">Obdrži tablico</button></div>' +
       '</div></div>';
   }
   async function resiKonflikt(id, keep) {
@@ -2255,7 +2280,7 @@
       : '<tr><td colspan="2" style="color:#888">Ni postavk</td></tr>';
     const izdal = n.issued_name ? ` &nbsp;·&nbsp; Izdal: ${escape_(n.issued_name)}` : '';
     const prevozP = ` &nbsp;·&nbsp; ${n.transport === 'izredni' ? 'Izredni prevoz' : 'Redni prevoz'}`;
-    const kg = (n.weight_kg != null && n.weight_kg !== '') ? `<div class="t">Skupaj teža perila: <b>${String(n.weight_kg).replace('.', ',')} kg</b></div>` : '';
+    const kg = (n.weight_kg != null && n.weight_kg !== '') ? `<div class="t">Skupaj teža perila: <b>${tezaFmt(n.weight_kg)}</b></div>` : '';
     const popr = n.popravljeno_at ? `<div class="popr">✎ Popravljeno v portalu · ${escape_(n.popravil || 'osebje')} · ${datumcas(n.popravljeno_at)}</div>` : '';
     const ustv = n.source === 'portal' ? `<div class="popr" style="background:#eaf4ee;color:#1f6b3b">✚ Ustvarjeno v portalu${n.issued_name ? ' · ' + escape_(n.issued_name) : ''}</div>` : '';
     const opombaP = n.opomba ? `<div class="opomba"><div class="oh">Opomba</div><div class="ob">${escape_(n.opomba)}</div><div class="oa">— ${escape_(n.opomba_avtor || 'osebje')}${n.opomba_at ? ' · ' + datumcas(n.opomba_at) : ''}</div></div>` : '';
@@ -2330,7 +2355,7 @@
   function osveziKgPrikaz(box) {
     var el = box.querySelector('[data-teza-auto]'); if (!el) return;
     var r = vsotaKgPostavk(box);
-    el.textContent = r.ima ? (Math.round(r.kg * 100) / 100).toString().replace('.', ',') + ' kg' : '—';
+    el.textContent = r.ima ? tezaFmt(r.kg) : '—';
     el.dataset.kg = r.ima ? String(Math.round(r.kg * 1000) / 1000) : '';
   }
   async function novList() {
@@ -2536,9 +2561,12 @@
     const cenikOn = !!(CENIK && CENIK.length);
     skupine.forEach(g => {
       g.postavke = Object.entries(g.artikli).map(([nm, q]) => {
-        const s = artmap[g.org_id + '|' + nm.trim().toLowerCase()];
+        const key = g.org_id + '|' + nm.trim().toLowerCase();
+        const s = artmap[key];
         const cena = cenaZaArtikel(s);
-        return { nm, q, cena, znesek: cena != null ? Math.round(cena * q * 100) / 100 : null };
+        const tzKos = artmap.__teza ? artmap.__teza[key] : null;
+        const teza = (tzKos != null && !isNaN(tzKos)) ? Math.round(tzKos * q * 1000) / 1000 : null;
+        return { nm, q, cena, teza, znesek: cena != null ? Math.round(cena * q * 100) / 100 : null };
       }).sort((a, b) => a.nm.localeCompare(b.nm, 'sl', { sensitivity: 'base' }));
       g.cenikOn = cenikOn;
       g.neto = Math.round(g.postavke.reduce((sm, p) => sm + (p.znesek || 0), 0) * 100) / 100;
@@ -2575,7 +2603,7 @@
       if (body) body.classList.toggle('show', willOpen);
     }));
   }
-  function fakKg(kg) { return kg ? (Math.round(kg * 100) / 100).toLocaleString('sl-SI') + ' kg' : '—'; }
+  function fakKg(kg) { return kg ? tezaFmt(kg) : '—'; }
   function fakKartica(g, gi) {
     const ime = ORGIME[g.org_id] || 'Brez stranke';
     const post = g.postavke || Object.entries(g.artikli).map(([nm, q]) => ({ nm, q, cena: null, znesek: null }));
@@ -2584,12 +2612,13 @@
       `<div class="fak-line"><span class="fak-l-nm">${escape_(p.nm)}</span>` +
       (money ? `<span class="fak-l-c">${p.cena != null ? cenaFmt(p.cena) : '—'}</span>` : '') +
       `<b class="fak-l-q">${stevilo(p.q)}</b>` +
+      `<span class="fak-l-t">${p.teza != null ? tezaFmt(p.teza) : '—'}</span>` +
       (money ? `<b class="fak-l-z">${p.znesek != null ? cenaFmt(p.znesek) : '—'}</b>` : '') +
       `</div>`).join('') : '<div class="fak-line fak-line-empty"><span class="u-sub">Brez postavk</span></div>';
     const prevoz = `<div class="fak-tot-r"><span>Prevozi</span><b>${stevilo(g.redni)} redni${g.izredni ? ' · ' + stevilo(g.izredni) + ' izredni' : ''}</b></div>`;
     const head = money
-      ? `<div class="fak-head fak-head-m"><span>Artikel</span><span>Cena</span><span>Kol.</span><span>Znesek</span></div>`
-      : `<div class="fak-head"><span>Artikel</span><span>Količina</span></div>`;
+      ? `<div class="fak-head fak-head-m"><span>Artikel</span><span>Cena</span><span>Kol.</span><span>Teža</span><span>Znesek</span></div>`
+      : `<div class="fak-head fak-head-nm"><span>Artikel</span><span>Količina</span><span>Teža</span></div>`;
     const denar = money ? `
             <div class="fak-tot-r"><span>Neto skupaj</span><b>${cenaFmt(g.neto)}</b></div>
             <div class="fak-tot-r"><span>DDV (22 %)</span><b>${cenaFmt(g.ddv)}</b></div>
@@ -2604,7 +2633,7 @@
       <div class="fak-body" id="fakbody${gi}">
         <div class="fak-inner">
           ${head}
-          <div class="fak-lines${money ? ' fak-lines-m' : ''}">${rows}</div>
+          <div class="fak-lines${money ? ' fak-lines-m' : ' fak-lines-nm'}">${rows}</div>
           <div class="fak-tot">
             <div class="fak-tot-r"><span>Skupaj kosov</span><b>${stevilo(g.kosov)}</b></div>
             <div class="fak-tot-r"><span>Skupaj teža perila</span><b>${fakKg(g.kg)}</b></div>
@@ -2803,7 +2832,7 @@
       doc.text(cK, y + 13, stevilo(p.kosov), { size: 9.5, align: 'right', color: _PDF.INK });
       y += 18; doc.line(M, y, right, y, { width: 0.6, color: _PDF.LINE });
     });
-    if (n.weight_kg != null && n.weight_kg !== '') { y += 14; doc.text(M, y, 'Skupaj teža perila: ' + String(n.weight_kg).replace('.', ',') + ' kg', { size: 11, bold: true, color: _PDF.INK }); }
+    if (n.weight_kg != null && n.weight_kg !== '') { y += 14; doc.text(M, y, 'Skupaj teža perila: ' + tezaFmt(n.weight_kg), { size: 11, bold: true, color: _PDF.INK }); }
     if (n.opomba_stranka) { y += 22; doc.text(M, y, 'Opomba:', { size: 9, bold: true, color: _PDF.GREY }); y += 13; doc.text(M, y, n.opomba_stranka, { size: 9.5, color: _PDF.INK }); }
     if (n.opomba) { y += 22; doc.text(M, y, 'Opomba:', { size: 9, bold: true, color: _PDF.GREY }); y += 13; doc.text(M, y, n.opomba, { size: 9.5, color: _PDF.INK }); }
     doc.save('spremni_list_' + (n.number || 'brez') + '.pdf');
@@ -3126,11 +3155,16 @@
   }
   function produktPoId(id) { id = normId(id); if (!id || !CENIK) return null; return CENIK.find(function (x) { return normId(x.koda) === id; }) || null; }
   async function naloziArtMap(orgFilter) {
-    let q = sb.from('articles').select('org_id,name,cena_sifra');
+    let q = sb.from('articles').select('org_id,name,cena_sifra,teza');
     if (orgFilter) q = q.eq('org_id', orgFilter);
     const { data, error } = await q;
-    const map = {};
-    if (!error) (data || []).forEach(a => { if (a.cena_sifra != null) map[a.org_id + '|' + String(a.name || '').trim().toLowerCase()] = a.cena_sifra; });
+    const map = {}; const tez = {};
+    if (!error) (data || []).forEach(a => {
+      var key = a.org_id + '|' + String(a.name || '').trim().toLowerCase();
+      if (a.cena_sifra != null) map[key] = a.cena_sifra;
+      if (a.teza != null && a.teza !== '') tez[key] = parseFloat(a.teza);
+    });
+    map.__teza = tez;
     return map;
   }
   function cenaZaArtikel(sifra) { return (sifra != null && CENIKMAP && CENIKMAP[sifra]) ? CENIKMAP[sifra].cena1 : null; }
@@ -3928,8 +3962,8 @@
 
   /* ══════════ STRANKE (osebje) ══════════ */
   let ARTSTEVILO = {};
-  function fmtKg(kg) { return (Math.round((kg || 0) * 10) / 10).toLocaleString('sl-SI') + ' kg'; }
-  function fmtTona(kg) { return (Math.round((kg || 0) / 100) / 10).toLocaleString('sl-SI', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' t'; }
+  function fmtKg(kg) { return tezaFmt(kg); }
+  function fmtTona(kg) { return tezaFmt(kg); }
   function kgPoStrankiMesec() {
     const z = new Date(), y = z.getFullYear(), m = z.getMonth(), map = {};
     LISTI.forEach(l => {
@@ -4076,7 +4110,7 @@
           var e1 = (await sb.from('articles').update({ teza: teza }).eq('id', a.id)).error;
           if (e1) { toast('Napaka: ' + e1.message); return; }
           a.teza = teza;
-          logDodaj('Artikli', 'Urejeno', 'Teža „' + (a.name || '') + '" · ' + (teza != null ? String(teza).replace('.', ',') + ' kg' : '—'));
+          logDodaj('Artikli', 'Urejeno', 'Teža „' + (a.name || '') + '" · ' + (teza != null ? tezaFmt(teza) : '—'));
           toast('Teža shranjena.');
         });
       });

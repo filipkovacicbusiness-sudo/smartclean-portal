@@ -898,6 +898,14 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
     return c.artikli.filter(function(a){return (draftQty[a.id]||0)>0;})
       .map(function(a){ return {id:a.id,naziv:a.naziv,kosov:draftQty[a.id]}; }); }
   /* samodejni izračun teže: Σ(teža na kos × kosov); teža je na artiklu (na stranko) */
+  // Enoten prikaz teže: brez presledka, vejica, nad 1000 kg v tonah.
+  function tezaFmt(kg){
+    kg=Math.round((Number(kg)||0)*100)/100;
+    var v,u; if(kg>=1000){v=kg/1000;u="t";}else{v=kg;u="kg";}
+    var s=(u==="t"?v.toFixed(5):v.toFixed(2));
+    s=s.replace(/0+$/,"").replace(/\.$/,"").replace(".",",");
+    return s+u;
+  }
   function draftKgAuto(){ var c=clientById(selectedId); if(!c) return {kg:0,ima:false};
     var kg=0,ima=false;
     c.artikli.forEach(function(a){ var q=draftQty[a.id]||0; if(q>0 && a.teza!=null && !isNaN(a.teza)){ kg+=a.teza*q; ima=true; } });
@@ -990,7 +998,7 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
       lines.map(function(l){ return '<li><span class="pv-n">'+esc(l.naziv)+'</span><span class="pv-k mono">'+l.kosov+'</span></li>'; }).join("")+
       '</ul></div>' : '';
     var _ka = draftKgAuto();
-    var kgTxt = _ka.ima ? (String(_ka.kg).replace(".",",")+" kg") : "—";
+    var kgTxt = _ka.ima ? tezaFmt(_ka.kg) : "—";
     var active = !!(selectedId || editingId);
     var stNum = editingId ? ((entryById(editingId)||{}).stevilka||"") : nextNumber();
     var head = active ? '<div class="draft-total"><span class="k">Spremni list št.</span><span class="v mono">'+esc(stNum)+'</span></div>' : '';
@@ -1152,7 +1160,7 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
     var deli=[];
     Object.keys(imena).forEach(function(nm){ var a=mapS[nm]||0, b=mapN[nm]||0;
       if(a!==b){ if(a===0) deli.push("+"+nm+" "+b); else if(b===0) deli.push("−"+nm+" ("+a+")"); else deli.push(nm+" "+a+"→"+b); } });
-    if(Number(sKg||0)!==Number(nKg||0)) deli.push("teža "+String(sKg||0).replace(".",",")+"→"+String(nKg||0).replace(".",",")+" kg");
+    if(Number(sKg||0)!==Number(nKg||0)) deli.push("teža "+tezaFmt(sKg||0)+"→"+tezaFmt(nKg||0));
     if((sPre||"redni")!==(nPre||"redni")) deli.push("prevoz "+((sPre==="izredni")?"izredni":"redni")+"→"+((nPre==="izredni")?"izredni":"redni"));
     return deli.length ? deli.join(", ") : "brez vsebinskih sprememb";
   }
@@ -1190,7 +1198,7 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
     if(!lines.length){ toast("Vnesi vsaj en artikel."); return; }
     var stevilka=nextNumber();
     var rows = lines.length ? lines.map(function(l){ return '<li><span class="rv-n">'+esc(l.naziv)+'</span><span class="rv-k mono">'+l.kosov+'</span></li>'; }).join("") : '<li class="rv-empty">Brez artiklov</li>';
-    var _kp=draftKgAuto(); var kg = _kp.ima? (String(_kp.kg).replace(".",",")+" kg") : "—";
+    var _kp=draftKgAuto(); var kg = _kp.ima? tezaFmt(_kp.kg) : "—";
     document.getElementById("reviewBody").innerHTML =
       '<div class="rv-head"><div class="rv-cli">'+esc(c.naziv)+'</div><div class="rv-num mono">Spremni list št. '+esc(stevilka)+'</div></div>'+
       '<ul class="rv-list">'+rows+'</ul>'+
@@ -1302,7 +1310,7 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
         '<div class="sc-dates">Oddaja: '+fmtDateHuman(e.datum)+(e.izdal?' &nbsp;\u00b7&nbsp; Izdal: '+esc(e.izdal):'')+' &nbsp;\u00b7&nbsp; '+(e.prevoz==="izredni"?"Izredni prevoz":"Redni prevoz")+'</div></div>'+
         '<div class="sc-sign">Podpis:</div></div>'+
       '<table class="sc-table"><thead><tr><th class="l">Naziv Artikla</th><th>Oddaja (\u0161t. kosov)</th></tr></thead><tbody>'+rows+'</tbody></table>'+
-      (e.kg?'<div class="sc-weight">Skupaj teža perila: <b>'+String(e.kg).replace(".",",")+' kg</b></div>':'')+
+      (e.kg?'<div class="sc-weight">Skupaj teža perila: <b>'+tezaFmt(e.kg)+'</b></div>':'')+
       (e.opombaStranka?'<div class="sc-note" style="margin-top:10px;padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:12px;white-space:pre-wrap"><b>Opomba:</b> '+esc(e.opombaStranka)+'</div>':'')+
       (e.portalPopravljenoAt?'<div style="margin-top:10px;padding:6px 10px;border-radius:8px;background:#fdf3e8;color:#8a5a00;font-size:11px;font-weight:600">Popravljeno v portalu \u00b7 '+esc(e.popravil||'osebje')+' \u00b7 '+fmtDateHuman(String(e.portalPopravljenoAt).slice(0,10))+'</div>':'')+
     '</div>';
@@ -1813,7 +1821,7 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
   function renderDanes(){ var t=todayISO();
     var rows=entries.filter(function(e){ return e.saved && e.datum===t; }).slice().sort(function(a,b){return a.ustvarjeno<b.ustvarjeno?1:-1;});
     document.getElementById("danesList").innerHTML = rows.length ? rows.map(function(e){
-      return '<div class="admin-row"><div class="g"><b>'+esc(e.stevilka)+'</b><small>'+esc(e.strankaNaziv)+' \u00b7 '+e.skupajKosov+' kos'+(e.kg?' \u00b7 '+String(e.kg).replace(".",",")+' kg':'')+(e.izdal?' \u00b7 '+esc(e.izdal):'')+'</small></div><button class="btn-mini" data-opendanes="'+e.id+'">Odpri</button></div>';
+      return '<div class="admin-row"><div class="g"><b>'+esc(e.stevilka)+'</b><small>'+esc(e.strankaNaziv)+' \u00b7 '+e.skupajKosov+' kos'+(e.kg?' \u00b7 '+tezaFmt(e.kg):'')+(e.izdal?' \u00b7 '+esc(e.izdal):'')+'</small></div><button class="btn-mini" data-opendanes="'+e.id+'">Odpri</button></div>';
     }).join("") : '<div style="color:var(--ink-soft);font-size:13px">Danes še ni shranjenih listov.</div>';
     document.querySelectorAll("[data-opendanes]").forEach(function(b){ b.onclick=function(){ closeDanes(); openSheet(b.getAttribute("data-opendanes")); }; });
   }
@@ -1828,7 +1836,7 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
         .sort(function(a,b){return a.stevilka<b.stevilka?1:-1;}).slice(0,100); }
     else { rec=saved.slice().sort(function(a,b){return a.ustvarjeno<b.ustvarjeno?1:-1;}).slice(0,20); }
     document.getElementById("admRecent").innerHTML = rec.length ? rec.map(function(e){
-      return '<div class="admin-row"><input class="admin-in" data-numid="'+e.id+'" value="'+esc(e.stevilka)+'" style="max-width:118px;font-family:\'Instrument Sans\',system-ui,sans-serif;font-variant-numeric:tabular-nums" /><div class="g"><small>'+esc(e.strankaNaziv)+' \u00b7 '+fmtDateHuman(e.datum)+' \u00b7 '+e.skupajKosov+' kos'+(e.kg?' \u00b7 '+String(e.kg).replace(".",",")+' kg':'')+'</small></div><button class="btn-mini" data-openrec="'+e.id+'">Odpri</button></div>';
+      return '<div class="admin-row"><input class="admin-in" data-numid="'+e.id+'" value="'+esc(e.stevilka)+'" style="max-width:118px;font-family:\'Instrument Sans\',system-ui,sans-serif;font-variant-numeric:tabular-nums" /><div class="g"><small>'+esc(e.strankaNaziv)+' \u00b7 '+fmtDateHuman(e.datum)+' \u00b7 '+e.skupajKosov+' kos'+(e.kg?' \u00b7 '+tezaFmt(e.kg):'')+'</small></div><button class="btn-mini" data-openrec="'+e.id+'">Odpri</button></div>';
     }).join("") : '<div style="color:var(--ink-soft);font-size:13px">'+(q?"Ni zadetkov.":"Ni shranjenih listov.")+'</div>';
     document.querySelectorAll("[data-openrec]").forEach(function(b){ b.onclick=function(){ closeAdmin(); openSheet(b.getAttribute("data-openrec")); }; });
     document.querySelectorAll("[data-numid]").forEach(function(inp){ inp.onchange=function(){ renameEntryNumber(inp.getAttribute("data-numid"), inp.value); }; });

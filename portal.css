@@ -664,19 +664,26 @@ input[type=email],input[type=password],input[type=search],.field input[type=text
 .art-pick-acts button:hover{border-color:var(--mid);color:var(--ink);}
 
 /* ── fakture: denarni stolpci ── */
-.fak-head-m{display:grid;grid-template-columns:1fr 90px 56px 100px;gap:8px;}
+.fak-head-m{display:grid;grid-template-columns:1fr 90px 56px 74px 100px;gap:8px;}
 .fak-head-m span{text-align:right;}
 .fak-head-m span:first-child{text-align:left;}
-.fak-lines-m .fak-line{display:grid;grid-template-columns:1fr 90px 56px 100px;gap:8px;align-items:baseline;}
+.fak-lines-m .fak-line{display:grid;grid-template-columns:1fr 90px 56px 74px 100px;gap:8px;align-items:baseline;}
+/* ── fakture: brez cenika (Artikel · Kol · Teža) ── */
+.fak-head-nm{display:grid;grid-template-columns:1fr 70px 100px;gap:8px;}
+.fak-head-nm span{text-align:right;}
+.fak-head-nm span:first-child{text-align:left;}
+.fak-lines-nm .fak-line{display:grid;grid-template-columns:1fr 70px 100px;gap:8px;align-items:baseline;}
 .fak-l-nm{min-width:0;overflow-wrap:anywhere;}
-.fak-l-c,.fak-l-q,.fak-l-z{text-align:right;font-variant-numeric:tabular-nums;font-family:var(--sans);white-space:nowrap;}
+.fak-l-c,.fak-l-q,.fak-l-t,.fak-l-z{text-align:right;font-variant-numeric:tabular-nums;font-family:var(--sans);white-space:nowrap;}
+.fak-l-t{color:var(--mid);}
 .fak-l-z{font-weight:600;}
 .fak-tot-bruto{border-top:1px solid var(--line);padding-top:8px;margin-top:2px;}
 .fak-tot-bruto b{font-size:1.05rem;}
 .fak-warn{color:var(--mid);font-style:italic;font-size:.8rem;}
 @media(max-width:560px){
-  .fak-head-m,.fak-lines-m .fak-line{grid-template-columns:1fr 50px 30px 78px;gap:5px;font-size:.8rem;}
-  .fak-head-m span,.fak-l-c,.fak-l-q,.fak-l-z{font-size:.77rem;}
+  .fak-head-m,.fak-lines-m .fak-line{grid-template-columns:1fr 50px 30px 46px 78px;gap:5px;font-size:.8rem;}
+  .fak-head-nm,.fak-lines-nm .fak-line{grid-template-columns:1fr 44px 60px;gap:5px;font-size:.8rem;}
+  .fak-head-m span,.fak-head-nm span,.fak-l-c,.fak-l-q,.fak-l-t,.fak-l-z{font-size:.77rem;}
 }
 
 /* ── ceniki: master katalog (povezave, urejanje, koš) ── */
