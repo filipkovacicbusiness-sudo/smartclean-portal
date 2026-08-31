@@ -239,6 +239,7 @@
   .a4 .sc-client{display:flex;justify-content:space-between;gap:14px}
   .a4 .sc-client .cl{font-size:12px}
   .a4 .sc-client .cname{font-weight:700;border-bottom:2px solid #0a0a0a;padding:0 2px}
+  .a4 .sc-client .cname-sec{font-weight:400;color:#6b7280;font-size:.85em;margin-left:4px}
   .a4 .sc-client .sc-dates{margin-top:10px;font-size:11px;color:#666}
   .a4 .sc-sign{border-left:1px solid #dcdcdc;padding-left:16px;font-weight:600;font-size:12px;min-width:110px;color:#666}
   .a4 table.sc-table{width:100%;border-collapse:collapse;font-size:10px;margin-top:4px}
@@ -697,6 +698,19 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
     </div>
   </div>
 </div>
+<!-- Opombe -->
+<div class="backdrop" id="noteBackdrop">
+  <div class="sheet">
+    <div class="sheet-bar"><span class="t">Opombe</span><button class="close" id="noteCancel">Prekliči</button></div>
+    <div style="padding:14px 16px 4px">
+      <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px">Opomba za stranko <span style="font-weight:400;opacity:.6">(natisne se na list)</span></label>
+      <textarea id="noteStranka" rows="3" placeholder="Npr. Perilo prevzeto mokro." style="width:100%;box-sizing:border-box;font:inherit;font-size:15px;padding:10px 12px;border:1px solid rgba(0,0,0,.18);border-radius:10px;resize:vertical;background:var(--paper,#fff);color:inherit"></textarea>
+      <label style="display:block;font-size:13px;font-weight:600;margin:14px 0 6px">Opomba za evidenco <span style="font-weight:400;opacity:.6">(NE natisne se — vidna le v portalu)</span></label>
+      <textarea id="noteEvidenca" rows="3" placeholder="Npr. interna opomba za osebje." style="width:100%;box-sizing:border-box;font:inherit;font-size:15px;padding:10px 12px;border:1px solid rgba(0,0,0,.18);border-radius:10px;resize:vertical;background:var(--paper,#fff);color:inherit"></textarea>
+    </div>
+    <button class="printbtn" id="noteSave" style="margin:12px 16px 16px">Shrani opombe</button>
+  </div>
+</div>
 <!-- LOGIN -->
 <div class="login-screen show" id="loginScreen">
   <header class="lg-top"><span class="sc-wordmark">Smart<span>Clean</span></span><button class="tb-btn ic lg-theme" id="themeBtnLogin" title="Svetel / temen način"><svg class="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.4 1.4M17.6 17.6L19 19M19 5l-1.4 1.4M6.4 17.6L5 19"/></svg><svg class="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button></header>
@@ -806,6 +820,7 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
   var STANDARD_14=["Prevleka za vzglavnik","Prevleka za vzglavnik otroška","Prevleka za odejo","Prevleka za odejo mala otroška","Rjuha bombaž","Rjuha jersi","Pregrinjalo","Pregrinjalo bombaž","Pregrinjalo flis/deka","Pregrinjalo merino","Blazina","Prešita odeja","Nadvložek","Brisača"];
   var DEFAULT_USERS=[{id:"u3",name:"Filip",pin:"3333",role:"admin"}];
   var entries=[], memFallback=false, selectedId=null, draftQty={}, draftKg="", draftPrevoz="redni", editingId=null;
+  var draftOpombaStranka="", draftOpombaEvidenca="";
   var searchQuery="", searchDate="", searchClientId="", searchMode="", clientPickerMode="entry", previewId=null, pdfPermOK=false, askedPerm=false, admListQuery="";
   var kpArt=null, kpBuf="", kpMode="entry";
 
@@ -986,7 +1001,11 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
       '<div class="seg" id="prevozSeg">'+
         '<button type="button" class="seg-b'+(draftPrevoz!=="izredni"?" on":"")+'" data-pv="redni">Redni</button>'+
         '<button type="button" class="seg-b'+(draftPrevoz==="izredni"?" on":"")+'" data-pv="izredni">Izredni prevoz</button>'+
-      '</div></div>';
+      '</div></div>'+
+      '<div class="prevoz-step"><span class="kg-lbl">Opombe'+(draftStOpomb()?' <span class="mono" style="opacity:.6">('+draftStOpomb()+')</span>':'')+'</span>'+
+        '<button type="button" class="seg-b'+(draftStOpomb()?" on":"")+'" id="noteOpenBtn" style="flex:0 0 auto;padding:8px 16px">'+(draftStOpomb()?"Uredi opombo":"Dodaj opombo")+'</button>'+
+      '</div>';
+    var nb2=document.getElementById("noteOpenBtn"); if(nb2){ nb2.onclick=openNote; }
     var seg=document.getElementById("prevozSeg");
     if(seg){ seg.querySelectorAll(".seg-b").forEach(function(b){ b.onclick=function(){
       draftPrevoz=(b.getAttribute("data-pv")==="izredni"?"izredni":"redni");
@@ -995,6 +1014,24 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
     }; }); }
     document.getElementById("createBtn").disabled = (draftPieces()<=0);
   }
+
+  /* OPOMBE */
+  function draftStOpomb(){ return ((draftOpombaStranka||"").trim()?1:0)+((draftOpombaEvidenca||"").trim()?1:0); }
+  function openNote(){
+    document.getElementById("noteStranka").value=draftOpombaStranka||"";
+    document.getElementById("noteEvidenca").value=draftOpombaEvidenca||"";
+    closeAllOverlays();
+    document.getElementById("noteBackdrop").classList.add("open");
+    setTimeout(function(){ var t=document.getElementById("noteStranka"); if(t) t.focus(); }, 60);
+  }
+  function saveNote(){
+    draftOpombaStranka=(document.getElementById("noteStranka").value||"").trim();
+    draftOpombaEvidenca=(document.getElementById("noteEvidenca").value||"").trim();
+    document.getElementById("noteBackdrop").classList.remove("open");
+    renderSummary();
+    toast("Opombe shranjene");
+  }
+  function closeNote(){ document.getElementById("noteBackdrop").classList.remove("open"); }
 
   /* KEYPAD */
   function buildKeypad(){
@@ -1075,13 +1112,13 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
     entries.push({ id:Date.now()+"-"+Math.random().toString(36).slice(2,7),
       stevilka:stevilka, datum:todayISO(), ustvarjeno:new Date().toISOString(),
       strankaId:c.id, strankaNaziv:c.naziv, strankaPodjetje:c.podjetje, strankaNaslov:c.naslov, strankaDavcna:c.davcna,
-      izdal:(session?session.user:""), postavke:lines, skupajKosov:pieces, kg:draftKgAuto().kg, prevoz:draftPrevoz, saved:false, syncedAt:null, syncNapaka:null });
+      izdal:(session?session.user:""), postavke:lines, skupajKosov:pieces, kg:draftKgAuto().kg, prevoz:draftPrevoz, opombaStranka:draftOpombaStranka||"", opombaEvidenca:draftOpombaEvidenca||"", saved:false, syncedAt:null, syncNapaka:null });
     await saveEntries();
-    selectedId=null; draftQty={}; draftKg=""; draftPrevoz="redni"; setClientLabel();
+    selectedId=null; draftQty={}; draftKg=""; draftPrevoz="redni"; draftOpombaStranka=""; draftOpombaEvidenca=""; setClientLabel();
     renderEntry(); renderSummary(); render(); toast("Spremni list "+stevilka+" ustvarjen");
     try{ syncPush(true); }catch(e){}
   }
-  function resetDraft(){ selectedId=null; draftQty={}; draftKg=""; draftPrevoz="redni"; lockSelector(false); setClientLabel();
+  function resetDraft(){ selectedId=null; draftQty={}; draftKg=""; draftPrevoz="redni"; draftOpombaStranka=""; draftOpombaEvidenca=""; lockSelector(false); setClientLabel();
     renderEntry(); renderSummary(); }
 
   function updatePanelMode(){
@@ -1094,6 +1131,7 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
     var e=entries.find(function(x){return x.id===id;}); if(!e) return;
     var c=clientById(e.strankaId); if(!c){ toast("Stranke ni več v seznamu — urejanje ni možno."); return; }
     editingId=id; selectedId=e.strankaId; draftQty={}; draftKg=(e.kg?String(e.kg):""); draftPrevoz=(e.prevoz==="izredni"?"izredni":"redni");
+    draftOpombaStranka=e.opombaStranka||""; draftOpombaEvidenca=e.opombaEvidenca||"";
     e.postavke.forEach(function(p){
       var art=(p.id&&c.artikli.find(function(a){return a.id===p.id;}))||c.artikli.find(function(a){return a.naziv===p.naziv;});
       if(art) draftQty[art.id]=p.kosov;
@@ -1103,7 +1141,7 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
     window.scrollTo({top:0,behavior:"smooth"});
   }
   function cancelEdit(){
-    editingId=null; selectedId=null; draftQty={}; draftKg=""; draftPrevoz="redni";
+    editingId=null; selectedId=null; draftQty={}; draftKg=""; draftPrevoz="redni"; draftOpombaStranka=""; draftOpombaEvidenca="";
     lockSelector(false); setClientLabel();
     renderEntry(); renderSummary(); renderList(); updatePanelMode();
   }
@@ -1127,15 +1165,18 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
     var zdaj=new Date().toISOString();
     e.popravil=kdo; e.popravljeno_at=zdaj;
     e.popravki=(e.popravki?e.popravki+"\n":"")+fmtDateHuman(zdaj.slice(0,10))+" · "+kdo+": "+opis;
+    var opombeSpremenjene = ((e.opombaStranka||"")!==(draftOpombaStranka||"")) || ((e.opombaEvidenca||"")!==(draftOpombaEvidenca||""));
+    if(opombeSpremenjene) e.popravki=(e.popravki||"")+" · opomba posodobljena";
     e.postavke=lines; e.skupajKosov=lines.reduce(function(a,l){return a+l.kosov;},0);
     e.kg=novaKg;
     e.prevoz=draftPrevoz;
+    e.opombaStranka=draftOpombaStranka; e.opombaEvidenca=draftOpombaEvidenca;
     e.syncedAt=null; e.syncNapaka=null;
     await saveEntries();
     if(e.saved){ await savePdfs(e); }
     try{ syncPush(true); }catch(e2){}
     var num=e.stevilka;
-    editingId=null; selectedId=null; draftQty={}; draftKg=""; draftPrevoz="redni";
+    editingId=null; selectedId=null; draftQty={}; draftKg=""; draftPrevoz="redni"; draftOpombaStranka=""; draftOpombaEvidenca="";
     lockSelector(false); setClientLabel();
     renderEntry(); renderSummary(); render(); updatePanelMode();
     toast("Spremni list "+num+" posodobljen");
@@ -1168,11 +1209,11 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
     var ent={ id:Date.now()+"-"+Math.random().toString(36).slice(2,7),
       stevilka:stevilka, datum:todayISO(), ustvarjeno:new Date().toISOString(),
       strankaId:c.id, strankaNaziv:c.naziv, strankaPodjetje:c.podjetje, strankaNaslov:c.naslov, strankaDavcna:c.davcna,
-      izdal:(session?session.user:""), postavke:lines, skupajKosov:pieces, kg:draftKgAuto().kg, prevoz:draftPrevoz, saved:true, syncedAt:null, syncNapaka:null };
+      izdal:(session?session.user:""), postavke:lines, skupajKosov:pieces, kg:draftKgAuto().kg, prevoz:draftPrevoz, opombaStranka:draftOpombaStranka||"", opombaEvidenca:draftOpombaEvidenca||"", saved:true, syncedAt:null, syncNapaka:null };
     entries.push(ent); reviewEntryId=ent.id;
     await saveEntries(); writeBackup();
     await savePdfs(ent);
-    selectedId=null; draftQty={}; draftKg=""; draftPrevoz="redni"; editingId=null; setClientLabel(); renderEntry(); renderSummary(); render(); updatePanelMode();
+    selectedId=null; draftQty={}; draftKg=""; draftPrevoz="redni"; draftOpombaStranka=""; draftOpombaEvidenca=""; editingId=null; setClientLabel(); renderEntry(); renderSummary(); render(); updatePanelMode();
     try{ syncPush(true); }catch(e){}
     document.getElementById("reviewConfirm").classList.add("hidden");
     document.getElementById("reviewPrint").classList.remove("hidden");
@@ -1254,14 +1295,15 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
     }).join("");
     return '<div class="a4">'+(label?'<div class="copy-label">'+esc(label)+'</div>':'')+
       '<div class="sc-head"><div class="sc-wm">Smart<span>Clean</span></div>'+
-        '<div class="sc-biz">BSMART d.o.o.<br>Lu\u010de 87, 3334 Lu\u010de<br>+386 41 209 676<br>+386 41 455 420<br>+386 68 693 988</div></div>'+
+        '<div class="sc-biz">BSMART d.o.o.<br>\u0160kalska cesta 6, 3210 Slovenske Konjice<br>+386 41 209 676<br>+386 68 693 988<br>blanka.kovacic1@gmail.com</div></div>'+
       '<div class="sc-box sc-num">\u0160t. spremnega lista: <b>'+esc(e.stevilka)+'</b></div>'+
       '<div class="sc-box sc-client"><div class="cl">'+
-        '<div><b>Naro\u010dnik storitve:</b> <span class="cname">'+esc(e.strankaPodjetje||e.strankaNaziv)+'</span></div>'+
+        '<div><b>Naro\u010dnik storitve:</b> <span class="cname">'+esc(e.strankaPodjetje||e.strankaNaziv)+'</span>'+((e.strankaPodjetje && e.strankaNaziv && e.strankaNaziv!==e.strankaPodjetje)?' <span class="cname-sec">('+esc(e.strankaNaziv)+')</span>':'')+'</div>'+
         '<div class="sc-dates">Oddaja: '+fmtDateHuman(e.datum)+(e.izdal?' &nbsp;\u00b7&nbsp; Izdal: '+esc(e.izdal):'')+' &nbsp;\u00b7&nbsp; '+(e.prevoz==="izredni"?"Izredni prevoz":"Redni prevoz")+'</div></div>'+
         '<div class="sc-sign">Podpis:</div></div>'+
       '<table class="sc-table"><thead><tr><th class="l">Naziv Artikla</th><th>Oddaja (\u0161t. kosov)</th></tr></thead><tbody>'+rows+'</tbody></table>'+
       (e.kg?'<div class="sc-weight">Skupaj teža perila: <b>'+String(e.kg).replace(".",",")+' kg</b></div>':'')+
+      (e.opombaStranka?'<div class="sc-note" style="margin-top:10px;padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:12px;white-space:pre-wrap"><b>Opomba:</b> '+esc(e.opombaStranka)+'</div>':'')+
       (e.portalPopravljenoAt?'<div style="margin-top:10px;padding:6px 10px;border-radius:8px;background:#fdf3e8;color:#8a5a00;font-size:11px;font-weight:600">Popravljeno v portalu \u00b7 '+esc(e.popravil||'osebje')+' \u00b7 '+fmtDateHuman(String(e.portalPopravljenoAt).slice(0,10))+'</div>':'')+
     '</div>';
   }
@@ -1305,8 +1347,8 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
     arr.forEach(function(e){
       if(single){ pages+='<div class="pa-page">'+buildA4(e,null)+'</div>'; }
       else{
-        pages+='<div class="pa-page">'+buildA4(e,"Izvod za nas")+'</div>';
-        pages+='<div class="pa-page">'+buildA4(e,"Izvod za stranko")+'</div>';
+        pages+='<div class="pa-page">'+buildA4(e,null)+'</div>';
+        pages+='<div class="pa-page">'+buildA4(e,null)+'</div>';
       }
     });
     var P=null; try{ if(window.Capacitor&&Capacitor.Plugins&&Capacitor.Plugins.PralnicaPrint) P=Capacitor.Plugins.PralnicaPrint; }catch(e){}
@@ -1461,6 +1503,9 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
   document.getElementById("rvNatisni1").onclick=function(){ var e=entryById(reviewEntryId); if(e) printLists([e], true); closeReview(); };
   document.getElementById("rvNatisni2").onclick=function(){ var e=entryById(reviewEntryId); if(e) printLists([e], false); closeReview(); };
   document.getElementById("reviewClose").onclick=function(){ closeReview(); };
+  document.getElementById("noteSave").onclick=saveNote;
+  document.getElementById("noteCancel").onclick=closeNote;
+  document.getElementById("noteBackdrop").addEventListener("click",function(ev){ if(ev.target===this) closeNote(); });
 
 
   // ===== SHRAMBA KATALOGOV / UPORABNIKI =====
@@ -1720,10 +1765,16 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
       : '<button class="login-user" data-nm="Osebje">Osebje</button>';
     box.querySelectorAll("[data-nm]").forEach(function(b){ b.onclick = function(){ doLogin({ name: b.getAttribute("data-nm"), role: "admin" }); }; });
   }
+  function jeFilip(){
+    var em=(accountEmail||"").trim().toLowerCase();
+    if(em==="filip@eflitte.si") return true;
+    var nm=((session&&session.user)||"").trim().toLowerCase();
+    return nm==="filip";
+  }
   function doLogin(u){
     session={user:u.name,role:u.role,start:new Date().toISOString()};
     hideLogin();
-    document.getElementById("adminBtn").style.display=(u.role==="admin")?"":"none";
+    document.getElementById("adminBtn").style.display=(u.role==="admin" && jeFilip())?"":"none";
     { var _tu=document.getElementById("tbUser"); if(_tu) _tu.textContent = u.name || ""; }
     { var _lb=document.getElementById("logoutBtn"); if(_lb) _lb.textContent = "Zamenjaj"; }
     selectedId=null; draftQty={}; editingId=null; searchQuery="";
@@ -1740,7 +1791,7 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
     prikaziProfile();
   }
   function closeAllOverlays(){
-    ["kpBackdrop","backdrop","clientBackdrop","confirmBackdrop","reviewBackdrop"].forEach(function(id){ var el=document.getElementById(id); if(el) el.classList.remove("open"); });
+    ["kpBackdrop","backdrop","clientBackdrop","confirmBackdrop","reviewBackdrop","noteBackdrop"].forEach(function(id){ var el=document.getElementById(id); if(el) el.classList.remove("open"); });
     document.getElementById("adminScreen").classList.remove("show");
     var ds=document.getElementById("danesScreen"); if(ds) ds.classList.remove("show");
     var ae=document.getElementById("artEditor"); if(ae) ae.classList.remove("show");
@@ -1767,7 +1818,7 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
     document.querySelectorAll("[data-opendanes]").forEach(function(b){ b.onclick=function(){ closeDanes(); openSheet(b.getAttribute("data-opendanes")); }; });
   }
   var APP_VERZIJA="8.4";
-  function openAdmin(){ if(!session||session.role!=="admin") return; var av=document.getElementById("admVerz"); if(av) av.textContent="v"+APP_VERZIJA; var vf=document.getElementById("verzFoot"); if(vf) vf.textContent=APP_VERZIJA; renderAdmin(); document.getElementById("adminScreen").classList.add("show"); }
+  function openAdmin(){ if(!session||session.role!=="admin"||!jeFilip()) return; var av=document.getElementById("admVerz"); if(av) av.textContent="v"+APP_VERZIJA; var vf=document.getElementById("verzFoot"); if(vf) vf.textContent=APP_VERZIJA; renderAdmin(); document.getElementById("adminScreen").classList.add("show"); }
   function closeAdmin(){ document.getElementById("adminScreen").classList.remove("show"); }
   function renderAdmRecent(){
     var q=(admListQuery||"").trim().toLowerCase();
@@ -2171,6 +2222,12 @@ async function posljiEnega(e){
     try{ await api("delivery_notes?id=eq." + noteId, { method: "PATCH", body: { popravki: e.popravki } }); }catch(_e){}
   }
 
+  /* opombe (za stranko / za evidenco) — best-effort; če stolpcev ni, tiho spusti */
+  try{ await api("delivery_notes?id=eq." + noteId, { method: "PATCH", body: {
+    opomba_stranka:  (e.opombaStranka  || "") || null,
+    opomba_evidenca: (e.opombaEvidenca || "") || null
+  } }); }catch(_e){}
+
   /* 4. postavke */
   var post = (e.postavke || []).filter(function(p){ return p && p.naziv; })
     .map(function(p, i){
@@ -2572,7 +2629,7 @@ async function potegniIzPortala(){
     /* 1. cel arhiv iz portala (naprava vidi vse), po straneh */
     var pl = [], off = 0;
     while(true){
-      var page = await api("delivery_notes?select=id,legacy_id,doc_year,doc_seq,doc_date,weight_kg,transport,issued_name,popravil,popravljeno_at,potrjeno,orgs(id,name,legal_name,address,vat_id,legacy_id)&order=doc_date.desc&limit=1000&offset=" + off);
+      var page = await api("delivery_notes?select=id,legacy_id,doc_year,doc_seq,doc_date,weight_kg,transport,issued_name,opomba_stranka,opomba_evidenca,popravil,popravljeno_at,potrjeno,orgs(id,name,legal_name,address,vat_id,legacy_id)&order=doc_date.desc&limit=1000&offset=" + off);
       if(!Array.isArray(page) || !page.length) break;
       pl = pl.concat(page);
       if(page.length < 1000) break;
@@ -2593,6 +2650,8 @@ async function potegniIzPortala(){
         if(r.orgs.address) e.strankaNaslov = r.orgs.address;
         if(r.orgs.vat_id) e.strankaDavcna = r.orgs.vat_id;
       }
+      e.opombaStranka = r.opomba_stranka || "";
+      e.opombaEvidenca = r.opomba_evidenca || "";
       e.popravil = r.popravil || null;
       e.potrjeno = (r.potrjeno === true);
       e.zaklenjen = (r.potrjeno === true);

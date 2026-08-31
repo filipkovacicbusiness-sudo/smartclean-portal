@@ -1072,12 +1072,18 @@
   }
   async function prisDodeliKarto(empId) {
     var z = (ZAPOSLENI || []).find(function (x) { return x.id === empId; }); if (!z) return;
-    var ok = await potrdiModal({ naslov: 'Dodeli kartico', sporocilo: (z.card_token ? 'Ustvarim NOVO kartico za „' + z.ime + '"? Stara bo prenehala delovati.' : 'Ustvarim kartico za „' + z.ime + '"?'), potrdi: 'Ustvari', preklici: 'Prekliči' });
-    if (!ok) return;
-    var tok = novCardToken();
-    var up = await sb.from('employees').update({ card_token: tok }).eq('id', empId);
-    if (up.error) { toast('Napaka: ' + up.error.message); return; }
-    await potrdiModal({ naslov: 'Žeton kartice — ' + z.ime, sporocilo: 'Ta žeton zapiši na kartico:\n\n' + tok, potrdi: 'V redu', preklici: 'Zapri' });
+    var stev = await vnesiModal({
+      naslov: (z.card_token ? 'Nova kartica — ' + z.ime : 'Dodeli kartico — ' + z.ime),
+      sporocilo: 'Prisloni kartico k bralniku (številka se vpiše sama) ali jo vpiši ročno.' + (z.card_token ? '\nStara kartica bo prenehala delovati.' : ''),
+      placeholder: 'Številka kartice',
+      potrdi: 'Shrani'
+    });
+    if (stev === null) return;
+    stev = (stev || '').trim();
+    if (!stev) { toast('Prazna številka — preklicano.'); return; }
+    var up = await sb.from('employees').update({ card_token: stev }).eq('id', empId);
+    if (up.error) { toast('Napaka: ' + (up.error.message.indexOf('duplicate') >= 0 ? 'ta kartica je že dodeljena drugemu zaposlenemu.' : up.error.message)); return; }
+    toast('Kartica shranjena.');
     await risiPrisotnost();
   }
   // Potrdi/prekliči uro (par prihod–odhod). Označi obe (prihod + odhod).
@@ -1743,7 +1749,7 @@
     const {
       data,
       error
-    } = await sb.from('delivery_notes').select('id,number,doc_date,total_pieces,weight_kg,org_id,issued_name,popravil,popravljeno_at,popravki,source,transport,potrjeno,legacy_id,opomba,opomba_avtor,opomba_at').order('doc_date', {
+    } = await sb.from('delivery_notes').select('id,number,doc_date,total_pieces,weight_kg,org_id,issued_name,popravil,popravljeno_at,popravki,source,transport,potrjeno,legacy_id,opomba,opomba_avtor,opomba_at,opomba_stranka,opomba_evidenca').order('doc_date', {
       ascending: false
     }).limit(1000);
     // Rezerva: če stolpci za opombo/popravke še niso dodani, naloži brez njih.
@@ -2009,13 +2015,24 @@
     const ustvarjenoV = n.source === 'portal' ? `<p class="ur-ustvarjeno">✚ Ustvarjeno v portalu${n.issued_name ? ' · ' + escape_(n.issued_name) : ''}</p>` : '';
     const gumbi = '<div class="u-acts" style="margin-top:12px"><button type="button" data-natisni>Natisni</button>' +
       (OSEBJE ? '<button type="button" data-uredi>Uredi</button><button type="button" class="danger" data-izbrisi>Izbriši</button>' : '') + '</div>';
-    box.innerHTML = seznam + izdalV + ustvarjenoV + popravek + opombaHtml(n) + gumbi;
+    box.innerHTML = seznam + izdalV + ustvarjenoV + popravek + opombeAppHtml(n) + opombaHtml(n) + gumbi;
     box.querySelector('[data-natisni]').addEventListener('click', () => natisniList(box));
     if (OSEBJE) {
       box.querySelector('[data-uredi]').addEventListener('click', () => urediList(box));
       box.querySelector('[data-izbrisi]').addEventListener('click', () => izbrisiList(box));
     }
     wireOpomba(box);
+  }
+
+  /* ── Opombi iz aplikacije (za stranko + za evidenco), samo prikaz ── */
+  function opombeAppHtml(n) {
+    n = n || {};
+    var out = '';
+    if (n.opomba_stranka) out += '<div class="opomba-blok"><div class="opomba-h">Opomba za stranko (na natisu)</div>' +
+      '<div class="opomba-prikaz"><div class="opomba-besedilo" style="white-space:pre-wrap">' + escape_(n.opomba_stranka) + '</div></div></div>';
+    if (n.opomba_evidenca) out += '<div class="opomba-blok"><div class="opomba-h">Opomba za evidenco (interno — se ne natisne)</div>' +
+      '<div class="opomba-prikaz"><div class="opomba-besedilo" style="white-space:pre-wrap">' + escape_(n.opomba_evidenca) + '</div></div></div>';
+    return out;
   }
 
   /* ── Pisna opomba na spremnem listu (z avtorjem) ── */
@@ -2121,7 +2138,7 @@
         <label class="ur-f"><span>Št.</span><input type="number" data-seq value="${st.seq}"></label>
         <label class="ur-f"><span>Leto</span><input type="number" data-leto value="${st.leto}"></label>
         <label class="ur-f"><span>Datum</span><input type="date" data-datum value="${escape_(dnes)}"></label>
-        <label class="ur-f"><span>Teža (kg)</span><input type="number" step="0.1" data-teza value="${n.weight_kg != null ? n.weight_kg : ''}"></label>
+        <label class="ur-f"><span>Teža (samodejno)</span><output class="ur-kg-auto" data-teza-auto>—</output></label>
       </div>
       <label class="ur-f"><span>Izdal (izvirni — se ne spreminja)</span><input type="text" data-izdal value="${escape_(n.issued_name || '')}" readonly style="opacity:.6;cursor:not-allowed"></label>
       <div class="ur-f"><span>Vrsta prevoza</span>${segPrevoz(n.transport)}</div>
@@ -2144,16 +2161,20 @@
       });
       sel.innerHTML = opts;
     }
+    const osveziKg = () => osveziKgPrikaz(box);
     const dodajVrstico = (naziv = '', kosov = '') => {
       const row = document.createElement('div');
       row.className = 'ur-post';
       row.innerHTML = `<select data-pn class="ur-pn"></select><input type="number" data-pk placeholder="kos" value="${kosov}"><button type="button" class="ur-del" data-del title="odstrani">×</button>`;
       napolniPn(row.querySelector('[data-pn]'), naziv);
-      row.querySelector('[data-del]').addEventListener('click', () => row.remove());
+      row.querySelector('[data-del]').addEventListener('click', () => { row.remove(); osveziKg(); });
+      row.querySelector('[data-pn]').addEventListener('change', osveziKg);
+      row.querySelector('[data-pk]').addEventListener('input', osveziKg);
       pBox.appendChild(row);
     };
     (box._items || []).forEach(p => dodajVrstico(p.naziv, p.kosov));
     if (!(box._items || []).length) dodajVrstico();
+    osveziKg();
     box.querySelector('[data-dodaj]').addEventListener('click', () => dodajVrstico());
     box.querySelector('[data-preklici]').addEventListener('click', () => risiListDetajl(box));
     box.querySelector('[data-shrani]').addEventListener('click', () => shraniList(box));
@@ -2168,7 +2189,8 @@
     const seq = parseInt(q('[data-seq]').value, 10);
     const leto = parseInt(q('[data-leto]').value, 10);
     const doc_date = q('[data-datum]').value;
-    const tezaRaw = q('[data-teza]').value;
+    const _kgEl = q('[data-teza-auto]');
+    const _kgAuto = _kgEl && _kgEl.dataset.kg !== '' && _kgEl.dataset.kg != null ? Number(_kgEl.dataset.kg) : null;
     if (!org_id) { msg.textContent = 'Izberi stranko.'; return; }
     if (!seq || !leto) { msg.textContent = 'Vpiši številko in leto.'; return; }
     if (!doc_date) { msg.textContent = 'Vpiši datum.'; return; }
@@ -2196,7 +2218,7 @@
       }
       let r = await sb.from('delivery_notes').update({
         org_id, doc_seq: seq, doc_year: leto, doc_date,
-        weight_kg: tezaRaw === '' ? null : Number(tezaRaw),
+        weight_kg: _kgAuto,
         transport: beriPrevoz(box),
         popravil: JAZIME || 'osebje',
         popravljeno_at: new Date().toISOString()
@@ -2227,6 +2249,7 @@
     const items = box._items || [];
     const org = ORGSEZNAM.find(o => o.id === n.org_id) || {};
     const naziv = org.legal_name || org.name || ORGIME[n.org_id] || '—';
+    const nazivSek = (org.legal_name && org.name && org.name !== org.legal_name) ? org.name : '';
     const rows = items.length
       ? items.map(p => `<tr><td>${escape_(p.naziv)}</td><td class="q">${stevilo(p.kosov)}</td></tr>`).join('')
       : '<tr><td colspan="2" style="color:#888">Ni postavk</td></tr>';
@@ -2236,6 +2259,7 @@
     const popr = n.popravljeno_at ? `<div class="popr">✎ Popravljeno v portalu · ${escape_(n.popravil || 'osebje')} · ${datumcas(n.popravljeno_at)}</div>` : '';
     const ustv = n.source === 'portal' ? `<div class="popr" style="background:#eaf4ee;color:#1f6b3b">✚ Ustvarjeno v portalu${n.issued_name ? ' · ' + escape_(n.issued_name) : ''}</div>` : '';
     const opombaP = n.opomba ? `<div class="opomba"><div class="oh">Opomba</div><div class="ob">${escape_(n.opomba)}</div><div class="oa">— ${escape_(n.opomba_avtor || 'osebje')}${n.opomba_at ? ' · ' + datumcas(n.opomba_at) : ''}</div></div>` : '';
+    const opombaStrankaP = n.opomba_stranka ? `<div class="opomba"><div class="oh">Opomba</div><div class="ob">${escape_(n.opomba_stranka)}</div></div>` : '';
     const html = `<!DOCTYPE html><html lang="sl"><head><meta charset="utf-8"><title>Spremni list ${escape_(n.number || '')}</title><style>
       @page{size:A4;margin:14mm}
       @media screen{html{background:#e9edeb;margin:0}body{width:210mm;min-height:297mm;padding:14mm;margin:0 auto;background:#fff}}
@@ -2260,11 +2284,11 @@
       .opomba .oa{margin-top:6px;color:#5c6873;font-size:11px}
       .sign{margin-top:30px;color:#5c6873}
     </style></head><body>
-      <div class="head"><img class="wm" alt="SmartClean" src="${SC_LOGO}"><div class="biz">BSMART d.o.o.<br>Luče 87, 3334 Luče<br>+386 41 209 676</div></div>
+      <div class="head"><img class="wm" alt="SmartClean" src="${SC_LOGO}"><div class="biz">BSMART d.o.o.<br>Škalska cesta 6, 3210 Slovenske Konjice<br>+386 41 209 676<br>+386 68 693 988<br>blanka.kovacic1@gmail.com</div></div>
       <div class="num">Št. spremnega lista: <b>${escape_(n.number || '—')}</b></div>
-      <div class="client"><div><b>Naročnik storitve:</b> ${escape_(naziv)}<div class="dates">Oddaja: ${datum(n.doc_date)}${izdal}${prevozP}</div></div><div>Podpis: ______________</div></div>
+      <div class="client"><div><b>Naročnik storitve:</b> ${escape_(naziv)}${nazivSek ? ' <span style="font-weight:400;color:#6b7280;font-size:.9em">(' + escape_(nazivSek) + ')</span>' : ''}<div class="dates">Oddaja: ${datum(n.doc_date)}${izdal}${prevozP}</div></div><div>Podpis: ______________</div></div>
       <table><thead><tr><th>Naziv artikla</th><th class="q">Kosov</th></tr></thead><tbody>${rows}</tbody></table>
-      ${kg}${ustv}${popr}${opombaP}<div class="sign"></div>
+      ${kg}${ustv}${popr}${opombaStrankaP}${opombaP}<div class="sign"></div>
     </body></html>`;
     return html;
   }
@@ -2604,7 +2628,7 @@
       ? `<tr><td>${escape_(p.nm)}</td><td class="q">${p.cena != null ? cenaFmt(p.cena) : '—'}</td><td class="q">${stevilo(p.q)}</td><td class="q">${p.znesek != null ? cenaFmt(p.znesek) : '—'}</td></tr>`
       : `<tr><td>${escape_(p.nm)}</td><td class="q">${stevilo(p.q)}</td></tr>`).join('') : `<tr><td colspan="${kolonc}" style="color:#888">Ni postavk</td></tr>`;
     return `<div class="stran">
-      <div class="head"><img class="wm" alt="SmartClean" src="${SC_LOGO}"><div class="biz">BSMART d.o.o.<br>Luče 87, 3334 Luče<br>+386 41 209 676</div></div>
+      <div class="head"><img class="wm" alt="SmartClean" src="${SC_LOGO}"><div class="biz">BSMART d.o.o.<br>Škalska cesta 6, 3210 Slovenske Konjice<br>+386 41 209 676<br>+386 68 693 988<br>blanka.kovacic1@gmail.com</div></div>
       <div class="num"><b>Osnova za račun</b></div>
       <div class="client"><b>Naročnik storitve:</b> ${escape_(naziv)}${naslov ? '<br>' + escape_(naslov) : ''}<div class="dates">Obdobje: ${datum(od)} – ${datum(doo)} · ${stevilo(g.listov)} spremnih listov · ${stevilo(g.redni)} redni${g.izredni ? ' · ' + stevilo(g.izredni) + ' izredni prevoz' : ''}</div></div>
       <table><thead>${money
@@ -2673,9 +2697,10 @@
     var right = doc.W - M, y = 50;
     if (logo && logo.w) { var lh = 26, lw = lh * logo.w / logo.h; doc.image(logo.bytes, M, y - 14, lw, lh, logo.w, logo.h); }
     doc.text(right, y - 6, 'BSMART d.o.o.', { size: 9, align: 'right', color: _PDF.GREY });
-    doc.text(right, y + 5, 'Luče 87, 3334 Luče', { size: 9, align: 'right', color: _PDF.GREY });
-    doc.text(right, y + 16, '+386 41 209 676', { size: 9, align: 'right', color: _PDF.GREY });
-    y += 26; doc.line(M, y, right, y, { width: 1.4, color: _PDF.GREEN });
+    doc.text(right, y + 5, 'Škalska cesta 6, 3210 Slovenske Konjice', { size: 9, align: 'right', color: _PDF.GREY });
+    doc.text(right, y + 16, '+386 41 209 676 · +386 68 693 988', { size: 9, align: 'right', color: _PDF.GREY });
+    doc.text(right, y + 27, 'blanka.kovacic1@gmail.com', { size: 9, align: 'right', color: _PDF.GREY });
+    y += 37; doc.line(M, y, right, y, { width: 1.4, color: _PDF.GREEN });
     return y + 24;
   }
   // Osnova za račun (fakture) → prava .pdf datoteka.
@@ -2751,6 +2776,7 @@
     var n = box._note || {}, items = box._items || [];
     var org = ORGSEZNAM.find(function (o) { return o.id === n.org_id; }) || {};
     var naziv = org.legal_name || org.name || ORGIME[n.org_id] || '—';
+    var nazivSek = (org.legal_name && org.name && org.name !== org.legal_name) ? org.name : '';
     var doc = new PDFDoc();
     var M = 44, right = doc.W - M;
     doc.addPage();
@@ -2758,7 +2784,7 @@
     doc.text(M, y, 'Št. spremnega lista: ' + (n.number || '—'), { size: 12, bold: true, color: _PDF.INK }); y += 20;
     var boxH = 46;
     doc.rect(M, y, right - M, boxH, { stroke: _PDF.LINE, width: 0.8 });
-    doc.text(M + 12, y + 17, 'Naročnik storitve: ' + naziv, { size: 10.5, bold: true, color: _PDF.INK });
+    doc.text(M + 12, y + 17, 'Naročnik storitve: ' + naziv + (nazivSek ? '  (' + nazivSek + ')' : ''), { size: 10.5, bold: true, color: _PDF.INK });
     doc.text(M + 12, y + 31, 'Oddaja: ' + datum(n.doc_date) + (n.issued_name ? ' · Izdal: ' + n.issued_name : '') + ' · ' + (n.transport === 'izredni' ? 'Izredni prevoz' : 'Redni prevoz'), { size: 9, color: _PDF.GREY });
     doc.text(right - 12, y + 17, 'Podpis: ______________', { size: 9, align: 'right', color: _PDF.GREY });
     y += boxH + 20;
@@ -2778,6 +2804,7 @@
       y += 18; doc.line(M, y, right, y, { width: 0.6, color: _PDF.LINE });
     });
     if (n.weight_kg != null && n.weight_kg !== '') { y += 14; doc.text(M, y, 'Skupaj teža perila: ' + String(n.weight_kg).replace('.', ',') + ' kg', { size: 11, bold: true, color: _PDF.INK }); }
+    if (n.opomba_stranka) { y += 22; doc.text(M, y, 'Opomba:', { size: 9, bold: true, color: _PDF.GREY }); y += 13; doc.text(M, y, n.opomba_stranka, { size: 9.5, color: _PDF.INK }); }
     if (n.opomba) { y += 22; doc.text(M, y, 'Opomba:', { size: 9, bold: true, color: _PDF.GREY }); y += 13; doc.text(M, y, n.opomba, { size: 9.5, color: _PDF.INK }); }
     doc.save('spremni_list_' + (n.number || 'brez') + '.pdf');
   }

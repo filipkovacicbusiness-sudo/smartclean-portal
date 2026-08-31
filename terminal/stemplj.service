@@ -1,0 +1,13 @@
+[Unit]
+Description=SmartClean terminal za stemplanje (RFID -> portal -> LCD)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/home/pi/stemplj-venv/bin/python /home/pi/terminal/stemplj.py
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
