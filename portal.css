@@ -1636,3 +1636,19 @@ html[data-theme="dark"] .pris-chip-x:hover{background:rgba(255,138,122,.16);colo
 /* ── enotna eflitte tipografija naslovov (vsepovsod) ─────────────────── */
 h3.sec,h3.sec-h,.empty h3,.fak-card-h h3,.adm-ime,.stat-num,.auth-claim,
 .bio-promo-card h3{letter-spacing:-.028em;}
+
+/* ── Stranke: seznam artiklov z urejanjem teže ─────────────────────── */
+.str-arts{display:flex;flex-direction:column;gap:2px;margin:6px 0 8px;}
+.str-art{display:flex;align-items:center;gap:10px;padding:8px 4px;border-bottom:1px solid var(--line);}
+.str-art:last-child{border-bottom:none;}
+.str-art .art-id{flex:0 0 auto;}
+.str-art-nm{flex:1 1 auto;min-width:0;font-size:.92rem;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.str-art-teza{flex:0 0 auto;display:inline-flex;align-items:center;gap:5px;font-variant-numeric:tabular-nums;}
+.str-teza-in{width:66px;padding:6px 8px;border:1.5px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font-size:15px;text-align:right;font-variant-numeric:tabular-nums;font-family:var(--sans);}
+.str-teza-in:focus{border-color:var(--green-l);outline:none;}
+.str-teza-u{font-size:.8rem;color:var(--mid);}
+.str-art .art-cena{flex:0 0 auto;min-width:64px;text-align:right;}
+@media(max-width:560px){.str-art-nm{white-space:normal;}}
+
+/* samodejno izračunana teža v obrazcu novega lista */
+.ur-kg-auto{display:flex;align-items:center;min-height:44px;padding:0 12px;border:1.5px dashed var(--line);border-radius:9px;background:var(--green-m);color:var(--ink);font-variant-numeric:tabular-nums;font-weight:600;}
