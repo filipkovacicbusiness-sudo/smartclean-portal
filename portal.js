@@ -2192,6 +2192,8 @@
     const opombaP = n.opomba ? `<div class="opomba"><div class="oh">Opomba</div><div class="ob">${escape_(n.opomba)}</div><div class="oa">— ${escape_(n.opomba_avtor || 'osebje')}${n.opomba_at ? ' · ' + datumcas(n.opomba_at) : ''}</div></div>` : '';
     const html = `<!DOCTYPE html><html lang="sl"><head><meta charset="utf-8"><title>Spremni list ${escape_(n.number || '')}</title><style>
       @page{size:A4;margin:14mm}
+      @media screen{html{background:#e9edeb;margin:0}body{width:210mm;min-height:297mm;padding:14mm;margin:0 auto;background:#fff}}
+      @media print{html{background:#fff}body{width:auto;min-height:0;padding:0;margin:0}}
       *{box-sizing:border-box;font-family:-apple-system,'Segoe UI',Roboto,Arial,sans-serif;color:#16202b}
       body{margin:0;font-size:13px}
       .head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #1a6644;padding-bottom:11px;margin-bottom:18px}
@@ -2554,6 +2556,8 @@
     const strani = skupine.map(g => fakStranHtml(g, od, doo)).join('');
     return `<!DOCTYPE html><html lang="sl"><head><meta charset="utf-8"><title>${escape_(naslovDok || 'Osnova za račun')}</title><style>
       @page{size:A4;margin:14mm}
+      @media screen{html{background:#e9edeb;margin:0}body{width:210mm;min-height:297mm;padding:14mm;margin:0 auto;background:#fff}}
+      @media print{html{background:#fff}body{width:auto;min-height:0;padding:0;margin:0}}
       *{box-sizing:border-box;font-family:-apple-system,'Segoe UI',Roboto,Arial,sans-serif;color:#16202b}
       body{margin:0;font-size:13px}
       .stran{page-break-after:always}
@@ -2718,15 +2722,33 @@
     var pdfBtn = opt.pdf ? '<button type="button" class="sc-modal-btn primary" data-pdf>Shrani kot PDF</button>' : '';
     back.innerHTML = '<div class="sc-modal doc-modal" role="dialog" aria-modal="true">' +
       '<div class="doc-head"><h4></h4><button type="button" class="doc-x" aria-label="Zapri">×</button></div>' +
-      '<div class="doc-stage"><iframe class="doc-frame" title="Predogled"></iframe></div>' +
+      '<div class="doc-stage"><div class="doc-scaler"><iframe class="doc-frame" title="Predogled"></iframe></div></div>' +
       '<div class="sc-modal-acts doc-acts"><button type="button" class="sc-modal-btn ghost" data-print>Natisni</button>' + xlsxBtn + pdfBtn + '</div></div>';
     back.querySelector('h4').textContent = opt.naslov || 'Predogled';
     document.body.appendChild(back);
     var fr = back.querySelector('.doc-frame');
+    var scaler = back.querySelector('.doc-scaler');
+    var stage = back.querySelector('.doc-stage');
+    var A4W = 794;   // 210 mm @ 96 dpi
+    function prilagodiA4() {
+      try {
+        var doc = fr.contentDocument; if (!doc || !doc.body) return;
+        var ch = Math.max(doc.body.scrollHeight, 1123);   // vsaj ena A4 stran
+        fr.style.width = A4W + 'px'; fr.style.height = ch + 'px'; fr.style.transformOrigin = 'top left';
+        var cs = getComputedStyle(stage);
+        var sw = stage.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+        var sh = stage.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+        var k = Math.min(sw / A4W, sh / ch); if (!isFinite(k) || k <= 0) k = 1; if (k > 1.6) k = 1.6;
+        fr.style.transform = 'scale(' + k + ')';
+        scaler.style.width = (A4W * k) + 'px'; scaler.style.height = (ch * k) + 'px';
+      } catch (e) {}
+    }
+    fr.addEventListener('load', function () { prilagodiA4(); setTimeout(prilagodiA4, 60); });
+    window.addEventListener('resize', prilagodiA4);
     fr.srcdoc = opt.docHtml || '';
-    requestAnimationFrame(function () { back.classList.add('show'); });
+    requestAnimationFrame(function () { back.classList.add('show'); setTimeout(prilagodiA4, 40); });
     var done = false;
-    function zapri() { if (done) return; done = true; back.classList.remove('show'); document.removeEventListener('keydown', onKey); setTimeout(function () { if (back.parentNode) back.parentNode.removeChild(back); }, 180); }
+    function zapri() { if (done) return; done = true; window.removeEventListener('resize', prilagodiA4); back.classList.remove('show'); document.removeEventListener('keydown', onKey); setTimeout(function () { if (back.parentNode) back.parentNode.removeChild(back); }, 180); }
     function onKey(e) { if (e.key === 'Escape') zapri(); }
     back.querySelector('.doc-x').addEventListener('click', zapri);
     back.addEventListener('click', function (e) { if (e.target === back) zapri(); });
