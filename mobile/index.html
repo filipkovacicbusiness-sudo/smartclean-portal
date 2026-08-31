@@ -1611,8 +1611,8 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
     try{
       await portalLogin(em, pw);
       var prof = await portalProfil();
-      if(!prof.is_staff){ try{ await portalOdjava(); }catch(e){} er.textContent = "Ta ra\u010dun ni osebje."; return; }
-      if(prof.web_dostop === false){ try{ await portalOdjava(); }catch(e){} er.textContent = "Ta uporabnik nima dostopa do Web viewa."; return; }
+      if(!prof.interni){ try{ await portalOdjava(); }catch(e){} er.textContent = "Ta ra\u010dun ni med osebjem/zaposlenimi."; return; }
+      if(prof.web_dostop === false){ try{ await portalOdjava(); }catch(e){} er.textContent = "Ta uporabnik nima dostopa do Web viewa (Uporabniki \u2192 Web view: da)."; return; }
       var nm = prof.full_name || prof.email || em;
       savedProfs = savedProfs.filter(function(p){ return p.email !== prof.email; });
       savedProfs.push({ email: prof.email, name: nm, uid: prof.id, refresh_token: portalAuth.refresh_token });
@@ -1634,7 +1634,7 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
       await portalRefresh();
       p.refresh_token = portalAuth.refresh_token; await savePortalAuth();
       var prof = await portalProfil();
-      if(!prof.is_staff || prof.web_dostop === false) throw new Error("nima dostopa");
+      if(!prof.interni || prof.web_dostop === false) throw new Error("nima dostopa");
       p.name = prof.full_name || p.name; await saveProfs();
       try{ await osveziKatalog(true); }catch(e){}
       try{ await potegniIzPortala(); }catch(e){}
@@ -1650,13 +1650,17 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
     var ur = await fetch(settings.portalUrl + "/auth/v1/user", { headers: { apikey: settings.portalKey, Authorization: "Bearer " + portalAuth.access_token } });
     var u = await ur.json().catch(function(){ return {}; });
     if(!ur.ok) throw new Error("seja ni veljavna");
-    var out = { id: u.id, email: u.email || "", is_staff: false, full_name: "", web_dostop: true };
+    var out = { id: u.id, email: u.email || "", is_staff: false, full_name: "", web_dostop: true, interni: false };
     try{
-      var rows = await api("profiles?select=is_staff,full_name,web_dostop&id=eq." + u.id);
-      if(Array.isArray(rows) && rows[0]){ out.is_staff = !!rows[0].is_staff; out.full_name = rows[0].full_name || ""; out.web_dostop = rows[0].web_dostop !== false; }
+      var rows = await api("profiles?select=is_staff,full_name,web_dostop,super_admin,zaposleni&id=eq." + u.id);
+      if(Array.isArray(rows) && rows[0]){ var r=rows[0]; out.is_staff=!!r.is_staff; out.full_name=r.full_name||""; out.web_dostop=r.web_dostop!==false; out.interni=!!(r.is_staff||r.super_admin||r.zaposleni); }
     }catch(e){
-      try{ var r2 = await api("profiles?select=is_staff,full_name&id=eq." + u.id); if(Array.isArray(r2) && r2[0]){ out.is_staff = !!r2[0].is_staff; out.full_name = r2[0].full_name || ""; } }catch(e2){}
+      try{ var r2 = await api("profiles?select=is_staff,full_name,web_dostop&id=eq." + u.id); if(Array.isArray(r2) && r2[0]){ out.is_staff=!!r2[0].is_staff; out.full_name=r2[0].full_name||""; out.web_dostop=r2[0].web_dostop!==false; out.interni=!!r2[0].is_staff; } }catch(e2){
+        try{ var r3 = await api("profiles?select=is_staff,full_name&id=eq." + u.id); if(Array.isArray(r3) && r3[0]){ out.is_staff=!!r3[0].is_staff; out.full_name=r3[0].full_name||""; out.interni=!!r3[0].is_staff; } }catch(e3){}
+      }
     }
+    // lastnik je vedno interni
+    if((out.email||"").trim().toLowerCase()==="filip@eflitte.si") out.interni=true;
     return out;
   }
 
