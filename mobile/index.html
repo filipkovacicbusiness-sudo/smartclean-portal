@@ -280,6 +280,7 @@
   .kg-step.need{border-color:var(--warn);background:rgba(178,59,59,.08)}
   .kg-step.need .kg-lbl{color:var(--warn)}
   .kg-step .kg-lbl{font-size:14px;font-weight:600;color:var(--ink)}
+    .kg-auto{font-weight:700;font-size:16px;color:var(--ink);font-variant-numeric:tabular-nums}
   .kg-btn{border:1px solid var(--line);border-radius:9px;padding:9px 16px;font-weight:700;font-size:15px;color:var(--press-deep);background:var(--press-tint);font-family:'Instrument Sans',system-ui,sans-serif;font-variant-numeric:tabular-nums}
   .prevoz-step{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:12px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--paper)}
   .seg{display:inline-flex;border:1px solid var(--line);border-radius:11px;padding:3px;gap:3px;background:var(--paper)}
@@ -868,6 +869,11 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
   function draftLines(){ var c=clientById(selectedId); if(!c) return [];
     return c.artikli.filter(function(a){return (draftQty[a.id]||0)>0;})
       .map(function(a){ return {id:a.id,naziv:a.naziv,kosov:draftQty[a.id]}; }); }
+  /* samodejni izračun teže: Σ(teža na kos × kosov); teža je na artiklu (na stranko) */
+  function draftKgAuto(){ var c=clientById(selectedId); if(!c) return {kg:0,ima:false};
+    var kg=0,ima=false;
+    c.artikli.forEach(function(a){ var q=draftQty[a.id]||0; if(q>0 && a.teza!=null && !isNaN(a.teza)){ kg+=a.teza*q; ima=true; } });
+    return {kg:Math.round(kg*1000)/1000, ima:ima}; }
 
   function fillClientGrid(){
     var grid=document.getElementById("clientGrid");
@@ -900,8 +906,8 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
       var orgs = await apiVse("orgs?select=id,name,legacy_id&order=name");
       var org = orgs.find(function(o){ return (o.legacy_id && o.legacy_id === c.id) || (o.name||"").trim().toLowerCase() === (c.naziv||"").trim().toLowerCase(); });
       if(!org){ toast("Stranke »" + c.naziv + "« ni v portalu (id " + c.id + ")"); return false; }
-      var arts = await apiVse("articles?select=id,name,legacy_id,sort_order&org_id=eq." + org.id + "&order=sort_order,id");
-      c.artikli = (arts||[]).map(function(a){ return { id: a.legacy_id || ("s" + a.id.slice(0,8)), naziv: a.name, sy: true }; });
+      var arts = await apiVse("articles?select=id,name,legacy_id,sort_order,teza&org_id=eq." + org.id + "&order=sort_order,id");
+      c.artikli = (arts||[]).map(function(a){ return { id: a.legacy_id || ("s" + a.id.slice(0,8)), naziv: a.name, sy: true, teza: (a.teza==null||a.teza==='')?null:parseFloat(a.teza) }; });
       try{ await dbWrite(CLIENTS_KEY, JSON.stringify(CLIENTS)); }catch(e){}
       if(selectedId === cid) renderEntry();
       if(glasno) toast(c.naziv + ": " + c.artikli.length + " artiklov iz portala");
@@ -955,27 +961,26 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
     var pv = lines.length ? '<div class="draft-preview"><ul class="pv-list">'+
       lines.map(function(l){ return '<li><span class="pv-n">'+esc(l.naziv)+'</span><span class="pv-k mono">'+l.kosov+'</span></li>'; }).join("")+
       '</ul></div>' : '';
-    var kgTxt = draftKg!=="" ? (String(draftKg).replace(".",",")+" kg") : "Vpiši kg";
+    var _ka = draftKgAuto();
+    var kgTxt = _ka.ima ? (String(_ka.kg).replace(".",",")+" kg") : "—";
     var active = !!(selectedId || editingId);
     var stNum = editingId ? ((entryById(editingId)||{}).stevilka||"") : nextNumber();
     var head = active ? '<div class="draft-total"><span class="k">Spremni list št.</span><span class="v mono">'+esc(stNum)+'</span></div>' : '';
     host.innerHTML=head+pv+
-      '<div class="kg-step'+(draftKg===""?" need":"")+'"><span class="kg-lbl">Teža perila (obvezno)</span>'+
-      '<button class="kg-btn" id="kgBtn">'+kgTxt+'</button></div>'+
+      '<div class="kg-step"><span class="kg-lbl">Teža perila (samodejno)</span>'+
+      '<span class="kg-auto mono">'+kgTxt+'</span></div>'+
       '<div class="prevoz-step"><span class="kg-lbl">Vrsta prevoza</span>'+
       '<div class="seg" id="prevozSeg">'+
         '<button type="button" class="seg-b'+(draftPrevoz!=="izredni"?" on":"")+'" data-pv="redni">Redni</button>'+
         '<button type="button" class="seg-b'+(draftPrevoz==="izredni"?" on":"")+'" data-pv="izredni">Izredni prevoz</button>'+
       '</div></div>';
-    var kgb=document.getElementById("kgBtn"); if(kgb) kgb.onclick=openKgKeypad;
     var seg=document.getElementById("prevozSeg");
     if(seg){ seg.querySelectorAll(".seg-b").forEach(function(b){ b.onclick=function(){
       draftPrevoz=(b.getAttribute("data-pv")==="izredni"?"izredni":"redni");
       seg.querySelectorAll(".seg-b").forEach(function(x){ x.classList.remove("on"); });
       b.classList.add("on");
     }; }); }
-    var kgVal=(draftKg===""?NaN:parseFloat(draftKg));
-    document.getElementById("createBtn").disabled = (draftKg==="") || (draftPieces()<=0 && !(kgVal>0));
+    document.getElementById("createBtn").disabled = (draftPieces()<=0);
   }
 
   /* KEYPAD */
@@ -1052,12 +1057,12 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
   }
 
   async function createEntry(){
-    var c=clientById(selectedId), lines=draftLines(); if(!c) return; if(!lines.length && !(parseFloat(draftKg||0)>0)) return;
+    var c=clientById(selectedId), lines=draftLines(); if(!c) return; if(!lines.length) return;
     var pieces=lines.reduce(function(a,l){return a+l.kosov;},0), stevilka=nextNumber();
     entries.push({ id:Date.now()+"-"+Math.random().toString(36).slice(2,7),
       stevilka:stevilka, datum:todayISO(), ustvarjeno:new Date().toISOString(),
       strankaId:c.id, strankaNaziv:c.naziv, strankaPodjetje:c.podjetje, strankaNaslov:c.naslov, strankaDavcna:c.davcna,
-      izdal:(session?session.user:""), postavke:lines, skupajKosov:pieces, kg:(draftKg===""?0:parseFloat(draftKg)||0), prevoz:draftPrevoz, saved:false, syncedAt:null, syncNapaka:null });
+      izdal:(session?session.user:""), postavke:lines, skupajKosov:pieces, kg:draftKgAuto().kg, prevoz:draftPrevoz, saved:false, syncedAt:null, syncNapaka:null });
     await saveEntries();
     selectedId=null; draftQty={}; draftKg=""; draftPrevoz="redni"; setClientLabel();
     renderEntry(); renderSummary(); render(); toast("Spremni list "+stevilka+" ustvarjen");
@@ -1091,9 +1096,9 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
   }
   async function saveEdit(){
     var e=entries.find(function(x){return x.id===editingId;}); if(!e) return;
-    var lines=draftLines(); if(!lines.length && !(parseFloat(draftKg||0)>0)) return;
+    var lines=draftLines(); if(!lines.length) return;
     e.postavke=lines; e.skupajKosov=lines.reduce(function(a,l){return a+l.kosov;},0);
-    e.kg=(draftKg===""?0:parseFloat(draftKg)||0);
+    e.kg=draftKgAuto().kg;
     e.prevoz=draftPrevoz;
     e.syncedAt=null; e.syncNapaka=null;
     await saveEntries();
@@ -1111,10 +1116,10 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
   function openReview(){
     var c=clientById(selectedId); if(!c) return;
     var lines=draftLines();
-    if(!lines.length && !(parseFloat(draftKg||0)>0)){ toast("Vnesi vsaj en artikel ali težo."); return; }
+    if(!lines.length){ toast("Vnesi vsaj en artikel."); return; }
     var stevilka=nextNumber();
     var rows = lines.length ? lines.map(function(l){ return '<li><span class="rv-n">'+esc(l.naziv)+'</span><span class="rv-k mono">'+l.kosov+'</span></li>'; }).join("") : '<li class="rv-empty">Brez artiklov</li>';
-    var kg = draftKg!==""? (String(draftKg).replace(".",",")+" kg") : "—";
+    var _kp=draftKgAuto(); var kg = _kp.ima? (String(_kp.kg).replace(".",",")+" kg") : "—";
     document.getElementById("reviewBody").innerHTML =
       '<div class="rv-head"><div class="rv-cli">'+esc(c.naziv)+'</div><div class="rv-num mono">Spremni list št. '+esc(stevilka)+'</div></div>'+
       '<ul class="rv-list">'+rows+'</ul>'+
@@ -1128,12 +1133,12 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
   }
   async function confirmReview(){
     var c=clientById(selectedId), lines=draftLines(); if(!c) return;
-    if(!lines.length && !(parseFloat(draftKg||0)>0)) return;
+    if(!lines.length) return;
     var pieces=lines.reduce(function(a,l){return a+l.kosov;},0), stevilka=nextNumber();
     var ent={ id:Date.now()+"-"+Math.random().toString(36).slice(2,7),
       stevilka:stevilka, datum:todayISO(), ustvarjeno:new Date().toISOString(),
       strankaId:c.id, strankaNaziv:c.naziv, strankaPodjetje:c.podjetje, strankaNaslov:c.naslov, strankaDavcna:c.davcna,
-      izdal:(session?session.user:""), postavke:lines, skupajKosov:pieces, kg:(draftKg===""?0:parseFloat(draftKg)||0), prevoz:draftPrevoz, saved:true, syncedAt:null, syncNapaka:null };
+      izdal:(session?session.user:""), postavke:lines, skupajKosov:pieces, kg:draftKgAuto().kg, prevoz:draftPrevoz, saved:true, syncedAt:null, syncNapaka:null };
     entries.push(ent); reviewEntryId=ent.id;
     await saveEntries(); writeBackup();
     await savePdfs(ent);
@@ -2152,7 +2157,7 @@ async function osveziKatalog(tiho){
   if(!tiho) toast("Osvežujem katalog…");
   try{
     var orgs = await apiVse("orgs?select=id,name,legal_name,address,vat_id,legacy_id&order=name");
-    var arts = await apiVse("articles?select=id,org_id,name,legacy_id,sort_order&order=sort_order,id");
+    var arts = await apiVse("articles?select=id,org_id,name,legacy_id,sort_order,teza&order=sort_order,id");
     var artPoOrg = {};
     (arts || []).forEach(function(a){ (artPoOrg[a.org_id] = artPoOrg[a.org_id] || []).push(a); });
 
@@ -2163,7 +2168,7 @@ async function osveziKatalog(tiho){
                (c.naziv || "").toLowerCase() === (o.name || "").toLowerCase();
       });
       var portalArts = (artPoOrg[o.id] || []).map(function(a){
-        return { id: a.legacy_id || ("s" + a.id.slice(0, 8)), naziv: a.name, sy: true };
+        return { id: a.legacy_id || ("s" + a.id.slice(0, 8)), naziv: a.name, sy: true, teza: (a.teza==null||a.teza==='')?null:parseFloat(a.teza) };
       });
       if(lok){
         lok.naziv = o.name; lok.podjetje = o.legal_name || "";
