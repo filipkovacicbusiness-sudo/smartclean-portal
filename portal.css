@@ -1215,8 +1215,10 @@ html[data-view="grid"] #cenikList .sc-isolate .cgrp:not(.open){max-width:var(--t
 .art-add-new .art-nn-cena{width:88px;}
 .art-add-new input:focus{border-color:var(--green-l);outline:none;}
 .art-row-edit{display:block;padding:12px 16px;}
-.art-edit-form .ae-nm{width:100%;padding:9px 11px;border:1.5px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink);font-size:16px;margin-bottom:8px;box-sizing:border-box;}
-.art-edit-r{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.art-edit-form .ae-nm{width:100%;padding:9px 11px;border:1.5px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink);font-size:16px;box-sizing:border-box;}
+.art-edit-r{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;}
+.ae-lab{display:flex;flex-direction:column;gap:4px;font-size:.66rem;color:var(--mid);text-transform:uppercase;letter-spacing:.04em;font-weight:600;}
+.ae-lab-nm{width:100%;margin-bottom:8px;}
 .art-edit-r input{height:42px;padding:0 12px;border:1.5px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink);font-size:16px;min-width:0;box-sizing:border-box;}
 .art-edit-r .ae-id{width:96px;font-family:var(--mono);text-transform:uppercase;}
 .art-edit-r .ae-cena{width:120px;text-align:right;font-variant-numeric:tabular-nums;}

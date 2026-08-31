@@ -1326,8 +1326,11 @@
     var rec = CENIKMAP[sifra]; if (!rec) return;
     var row = document.querySelector('.art-row[data-s="' + sifra + '"]'); if (!row) return;
     row.classList.add('art-row-edit');
-    row.innerHTML = '<div class="art-edit-form"><input type="text" class="ae-nm" placeholder="Naziv artikla"><div class="art-edit-r">' +
-      '<input type="text" class="ae-id" maxlength="5" placeholder="ID"><input type="text" inputmode="decimal" class="ae-cena" placeholder="cena €">' +
+    row.innerHTML = '<div class="art-edit-form">' +
+      '<label class="ae-lab ae-lab-nm">Naziv artikla<input type="text" class="ae-nm" placeholder="Naziv artikla"></label>' +
+      '<div class="art-edit-r">' +
+      '<label class="ae-lab">Šifra (ID)<input type="text" class="ae-id" maxlength="5" placeholder="ID"></label>' +
+      '<label class="ae-lab">Cena (€)<input type="text" inputmode="decimal" class="ae-cena" placeholder="0,00"></label>' +
       '<button type="button" class="btn-mini ae-save">Shrani</button><button type="button" class="cenik-x ae-cancel" title="prekliči">×</button></div></div>';
     row.querySelector('.ae-nm').value = rec.naziv || '';
     row.querySelector('.ae-id').value = normId(rec.koda);

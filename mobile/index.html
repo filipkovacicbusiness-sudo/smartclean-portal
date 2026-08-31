@@ -130,6 +130,16 @@
   .arow.filled .pill{background:var(--press);border-color:var(--press);color:var(--paper)}
   .arow.filled .an{color:var(--press-deep)}
   .arow .chev{color:#C2C9C9;font-size:16px;flex-shrink:0}
+  .drug-art-btn{width:100%;margin-top:12px;padding:13px 16px;border:1px dashed var(--line);
+    border-radius:12px;background:var(--paper);color:var(--ink-soft);font-weight:600;font-size:14px;
+    display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;transition:background .12s}
+  .drug-art-btn:active{background:var(--press-tint)}
+  .drug-art-btn.drug-art-hide{border-style:solid;margin-top:8px}
+  .drug-art-n{min-width:22px;height:22px;padding:0 7px;border-radius:11px;display:inline-grid;place-items:center;
+    background:var(--line);color:var(--ink-soft);font-size:12px;font-variant-numeric:tabular-nums}
+  .drug-art-head{margin:16px 0 2px;font-size:12px;font-weight:700;letter-spacing:.4px;
+    text-transform:uppercase;color:var(--ink-soft)}
+  .articles-skriti .arow .an{color:var(--ink-soft)}
 
   /* summary */
   .draft-total{display:flex;align-items:baseline;justify-content:space-between;
@@ -819,7 +829,7 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
   var users=[], settings={idleMin:5}, logins=[], session=null, idleTimer=null, pinUser=null, pinBuf="";
   var STANDARD_14=["Prevleka za vzglavnik","Prevleka za vzglavnik otroška","Prevleka za odejo","Prevleka za odejo mala otroška","Rjuha bombaž","Rjuha jersi","Pregrinjalo","Pregrinjalo bombaž","Pregrinjalo flis/deka","Pregrinjalo merino","Blazina","Prešita odeja","Nadvložek","Brisača"];
   var DEFAULT_USERS=[{id:"u3",name:"Filip",pin:"3333",role:"admin"}];
-  var entries=[], memFallback=false, selectedId=null, draftQty={}, draftKg="", draftPrevoz="redni", editingId=null;
+  var entries=[], memFallback=false, selectedId=null, draftQty={}, draftKg="", draftPrevoz="redni", editingId=null, showHidden=false;
   var draftOpombaStranka="", draftOpombaEvidenca="";
   var searchQuery="", searchDate="", searchClientId="", searchMode="", clientPickerMode="entry", previewId=null, pdfPermOK=false, askedPerm=false, admListQuery="";
   var kpArt=null, kpBuf="", kpMode="entry";
@@ -929,7 +939,7 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
   function pickClient(id){ closeClientPicker();
     if(clientPickerMode==="search"){ clientPickerMode="entry"; searchMode="client"; searchClientId=id; updateSearchChip(); renderList(); return; }
     selectClient(id); }
-  function selectClient(id){ if(selectedId!==id){ selectedId=id; draftQty={}; } setClientLabel(); renderEntry(); renderSummary();
+  function selectClient(id){ if(selectedId!==id){ selectedId=id; draftQty={}; showHidden=false; } setClientLabel(); renderEntry(); renderSummary();
     /* ob izbiri stranke potegni artikle TOČNO za to stranko neposredno iz portala */
     if(portalAuth){ osveziStrankinArtikle(id); }
   }
@@ -945,7 +955,7 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
       var arts;
       try{ arts = await apiVse("articles?select=id,name,legacy_id,sort_order,teza,viden_app&org_id=eq." + org.id + "&order=sort_order,id"); }
       catch(_e){ arts = await apiVse("articles?select=id,name,legacy_id,sort_order,teza&org_id=eq." + org.id + "&order=sort_order,id"); }
-      c.artikli = (arts||[]).filter(function(a){ return a.viden_app !== false; }).map(function(a){ return { id: a.legacy_id || ("s" + a.id.slice(0,8)), naziv: a.name, sy: true, teza: (a.teza==null||a.teza==='')?null:parseFloat(a.teza) }; });
+      c.artikli = (arts||[]).map(function(a){ return { id: a.legacy_id || ("s" + a.id.slice(0,8)), naziv: a.name, sy: true, teza: (a.teza==null||a.teza==='')?null:parseFloat(a.teza), vid: (a.viden_app!==false) }; });
       try{ await dbWrite(CLIENTS_KEY, JSON.stringify(CLIENTS)); }catch(e){}
       if(selectedId === cid) renderEntry();
       if(glasno) toast(c.naziv + ": " + c.artikli.length + " artiklov iz portala");
@@ -971,14 +981,31 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
   function renderEntry(){
     var body=document.getElementById("entryBody"); var c=clientById(selectedId);
     if(!c){ body.innerHTML='<div class="entry-hint">Izberi stranko za začetek vnosa kosov.</div>'; return; }
-    body.innerHTML='<div class="articles">'+c.artikli.map(function(a){ var k=draftQty[a.id]||0;
+    /* Privzeto pokaži samo vidne artikle (ali tiste z že vnesenimi kosi).
+       Skriti = tisti, ki jih stranka doslej ni imela (viden_app=false). */
+    function jeViden(a){ return (a.vid!==false) || (draftQty[a.id]||0)>0; }
+    var vidni = c.artikli.filter(jeViden);
+    var skriti = c.artikli.filter(function(a){ return !jeViden(a); });
+    function arowHtml(a){ var k=draftQty[a.id]||0;
       return '<button class="arow'+(k>0?' filled':'')+'" data-open="'+a.id+'">'+
         '<span class="an">'+esc(a.naziv)+'</span>'+
         '<span class="pill" data-pill="'+a.id+'">'+(k>0?k:'0')+'</span>'+
-        '<span class="chev">›</span></button>';
-    }).join("")+'</div>';
+        '<span class="chev">›</span></button>'; }
+    var html='<div class="articles">'+vidni.map(arowHtml).join("")+'</div>';
+    if(skriti.length){
+      if(!showHidden){
+        html+='<button class="drug-art-btn" id="drugArtBtn">＋ Izberi drug artikel<span class="drug-art-n">'+skriti.length+'</span></button>';
+      }else{
+        html+='<div class="drug-art-head">Ostali artikli</div>'+
+          '<div class="articles articles-skriti">'+skriti.map(arowHtml).join("")+'</div>'+
+          '<button class="drug-art-btn drug-art-hide" id="drugArtHide">Skrij ostale</button>';
+      }
+    }
+    body.innerHTML=html;
     body.querySelectorAll("[data-open]").forEach(function(b){
       b.onclick=function(){ openKeypad(b.getAttribute("data-open")); }; });
+    var dab=document.getElementById("drugArtBtn"); if(dab){ dab.onclick=function(){ showHidden=true; renderEntry(); }; }
+    var dah=document.getElementById("drugArtHide"); if(dah){ dah.onclick=function(){ showHidden=false; renderEntry(); }; }
   }
   function updatePill(id){
     var k=draftQty[id]||0;
@@ -1124,7 +1151,12 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
       strankaId:c.id, strankaNaziv:c.naziv, strankaPodjetje:c.podjetje, strankaNaslov:c.naslov, strankaDavcna:c.davcna,
       izdal:(session?session.user:""), postavke:lines, skupajKosov:pieces, kg:draftKgAuto().kg, prevoz:draftPrevoz, opombaStranka:draftOpombaStranka||"", opombaEvidenca:draftOpombaEvidenca||"", saved:false, syncedAt:null, syncNapaka:null });
     await saveEntries();
-    selectedId=null; draftQty={}; draftKg=""; draftPrevoz="redni"; draftOpombaStranka=""; draftOpombaEvidenca=""; setClientLabel();
+    /* Artikel, ki je bil doslej skrit, a je zdaj dodan na list, postane odslej viden.
+       (Enako naredi tudi baza ob sinhronizaciji prek sprožilca.) */
+    var razkril=false;
+    lines.forEach(function(l){ var a=c.artikli.find(function(x){return x.id===l.id;}); if(a&&a.vid===false){ a.vid=true; razkril=true; } });
+    if(razkril){ try{ await saveClientsCat(); }catch(e){} }
+    selectedId=null; draftQty={}; draftKg=""; draftPrevoz="redni"; draftOpombaStranka=""; draftOpombaEvidenca=""; showHidden=false; setClientLabel();
     renderEntry(); renderSummary(); render(); toast("Spremni list "+stevilka+" ustvarjen");
     try{ syncPush(true); }catch(e){}
   }
@@ -2360,8 +2392,8 @@ async function osveziKatalog(tiho){
         return (o.legacy_id && c.id === o.legacy_id) ||
                (c.naziv || "").toLowerCase() === (o.name || "").toLowerCase();
       });
-      var portalArts = (artPoOrg[o.id] || []).filter(function(a){ return a.viden_app !== false; }).map(function(a){
-        return { id: a.legacy_id || ("s" + a.id.slice(0, 8)), naziv: a.name, sy: true, teza: (a.teza==null||a.teza==='')?null:parseFloat(a.teza) };
+      var portalArts = (artPoOrg[o.id] || []).map(function(a){
+        return { id: a.legacy_id || ("s" + a.id.slice(0, 8)), naziv: a.name, sy: true, teza: (a.teza==null||a.teza==='')?null:parseFloat(a.teza), vid: (a.viden_app!==false) };
       });
       if(lok){
         lok.naziv = o.name; lok.podjetje = o.legal_name || "";
