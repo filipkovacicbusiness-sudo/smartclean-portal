@@ -568,7 +568,9 @@ html[data-theme="dark"] .ur-ustvarjeno{background:#14311f;color:#7fd3a0}
 
 /* ══════════ mehak prehod med temama ══════════ */
 body,.topbar,.side,.main,.panel,.row,.a-row,.arts,.a-det,.fak-card,.fak-tot,.stat,.bars,
-.rows .empty,.seg,.seg-b,.tema-b,input,select,textarea,.btn,.btn-narrow,.fak-chip,.chip{
+.rows .empty,.seg,.seg-b,.tema-b,input,select,textarea,.btn,.btn-narrow,.fak-chip,.chip,
+.auth,.auth-top,.auth-hero,.auth-claim,.auth-claim em,.wordmark,.wordmark span,.auth-box,
+.eyebrow,.sub,.auth-foot,.auth-foot b,.profile-picker h1,.field label,.icon-btn{
   transition:background-color .32s ease,border-color .32s ease,color .28s ease;}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;}}
 html.sc-notrans,html.sc-notrans *,html.sc-notrans *::before,html.sc-notrans *::after{transition:none!important;}

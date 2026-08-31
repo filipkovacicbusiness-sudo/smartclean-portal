@@ -4577,13 +4577,13 @@
     if (!p) return;
     var url = new URL(APK_POT, location.href).href;
 
-    var tabletPanel = '<div class="panel" id="apkTablet"><h3 class="sec-h">3. Aplikacija za tiskanje — tablica (Android)</h3><p class="u-sub">Preverjam …</p></div>';
+    var tabletPanel = '<div class="panel" id="apkTablet"><h3 class="sec-h">2. Aplikacija za tiskanje — tablica (Android)</h3><p class="u-sub">Preverjam …</p></div>';
 
     var telefonPanel =
       '<div class="panel">' +
-        '<h3 class="sec-h">2. Aplikacija za tiskanje — telefon (iPhone in Android)</h3>' +
+        '<h3 class="sec-h">3. Aplikacija za tiskanje — telefon (iPhone in Android)</h3>' +
         '<p class="uvoz-nav">Za vnos in tiskanje spremnih listov na telefonu. Odpre se v brskalniku; dodaj jo na začetni zaslon, da deluje kot prava aplikacija.</p>' +
-        '<p><a class="btn btn-narrow" href="https://www.smartclean.si/mobile" target="_blank" rel="noopener">Odpri aplikacijo za telefon</a></p>' +
+        '<p><a class="btn btn-narrow" href="mobile/" target="_blank" rel="noopener">Odpri aplikacijo za telefon</a></p>' +
         '<div class="por"><div class="por-op">' +
           '<b>iPhone (Safari):</b> tapni <b>Deli</b> (kvadratek s puščico) → podrsaj do <b>»Dodaj na začetni zaslon«</b> → <b>Dodaj</b>.<br><br>' +
           '<b>Android (Chrome):</b> meni (⋮) → <b>»Dodaj na začetni zaslon«</b> oz. <b>»Namesti aplikacijo«</b>.' +
@@ -4594,10 +4594,10 @@
       '<div class="panel">' +
         '<h3 class="sec-h">1. Aplikacija za tiskanje — spletni pogled (Smartclean mobile)</h3>' +
         '<p class="uvoz-nav">Deluje v katerem koli brskalniku, brez nameščanja — priročno za telefon, tablico ali računalnik.</p>' +
-        '<p><a class="btn btn-narrow" href="https://www.smartclean.si/mobile" target="_blank" rel="noopener">Odpri spletni pogled</a></p>' +
+        '<p><a class="btn btn-narrow" href="mobile/" target="_blank" rel="noopener">Odpri spletni pogled</a></p>' +
       '</div>';
 
-    p.innerHTML = webPanel + telefonPanel + tabletPanel;
+    p.innerHTML = webPanel + tabletPanel + telefonPanel;
 
     fetch(url, { method: 'HEAD' }).then(function (r) {
       if (!r.ok) throw new Error('ni ga');
@@ -4614,7 +4614,7 @@
       if (t) t.innerHTML =
         '<h3 class="sec-h">2. Aplikacija za tiskanje — tablica (Android)</h3>' +
         '<div class="msg bad show">Namestitvenega paketa (<b>' + escape_(APK_POT) + '</b>) še ni na strežniku.</div>' +
-        '<p class="u-sub" style="margin-top:12px">Medtem deluje spletni pogled (točka 4), ki ga ni treba nameščati.</p>';
+        '<p class="u-sub" style="margin-top:12px">Medtem deluje spletni pogled (točka 1), ki ga ni treba nameščati.</p>';
     });
   }
 
