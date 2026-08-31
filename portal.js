@@ -2737,8 +2737,7 @@
         fr.style.width = A4W + 'px'; fr.style.height = ch + 'px'; fr.style.transformOrigin = 'top left';
         var cs = getComputedStyle(stage);
         var sw = stage.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
-        var sh = stage.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
-        var k = Math.min(sw / A4W, sh / ch); if (!isFinite(k) || k <= 0) k = 1; if (k > 1.6) k = 1.6;
+        var k = sw / A4W; if (!isFinite(k) || k <= 0) k = 1; if (k > 1.8) k = 1.8;   // po širini (večji, z drsenjem)
         fr.style.transform = 'scale(' + k + ')';
         scaler.style.width = (A4W * k) + 'px'; scaler.style.height = (ch * k) + 'px';
       } catch (e) {}
