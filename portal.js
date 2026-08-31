@@ -1634,9 +1634,11 @@
     var arr = Object.keys(map).map(function (id) { return { ime: ORGIME[id] || '—', kg: map[id] }; }).filter(function (x) { return x.kg > 0; }).sort(function (a, b) { return b.kg - a.kg; });
     var total = arr.reduce(function (s, x) { return s + x.kg; }, 0);
     if (!total) return { segs: [], total: 0 };
-    var segs = arr.slice(0, 7).map(function (x, i) { return { ime: x.ime, kg: x.kg, col: UC_PAL[i % UC_PAL.length] }; });
-    var ostalo = arr.slice(7).reduce(function (s, x) { return s + x.kg; }, 0);
-    if (ostalo > 0) segs.push({ ime: 'Ostalo', kg: ostalo, col: '#bab0ac' });
+    // Deli pod 4 % (in vse čez 7 največjih) se združijo v »Ostalo«.
+    var veliki = arr.filter(function (x) { return x.kg / total >= 0.04; }).slice(0, 7);
+    var segs = veliki.map(function (x, i) { return { ime: x.ime, kg: x.kg, col: UC_PAL[i % UC_PAL.length] }; });
+    var ostalo = total - segs.reduce(function (s, x) { return s + x.kg; }, 0);
+    if (ostalo > 0.0001) segs.push({ ime: 'Ostalo', kg: ostalo, col: '#8a9099' });
     return { segs: segs, total: total };
   }
   var _UC3D = { W: 580, H: 460, cx: 290, cy: 210, R: 150, r: 86, depth: 46 };
@@ -1698,7 +1700,15 @@
       }
       tops.push(topFace(o.a0, o.a1, topC, i));
     });
-    var segOut = [backW.join('') + tops.join('') + frontW.join('')];
+    // Nepremični »hit« sloj (prosojen vrh) — hover se lovi TU, da se pot pod miško
+    // ne premakne (drugače je hover glitchy: enter/leave zanka). Vizualne poti so pointer-events:none.
+    var hits = arr.map(function (o, i) {
+      var large = (o.a1 - o.a0) > Math.PI ? 1 : 0;
+      var o0 = _uc3dPt(R, o.a0, ky, cx, cy), o1 = _uc3dPt(R, o.a1, ky, cx, cy), i1 = _uc3dPt(r, o.a1, ky, cx, cy), i0 = _uc3dPt(r, o.a0, ky, cx, cy);
+      return '<path class="uc3d-hit" data-i="' + i + '" fill="transparent" d="M' + _f2(o0) + ' A' + R + ' ' + (R * ky).toFixed(1) + ' 0 ' + large + ' 1 ' + _f2(o1) +
+        ' L' + _f2(i1) + ' A' + r + ' ' + (r * ky).toFixed(1) + ' 0 ' + large + ' 0 ' + _f2(i0) + ' Z"/>';
+    }).join('');
+    var segOut = [backW.join('') + tops.join('') + frontW.join('') + hits];
     // napisi na črtah (leader lines) — levo/desno, brez prekrivanja
     var labels = '';
     if (labo > 0.01) {
@@ -1749,7 +1759,7 @@
         else el.style.transform = '';
       });
     }
-    svgEl.querySelectorAll('.uc3d-p,.uc3d-lab').forEach(function (el) {
+    svgEl.querySelectorAll('.uc3d-hit').forEach(function (el) {
       var i = el.getAttribute('data-i');
       el.addEventListener('mouseenter', function () { set(i, true); });
       el.addEventListener('mouseleave', function () { set(i, false); });

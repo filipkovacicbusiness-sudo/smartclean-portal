@@ -1255,8 +1255,9 @@ html[data-view="grid"] #cenikList .sc-isolate .cgrp:not(.open){max-width:var(--t
 .uc-d3-month:focus{border-color:var(--green-l);outline:none;}
 .uc-d3-stage{width:100%;margin-top:6px;}
 .uc3d-svg{display:block;width:100%;height:auto;max-height:460px;overflow:visible;}
-.uc3d-p,.uc3d-lab{transition:transform .22s cubic-bezier(.34,1.15,.5,1);transform-box:view-box;transform-origin:0 0;}
-.uc3d-p{cursor:pointer;stroke:rgba(0,0,0,.28);stroke-width:.8px;stroke-linejoin:round;}
+.uc3d-p,.uc3d-lab{transition:transform .2s ease-out;transform-box:view-box;transform-origin:0 0;pointer-events:none;}
+.uc3d-p{stroke:rgba(0,0,0,.28);stroke-width:.8px;stroke-linejoin:round;}
+.uc3d-hit{cursor:pointer;}
 .uc3d-lab.hot .uc3d-nm{fill:var(--ink);}
 .uc3d-lead{stroke:var(--mid);stroke-width:1;opacity:.55;fill:none;}
 .uc3d-nm{fill:var(--ink);font-family:var(--sans);font-size:13px;font-weight:600;}
