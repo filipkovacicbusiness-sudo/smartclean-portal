@@ -2732,7 +2732,7 @@ async function potegniIzPortala(){
       var chunk = idi.slice(i, i + 50);
       var inlist = chunk.map(function(x){ return '"' + x + '"'; }).join(",");
       try{
-        var its = await api("delivery_note_items?note_id=in.(" + encodeURIComponent(inlist) + ")&select=note_id,article_name,pieces,sort_order&order=sort_order");
+        var its = await apiVse("delivery_note_items?note_id=in.(" + encodeURIComponent(inlist) + ")&select=note_id,article_name,pieces,sort_order&order=sort_order");
         var poNote = {};
         (its || []).forEach(function(p){ (poNote[p.note_id] = poNote[p.note_id] || []).push(p); });
         chunk.forEach(function(nid){
@@ -2770,13 +2770,13 @@ async function posljiKatalog(){
   if(!Array.isArray(CLIENTS) || !CLIENTS.length) return false;
   katalogTecev = true;
   try{
-    var orgs = await api("orgs?select=id,name,legacy_id");
+    var orgs = await apiVse("orgs?select=id,name,legacy_id");
     var poLegacy = {}, poImenu = {};
     (orgs || []).forEach(function(o){
       if(o.legacy_id) poLegacy[o.legacy_id] = o.id;
       poImenu[(o.name || "").trim().toLowerCase()] = o.id;
     });
-    var allArts = await api("articles?select=org_id,name");
+    var allArts = await apiVse("articles?select=org_id,name");
     var artByOrg = {};
     (allArts || []).forEach(function(a){
       (artByOrg[a.org_id] = artByOrg[a.org_id] || {})[(a.name || "").trim().toLowerCase()] = true;

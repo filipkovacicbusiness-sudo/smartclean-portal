@@ -1771,19 +1771,15 @@
 
   /* ══════════ SPREMNI LISTI ══════════ */
   async function naloziListe() {
-    const {
-      data,
-      error
-    } = await sb.from('delivery_notes').select('id,number,doc_date,total_pieces,weight_kg,org_id,issued_name,popravil,popravljeno_at,popravki,source,transport,potrjeno,legacy_id,opomba,opomba_avtor,opomba_at,opomba_stranka,opomba_evidenca').order('doc_date', {
-      ascending: false
-    }).limit(1000);
+    // Beri VSE liste po straneh (brez 1000-vrstičnega limita — mora delati še čez leta).
+    // Stabilna paginacija: doc_date + id kot razločevalo.
+    const _kol = 'id,number,doc_date,total_pieces,weight_kg,org_id,issued_name,popravil,popravljeno_at,popravki,source,transport,potrjeno,legacy_id,opomba,opomba_avtor,opomba_at,opomba_stranka,opomba_evidenca';
+    let r = await vseVrstice((od, do_) => sb.from('delivery_notes').select(_kol).order('doc_date', { ascending: false }).order('id', { ascending: false }).range(od, do_));
     // Rezerva: če stolpci za opombo/popravke še niso dodani, naloži brez njih.
-    if (error) {
-      const _r = await sb.from('delivery_notes').select('id,number,doc_date,total_pieces,weight_kg,org_id,issued_name,popravil,popravljeno_at,source,transport,potrjeno,legacy_id').order('doc_date', { ascending: false }).limit(1000);
-      LISTI = (_r && !_r.error && _r.data) ? _r.data : [];
-    } else {
-      LISTI = data || [];
+    if (r.error) {
+      r = await vseVrstice((od, do_) => sb.from('delivery_notes').select('id,number,doc_date,total_pieces,weight_kg,org_id,issued_name,popravil,popravljeno_at,source,transport,potrjeno,legacy_id').order('doc_date', { ascending: false }).order('id', { ascending: false }).range(od, do_));
     }
+    LISTI = (r && !r.error && r.data) ? r.data : [];
     const {
       count
     } = await sb.from('delivery_notes').select('id', {
@@ -4499,9 +4495,7 @@
       /* ── 1. stranke ─────────────────────────────────────────────── */
       const poLegacy = {},
         poImenu = {};
-      const {
-        data: obstojece
-      } = await sb.from('orgs').select('id,name,legacy_id');
+      const obstojece = (await vseVrstice((o, d) => sb.from('orgs').select('id,name,legacy_id').order('id', { ascending: true }).range(o, d))).data || [];
       (obstojece || []).forEach(o => {
         if (o.legacy_id) poLegacy[o.legacy_id] = o.id;
         poImenu[(o.name || '').toLowerCase()] = o.id;
@@ -4535,9 +4529,7 @@
 
       /* ── 2. artikli ─────────────────────────────────────────────── */
       const artPoOrg = {};
-      const {
-        data: vsiArt
-      } = await sb.from('articles').select('id,org_id,name,legacy_id');
+      const vsiArt = (await vseVrstice((o, d) => sb.from('articles').select('id,org_id,name,legacy_id').order('id', { ascending: true }).range(o, d))).data || [];
       (vsiArt || []).forEach(a => {
         artPoOrg[a.org_id] = artPoOrg[a.org_id] || {
           legacy: {},
@@ -4585,9 +4577,7 @@
       }
 
       /* ── 3. spremni listi ───────────────────────────────────────── */
-      const {
-        data: ze
-      } = await sb.from('delivery_notes').select('id,legacy_id');
+      const ze = (await vseVrstice((o, d) => sb.from('delivery_notes').select('id,legacy_id').order('id', { ascending: true }).range(o, d))).data || [];
       const zeIma = {};
       (ze || []).forEach(n => {
         if (n.legacy_id) zeIma[n.legacy_id] = n.id;
