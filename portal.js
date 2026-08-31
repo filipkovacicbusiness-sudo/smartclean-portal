@@ -1743,10 +1743,10 @@
     const {
       data,
       error
-    } = await sb.from('delivery_notes').select('id,number,doc_date,total_pieces,weight_kg,org_id,issued_name,popravil,popravljeno_at,source,transport,potrjeno,legacy_id,opomba,opomba_avtor,opomba_at').order('doc_date', {
+    } = await sb.from('delivery_notes').select('id,number,doc_date,total_pieces,weight_kg,org_id,issued_name,popravil,popravljeno_at,popravki,source,transport,potrjeno,legacy_id,opomba,opomba_avtor,opomba_at').order('doc_date', {
       ascending: false
     }).limit(1000);
-    // Rezerva: če stolpci za opombo še niso dodani (SQL 25 še ni zagnan), naloži brez njih.
+    // Rezerva: če stolpci za opombo/popravke še niso dodani, naloži brez njih.
     if (error) {
       const _r = await sb.from('delivery_notes').select('id,number,doc_date,total_pieces,weight_kg,org_id,issued_name,popravil,popravljeno_at,source,transport,potrjeno,legacy_id').order('doc_date', { ascending: false }).limit(1000);
       LISTI = (_r && !_r.error && _r.data) ? _r.data : [];
@@ -1853,7 +1853,7 @@
       return `<div class="lcell arh-${stat}">
     <button class="a-row" type="button" data-i="${i}" data-id="${l.id}" aria-expanded="false"
       ${klikljivo ? '' : 'style="cursor:default"'}>
-      ${chk}<span class="a-num">${escape_(l.number || '—')}</span>
+      ${chk}<span class="a-num">${escape_(l.number || '—')}${l.popravljeno_at ? '<span class="a-pop" title="Popravljeno v aplikaciji' + (l.popravil ? ' · ' + escape_(l.popravil) : '') + '">✎</span>' : ''}</span>
       <span class="a-cli">${escape_(OSEBJE ? ORGIME[l.org_id] || '—' : l.issued_name || '')}</span>
       <span class="a-foot"><span class="num a-date">${datum(l.doc_date)}</span>${OSEBJE && l.issued_name ? '<span class="a-izdal" title="Izdelal spremni list">' + escape_(l.issued_name) + '</span>' : ''}<span class="num a-qty">${stevilo(l.total_pieces)} kos</span></span>
       <span class="chev" aria-hidden="true">${klikljivo ? '›' : ''}</span>
@@ -1954,7 +1954,7 @@
     const seznam = items.length ? '<ul>' + items.map(p => `<li><span>${escape_(p.naziv)}</span><b>${stevilo(p.kosov)}</b></li>`).join('') + '</ul>' : '<p class="u-sub">Ta spremni list nima postavk.</p>';
     const prevozV = `<span class="prevoz-znak ${n.transport === 'izredni' ? 'izr' : 'red'}">${n.transport === 'izredni' ? 'Izredni prevoz' : 'Redni prevoz'}</span>`;
     const izdalV = `<p class="u-sub" style="margin-top:8px">${prevozV}${n.issued_name ? ' · Izdal: ' + escape_(n.issued_name) : ''}</p>`;
-    const popravek = n.popravljeno_at ? `<p class="ur-popravek">✎ Popravljeno v portalu · ${escape_(n.popravil || 'osebje')} · ${datumcas(n.popravljeno_at)}</p>` : '';
+    const popravek = n.popravljeno_at ? `<div class="ur-popravek">✎ Popravljeno · ${escape_(n.popravil || 'osebje')} · ${datumcas(n.popravljeno_at)}${n.popravki ? '<div class="ur-popravki">' + escape_(n.popravki).replace(/\n/g, '<br>') + '</div>' : ''}</div>` : '';
     const ustvarjenoV = n.source === 'portal' ? `<p class="ur-ustvarjeno">✚ Ustvarjeno v portalu${n.issued_name ? ' · ' + escape_(n.issued_name) : ''}</p>` : '';
     const gumbi = '<div class="u-acts" style="margin-top:12px"><button type="button" data-natisni>Natisni</button>' +
       (OSEBJE ? '<button type="button" data-uredi>Uredi</button><button type="button" class="danger" data-izbrisi>Izbriši</button>' : '') + '</div>';

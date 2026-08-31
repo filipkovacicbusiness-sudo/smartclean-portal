@@ -1107,11 +1107,28 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
     lockSelector(false); setClientLabel();
     renderEntry(); renderSummary(); renderList(); updatePanelMode();
   }
+  function opisiSpremembe(stare, nova, sKg, nKg, sPre, nPre){
+    var mapS={}, mapN={}, imena={};
+    (stare||[]).forEach(function(p){ mapS[p.naziv]=(mapS[p.naziv]||0)+(p.kosov||0); imena[p.naziv]=1; });
+    (nova||[]).forEach(function(p){ mapN[p.naziv]=(mapN[p.naziv]||0)+(p.kosov||0); imena[p.naziv]=1; });
+    var deli=[];
+    Object.keys(imena).forEach(function(nm){ var a=mapS[nm]||0, b=mapN[nm]||0;
+      if(a!==b){ if(a===0) deli.push("+"+nm+" "+b); else if(b===0) deli.push("−"+nm+" ("+a+")"); else deli.push(nm+" "+a+"→"+b); } });
+    if(Number(sKg||0)!==Number(nKg||0)) deli.push("teža "+String(sKg||0).replace(".",",")+"→"+String(nKg||0).replace(".",",")+" kg");
+    if((sPre||"redni")!==(nPre||"redni")) deli.push("prevoz "+((sPre==="izredni")?"izredni":"redni")+"→"+((nPre==="izredni")?"izredni":"redni"));
+    return deli.length ? deli.join(", ") : "brez vsebinskih sprememb";
+  }
   async function saveEdit(){
     var e=entries.find(function(x){return x.id===editingId;}); if(!e) return;
     var lines=draftLines(); if(!lines.length) return;
+    var novaKg=draftKgAuto().kg;
+    var opis=opisiSpremembe(e.postavke, lines, e.kg, novaKg, e.prevoz, draftPrevoz);
+    var kdo=(session?session.user:"")||"osebje";
+    var zdaj=new Date().toISOString();
+    e.popravil=kdo; e.popravljeno_at=zdaj;
+    e.popravki=(e.popravki?e.popravki+"\n":"")+fmtDateHuman(zdaj.slice(0,10))+" · "+kdo+": "+opis;
     e.postavke=lines; e.skupajKosov=lines.reduce(function(a,l){return a+l.kosov;},0);
-    e.kg=draftKgAuto().kg;
+    e.kg=novaKg;
     e.prevoz=draftPrevoz;
     e.syncedAt=null; e.syncNapaka=null;
     await saveEntries();
@@ -1180,17 +1197,21 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
     } else if(searchMode==="client" && searchClientId){
       arr=entries.filter(function(e){ return e.strankaId===searchClientId; });
     }
-    if(arr) return arr.sort(function(a,b){return a.stevilka<b.stevilka?1:-1;});
-    return pendingEntries().slice().sort(function(a,b){return a.ustvarjeno<b.ustvarjeno?1:-1;});
+    if(arr) return arr.sort(function(a,b){return stKljuc(b)-stKljuc(a);});
+    /* privzeto: zadnjih nekaj spremnih listov (najnovejši zgoraj), kolikor jih gre na zaslon */
+    var vsi = entries.slice().sort(function(a,b){return stKljuc(b)-stKljuc(a);});
+    var koliko = Math.max(5, Math.min(20, Math.floor((window.innerHeight - 470) / 66)));
+    return vsi.slice(0, koliko);
   }
+  function stKljuc(e){ var p=String(e.stevilka||"").split("/"); return (parseInt(p[1],10)||0)*100000 + (parseInt(p[0],10)||0); }
   function renderList(){
     var el=document.getElementById("list"), title=document.getElementById("listTitle");
     var t=currentListEntries();
-    title.textContent = searchMode ? ("Rezultati iskanja ("+t.length+")") : "Neshranjeni spremni listi";
+    title.textContent = searchMode ? ("Rezultati iskanja ("+t.length+")") : "Zadnji spremni listi";
     if(!t.length){
       el.innerHTML = searchMode
         ? '<div class="empty"><b>Ni zadetkov</b>Za to iskanje ni spremnega lista.</div>'
-        : '<div class="empty"><b>Vse shranjeno</b>Ustvari nov spremni list ali poišči starega.</div>';
+        : '<div class="empty"><b>Še ni spremnih listov</b>Ustvari prvega zgoraj.</div>';
       return;
     }
     el.innerHTML='<ul class="entries">'+t.map(function(e){
@@ -2095,7 +2116,9 @@ async function posljiEnega(e){
     issued_name: e.izdal || null,
     weight_kg: (e.kg === "" || e.kg == null) ? null : Number(e.kg),
     transport: (e.prevoz === "izredni" ? "izredni" : "redni"),
-    source: "tablet", legacy_id: e.id
+    source: "tablet", legacy_id: e.id,
+    popravil: e.popravil || null,
+    popravljeno_at: e.popravljeno_at || null
   };
 
   var obst = await api("delivery_notes?legacy_id=eq." + encodeURIComponent(e.id) + "&select=id,potrjeno&limit=1");
@@ -2119,6 +2142,11 @@ async function posljiEnega(e){
       method: "POST", body: vrstica, prefer: "return=representation"
     });
     noteId = nova[0].id;
+  }
+
+  /* dnevnik urejanj (popravki) — best-effort; če stolpca ni, tiho spusti */
+  if(e.popravki){
+    try{ await api("delivery_notes?id=eq." + noteId, { method: "PATCH", body: { popravki: e.popravki } }); }catch(_e){}
   }
 
   /* 4. postavke */

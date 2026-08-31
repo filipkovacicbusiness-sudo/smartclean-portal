@@ -1664,3 +1664,7 @@ html[data-theme="dark"] .u-acts .u-web.on{background:rgba(52,199,110,.16);color:
 /* Arhiv: kdo je izdelal spremni list */
 .a-izdal{font-size:.76rem;color:var(--mid);display:inline-flex;align-items:center;gap:4px;}
 .a-izdal::before{content:"·";color:var(--line);}
+
+/* Arhiv: oznaka in dnevnik popravkov */
+.a-pop{margin-left:7px;font-size:.8rem;color:var(--st-warn);vertical-align:middle;}
+.ur-popravki{margin-top:6px;padding:8px 11px;border-radius:8px;background:var(--green-m);color:var(--mid);font-size:.82rem;line-height:1.5;white-space:normal;}
