@@ -6048,10 +6048,10 @@
       rp: { name: 'SmartClean', id: location.hostname },
       user: { id: new TextEncoder().encode(session.user.id), name: JAZMAIL || session.user.email, displayName: JAZIME || session.user.email },
       pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
-      // Prisili vgrajeno biometrijo naprave; brez rezidenčnega (sinhroniziranega) ključa,
-      // da Chrome ne ponudi Google Password Manager / QR na telefon.
-      authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required', residentKey: 'discouraged', requireResidentKey: false },
-      hints: ['client-device'],
+      // TRAJEN, sinhroniziran ključ: platformna biometrija (Face ID / Touch ID / prstni odtis)
+      // + REZIDENČEN (discoverable) ključ → macOS ga shrani v iCloud Keychain in ga sinhronizira,
+      // zato ne izgine kot prej (device-bound ključ). (Brez »hints: client-device«.)
+      authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required', residentKey: 'required', requireResidentKey: true },
       timeout: 60000, attestation: 'none'
     } };
     var cred = await navigator.credentials.create(opts);
