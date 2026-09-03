@@ -5980,18 +5980,23 @@
     var seja = null;
     try { var s = await sb.auth.getSession(); seja = s && s.data && s.data.session; } catch (e) {}
     var sejaTaUporabnik = seja && seja.user && (seja.user.email || '').toLowerCase() === (email || '').toLowerCase();
-    // 1) Face ID omogočen za ta profil → vedno zahtevaj biometrijo (tudi če je seja živa).
-    if (p && p.uid && bioPodprt() && bioVklopljen(p.uid)) {
+    // Če je passkey v TEJ seji brskalnika že spodletel, ga ne poskušaj več (brez okna) — gremo na sejo/geslo.
+    var bioSpodletel = false; try { bioSpodletel = !!(p && p.uid && sessionStorage.getItem('sc-biofail-' + p.uid)); } catch (e) {}
+    // 1) Face ID omogočen za ta profil → zahtevaj biometrijo (razen če je v tej seji že spodletel).
+    if (p && p.uid && bioPodprt() && bioVklopljen(p.uid) && !bioSpodletel) {
       var m = $('ppMsg'); if (m) { m.className = 'msg show'; m.textContent = 'Potrjujem …'; }
       try {
         var ok = await bioOdkleni(p.uid);
-        if (ok) { if (m) { m.className = 'msg'; m.textContent = ''; } start(); return; }
+        if (ok) { try { sessionStorage.removeItem('sc-biofail-' + p.uid); } catch (e0) {} if (m) { m.className = 'msg'; m.textContent = ''; } start(); return; }
         pokaziPrijavo(email, 'Zaradi varnosti enkrat vpiši geslo; Face ID nato spet deluje.'); return;
       } catch (e) {
-        // VEDNO ponudi geslo kot rezervo (tudi ob preklicu ali »No passkeys available«),
-        // da se prijava nikoli ne zatakne, če passkey ni na voljo (npr. po poteku/na drugi napravi).
-        var cancel = e && /NotAllowed|abort|timed|timeout/i.test((e.name || '') + ' ' + (e.message || ''));
-        pokaziPrijavo(email, cancel ? 'Face ID/passkey ni na voljo — vpiši geslo (Face ID nato spet deluje).' : ((e && e.message ? e.message + ' ' : '') + 'Vpiši geslo enkrat, Face ID nato spet deluje.')); return;
+        // Passkey ni uspel (ni na voljo / preklic). Face ID OSTANE omogočen (ključa NE brišemo) —
+        // da ostane vklopljen, dokler ga ne izklopiš v nastavitvah. V TEJ seji brskalnika ga
+        // ne poskušamo več (da se okno »No passkeys available« po odjavi ne prikazuje znova) —
+        // ob naslednji seji brskalnika se spet poskusi.
+        try { if (p && p.uid) sessionStorage.setItem('sc-biofail-' + p.uid, '1'); } catch (e2) {}
+        pokaziPrijavo(email, 'Face ID/passkey trenutno ni na voljo — vpiši geslo. Face ID ostane vklopljen.');
+        return;
       }
     }
     // 2) Brez Face ID: če je seja še živa za tega uporabnika, ga spustimo naravnost noter.
