@@ -5980,22 +5980,24 @@
     var seja = null;
     try { var s = await sb.auth.getSession(); seja = s && s.data && s.data.session; } catch (e) {}
     var sejaTaUporabnik = seja && seja.user && (seja.user.email || '').toLowerCase() === (email || '').toLowerCase();
-    // Če je passkey v TEJ seji brskalnika že spodletel, ga ne poskušaj več (brez okna) — gremo na sejo/geslo.
-    var bioSpodletel = false; try { bioSpodletel = !!(p && p.uid && sessionStorage.getItem('sc-biofail-' + p.uid)); } catch (e) {}
+    // Če je passkey na tej napravi že spodletel (trajno zapomnjeno), ga NE poskušaj več —
+    // tako se okno »No passkeys available« ne prikazuje. Znova se oboroži, ko Face ID
+    // ponovno vklopiš v nastavitvah ali ob uspešnem odklepu.
+    var bioSpodletel = false; try { bioSpodletel = !!(p && p.uid && localStorage.getItem('sc-biodead-' + p.uid)); } catch (e) {}
     // 1) Face ID omogočen za ta profil → zahtevaj biometrijo (razen če je v tej seji že spodletel).
     if (p && p.uid && bioPodprt() && bioVklopljen(p.uid) && !bioSpodletel) {
       var m = $('ppMsg'); if (m) { m.className = 'msg show'; m.textContent = 'Potrjujem …'; }
       try {
         var ok = await bioOdkleni(p.uid);
-        if (ok) { try { sessionStorage.removeItem('sc-biofail-' + p.uid); } catch (e0) {} if (m) { m.className = 'msg'; m.textContent = ''; } start(); return; }
+        if (ok) { try { localStorage.removeItem('sc-biodead-' + p.uid); } catch (e0) {} if (m) { m.className = 'msg'; m.textContent = ''; } start(); return; }
         pokaziPrijavo(email, 'Zaradi varnosti enkrat vpiši geslo; Face ID nato spet deluje.'); return;
       } catch (e) {
         // Passkey ni uspel (ni na voljo / preklic). Face ID OSTANE omogočen (ključa NE brišemo) —
         // da ostane vklopljen, dokler ga ne izklopiš v nastavitvah. V TEJ seji brskalnika ga
         // ne poskušamo več (da se okno »No passkeys available« po odjavi ne prikazuje znova) —
         // ob naslednji seji brskalnika se spet poskusi.
-        try { if (p && p.uid) sessionStorage.setItem('sc-biofail-' + p.uid, '1'); } catch (e2) {}
-        pokaziPrijavo(email, 'Face ID/passkey trenutno ni na voljo — vpiši geslo. Face ID ostane vklopljen.');
+        try { if (p && p.uid) localStorage.setItem('sc-biodead-' + p.uid, '1'); } catch (e2) {}
+        pokaziPrijavo(email, 'Face ID/passkey ni na voljo — vpiši geslo. (Ponovno ga vklopiš v Nastavitvah → Face ID.)');
         return;
       }
     }
@@ -6060,6 +6062,7 @@
     if (!cred) throw new Error('Ni uspelo.');
     bioSetCred(session.user.id, b64u(cred.rawId));
     bioSetTok(session.user.id, { at: session.access_token, rt: session.refresh_token });
+    try { localStorage.removeItem('sc-biodead-' + session.user.id); } catch (e) {}   // znova oboroži Face ID
     zapomniProfil({ email: JAZMAIL, name: JAZIME, avatar: (MOJPROFIL && MOJPROFIL.avatar_url) || '', uid: session.user.id });
   }
   // Odkleni: biometrična potrditev, nato obnovi sejo TOČNO TEGA uporabnika iz njegovega žetona.
