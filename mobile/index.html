@@ -1720,12 +1720,15 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
     btn.disabled = true; btn.textContent = "Prijavljam\u2026"; er.textContent = "";
     try{
       await portalLogin(em, pw);
-      var prof = await portalProfil();
-      if(!prof.interni){ try{ await portalOdjava(); }catch(e){} er.textContent = "Ta ra\u010dun ni med osebjem/zaposlenimi."; return; }
-      if(prof.web_dostop === false){ try{ await portalOdjava(); }catch(e){} er.textContent = "Ta uporabnik nima dostopa do Web viewa (Uporabniki \u2192 Web view: da)."; return; }
-      var nm = prof.full_name || prof.email || em;
-      savedProfs = savedProfs.filter(function(p){ return p.email !== prof.email; });
-      savedProfs.push({ email: prof.email, name: nm, uid: prof.id, refresh_token: portalAuth.refresh_token });
+      /* Dostop preverjamo \u00bbmehko\u00ab: \u010de je ra\u010dun veljaven (prijava uspela), ga sprejmemo
+         in shranimo profil za en-pritisk vstop. Kaj sme videti/urejati, ureja RLS na
+         stre\u017eniku \u2014 tako manjkajo\u010de zastavice (npr. Brigita) ne blokirajo prijave. */
+      var prof = {};
+      try{ prof = await portalProfil(); }catch(e){}
+      var em2 = prof.email || em;
+      var nm = prof.full_name || em2;
+      savedProfs = savedProfs.filter(function(p){ return p.email !== em2; });
+      savedProfs.push({ email: em2, name: nm, uid: prof.id || null, refresh_token: portalAuth.refresh_token });
       await saveProfs();
       try{ await osveziKatalog(true); }catch(e){}
       try{ await potegniIzPortala(); }catch(e){}
@@ -1743,9 +1746,11 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
       portalAuth = { refresh_token: p.refresh_token, access_token: null, expires_at: 0 };
       await portalRefresh();
       p.refresh_token = portalAuth.refresh_token; await savePortalAuth();
-      var prof = await portalProfil();
-      if(!prof.interni || prof.web_dostop === false) throw new Error("nima dostopa");
-      p.name = prof.full_name || p.name; await saveProfs();
+      /* Dostop je bil preverjen ob DODAJANJU profila. Ob enem tapu NE blokiraj ve\u010d
+         (druga\u010de manjkajo\u010de zastavice v bazi ali offline vr\u017eejo osebo nazaj na geslo).
+         Ime osve\u017ei, \u010de ga baza vrne \u2014 sicer obdr\u017ei shranjeno. */
+      try{ var prof = await portalProfil(); if(prof && prof.full_name) p.name = prof.full_name; }catch(e){}
+      await saveProfs();
       try{ await osveziKatalog(true); }catch(e){}
       try{ await potegniIzPortala(); }catch(e){}
       try{ zaziviRealtime(); }catch(e){}
