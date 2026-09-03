@@ -255,9 +255,10 @@
   });
   $('logoutBtn').addEventListener('click', async () => {
     ustaviUtrip();
-    // Če je Face ID omogočen, seje NE ukinemo — ob vrnitvi te biometrija spusti naravnost
-    // noter (brez obnavljanja žetona). Sicer se popolnoma odjavimo (potrebno bo geslo).
-    if (!bioVklopljen(JAZ)) { try { await sb.auth.signOut(); } catch (e) {} }
+    // Odjava VEDNO popolnoma ukine sejo (kot pri velikih). Ob vrnitvi te spusti noter
+    // biometrija (strežniški WebAuthn izda novo sejo) ali geslo. Osvežitev strani te
+    // NE odjavi — to ureja obnovitev seje ob nalaganju.
+    try { await sb.auth.signOut(); } catch (e) {}
     location.reload();
   });
 
@@ -6553,8 +6554,17 @@
     // Takoj pokaži pravi zaslon (brez utripa napačnega). Če je to obnovitev gesla,
     // spodnji onAuthStateChange to prepiše na obrazec za novo geslo.
     if (!recovery) {
-      if (beriProfile().length) pokaziIzbirnik();
-      else pokaziPrijavo('');
+      // Živa seja (osvežitev strani / vrnitev v zavihek) → OSTANI prijavljen,
+      // tako kot pri velikih ponudnikih. Odjava (gumb) sejo ukine → spodaj izbirnik.
+      var _seja = null;
+      try { var _rs = await sb.auth.getSession(); _seja = _rs && _rs.data && _rs.data.session; } catch (e) {}
+      if (!recovery && _seja && _seja.user) {
+        try { await start(); return; } catch (e) {}
+      }
+      if (!recovery) {
+        if (beriProfile().length) pokaziIzbirnik();
+        else pokaziPrijavo('');
+      }
     }
   })();
 
