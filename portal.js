@@ -5988,12 +5988,13 @@
       try {
         var ok = await bioOdkleni(p.uid);
         if (ok) { if (m) { m.className = 'msg'; m.textContent = ''; } start(); return; }
-        pokaziPrijavo(email, 'Zaradi varnosti enkrat vpiši geslo; Face ID nato spet deluje.'); return;
+        pokaziPrijavo(email); return;
       } catch (e) {
-        // Passkey trenutno ni dosegljiv (brskalnik/OS ga je odstranil ali preklic) →
-        // zahtevaj GESLO. Face ID ostane vklopljen; če se ponavlja, ga v Nastavitvah
-        // odstrani in znova vklopi (ustvari nov ključ).
-        pokaziPrijavo(email, 'Face ID trenutno ni na voljo — vpiši geslo. Če se ponavlja, ga v Nastavitvah odstrani in znova vklopi.');
+        var preklic = /NotAllowed|AbortError|abort|timed|timeout|cancel/i.test(((e && e.name) || '') + ' ' + ((e && e.message) || ''));
+        // Preklic (npr. zapreš Touch ID) → tiho nazaj na izbirnik, brez sporočila.
+        // Prava napaka → geslo kot rezerva (prijazno, brez tehničnega besedila).
+        if (m) { m.className = 'msg'; m.textContent = ''; }
+        if (!preklic) pokaziPrijavo(email, 'Poskusi znova ali vpiši geslo.');
         return;
       }
     }
@@ -6028,6 +6029,15 @@
   function bioVklopljen(uid) { try { return !!(uid && localStorage.getItem('sc-bioon-' + uid)); } catch (e) { return false; } }
   function bioOznaci(uid, on) { try { if (on) localStorage.setItem('sc-bioon-' + uid, '1'); else localStorage.removeItem('sc-bioon-' + uid); } catch (e) {} }
   function bioOsveziZetone() { /* ni več lokalnih žetonov — strežnik obvlada sejo */ }
+  /* Vse napake pretvori v PRIJAZNO slovensko besedilo — nikoli surovih/tehničnih. */
+  function _bioNapaka(e) {
+    var n = ((e && e.name) || '') + ' ' + ((e && e.message) || '');
+    if (/NotAllowed|AbortError|abort|timed|timeout|cancel/i.test(n)) return 'Preklicano.';
+    if (/InvalidState|already registered/i.test(n)) return 'Že omogočeno.';
+    if (/NotSupported|not support|SecurityError/i.test(n)) return 'Ta naprava ne podpira biometrije.';
+    if (/network|Failed to fetch|fetch|Load failed|omrežj/i.test(n)) return 'Ni povezave — poskusi znova.';
+    return 'Ni uspelo — poskusi znova.';
+  }
   async function _fnWebauthn(body) {
     var r = await sb.functions.invoke('webauthn', { body: body });
     if (r.error) { var msg = r.error.message || 'Napaka strežnika.'; try { if (r.error.context && r.error.context.json) { var j = await r.error.context.json(); if (j && j.error) msg = j.error; } } catch (e) {} throw new Error(msg); }
@@ -6074,10 +6084,21 @@
     var session = sres && sres.data && sres.data.session;
     if (!session) throw new Error('Najprej se prijavi z geslom.');
     var beg = await _fnWebauthn({ mode: 'reg-begin' });
-    var cred = await navigator.credentials.create(_waReg2native(beg.options));
+    var cred;
+    try { cred = await navigator.credentials.create(_waReg2native(beg.options)); }
+    catch (e) {
+      // Passkey za tega uporabnika že obstaja (na tej/sinhronizirani napravi) → biometrija je že vklopljena.
+      if (e && (e.name === 'InvalidStateError' || /already registered/i.test(e.message || ''))) {
+        bioOznaci(session.user.id, true);
+        zapomniProfil({ email: JAZMAIL, name: JAZIME, avatar: (MOJPROFIL && MOJPROFIL.avatar_url) || '', uid: session.user.id });
+        return 'ze';
+      }
+      throw e;
+    }
     await _fnWebauthn({ mode: 'reg-finish', handle: beg.handle, response: _waRegJSON(cred), label: (navigator.userAgent || '').slice(0, 80) });
     bioOznaci(session.user.id, true);
     zapomniProfil({ email: JAZMAIL, name: JAZIME, avatar: (MOJPROFIL && MOJPROFIL.avatar_url) || '', uid: session.user.id });
+    return 'nov';
   }
   // Prijava z biometrijo: strežnik preveri podpis in izda sejo (magiclink token_hash).
   // Vrne true ob uspehu; sejo vzpostavi verifyOtp. Ob prekinitvi/napaki vrže napako.
@@ -6096,32 +6117,39 @@
     bioOznaci(JAZ, false);
   }
   // Panel v »Moj račun«.
-  function napolniBio() {
+  async function napolniBio() {
     var panel = $('bioPanel'); if (!panel) return;
     if (!bioPodprt()) { panel.classList.add('hidden'); return; }
     panel.classList.remove('hidden');
-    var ima = bioVklopljen(JAZ);
-    $('bioOn').classList.toggle('hidden', ima);
-    $('bioOff').classList.toggle('hidden', !ima);
-    var lead = $('bioLead');
-    if (lead) lead.textContent = ima
-      ? 'Face ID / prstni odtis je omogočen na tej napravi. Ob prijavi tapni svoj profil in potrdi z biometrijo.'
-      : 'Namesto gesla se lahko prijaviš s Face ID ali prstnim odtisom te naprave.';
+    function prikazi(ima) {
+      var on = $('bioOn'), off = $('bioOff'), lead = $('bioLead');
+      if (on) on.classList.toggle('hidden', ima);
+      if (off) off.classList.toggle('hidden', !ima);
+      if (lead) lead.textContent = ima
+        ? 'Prijava z biometrijo je vklopljena. Ob prijavi tapni svoj profil in potrdi s Face ID / prstnim odtisom.'
+        : 'Namesto gesla se lahko prijaviš s Face ID ali prstnim odtisom te naprave.';
+    }
+    prikazi(bioVklopljen(JAZ));                 // takoj (lokalni namig)
     var m = $('bioMsg'); if (m) { m.className = 'msg'; m.textContent = ''; }
+    // Natančno stanje s STREŽNIKA (velja povsod, tudi če je bilo vklopljeno na drugi napravi).
+    try {
+      var r = await sb.from('webauthn_credentials').select('credential_id').eq('user_id', JAZ).limit(1);
+      if (r && !r.error) { var ima = !!(r.data && r.data.length); bioOznaci(JAZ, ima); prikazi(ima); }
+    } catch (e) {}
   }
   { var _bon = $('bioOn'); if (_bon) _bon.addEventListener('click', async function () {
-    var m = $('bioMsg'); this.disabled = true; var t = this.textContent; this.textContent = 'Potrjujem …';
-    try { await bioOmogoci(); m.className = 'msg show'; m.textContent = 'Face ID / prstni odtis je omogočen na tej napravi.'; napolniBio(); }
-    catch (e) { m.className = 'msg bad show'; m.textContent = (e && /NotAllowed|abort/i.test(e.name || e.message || '')) ? 'Preklicano.' : (e && e.message ? e.message : 'Ni uspelo.'); }
+    var m = $('bioMsg'); this.disabled = true; var t = this.textContent; this.innerHTML = '<span class="bio-pulse"></span>Potrjevanje …';
+    try { var _st = await bioOmogoci(); if (m) { m.className = 'msg ok show'; m.textContent = (_st === 'ze') ? 'Biometrija je že vklopljena.' : 'Biometrija je vklopljena.'; } await napolniBio(); }
+    catch (e) { if (m) { m.className = 'msg bad show'; m.textContent = _bioNapaka(e); } }
     this.disabled = false; this.textContent = t;
   }); }
   { var _bof = $('bioOff'); if (_bof) _bof.addEventListener('click', async function () {
     var m = $('bioMsg'); this.disabled = true; var t = this.textContent; this.textContent = 'Odstranjujem …';
-    try { await bioOdstrani(); if (m) { m.className = 'msg show'; m.textContent = 'Biometrija odstranjena.'; } }
-    catch (e) { if (m) { m.className = 'msg bad show'; m.textContent = (e && e.message) || 'Ni uspelo.'; } }
+    try { await bioOdstrani(); if (m) { m.className = 'msg ok show'; m.textContent = 'Biometrija odstranjena.'; } }
+    catch (e) { if (m) { m.className = 'msg bad show'; m.textContent = _bioNapaka(e); } }
     this.disabled = false; this.textContent = t;
     zapomniProfil({ email: JAZMAIL, name: JAZIME, avatar: (MOJPROFIL && MOJPROFIL.avatar_url) || '', uid: JAZ });
-    napolniBio();
+    await napolniBio();
   }); }
 
   /* ══════════ ADMIN — vloge in pravice (samo lastnik) ══════════ */
@@ -6500,9 +6528,9 @@
   }
   function zapriPromoBio() { var el = $('bioPromo'); if (el) el.classList.add('hidden'); }
   { var _bpo = $('bioPromoOn'); if (_bpo) _bpo.addEventListener('click', async function () {
-    var m = $('bioPromoMsg'); this.disabled = true; var t = this.textContent; this.textContent = 'Potrjujem …';
-    try { await bioOmogoci(); zapriPromoBio(); }
-    catch (e) { m.className = 'msg bad show'; m.textContent = (e && /NotAllowed|abort/i.test(e.name || e.message || '')) ? 'Preklicano.' : (e && e.message ? e.message : 'Ni uspelo.'); }
+    var m = $('bioPromoMsg'); this.disabled = true; var t = this.textContent; this.innerHTML = '<span class="bio-pulse"></span>Potrjevanje …';
+    try { await bioOmogoci(); if (m) { m.className = 'msg'; m.textContent = ''; } zapriPromoBio(); }
+    catch (e) { if (m) { m.className = 'msg bad show'; m.textContent = _bioNapaka(e); } }
     this.disabled = false; this.textContent = t;
   }); }
   { var _bpl = $('bioPromoLater'); if (_bpl) _bpl.addEventListener('click', zapriPromoBio); }

@@ -101,6 +101,7 @@ input:focus,.field textarea:focus{border-color:var(--green-l);background:var(--s
   border:1px solid var(--line);background:var(--green-m);display:none;}
 .msg.show{display:block;}
 .msg.bad{background:var(--gold-m);border-color:rgba(196,154,42,.3);}
+.msg.ok{background:var(--green-m);border-color:rgba(26,102,68,.28);color:var(--wm-green);}
 
 /* ══ APLIKACIJA ══ */
 .app{display:none;min-height:100dvh;flex-direction:column;}
