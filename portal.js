@@ -5704,6 +5704,7 @@
         ${(jaz || lahkoUredi) ? `<button class="u-web${webOn ? ' on' : ''}" data-act="web" data-id="${u.id}" data-v="${webOn ? 0 : 1}" title="Dovoljenje za prijavo v aplikacijo / spletni pogled (izbira oseb)">Dostop app: ${webOn ? 'da' : 'ne'}</button>` : ''}
         ${lahkoUredi ? `<button data-act="active" data-id="${u.id}" data-v="${u.active ? 0 : 1}">${u.active ? 'izklopi' : 'vklopi'}</button>` : ''}
         ${(jaz || lahkoUredi) ? `<button data-act="pw" data-id="${u.id}">novo geslo</button>` : ''}
+        ${(jaz || lahkoUredi) ? `<button data-act="pin" data-id="${u.id}" data-ime="${escape_(u.full_name || '')}" title="4-mestni PIN za prijavo v aplikaciji">PIN za app</button>` : ''}
         ${(jeLastnik && !jaz) ? `<button class="danger" data-act="del" data-id="${u.id}" data-m="${escape_(u.email || '')}">izbriši</button>` : ''}
       </div>
     </div>`;
@@ -5824,6 +5825,17 @@
       const { error } = await sb.from('profiles').update({ super_admin: btn.dataset.v === '1' }).eq('id', id);
       uMsg(error ? (/super_admin/i.test(error.message) ? 'Najprej zaženi 27_super_admin.sql v Supabase.' : 'Ni uspelo: ' + escape_(error.message)) : btn.dataset.v === '1' ? 'Uporabnik je zdaj Admin (ima Fakture).' : 'Admin odvzet.', !!error);
       loadUsers();
+      return;
+    }
+    if (act === 'pin') {
+      const novo = await vnesiModal({ naslov: 'PIN za prijavo v aplikaciji', sporocilo: 'Vpiši 4-mestno kodo, ki jo oseba vpiše ob prijavi v aplikaciji. Pusti prazno za odstranitev PIN-a.', placeholder: '4-mestni PIN', potrdi: 'Shrani' });
+      btn.disabled = false;
+      if (novo === null) return;
+      const pin = String(novo || '').replace(/\D/g, '').slice(0, 4);
+      if (pin && pin.length !== 4) { uMsg('PIN mora imeti 4 števke.', true); return; }
+      const { error } = await sb.from('profiles').update({ app_pin: pin || null }).eq('id', id);
+      if (error && /app_pin|column/i.test(error.message || '')) { uMsg('Najprej zaženi 46_app_pin.sql v Supabase.', true); return; }
+      uMsg(error ? 'Ni uspelo: ' + escape_(error.message) : (pin ? 'PIN nastavljen.' : 'PIN odstranjen.'), !!error);
       return;
     }
     if (act === 'pw') {
@@ -5976,9 +5988,10 @@
         if (ok) { if (m) { m.className = 'msg'; m.textContent = ''; } start(); return; }
         pokaziPrijavo(email, 'Zaradi varnosti enkrat vpiši geslo; Face ID nato spet deluje.'); return;
       } catch (e) {
+        // VEDNO ponudi geslo kot rezervo (tudi ob preklicu ali »No passkeys available«),
+        // da se prijava nikoli ne zatakne, če passkey ni na voljo (npr. po poteku/na drugi napravi).
         var cancel = e && /NotAllowed|abort|timed|timeout/i.test((e.name || '') + ' ' + (e.message || ''));
-        if (cancel) { if (m) { m.className = 'msg bad show'; m.textContent = 'Preklicano. Poskusi znova.'; } return; }
-        pokaziPrijavo(email, (e && e.message ? e.message + ' ' : '') + 'Vpiši geslo enkrat, Face ID nato spet deluje.'); return;
+        pokaziPrijavo(email, cancel ? 'Face ID/passkey ni na voljo — vpiši geslo (Face ID nato spet deluje).' : ((e && e.message ? e.message + ' ' : '') + 'Vpiši geslo enkrat, Face ID nato spet deluje.')); return;
       }
     }
     // 2) Brez Face ID: če je seja še živa za tega uporabnika, ga spustimo naravnost noter.
