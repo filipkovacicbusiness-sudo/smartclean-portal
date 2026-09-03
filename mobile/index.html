@@ -1690,6 +1690,11 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
   function showLogin(){ prikaziProfile(); }   /* privzeti vstop = mre\u017ea profilov */
 
   /* Mre\u017ea shranjenih profilov (kot v portalu) + gumb \u00bbDodaj\u00ab. */
+  /* Profilna ikona: naložena slika (kot v portalu), sicer »SC« monogram. */
+  function appAvatarHtml(p){
+    if(p && p.avatar) return '<span class="lp-av" style="background-image:url(\'' + encodeURI(p.avatar).replace(/'/g,"%27").replace(/"/g,"%22") + '\')"></span>';
+    return '<span class="lp-av av-sc"><span class="sc-s">S</span><span class="sc-c">C</span></span>';
+  }
   function prikaziProfile(){
     if(!savedProfs.length){ showAccountLogin(""); return; }
     session = null; clearTimeout(idleTimer);
@@ -1699,7 +1704,7 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
     var box = document.getElementById("loginUsers");
     box.innerHTML = savedProfs.map(function(p){
       return '<div class="lp-wrap"><button class="lp-tile" data-em="' + esc(p.email) + '">' +
-        '<span class="lp-av av-sc"><span class="sc-s">S</span><span class="sc-c">C</span></span>' +
+        appAvatarHtml(p) +
         '<span class="lp-nm">' + esc(p.name || p.email) + '</span></button>' +
         '<button class="lp-x" data-forget="' + esc(p.email) + '" aria-label="Odstrani profil" title="Odstrani profil">\u00d7</button></div>';
     }).join("") + '<button class="lp-tile lp-add" id="lpAdd"><span class="lp-av lp-plus">+</span><span class="lp-nm">Dodaj</span></button>';
@@ -1728,7 +1733,9 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
       var em2 = prof.email || em;
       var nm = prof.full_name || em2;
       savedProfs = savedProfs.filter(function(p){ return p.email !== em2; });
-      savedProfs.push({ email: em2, name: nm, uid: prof.id || null, refresh_token: portalAuth.refresh_token });
+      var np = { email: em2, name: nm, uid: prof.id || null, refresh_token: portalAuth.refresh_token, avatar: "", zaposleni: false, pin: "" };
+      savedProfs.push(np);
+      try{ var pd0 = await preberiProfilPodatke(np); np.avatar = pd0.avatar; np.zaposleni = pd0.zaposleni; np.pin = pd0.pin; if(pd0.name) np.name = pd0.name; }catch(e){}
       await saveProfs();
       try{ await osveziKatalog(true); }catch(e){}
       try{ await potegniIzPortala(); }catch(e){}
@@ -1738,43 +1745,65 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
     finally{ btn.disabled = false; btn.textContent = "Prijava"; }
   }
 
-  /* Tap na shranjen profil \u2192 tiha osve\u017eitev seje \u2192 vstop (brez gesla). */
+  /* Tap na shranjen profil \u2192 tiha osve\u017eitev seje \u2192 vstop (brez gesla).
+     Po 1x prijavi z geslom se profil nikoli ve\u010d ne odjavi. \u00bbZaposleni\u00ab gredo
+     naravnost noter brez PIN-a; ostali s PIN-om ga vpi\u0161ejo. */
   async function izberiProfil(em){
     var p = savedProfs.find(function(x){ return x.email === em; }); if(!p) return;
     var box = document.getElementById("loginUsers"); if(box) box.innerHTML = '<div style="grid-column:1/-1;color:var(--ink-soft);font-size:13px">Prijavljam\u2026</div>';
+    var vstop = async function(){
+      try{ await osveziKatalog(true); }catch(e){}
+      try{ await potegniIzPortala(); }catch(e){}
+      try{ zaziviRealtime(); }catch(e){}
+      await vstopiKot(p.name);
+    };
+    var vstopiPoVlogi = function(pin, zaposleni){
+      if(zaposleni) return vstop();               // status \u00bbzaposleni\u00ab \u2192 brez PIN-a
+      if(pin) return zahtevajPin(p.name, pin, vstop);  // ostali s PIN-om \u2192 zahtevaj
+      return vstop();                             // ostali brez PIN-a \u2192 noter
+    };
     try{
       portalAuth = { refresh_token: p.refresh_token, access_token: null, expires_at: 0 };
       await portalRefresh();
       p.refresh_token = portalAuth.refresh_token; await savePortalAuth();
-      /* Dostop je bil preverjen ob DODAJANJU profila. Ob enem tapu NE blokiraj ve\u010d
-         (druga\u010de manjkajo\u010de zastavice v bazi ali offline vr\u017eejo osebo nazaj na geslo).
-         Ime + PIN osve\u017ei iz baze (\u010de dosegljivo), sicer obdr\u017ei shranjeno. */
-      var pin = await preberiPin(p);
-      p.pin = pin; await saveProfs();
-      var vstop = async function(){
-        try{ await osveziKatalog(true); }catch(e){}
-        try{ await potegniIzPortala(); }catch(e){}
-        try{ zaziviRealtime(); }catch(e){}
-        await vstopiKot(p.name);
-      };
-      if(pin){ zahtevajPin(p.name, pin, vstop); }   // PIN nastavljen v portalu \u2192 zahtevaj
-      else { await vstop(); }                        // brez PIN-a \u2192 naravnost noter
+      /* Ime, PIN, vloga in avatar iz baze (\u010de dosegljivo), sicer obdr\u017ei shranjeno. */
+      var pd = await preberiProfilPodatke(p);
+      p.pin = pd.pin; p.zaposleni = pd.zaposleni; p.avatar = pd.avatar; await saveProfs();
+      await vstopiPoVlogi(pd.pin, pd.zaposleni);
     }catch(e){
+      /* Prehodna napaka (ni povezave) \u2192 NE me\u010di na geslo: naprava je \u017ee prijavljena,
+         spusti noter z zadnjimi znanimi (predpomnjenimi) podatki; sinhronizacija dohiti. */
+      if(/ni povezave/i.test((e && e.message) || "") && p.refresh_token){
+        try{ await vstopiPoVlogi(p.pin!=null?String(p.pin):"", !!p.zaposleni); return; }catch(_){}
+      }
       showAccountLogin("Prijava je potekla \u2014 vpi\u0161i geslo za " + (p.name || p.email));
       var ie = document.getElementById("acctEmail"); if(ie) ie.value = p.email;
     }
   }
 
-  /* Preberi PIN lastnega profila iz baze (RLS dovoli lasten profil). Offline → predpomnilnik. */
-  async function preberiPin(p){
+  /* Preberi profil lastnega uporabnika iz baze (RLS dovoli lasten profil): PIN, vloga,
+     avatar, ime. Offline / manjkajoči stolpci → obdrži predpomnjeno. */
+  async function preberiProfilPodatke(p){
+    var out = { pin:(p.pin!=null?String(p.pin):""), zaposleni:!!p.zaposleni, avatar:p.avatar||"", name:p.name||"" };
+    var uid = p.uid;
     try{
-      var uid = p.uid;
-      if(!uid){ var pr = await portalProfil(); uid = pr.id; if(uid) p.uid = uid; if(pr.full_name) p.name = pr.full_name; }
-      if(!uid) return (p.pin!=null ? String(p.pin) : "");
-      var rows = await api("profiles?select=app_pin,full_name&id=eq." + uid);
-      if(Array.isArray(rows) && rows[0]){ if(rows[0].full_name) p.name = rows[0].full_name; return (rows[0].app_pin!=null && rows[0].app_pin!=="") ? String(rows[0].app_pin) : ""; }
-      return "";
-    }catch(e){ return (p.pin!=null ? String(p.pin) : ""); }
+      if(!uid){ var pr = await portalProfil(); uid = pr.id; if(uid) p.uid = uid; if(pr.full_name){ p.name = pr.full_name; out.name = pr.full_name; } }
+    }catch(e){}
+    if(!uid) return out;
+    var r = null;
+    try{ var rows = await api("profiles?select=app_pin,full_name,avatar_url,super_admin,is_staff,zaposleni&id=eq." + uid); if(Array.isArray(rows)) r = rows[0] || null; }
+    catch(e){ /* rezerva: če stolpci avatar_url/zaposleni še ne obstajajo → ožji select */
+      try{ var rows2 = await api("profiles?select=app_pin,full_name&id=eq." + uid); if(Array.isArray(rows2)) r = rows2[0] || null; }
+      catch(e2){ return out; }
+    }
+    if(r){
+      if(r.full_name){ p.name = r.full_name; out.name = r.full_name; }
+      out.pin = (r.app_pin!=null && r.app_pin!=="") ? String(r.app_pin) : "";
+      if("avatar_url" in r) out.avatar = r.avatar_url || "";
+      if(("zaposleni" in r) || ("is_staff" in r) || ("super_admin" in r))
+        out.zaposleni = !!(r.zaposleni && !r.is_staff && !r.super_admin);   // status točno »zaposleni«
+    }
+    return out;
   }
   /* PIN-pad: oseba vpiše 4-mestno kodo (nastavljeno v portalu). Ob ujemanju → onOk(). */
   function zahtevajPin(ime, pravilen, onOk){
@@ -2165,13 +2194,27 @@ async function portalLogin(email, geslo){
 
 async function portalRefresh(){
   if(!portalAuth || !portalAuth.refresh_token) throw new Error("naprava ni prijavljena");
-  var r = await fetch(settings.portalUrl + "/auth/v1/token?grant_type=refresh_token", {
-    method: "POST",
-    headers: { "apikey": settings.portalKey, "Content-Type": "application/json" },
-    body: JSON.stringify({ refresh_token: portalAuth.refresh_token })
-  });
+  var r;
+  try{
+    r = await fetch(settings.portalUrl + "/auth/v1/token?grant_type=refresh_token", {
+      method: "POST",
+      headers: { "apikey": settings.portalKey, "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: portalAuth.refresh_token })
+    });
+  }catch(netErr){
+    /* Ni omrežja → NE briši žetona. Po 1x prijavi ostane naprava prijavljena za vedno;
+       ko se povezava vrne, osvežitev uspe. */
+    throw new Error("ni povezave");
+  }
   var j = await r.json().catch(function(){ return {}; });
-  if(!r.ok){ portalAuth = null; await savePortalAuth(); throw new Error("seja je potekla, prijavi napravo znova"); }
+  if(!r.ok){
+    /* Odjavi SAMO ob resnično neveljavnem/preklicanem žetonu (400/401 invalid_grant),
+       NE ob prehodnih napakah (5xx, omrežje) — sicer bi osebo po nepotrebnem vrgli na geslo. */
+    var telo = ((j.error||"")+" "+(j.error_description||"")+" "+(j.msg||"")+" "+(j.message||"")+" "+(j.code||"")).toLowerCase();
+    var resnicno = (r.status===400 || r.status===401) && /invalid|grant|refresh|expired|revoked|not\s*found|jwt/.test(telo);
+    if(resnicno){ portalAuth = null; await savePortalAuth(); throw new Error("seja je potekla, prijavi napravo znova"); }
+    throw new Error("ni povezave");
+  }
   portalAuth = {
     access_token: j.access_token, refresh_token: j.refresh_token,
     expires_at: Date.now() + ((j.expires_in || 3600) * 1000) - 60000

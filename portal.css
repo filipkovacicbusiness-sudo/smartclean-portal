@@ -227,11 +227,12 @@ select:focus{border-color:var(--green-l);outline:none;}
 .u-role-wrap select{min-width:150px;max-width:200px;}
 .u-mail{font-weight:500;word-break:break-word;}
 .u-sub{font-size:.78rem;color:var(--mid);}
-.u-acts{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;align-items:flex-start;align-content:flex-start;}
+.u-acts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;align-content:start;}
 .pill{white-space:nowrap;}
 .pill-super{background:var(--ink);color:var(--bg);}
-.u-acts button{font-size:.78rem;padding:5px 11px;border:1px solid var(--line);
-  border-radius:100px;background:none;color:var(--mid);cursor:pointer;transition:all .18s;}
+.u-acts button{width:100%;font-size:.78rem;padding:6px 10px;border:1px solid var(--line);
+  border-radius:100px;background:none;color:var(--mid);cursor:pointer;transition:all .18s;
+  text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .u-acts button:hover{border-color:var(--mid);color:var(--ink);}
 .u-acts button.danger:hover{border-color:var(--coral);color:var(--coral);}
 .u-off{opacity:.5;}
@@ -242,7 +243,7 @@ select:focus{border-color:var(--green-l);outline:none;}
 @media(max-width:720px){
   .add-row{grid-template-columns:1fr;}
   .u-row{grid-template-columns:1fr;gap:8px;}
-  .u-acts{justify-content:flex-start;}
+  .u-acts{grid-template-columns:repeat(2,minmax(0,1fr));}
 }
 
 /* ── ozka glava: e-naslov v vrstici ni več prostora ──────────────── */
@@ -1713,6 +1714,8 @@ h3.sec,h3.sec-h,.empty h3,.fak-card-h h3,.adm-ime,.stat-num,.auth-claim,
 /* Web view dostop (toggle v Uporabnikih) */
 .u-acts .u-web.on{border-color:transparent;background:rgba(52,199,110,.16);color:#1a7d43;}
 html[data-theme="dark"] .u-acts .u-web.on{background:rgba(52,199,110,.16);color:#4fd07f;}
+.u-acts .u-pin.on{border-color:transparent;background:rgba(52,199,110,.16);color:#1a7d43;}
+html[data-theme="dark"] .u-acts .u-pin.on{background:rgba(52,199,110,.16);color:#4fd07f;}
 
 /* Arhiv: kdo je izdelal spremni list */
 .a-izdal{font-size:.76rem;color:var(--mid);display:inline-flex;align-items:center;gap:4px;}

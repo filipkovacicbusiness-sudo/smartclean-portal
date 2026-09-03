@@ -5709,9 +5709,9 @@
     }
     const [rLjudje, {
       data: clanstva
-    }] = await Promise.all([sb.from('profiles').select('id,email,full_name,is_staff,super_admin,zaposleni,active,last_login,last_seen,web_dostop').order('email'), sb.from('memberships').select('user_id,org_id')]);
+    }] = await Promise.all([sb.from('profiles').select('id,email,full_name,is_staff,super_admin,zaposleni,active,last_login,last_seen,web_dostop,app_pin').order('email'), sb.from('memberships').select('user_id,org_id')]);
     let ljudje = rLjudje.data;
-    if (rLjudje.error) { /* super_admin/zaposleni ali last_seen še ni — beri brez njih */
+    if (rLjudje.error) { /* super_admin/zaposleni/app_pin ali last_seen še ni — beri brez njih */
       const fb = await sb.from('profiles').select('id,email,full_name,is_staff,active,last_login').order('email');
       if (fb.error) { const fb2 = await sb.from('profiles').select('id,email,full_name,is_staff,active').order('email'); ljudje = fb2.data; }
       else ljudje = fb.data;
@@ -5739,6 +5739,7 @@
       const lahkoUredi = !jaz && !jeLastnikU && mr > ur;   // nadrejeni ureja podrejene; lastnika nihče
       const naSpletu = jaz || (u.last_seen && (Date.now() - new Date(u.last_seen).getTime()) < 120000);
       const webOn = u.web_dostop !== false;   // privzeto vključen
+      const pinSet = (u.app_pin !== null && u.app_pin !== void 0 && String(u.app_pin) !== '');   // ali je PIN nastavljen
       const roleOpts = VLOGE.filter(r => r[2] < mr).sort((a, b) => b[2] - a[2]).map(r => `<option value="${r[0]}"${vlogaVal === r[0] ? ' selected' : ''}>${r[1]}</option>`).join('');
       return `<div class="u-row ${u.active ? '' : 'u-off'}">
       <div class="u-info">
@@ -5764,7 +5765,7 @@
         ${(jaz || lahkoUredi) ? `<button class="u-web${webOn ? ' on' : ''}" data-act="web" data-id="${u.id}" data-v="${webOn ? 0 : 1}" title="Dovoljenje za prijavo v aplikacijo / spletni pogled (izbira oseb)">Dostop app: ${webOn ? 'da' : 'ne'}</button>` : ''}
         ${lahkoUredi ? `<button data-act="active" data-id="${u.id}" data-v="${u.active ? 0 : 1}">${u.active ? 'izklopi' : 'vklopi'}</button>` : ''}
         ${(jaz || lahkoUredi) ? `<button data-act="pw" data-id="${u.id}">novo geslo</button>` : ''}
-        ${(jaz || lahkoUredi) ? `<button data-act="pin" data-id="${u.id}" data-ime="${escape_(u.full_name || '')}" title="4-mestni PIN za prijavo v aplikaciji">PIN za app</button>` : ''}
+        ${(jaz || lahkoUredi) ? `<button class="u-pin${pinSet ? ' on' : ''}" data-act="pin" data-id="${u.id}" data-ime="${escape_(u.full_name || '')}" title="${pinSet ? 'PIN je nastavljen — klikni za spremembo ali izbris' : '4-mestni PIN za prijavo v aplikaciji'}">${pinSet ? 'PIN ✓' : 'PIN za app'}</button>` : ''}
         ${(jeLastnik && !jaz) ? `<button class="danger" data-act="del" data-id="${u.id}" data-m="${escape_(u.email || '')}">izbriši</button>` : ''}
       </div>
     </div>`;
@@ -5888,7 +5889,8 @@
       return;
     }
     if (act === 'pin') {
-      const novo = await vnesiModal({ naslov: 'PIN za prijavo v aplikaciji', sporocilo: 'Vpiši 4-mestno kodo, ki jo oseba vpiše ob prijavi v aplikaciji. Pusti prazno za odstranitev PIN-a.', placeholder: '4-mestni PIN', potrdi: 'Shrani' });
+      const jeNastavljen = btn.classList.contains('on');
+      const novo = await vnesiModal({ naslov: jeNastavljen ? 'Spremeni PIN za aplikacijo' : 'Nastavi PIN za aplikacijo', sporocilo: (jeNastavljen ? 'Ta uporabnik ima PIN že nastavljen. ' : '') + 'Vpiši 4-mestno kodo, ki jo oseba vpiše ob prijavi v aplikacijo. Pusti prazno za odstranitev PIN-a.', placeholder: '4-mestni PIN', potrdi: 'Shrani' });
       btn.disabled = false;
       if (novo === null) return;
       const pin = String(novo || '').replace(/\D/g, '').slice(0, 4);
@@ -5896,6 +5898,7 @@
       const { error } = await sb.from('profiles').update({ app_pin: pin || null }).eq('id', id);
       if (error && /app_pin|column/i.test(error.message || '')) { uMsg('Najprej zaženi 46_app_pin.sql v Supabase.', true); return; }
       uMsg(error ? 'Ni uspelo: ' + escape_(error.message) : (pin ? 'PIN nastavljen.' : 'PIN odstranjen.'), !!error);
+      if (!error) loadUsers();   // osveži seznam, da se oznaka »PIN ✓« takoj posodobi
       return;
     }
     if (act === 'pw') {
