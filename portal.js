@@ -138,7 +138,7 @@
   if (!KEY || !URL_) {
     $('loginForm').style.display = 'none';
     const box = document.createElement('div');
-    box.innerHTML = '<div class="field"><label for="kUrl">Naslov projekta</label>' + '<input type="text" id="kUrl" value="' + (URL_ || '') + '" placeholder="https://….supabase.co"/></div>' + '<div class="field"><label for="kKey">Publishable key</label>' + '<input type="text" id="kKey" placeholder="sb_publishable_…"/></div>' + '<button type="button" class="btn" id="kSave">Shrani in nadaljuj</button>';
+    box.innerHTML = '<div class="field"><label for="kUrl">Naslov projekta</label>' + '<input type="text" id="kUrl" value="' + escape_(URL_ || '') + '" placeholder="https://….supabase.co"/></div>' + '<div class="field"><label for="kKey">Publishable key</label>' + '<input type="text" id="kKey" placeholder="sb_publishable_…"/></div>' + '<button type="button" class="btn" id="kSave">Shrani in nadaljuj</button>';
     $('loginForm').parentNode.insertBefore(box, $('loginMsg'));
     document.querySelector('.sub').textContent = 'Portal še ne ve, kje je vaša baza. Vpišite podatke iz Supabase → Project Settings → API Keys.';
     $('kSave').addEventListener('click', () => {
@@ -369,6 +369,7 @@
   let ORGSEZNAM = [],
     ORGIME = {},
     LISTI = [],
+    LISTI_NAPAKA = false,   // true = nalaganje ni uspelo (loči napako od praznega arhiva)
     VSEHLISTOV = 0,
     STAR_SET = new Set();   // note_id-ji, ki vsebujejo star zapis (postavka brez article_id)
 
@@ -1936,6 +1937,7 @@
     if (r.error) {
       r = await vseVrstice((od, do_) => sb.from('delivery_notes').select('id,number,doc_date,total_pieces,weight_kg,org_id,issued_name,popravil,popravljeno_at,source,transport,potrjeno,legacy_id').order('doc_date', { ascending: false }).order('id', { ascending: false }).range(od, do_));
     }
+    LISTI_NAPAKA = !!(r && r.error);
     LISTI = (r && !r.error && r.data) ? r.data : [];
     const {
       count
@@ -1955,6 +1957,16 @@
     }
   }
   const prazniListi = kdo => '<div class="rows"><div class="empty"><h3>Spremnih listov še ni</h3><p>' + (kdo === 'osebje' ? 'Spremni listi nastajajo na tablici v pralnici. Ko jih bomo prenesli v bazo,<br>se bodo izpisali tukaj.' : 'Ko bomo prevzeli in vrnili perilo, se bo vsak prevzem izpisal tukaj.') + '</p></div></div>';
+  // Ločeno stanje za NAPAKO pri nalaganju (ne prikazuj kot »prazno«) — z gumbom za ponovni poskus.
+  const napakaListi = '<div class="rows"><div class="empty"><h3>Nalaganje ni uspelo</h3><p>Podatkov trenutno ni bilo mogoče naložiti.<br>Preveri povezavo in poskusi znova.</p><button type="button" class="btn ghost" data-act="liste-ponovi" style="margin-top:14px">Poskusi znova</button></div></div>';
+  document.addEventListener('click', async function (e) {
+    var b = e.target && e.target.closest ? e.target.closest('[data-act="liste-ponovi"]') : null;
+    if (!b) return;
+    b.disabled = true; b.textContent = 'Nalagam …';
+    try { await naloziListe(); } catch (_) {}
+    try { risiArhiv(); } catch (_) {}
+    try { risiPregled(); } catch (_) {}
+  });
 
   /* ══════════ PREGLED ══════════ */
   function risiPregled() {
@@ -1978,7 +1990,7 @@
     if ($('domovStatus')) $('domovStatus').innerHTML = '';
     if (!LISTI.length) {
       $('mesecni').innerHTML = '';
-      $('zadnji').innerHTML = prazniListi(OSEBJE ? 'osebje' : 'stranka');
+      $('zadnji').innerHTML = LISTI_NAPAKA ? napakaListi : prazniListi(OSEBJE ? 'osebje' : 'stranka');
       return;
     }
     const meseci = [];
@@ -2024,7 +2036,7 @@
 
   /* ══════════ ARHIV ══════════ */
   function tabelaListov(vrstice, klikljivo) {
-    if (!vrstice.length) return prazniListi(OSEBJE ? 'osebje' : 'stranka');
+    if (!vrstice.length) return LISTI_NAPAKA ? napakaListi : prazniListi(OSEBJE ? 'osebje' : 'stranka');
     return '<div class="rows">' + vrstice.map((l, i) => {
       const prazno = !(l.total_pieces > 0);
       const legacy = STAR_SET.has(l.id);   // vsebuje star zapis (postavka brez povezave na artikel)
@@ -2343,7 +2355,7 @@
     const dodajVrstico = (naziv = '', kosov = '') => {
       const row = document.createElement('div');
       row.className = 'ur-post';
-      row.innerHTML = `<select data-pn class="ur-pn"></select><input type="number" data-pk placeholder="kos" value="${kosov}"><button type="button" class="ur-del" data-del title="odstrani">×</button>`;
+      row.innerHTML = `<select data-pn class="ur-pn" aria-label="Artikel"></select><input type="number" inputmode="numeric" min="0" step="1" aria-label="Količina (kosov)" data-pk placeholder="kos" value="${kosov}"><button type="button" class="ur-del" data-del title="odstrani">×</button>`;
       napolniPn(row.querySelector('[data-pn]'), naziv);
       row.querySelector('[data-del]').addEventListener('click', () => { row.remove(); osveziKg(); });
       row.querySelector('[data-pn]').addEventListener('change', osveziKg);
@@ -2553,7 +2565,7 @@
     const dodajVrstico = (naziv = '', kosov = '') => {
       const row = document.createElement('div');
       row.className = 'ur-post';
-      row.innerHTML = `<select data-pn class="ur-pn"></select><input type="number" data-pk placeholder="kos" value="${kosov}"><button type="button" class="ur-del" data-del title="odstrani">×</button>`;
+      row.innerHTML = `<select data-pn class="ur-pn" aria-label="Artikel"></select><input type="number" inputmode="numeric" min="0" step="1" aria-label="Količina (kosov)" data-pk placeholder="kos" value="${kosov}"><button type="button" class="ur-del" data-del title="odstrani">×</button>`;
       napolniPn(row.querySelector('[data-pn]'), naziv);
       row.querySelector('[data-del]').addEventListener('click', () => { row.remove(); osveziKg(); });
       row.querySelector('[data-pn]').addEventListener('change', osveziKg);
@@ -4015,12 +4027,44 @@
     if (!_toastEl) {
       _toastEl = document.createElement('div');
       _toastEl.className = 'sc-toast';
+      _toastEl.setAttribute('role', 'status');
+      _toastEl.setAttribute('aria-live', 'polite');
       document.body.appendChild(_toastEl);
     }
     _toastEl.textContent = t;
     _toastEl.classList.add('show');
     clearTimeout(_toastEl._h);
     _toastEl._h = setTimeout(() => _toastEl.classList.remove('show'), 2600);
+  }
+  // Dostopnost modalnih oken: ujemi fokus znotraj okna (Tab kroži) in ga ob
+  // zaprtju vrni na element, ki je okno odprl (kot pri velikih ponudnikih).
+  var _modalPrevFocus = null;
+  function _modalA11y(back) {
+    _modalPrevFocus = document.activeElement;
+    var okno = back.querySelector('.sc-modal');
+    var h = back.querySelector('h4');
+    if (okno && h && h.textContent) {
+      var mid = 'scm-' + Math.random().toString(36).slice(2, 8);
+      h.id = mid; okno.setAttribute('aria-labelledby', mid);
+    }
+    function ostri() {
+      return Array.prototype.filter.call(
+        back.querySelectorAll('button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])'),
+        function (el) { return !el.disabled && el.offsetParent !== null; }
+      );
+    }
+    back._trap = function (e) {
+      if (e.key !== 'Tab') return;
+      var f = ostri(); if (!f.length) return;
+      var prvi = f[0], zadnji = f[f.length - 1];
+      if (e.shiftKey && document.activeElement === prvi) { e.preventDefault(); zadnji.focus(); }
+      else if (!e.shiftKey && document.activeElement === zadnji) { e.preventDefault(); prvi.focus(); }
+    };
+    back.addEventListener('keydown', back._trap);
+  }
+  function _modalVrniFokus() {
+    try { if (_modalPrevFocus && _modalPrevFocus.focus) _modalPrevFocus.focus(); } catch (e) {}
+    _modalPrevFocus = null;
   }
   // Potrditveno okno V PORTALU (namesto brskalnikovega confirm). Vrne Promise<boolean>.
   function potrdiModal(opts) {
@@ -4035,9 +4079,10 @@
       back.querySelector('[data-no]').textContent = opts.preklici || 'Prekliči';
       back.querySelector('[data-yes]').textContent = opts.potrdi || 'Potrdi';
       document.body.appendChild(back);
+      _modalA11y(back);
       requestAnimationFrame(function () { back.classList.add('show'); });
       var done = false;
-      function zapri(val) { if (done) return; done = true; back.classList.remove('show'); document.removeEventListener('keydown', onKey); setTimeout(function () { if (back.parentNode) back.parentNode.removeChild(back); }, 180); resolve(val); }
+      function zapri(val) { if (done) return; done = true; back.classList.remove('show'); document.removeEventListener('keydown', onKey); setTimeout(function () { if (back.parentNode) back.parentNode.removeChild(back); }, 180); _modalVrniFokus(); resolve(val); }
       function onKey(e) { if (e.key === 'Escape') zapri(false); else if (e.key === 'Enter') zapri(true); }
       back.querySelector('[data-no]').addEventListener('click', function (e) { e.stopPropagation(); zapri(false); });
       back.querySelector('[data-yes]').addEventListener('click', function (e) { e.stopPropagation(); zapri(true); });
@@ -4060,9 +4105,10 @@
       back.querySelector('[data-no]').textContent = opts.preklici || 'Prekliči';
       back.querySelector('[data-yes]').textContent = opts.potrdi || 'Shrani';
       document.body.appendChild(back);
+      _modalA11y(back);
       requestAnimationFrame(function () { back.classList.add('show'); });
       var done = false;
-      function zapri(val) { if (done) return; done = true; back.classList.remove('show'); document.removeEventListener('keydown', onKey); setTimeout(function () { if (back.parentNode) back.parentNode.removeChild(back); }, 180); resolve(val); }
+      function zapri(val) { if (done) return; done = true; back.classList.remove('show'); document.removeEventListener('keydown', onKey); setTimeout(function () { if (back.parentNode) back.parentNode.removeChild(back); }, 180); _modalVrniFokus(); resolve(val); }
       function onKey(e) { if (e.key === 'Escape') zapri(null); else if (e.key === 'Enter') { e.preventDefault(); zapri(inp.value); } }
       back.querySelector('[data-no]').addEventListener('click', function (e) { e.stopPropagation(); zapri(null); });
       back.querySelector('[data-yes]').addEventListener('click', function (e) { e.stopPropagation(); zapri(inp.value); });
@@ -4622,8 +4668,15 @@
     }
     $('katalogList').innerHTML = NALAGANJE;
     const {
-      data
+      data, error
     } = await sb.from('articles').select('name').eq('org_id', MOJEPODJETJE.id).order('sort_order');
+    if (error) {
+      $('katalogPod').textContent = '';
+      $('katalogList').innerHTML = '<div class="rows"><div class="empty"><h3>Nalaganje ni uspelo</h3><p>Kataloga trenutno ni bilo mogoče naložiti.<br>Preveri povezavo in poskusi znova.</p><button type="button" class="btn ghost" data-act="katalog-ponovi" style="margin-top:14px">Poskusi znova</button></div></div>';
+      var _kp = $('katalogList').querySelector('[data-act="katalog-ponovi"]');
+      if (_kp) _kp.addEventListener('click', function () { risiKatalog(); });
+      return;
+    }
     $('katalogPod').textContent = ((data === null || data === void 0 ? void 0 : data.length) || 0) + ' artiklov';
     $('katalogList').innerHTML = '<div class="rows"><div class="arts show" style="border:none">' + (data !== null && data !== void 0 && data.length ? '<ul>' + data.map(a => '<li>' + escape_(a.name) + '</li>').join('') + '</ul>' : '<p class="none">Katalog še ni izpolnjen.</p>') + '</div></div>';
   }
@@ -5662,6 +5715,12 @@
       const fb = await sb.from('profiles').select('id,email,full_name,is_staff,active,last_login').order('email');
       if (fb.error) { const fb2 = await sb.from('profiles').select('id,email,full_name,is_staff,active').order('email'); ljudje = fb2.data; }
       else ljudje = fb.data;
+    }
+    if (!ljudje) {   // vsi poskusi branja niso uspeli → napaka, ne prazno
+      $('usersList').innerHTML = '<div class="empty"><h3>Nalaganje ni uspelo</h3><p>Seznama uporabnikov trenutno ni bilo mogoče naložiti.<br>Preveri povezavo in poskusi znova.</p><button type="button" class="btn ghost" data-act="users-ponovi" style="margin-top:14px">Poskusi znova</button></div>';
+      var _up = $('usersList').querySelector('[data-act="users-ponovi"]');
+      if (_up) _up.addEventListener('click', function () { loadUsers(); });
+      return;
     }
     const clanPo = {};
     (clanstva || []).forEach(c => {
