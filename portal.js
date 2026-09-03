@@ -6026,7 +6026,6 @@
   /* ── STREŽNIŠKI WebAuthn (kot velika podjetja) ──────────────────────────
      Javni ključi so v bazi; podpis preveri Edge Function »webauthn«. Odjemalec
      ne hrani žetonov ne referenc — le majhno UI zastavico »bio vklopljen«.   */
-  var _SWA_URL = 'https://esm.sh/@simplewebauthn/browser@9.0.3';
   function bioVklopljen(uid) { try { return !!(uid && localStorage.getItem('sc-bioon-' + uid)); } catch (e) { return false; } }
   function bioOznaci(uid, on) { try { if (on) localStorage.setItem('sc-bioon-' + uid, '1'); else localStorage.removeItem('sc-bioon-' + uid); } catch (e) {} }
   function bioOsveziZetone() { /* ni več lokalnih žetonov — strežnik obvlada sejo */ }
@@ -6036,26 +6035,57 @@
     if (r.data && r.data.error) throw new Error(r.data.error);
     return r.data;
   }
+  /* WebAuthn kodiranje BREZ zunanje knjižnice (base64url ⇄ ArrayBuffer) — brez CSP težav. */
+  function _waReg2native(o) {
+    return { publicKey: {
+      challenge: odB64u(o.challenge),
+      rp: o.rp,
+      user: { id: odB64u(o.user.id), name: o.user.name, displayName: o.user.displayName },
+      pubKeyCredParams: o.pubKeyCredParams,
+      timeout: o.timeout, attestation: o.attestation,
+      authenticatorSelection: o.authenticatorSelection,
+      excludeCredentials: (o.excludeCredentials || []).map(function (c) { return { id: odB64u(c.id), type: c.type, transports: c.transports }; })
+    } };
+  }
+  function _waAuth2native(o) {
+    return { publicKey: {
+      challenge: odB64u(o.challenge),
+      timeout: o.timeout, rpId: o.rpId, userVerification: o.userVerification,
+      allowCredentials: (o.allowCredentials || []).map(function (c) { return { id: odB64u(c.id), type: c.type, transports: c.transports }; })
+    } };
+  }
+  function _waRegJSON(cred) {
+    var r = cred.response;
+    return { id: cred.id, rawId: b64u(cred.rawId), type: cred.type,
+      response: { clientDataJSON: b64u(r.clientDataJSON), attestationObject: b64u(r.attestationObject), transports: (r.getTransports && r.getTransports()) || [] },
+      clientExtensionResults: (cred.getClientExtensionResults && cred.getClientExtensionResults()) || {},
+      authenticatorAttachment: cred.authenticatorAttachment || undefined };
+  }
+  function _waAuthJSON(cred) {
+    var r = cred.response;
+    return { id: cred.id, rawId: b64u(cred.rawId), type: cred.type,
+      response: { clientDataJSON: b64u(r.clientDataJSON), authenticatorData: b64u(r.authenticatorData), signature: b64u(r.signature), userHandle: r.userHandle ? b64u(r.userHandle) : null },
+      clientExtensionResults: (cred.getClientExtensionResults && cred.getClientExtensionResults()) || {},
+      authenticatorAttachment: cred.authenticatorAttachment || undefined };
+  }
   // Omogoči biometrijo: registriraj passkey na STREŽNIKU (oseba je prijavljena z geslom).
   async function bioOmogoci() {
     if (!bioPodprt()) throw new Error('Ta naprava ne podpira Face ID / prstnega odtisa.');
     var sres = await sb.auth.getSession();
     var session = sres && sres.data && sres.data.session;
     if (!session) throw new Error('Najprej se prijavi z geslom.');
-    var mod = await import(_SWA_URL);
     var beg = await _fnWebauthn({ mode: 'reg-begin' });
-    var att = await mod.startRegistration(beg.options);
-    await _fnWebauthn({ mode: 'reg-finish', handle: beg.handle, response: att, label: (navigator.userAgent || '').slice(0, 80) });
+    var cred = await navigator.credentials.create(_waReg2native(beg.options));
+    await _fnWebauthn({ mode: 'reg-finish', handle: beg.handle, response: _waRegJSON(cred), label: (navigator.userAgent || '').slice(0, 80) });
     bioOznaci(session.user.id, true);
     zapomniProfil({ email: JAZMAIL, name: JAZIME, avatar: (MOJPROFIL && MOJPROFIL.avatar_url) || '', uid: session.user.id });
   }
   // Prijava z biometrijo: strežnik preveri podpis in izda sejo (magiclink token_hash).
   // Vrne true ob uspehu; sejo vzpostavi verifyOtp. Ob prekinitvi/napaki vrže napako.
   async function bioOdkleni(uid) {
-    var mod = await import(_SWA_URL);
     var beg = await _fnWebauthn({ mode: 'auth-begin' });
-    var asr = await mod.startAuthentication(beg.options);
-    var fin = await _fnWebauthn({ mode: 'auth-finish', handle: beg.handle, response: asr });
+    var cred = await navigator.credentials.get(_waAuth2native(beg.options));
+    var fin = await _fnWebauthn({ mode: 'auth-finish', handle: beg.handle, response: _waAuthJSON(cred) });
     if (!fin || !fin.token_hash) throw new Error('Prijava ni uspela.');
     var vo = await sb.auth.verifyOtp({ type: 'magiclink', token_hash: fin.token_hash });
     if (vo.error || !vo.data || !vo.data.session) throw new Error((vo.error && vo.error.message) || 'Seje ni bilo mogoče vzpostaviti.');
