@@ -1649,6 +1649,11 @@ html[data-theme="dark"] .pris-chip-x:hover{background:rgba(255,138,122,.16);colo
 .bio-off:hover{background:rgba(192,57,43,.08);border-color:#c0392b;}
 .pp-bio{position:absolute;left:60%;top:53px;width:22px;height:22px;border-radius:50%;background:var(--ink);color:var(--bg);display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 3px var(--surface);pointer-events:none;}
 .pp-bio svg{width:13px;height:13px;}
+/* Prijavni izbirnik — nežen vstop + jasnejši status med Touch ID/Face ID */
+.pp-grid{animation:scfadein .34s ease both;}
+.pp-tile{transition:border-color .16s,box-shadow .16s,transform .12s cubic-bezier(.34,1.2,.5,1);}
+.pp-tile:hover{transform:translateY(-2px);}
+.bio-pulse{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--wm-green,#3fae6b);margin-right:9px;vertical-align:middle;animation:dotpulse 1.35s infinite;}
 
 /* ── stabilnost števk po prehodu na eflitte pisavo (tabularne cifre) ── */
 .cenik-meta,.cgrp-count,.art-cena,.art-pick-item b,.art-id,.art-r-id,.art-r-teza,

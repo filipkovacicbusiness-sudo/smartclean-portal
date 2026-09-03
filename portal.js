@@ -5984,7 +5984,7 @@
     //    NIKOLI tihega vstopa (varnost). Face ID se sam NE izklopi (ne poteče) —
     //    izklopi se le ročno v Nastavitvah (»Odstrani s te naprave«).
     if (p && p.uid && bioPodprt() && bioVklopljen(p.uid)) {
-      var m = $('ppMsg'); if (m) { m.className = 'msg show'; m.textContent = 'Potrjujem …'; }
+      var m = $('ppMsg'); if (m) { m.className = 'msg show'; m.innerHTML = '<span class="bio-pulse"></span>Odkleni s Face ID / Touch ID …'; }
       try {
         var ok = await bioOdkleni(p.uid);
         if (ok) { if (m) { m.className = 'msg'; m.textContent = ''; } start(); return; }
@@ -5997,9 +5997,8 @@
         return;
       }
     }
-    // 2) Brez Face ID: če je seja še živa za tega uporabnika, ga spustimo naravnost noter (priročnost).
-    if (sejaTaUporabnik) { start(); return; }
-    // 3) Sicer geslo.
+    // 2) Brez Face ID: VEDNO zahtevaj geslo (nič tihega vstopa, tudi če je seja še živa) —
+    //    prijavni zaslon je varnostna vrata. (Ko oseba vklopi biometrijo, je to Touch ID.)
     pokaziPrijavo(email);
   }
 
