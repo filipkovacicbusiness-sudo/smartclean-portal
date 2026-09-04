@@ -206,10 +206,9 @@ html[data-theme="light"] .sc-hex{opacity:.5}
               <option value="stranka_za">Stranka Ž–A</option>
             </select>
             <span class="arh-obd">
-              <input type="date" id="arhivOd" class="arh-dan" aria-label="Od datuma"/>
-              <span class="arh-obd-sep">–</span>
-              <input type="date" id="arhivDo" class="arh-dan" aria-label="Do datuma"/>
-              <button type="button" id="arhivObdX" class="arh-obd-x hidden" aria-label="Počisti obdobje" title="Počisti">×</button>
+              <label class="arh-lab">Od<input type="date" id="arhivOd" class="arh-dan" aria-label="Od datuma"/></label>
+              <label class="arh-lab">Do<input type="date" id="arhivDo" class="arh-dan" aria-label="Do datuma"/></label>
+              <button type="button" id="arhivObdX" class="arh-obd-x hidden" aria-label="Počisti obdobje" title="Počisti obdobje">×</button>
             </span>
             <input type="search" id="arhivIsci" placeholder="Iskanje po številki …" aria-label="Iskanje"/>
           </div>
@@ -224,8 +223,11 @@ html[data-theme="light"] .sc-hex{opacity:.5}
         <div class="head">
           <div><h2>Fakture</h2><p class="count" id="fakPod">Osnova za račun — seštevek artiklov in teže po strankah</p></div>
           <div class="filtri">
-            <label class="fak-lab">Od <input type="date" id="fakOd"/></label>
-            <label class="fak-lab">Do <input type="date" id="fakDo"/></label>
+            <span class="fak-obd">
+              <label class="fak-lab">Od <input type="date" id="fakOd"/></label>
+              <label class="fak-lab">Do <input type="date" id="fakDo"/></label>
+              <button type="button" id="fakObdX" class="arh-obd-x hidden" aria-label="Počisti obdobje" title="Počisti obdobje">×</button>
+            </span>
             <select id="fakOrg" aria-label="Stranka"><option value="">Vse stranke</option></select>
             <button type="button" id="fakBtn" class="btn btn-narrow">Prikaži</button>
           </div>

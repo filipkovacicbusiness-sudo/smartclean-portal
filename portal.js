@@ -353,8 +353,14 @@
     } catch (e) {}
   }
   // Dnevnik sprememb — zapiši dejanje (tiho; če tabele ni, se ne zgodi nič).
+  // Napake se ne prikažejo uporabniku, a se zapišejo v konzolo — če dnevnik
+  // ostane prazen, tu vidiš razlog (npr. manjka RLS pravilo → zaženi 33_audit_log.sql).
   function logDodaj(razdelek, akcija, opis) {
-    try { sb.from('audit_log').insert({ razdelek: razdelek, akcija: akcija, opis: (opis || '').slice(0, 500), kdo_ime: JAZIME || JAZMAIL || 'osebje' }).then(function () {}, function () {}); } catch (e) {}
+    try {
+      sb.from('audit_log').insert({ razdelek: razdelek, akcija: akcija, opis: (opis || '').slice(0, 500), kdo_ime: JAZIME || JAZMAIL || 'osebje' })
+        .then(function (r) { if (r && r.error) { try { console.warn('[audit_log] vpis zavrnjen:', r.error.message || r.error, '— preveri 33_audit_log.sql (RLS/pravice).'); } catch (e) {} } },
+              function (e) { try { console.warn('[audit_log] vpis ni uspel:', e); } catch (_) {} });
+    } catch (e) {}
   }
   function nastaviWho(ime) {
     $('who').innerHTML = '<span class="who-name">' + escape_(ime || '') + '</span>' + (OSEBJE ? '<span class="who-role">osebje</span>' : '');
@@ -983,6 +989,7 @@
           '<button type="button" class="pris-nav" data-nav="-1" aria-label="Prejšnji"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button>' +
           '<input type="' + (mesecni ? 'month' : 'date') + '" id="prisDatum" value="' + (mesecni ? _prisDan.slice(0, 7) : _prisDan) + '">' +
           '<button type="button" class="pris-nav" data-nav="1" aria-label="Naslednji"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>' +
+          ((mesecni ? (_prisDan.slice(0, 7) === danes10().slice(0, 7)) : (_prisDan === danes10())) ? '' : '<button type="button" class="dat-danes" id="prisDanes" title="Nazaj na danes">Danes</button>') +
         '</div>' +
         '<span class="pris-tabs"><button type="button" class="pris-tab' + (_prisView === 'dan' ? ' on' : '') + '" data-obd="dan">Dan</button>' +
         '<button type="button" class="pris-tab' + (_prisView === 'mesec' ? ' on' : '') + '" data-obd="mesec">Mesec</button>' +
@@ -1006,6 +1013,7 @@
     box.innerHTML = blok1 + blok2 + blok3;
 
     var dat = $('prisDatum'); if (dat) dat.addEventListener('change', function () { var v = this.value || danes10(); if (v.length === 7) v += '-01'; _prisDan = v; prisRender(); });
+    { var pdn = $('prisDanes'); if (pdn) pdn.addEventListener('click', function () { _prisDan = danes10(); prisRender(); }); }
     box.querySelectorAll('[data-obd]').forEach(function (b) { b.addEventListener('click', function () { _prisView = b.dataset.obd; _prisMesec = (_prisView !== 'dan'); prisRender(); }); });
     box.querySelectorAll('[data-nav]').forEach(function (b) { b.addEventListener('click', function () { prisPremakni(parseInt(b.dataset.nav, 10)); }); });
     { var os = $('prisOsebaSel'); if (os) os.addEventListener('change', function () { _prisOseba = this.value; prisRender(); }); }
@@ -1764,12 +1772,8 @@
         el.classList.toggle('hot', on);
       });
       svgEl.querySelectorAll('.uc3d-lab[data-i="' + i + '"]').forEach(function (el) {
+        // Besedilo se NE poveča — samo rahlo poudari (barva/debelina) prek CSS .hot.
         el.classList.toggle('hot', on);
-        // Poveča se SAMO besedilo (uc3d-lab-txt), ne pa vodilna črta/pika — sicer bi se
-        // pika premaknila z barve na sosednjo.
-        var txt = el.querySelector('.uc3d-lab-txt'); if (!txt) return;
-        if (on) { var b = txt.getBBox(), lx = b.x + b.width / 2, ly = b.y + b.height / 2; txt.style.transform = 'translate(' + lx + 'px,' + ly + 'px) scale(1.12) translate(' + (-lx) + 'px,' + (-ly) + 'px)'; }
-        else txt.style.transform = '';
       });
     }
     svgEl.querySelectorAll('.uc3d-hit').forEach(function (el) {
@@ -1829,8 +1833,7 @@
       '<button type="button" class="pris-tab' + (_ucDonutRange === 'mesec' ? ' on' : '') + '" data-ucrange="mesec">Mesec</button>' +
       '<button type="button" class="pris-tab' + (_ucDonutRange === '3m' ? ' on' : '') + '" data-ucrange="3m">3 meseci</button>' +
       '<button type="button" class="pris-tab' + (_ucDonutRange === 'vse' ? ' on' : '') + '" data-ucrange="vse">Vse</button></span>';
-    var pageHead = '<div class="uc-page-head"><div><h2 class="uc-page-title">Statistika</h2>' +
-      '<p class="u-sub" style="margin:3px 0 0">' + rangeLbl + '</p></div>' +
+    var pageHead = '<div class="uc-page-head"><div><p class="uc-range-lbl">' + rangeLbl + '</p></div>' +
       '<div class="uc-d3-ctrl">' + mesecInput + rangeTabs + '</div></div>';
     var cardDonut = '<div class="uc-card uc-donut3d-card">' +
       '<h3 class="sec-h">Delež kg po strankah</h3>' +
@@ -1891,7 +1894,9 @@
       '<span class="pris-hbtns">' + sortSel + '<button type="button" class="cgrp-btn ghost uc-izvoz">Izvozi (Excel)</button>' +
       '<span class="pris-tabs"><button type="button" class="pris-tab' + (!_ucMesec ? ' on' : '') + '" data-ucobd="dan">Dan</button>' +
       '<button type="button" class="pris-tab' + (_ucMesec ? ' on' : '') + '" data-ucobd="mesec">Mesec</button></span></span></div>' +
-      '<div class="pris-datum"><input type="' + (_ucMesec ? 'month' : 'date') + '" id="ucDatum" value="' + (_ucMesec ? _ucDan.slice(0, 7) : _ucDan) + '"></div>' + tbl + '</div>';
+      '<div class="pris-datum"><input type="' + (_ucMesec ? 'month' : 'date') + '" id="ucDatum" value="' + (_ucMesec ? _ucDan.slice(0, 7) : _ucDan) + '">' +
+      ((_ucMesec ? (_ucDan.slice(0, 7) === danes10().slice(0, 7)) : (_ucDan === danes10())) ? '' : '<button type="button" class="dat-danes" id="ucDanes" title="Nazaj na danes">Danes</button>') +
+      '</div>' + tbl + '</div>';
 
     box.innerHTML = top + ev;
     var _svg3d = box.querySelector('.uc3d-svg'); if (_svg3d) uc3dAnimate(_svg3d, _ucDonutRange, _uc3dAnim);
@@ -1901,6 +1906,7 @@
     { var _le = box.querySelector('[data-uclesteur]'); if (_le) _le.addEventListener('click', function () { _ucLestEurSort = (_ucLestEurSort === 'desc' ? 'asc' : 'desc'); var l = box.querySelector('.uc-lest-eur-list'); if (l) l.innerHTML = ucLestEurRows(); this.textContent = (_ucLestEurSort === 'desc' ? 'Padajoče ↓' : 'Naraščajoče ↑'); }); }
     var _dm = $('ucDonutMesec'); if (_dm) _dm.addEventListener('change', function () { if (!this.value) return; _ucDonutMonth = this.value; _uc3dAnim = true; ucRender(); });
     var dat = $('ucDatum'); if (dat) dat.addEventListener('change', function () { var v = this.value || danes10(); if (v.length === 7) v += '-01'; _ucDan = v; ucRender(); });
+    { var _ud = $('ucDanes'); if (_ud) _ud.addEventListener('click', function () { _ucDan = danes10(); ucRender(); }); }
     box.querySelectorAll('[data-ucobd]').forEach(function (b) { b.addEventListener('click', function () { _ucMesec = (b.dataset.ucobd === 'mesec'); ucRender(); }); });
     var ib = box.querySelector('.uc-izvoz'); if (ib) ib.addEventListener('click', ucIzvoz);
     var _us = box.querySelector('.uc-sort'); if (_us) _us.addEventListener('change', function () { _ucSort = this.value; ucRender(); });
@@ -2684,20 +2690,33 @@
     }
     const od = $('fakOd'), doo = $('fakDo');
     if (od && !od.value) {
-      const z = new Date();
-      const prvi = new Date(z.getFullYear(), z.getMonth(), 1);
-      const pad = n => String(n).padStart(2, '0');
-      const iso = d => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
-      od.value = iso(prvi); doo.value = iso(z);
+      const d = _fakDefault();
+      od.value = d.od; doo.value = d.doo;
     }
     if (!risiFakture._wired) {
-      $('fakBtn').addEventListener('click', () => nalozifakture());
+      $('fakBtn').addEventListener('click', () => { nalozifakture(); _fakObdToggle(); });
+      var _fox = $('fakObdX'); if (_fox) _fox.addEventListener('click', function () { var d = _fakDefault(); if ($('fakOd')) $('fakOd').value = d.od; if ($('fakDo')) $('fakDo').value = d.doo; nalozifakture(); _fakObdToggle(); });
+      if ($('fakOd')) $('fakOd').addEventListener('change', _fakObdToggle);
+      if ($('fakDo')) $('fakDo').addEventListener('change', _fakObdToggle);
       var _fx = $('fakXlsxBtn'); if (_fx) _fx.addEventListener('click', () => fakIzvozModal('xlsx'));
       var _fp = $('fakPdfBtn'); if (_fp) _fp.addEventListener('click', () => fakIzvozModal('pdf'));
       risiFakture._wired = true;
     }
     risiHitreMesece();
     nalozifakture();
+    _fakObdToggle();
+  }
+  // Privzeto obdobje Faktur = tekoči mesec (1. → danes). Gumb × ponastavi nanj.
+  function _fakDefault() {
+    var z = new Date(), pad = function (n) { return String(n).padStart(2, '0'); };
+    var iso = function (d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); };
+    return { od: iso(new Date(z.getFullYear(), z.getMonth(), 1)), doo: iso(z) };
+  }
+  function _fakObdToggle() {
+    var x = $('fakObdX'); if (!x) return;
+    var d = _fakDefault();
+    var neDef = (($('fakOd') && $('fakOd').value) !== d.od) || (($('fakDo') && $('fakDo').value) !== d.doo);
+    x.classList.toggle('hidden', !neDef);
   }
   function risiHitreMesece() {
     const box = $('fakHitri');
@@ -2713,7 +2732,7 @@
     }
     box.innerHTML = izbire.map(m => `<button type="button" class="fak-chip" data-od="${m.od}" data-do="${m.doo}">${escape_(m.oznaka)}</button>`).join('');
     box.querySelectorAll('.fak-chip').forEach(b => b.addEventListener('click', () => {
-      $('fakOd').value = b.dataset.od; $('fakDo').value = b.dataset.do; nalozifakture();
+      $('fakOd').value = b.dataset.od; $('fakDo').value = b.dataset.do; nalozifakture(); _fakObdToggle();
     }));
   }
   // Zberi in izračunaj skupine po strankah za obdobje (orgIds: null/[] = vse, sicer seznam ID-jev).

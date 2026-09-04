@@ -171,6 +171,10 @@ input:focus,.field textarea:focus{border-color:var(--green-l);background:var(--s
 .notif-txt{font-size:.85rem;line-height:1.45;color:var(--mid);white-space:pre-wrap;word-break:break-word;}
 .notif-dat{font-size:.72rem;color:var(--mid);margin-top:6px;opacity:.85;}
 .notif-empty{padding:22px 16px;text-align:center;color:var(--mid);font-size:.86rem;}
+/* Ozek zaslon: obvestila pripni na vidno polje (sicer 340px panel uide čez levi rob). */
+@media(max-width:560px){
+  .notif-panel{position:fixed;top:calc(64px + env(safe-area-inset-top) + 6px);left:10px;right:10px;width:auto;max-width:none;max-height:min(72vh,460px);}
+}
 :root[data-theme="dark"] .i-moon{display:none;}
 :root[data-theme="dark"] .i-sun{display:inline-flex;}
 .link-btn{background:none;border:none;color:var(--mid);font-size:.82rem;
@@ -497,6 +501,7 @@ html[data-theme="dark"] .ur-popravek{background:#3a2e14;color:#e6b86b}
 html[data-theme="dark"] .ur-ustvarjeno{background:#14311f;color:#7fd3a0}
 
 /* ══════════ FAKTURE ══════════ */
+.fak-obd{display:flex;align-items:center;gap:8px;}
 .fak-lab{display:flex;align-items:center;gap:6px;font-size:.8rem;color:var(--mid);white-space:nowrap;margin:0;}
 .fak-lab input{width:auto;padding:9px 13px;border:1.5px solid var(--line);border-radius:9px;
   background:var(--bg);color:var(--ink);font-size:.9rem;}
@@ -1301,22 +1306,26 @@ html[data-view="grid"] #cenikList .sc-isolate .cgrp:not(.open){max-width:var(--t
 .uc-donut-row .uc-lest-eur .uc-lest-list{max-height:min(60vh,440px);}
 @media(max-width:820px){.uc-donut-row{grid-template-columns:1fr;}}
 .uc-page-head{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:14px;}
-.uc-page-title{font-size:1.4rem;font-weight:700;color:var(--ink);margin:0;line-height:1.1;}
+.uc-range-lbl{font-size:.9rem;font-weight:600;color:var(--mid);margin:0;line-height:1.2;text-transform:capitalize;}
 .uc-d3-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;}
 .uc-d3-ctrl{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
 .uc-d3-month{padding:7px 12px;border:1.5px solid var(--line);border-radius:100px;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:.85rem;}
 .uc-d3-month:focus{border-color:var(--green-l);outline:none;}
 .uc-d3-stage{width:100%;margin-top:6px;flex:1;min-height:300px;display:flex;align-items:center;justify-content:center;}
 .uc3d-svg{display:block;width:100%;height:100%;max-height:none;overflow:visible;}
-.uc3d-p,.uc3d-lab,.uc3d-lab-txt{transition:transform .22s cubic-bezier(.22,.61,.36,1);transform-box:view-box;transform-origin:0 0;pointer-events:none;}
-.uc3d-p{stroke:rgba(0,0,0,.28);stroke-width:.8px;stroke-linejoin:round;transition:filter .18s ease,stroke .18s ease,stroke-width .18s ease;}
+.uc3d-lab{pointer-events:none;}
+.uc3d-p{stroke:rgba(0,0,0,.28);stroke-width:.8px;stroke-linejoin:round;transition:filter .18s ease,stroke .18s ease,stroke-width .18s ease;pointer-events:none;}
 /* Hover: obroba + rahlo POTEMNI (light mode) — brez premikanja. */
 .uc3d-p.hot{stroke:rgba(0,0,0,.7);stroke-width:1.8px;filter:brightness(.92);}
 /* Dark mode: obroba svetla + rahlo POSVETLI. */
 :root[data-theme="dark"] .uc3d-p.hot,html[data-theme="dark"] .uc3d-p.hot{stroke:rgba(255,255,255,.72);filter:brightness(1.15);}
 .uc3d-hit{cursor:pointer;}
-.uc3d-lab.hot .uc3d-nm{fill:var(--ink);}
-.uc3d-lead{stroke:var(--mid);stroke-width:1;opacity:.55;fill:none;}
+/* Hover: besedilo se NE poveča — samo rahel poudarek (odstotek potemni, ime malenkost odebeli). */
+.uc3d-nm,.uc3d-pct{transition:fill .18s ease,font-weight .18s ease;}
+.uc3d-lab.hot .uc3d-nm{fill:var(--ink);font-weight:700;}
+.uc3d-lab.hot .uc3d-pct{fill:var(--ink);}
+.uc3d-lead{stroke:var(--mid);stroke-width:1;opacity:.55;fill:none;transition:opacity .18s ease;}
+.uc3d-lab.hot .uc3d-lead{opacity:.85;}
 .uc3d-nm{fill:var(--ink);font-family:var(--sans);font-size:18px;font-weight:600;}
 .uc3d-pct{fill:var(--mid);font-family:var(--mono);font-size:15px;}
 @media(max-width:560px){.uc3d-nm{font-size:22px;}.uc3d-pct{font-size:19px;}}
@@ -1372,7 +1381,10 @@ html[data-view="grid"] #cenikList .sc-isolate .cgrp:not(.open){max-width:var(--t
 .pris-nav{width:40px;height:40px;flex:0 0 auto;border:1.5px solid var(--line);border-radius:9px;background:var(--surface);color:var(--ink);display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;}
 .pris-nav svg{width:18px;height:18px;display:block;}
 .pris-nav:hover{border-color:var(--green-l);background:var(--green-m);}
-@media(max-width:560px){.pris-barvrsta{gap:8px}.pris-datum{flex:1}.pris-datum input{flex:1;min-width:0}}
+/* »Danes« — ponastavi datum na privzeto (današnji dan / tekoči mesec). */
+.dat-danes{flex:0 0 auto;height:40px;padding:0 14px;border:1.5px solid var(--line);border-radius:9px;background:var(--surface);color:var(--ink);font-family:var(--sans);font-size:.82rem;font-weight:600;cursor:pointer;white-space:nowrap;}
+.dat-danes:hover{border-color:var(--green-l);background:var(--green-m);}
+@media(max-width:560px){.pris-barvrsta{gap:8px}.pris-datum{flex:1;flex-wrap:wrap}.pris-datum input{flex:1;min-width:0}}
 .pris-tbl{width:100%;border-collapse:collapse;}
 .pris-tbl th{text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:var(--mid);font-weight:600;padding:6px 8px;border-bottom:1px solid var(--line);}
 .pris-tbl td{padding:9px 8px;border-bottom:1px solid var(--line);font-size:.9rem;color:var(--ink);vertical-align:middle;}
@@ -1428,11 +1440,12 @@ html[data-theme="dark"] .pris-chip-x:hover{background:rgba(255,138,122,.16);colo
   #content .arts > .meta{display:none;}
 }
 
-/* Mobilno: Fakture — »Od« in »Do« v isti vrstici, stranka in gumb pod njima */
+/* Mobilno: Fakture — »Od« in »Do« skupaj v isti vrstici, stranka in gumb pod njima */
 @media(max-width:760px){
   #sec-fakture .filtri{flex-direction:row;flex-wrap:wrap;align-items:stretch;gap:8px;}
-  #sec-fakture .filtri .fak-lab{flex:1 1 calc(50% - 4px);min-width:0;justify-content:center;}
-  #sec-fakture .filtri .fak-lab input{width:auto;min-width:0;flex:0 1 auto;max-width:100%;}
+  #sec-fakture .filtri .fak-obd{flex:1 1 100%;width:100%;gap:8px;}
+  #sec-fakture .filtri .fak-obd .fak-lab{flex:1 1 0;min-width:0;justify-content:flex-start;}
+  #sec-fakture .filtri .fak-obd .fak-lab input{flex:1 1 auto;min-width:0;width:auto;max-width:100%;}
   #sec-fakture .filtri .cs,
   #sec-fakture .filtri select,
   #sec-fakture .filtri #fakBtn{flex:1 1 100%;max-width:none;width:100%;}
@@ -1722,6 +1735,7 @@ html[data-theme="dark"] .pris-chip-x:hover{background:rgba(255,138,122,.16);colo
 
 /* ── Arhiv: obdobje od–do ─────────────────────────────────────────── */
 .arh-obd{display:inline-flex;align-items:center;gap:8px;}
+.arh-lab{display:inline-flex;align-items:center;gap:6px;font-size:.8rem;color:var(--mid);white-space:nowrap;margin:0;}
 .arh-obd .arh-dan{max-width:150px;min-width:0;height:44px;padding:0 12px;
   border:1.5px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink);
   font-family:var(--sans);font-size:16px;font-variant-numeric:tabular-nums;box-sizing:border-box;}
@@ -1737,8 +1751,9 @@ html[data-theme="dark"] .pris-chip-x:hover{background:rgba(255,138,122,.16);colo
 .arh-obd-x{flex:0 0 auto;width:30px;height:30px;border:none;background:var(--green-m);color:var(--ink);border-radius:100px;cursor:pointer;font-size:1.05rem;line-height:1;display:inline-flex;align-items:center;justify-content:center;padding:0;}
 .arh-obd-x.hidden{display:none;}
 @media(max-width:720px){
-  .filtri .arh-obd{display:flex;width:100%;}
-  .filtri .arh-obd .arh-dan{flex:1 1 0;max-width:none;width:auto;}
+  .filtri .arh-obd{display:flex;width:100%;gap:8px;}
+  .filtri .arh-obd .arh-lab{flex:1 1 0;min-width:0;}
+  .filtri .arh-obd .arh-lab .arh-dan{flex:1 1 auto;min-width:0;max-width:none;width:auto;}
 }
 
 /* ── enotna eflitte tipografija naslovov (vsepovsod) ─────────────────── */
