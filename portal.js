@@ -1537,7 +1537,7 @@
   function ucLestEurTot() {
     var o = ucDonutObdobje();
     if (_ucDonutEurKljuc !== o.key || _ucDonutEurTot == null) return '';
-    return '<span class="uc-lest-foot-k">Skupaj cena</span><b class="uc-lest-foot-v">' + cenaFmt(_ucDonutEurTot) + '</b>';
+    return '<span class="uc-lest-foot-k">Skupni prihodek</span><b class="uc-lest-foot-v">' + cenaFmt(_ucDonutEurTot) + '</b>';
   }
   async function ucNaloziPrihodekObseg() {
     var o = ucDonutObdobje();
@@ -1853,7 +1853,7 @@
       '<button type="button" class="pris-tab uc-lest-toggle" data-uclest>' + (_ucLestSort === 'desc' ? 'Padajoče ↓' : 'Naraščajoče ↑') + '</button></div>' +
       '<div class="uc-lest-list">' + lestVrst + '</div></div>';
     // Lestvica €/kg po strankah — DESNO od tortnega diagrama (na osnovi opranega perila).
-    var cardLestEur = '<div class="uc-card uc-lest-card uc-lest-eur"><div class="uc-lest-h"><h3 class="sec-h">Prihodek po strankah</h3>' +
+    var cardLestEur = '<div class="uc-card uc-lest-card uc-lest-eur"><div class="uc-lest-h"><h3 class="sec-h">Promet po strankah</h3>' +
       '<button type="button" class="pris-tab uc-lest-toggle" data-uclesteur>' + (_ucLestEurSort === 'desc' ? 'Padajoče ↓' : 'Naraščajoče ↑') + '</button></div>' +
       '<div class="uc-lest-list uc-lest-eur-list">' + ucLestEurRows() + '</div>' +
       '<div class="uc-lest-foot uc-lest-eur-tot">' + ucLestEurTot() + '</div></div>';
