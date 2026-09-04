@@ -16,10 +16,10 @@
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=2"/>
 <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png?v=2"/>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230a0a0a'/%3E%3Ctext x='32' y='42' font-family='Georgia,%27Times New Roman%27,serif' font-size='36' font-weight='700' text-anchor='middle'%3E%3Ctspan fill='%23e8f1eb'%3ES%3C/tspan%3E%3Ctspan fill='%236ed3a1'%3EC%3C/tspan%3E%3C/text%3E%3C/svg%3E"/>
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https://anrhtgbckxrccnafcmsz.supabase.co; connect-src 'self' https://anrhtgbckxrccnafcmsz.supabase.co wss://anrhtgbckxrccnafcmsz.supabase.co; base-uri 'none'; form-action 'none'; object-src 'none'"/>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://anrhtgbckxrccnafcmsz.supabase.co; connect-src 'self' https://anrhtgbckxrccnafcmsz.supabase.co wss://anrhtgbckxrccnafcmsz.supabase.co; base-uri 'none'; form-action 'none'; object-src 'none'"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Playfair+Display:wght@700;900&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Inter:wght@300..700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="portal.css"/>
 <style id="hexfx">
 .sc-hex{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;opacity:1}
@@ -102,6 +102,7 @@ html[data-theme="light"] .sc-hex{opacity:.5}
       <h1>Izberi profil</h1>
       <div class="pp-grid" id="ppGrid"></div>
       <div class="msg" id="ppMsg" role="status" aria-live="polite"></div>
+      <button class="pp-pass hidden" id="ppPass" type="button">Vpiši geslo namesto tega</button>
     </div>
     <div class="auth-box hidden" id="authBox">
       <p class="eyebrow">Prijava</p>

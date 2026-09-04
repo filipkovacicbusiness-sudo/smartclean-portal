@@ -1537,7 +1537,7 @@
   function ucLestEurTot() {
     var o = ucDonutObdobje();
     if (_ucDonutEurKljuc !== o.key || _ucDonutEurTot == null) return '';
-    return '<span class="uc-lest-foot-k">Skupni prihodek</span><b class="uc-lest-foot-v">' + cenaFmt(_ucDonutEurTot) + '</b>';
+    return '<span class="uc-lest-foot-k">Skupni promet</span><b class="uc-lest-foot-v">' + cenaFmt(_ucDonutEurTot) + '</b>';
   }
   async function ucNaloziPrihodekObseg() {
     var o = ucDonutObdobje();
