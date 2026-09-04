@@ -1501,7 +1501,7 @@
   var _ucLestSort = 'desc';   // lestvica kg/uro po dnevih: 'desc' padajoče / 'asc' naraščajoče
   var _ucLestEurSort = 'desc'; // lestvica €/kg po strankah: 'desc' padajoče / 'asc' naraščajoče
   // Prihodek po strankah za OBSEG diagrama (Mesec/3m/Vse) — ločeno od Evidence kg.
-  var _ucDonutEur = {}, _ucDonutEurTot = null, _ucDonutEurKljuc = null, _ucDonutEurLoading = false;
+  var _ucDonutFak = {}, _ucDonutEurTot = null, _ucDonutEurKljuc = null, _ucDonutEurLoading = false;
   function ucDonutObdobje() {
     var r = _ucDonutRange;
     if (r === 'mesec') {
@@ -1518,17 +1518,20 @@
      kg iz istega vira kot diagram (ucKgObseg), €/kg iz prihodka za isto obdobje. */
   function ucLestEurRows() {
     var o = ucDonutObdobje(), ready = _ucDonutEurKljuc === o.key;
-    if (!ready) return '<p class="u-sub" style="padding:10px 2px">Računam €/kg…</p>';
-    var map = ucKgObseg(_ucDonutRange) || {};
-    var arr = Object.keys(map).map(function (id) { return { id: id, ime: ORGIME[id] || '—', kg: map[id], eur: (_ucDonutEur[id] != null ? _ucDonutEur[id] : null) }; }).filter(function (x) { return x.kg > 0; });
-    if (!arr.length) return '<p class="u-sub" style="padding:10px 2px">Ni opranega perila v izbranem obdobju.</p>';
-    arr.sort(function (a, b) { var ea = a.eur == null ? -1 : a.eur, eb = b.eur == null ? -1 : b.eur; return _ucLestEurSort === 'asc' ? ea - eb : eb - ea; });
-    function eurKg(v) { return v == null ? '—' : (Math.round(v * 100) / 100).toFixed(2).replace('.', ','); }
+    if (!ready) return '<p class="u-sub" style="padding:10px 2px">Računam prihodek…</p>';
+    // Lestvica po SKUPNEM PRIHODKU (€) stranke; pod imenom kg in €/kg kot dodatek.
+    var arr = Object.keys(_ucDonutFak).map(function (id) {
+      var f = _ucDonutFak[id];
+      return { id: id, ime: ORGIME[id] || '—', kg: f.kg, neto: f.neto, eur: (f.kg > 0 ? f.neto / f.kg : null) };
+    }).filter(function (x) { return x.neto > 0 || x.kg > 0; });
+    if (!arr.length) return '<p class="u-sub" style="padding:10px 2px">Ni podatkov v izbranem obdobju.</p>';
+    arr.sort(function (a, b) { return _ucLestEurSort === 'asc' ? a.neto - b.neto : b.neto - a.neto; });
+    function eurKg(v) { return v == null ? '—' : (Math.round(v * 100) / 100).toFixed(2).replace('.', ',') + ' €/kg'; }
     return arr.map(function (o2, i) {
       return '<div class="uc-lest-row"><span class="uc-lest-rank">' + (i + 1) + '.</span>' +
         '<span class="uc-lest-dan">' + escape_(o2.ime) + '</span>' +
-        '<span class="uc-lest-sub">' + fmtKg(o2.kg) + '</span>' +
-        '<b class="uc-lest-v">' + eurKg(o2.eur) + '<span> €/kg</span></b></div>';
+        '<span class="uc-lest-sub">' + fmtKg(o2.kg) + ' · ' + eurKg(o2.eur) + '</span>' +
+        '<b class="uc-lest-v">' + cenaFmt(o2.neto) + '</b></div>';
     }).join('');
   }
   function ucLestEurTot() {
@@ -1543,9 +1546,9 @@
     var m = {}, tot = 0;
     try {
       var res = await fakZberi(o.od, o.do, null);
-      if (res && res.skupine) res.skupine.forEach(function (g) { if (g.kg > 0 && g.neto != null) m[g.org_id] = g.neto / g.kg; tot += g.neto || 0; });
+      if (res && res.skupine) res.skupine.forEach(function (g) { m[g.org_id] = { kg: g.kg || 0, neto: (g.neto != null ? g.neto : 0) }; tot += g.neto || 0; });
     } catch (e) {}
-    _ucDonutEur = m; _ucDonutEurTot = tot; _ucDonutEurKljuc = o.key; _ucDonutEurLoading = false;
+    _ucDonutFak = m; _ucDonutEurTot = tot; _ucDonutEurKljuc = o.key; _ucDonutEurLoading = false;
     var box = $('ucList'), sec = $('sec-statistika');
     if (box && sec && !sec.classList.contains('hidden')) {
       var l = box.querySelector('.uc-lest-eur-list'); if (l) l.innerHTML = ucLestEurRows();
@@ -1831,7 +1834,7 @@
       '<button type="button" class="pris-tab uc-lest-toggle" data-uclest>' + (_ucLestSort === 'desc' ? 'Padajoče ↓' : 'Naraščajoče ↑') + '</button></div>' +
       '<div class="uc-lest-list">' + lestVrst + '</div></div>';
     // Lestvica €/kg po strankah — DESNO od tortnega diagrama (na osnovi opranega perila).
-    var cardLestEur = '<div class="uc-card uc-lest-card uc-lest-eur"><div class="uc-lest-h"><h3 class="sec-h">€/kg po strankah</h3>' +
+    var cardLestEur = '<div class="uc-card uc-lest-card uc-lest-eur"><div class="uc-lest-h"><h3 class="sec-h">Prihodek po strankah</h3>' +
       '<button type="button" class="pris-tab uc-lest-toggle" data-uclesteur>' + (_ucLestEurSort === 'desc' ? 'Padajoče ↓' : 'Naraščajoče ↑') + '</button></div>' +
       '<div class="uc-lest-list uc-lest-eur-list">' + ucLestEurRows() + '</div>' +
       '<div class="uc-lest-foot uc-lest-eur-tot">' + ucLestEurTot() + '</div></div>';
