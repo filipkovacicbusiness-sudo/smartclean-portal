@@ -6643,6 +6643,30 @@
   }); }
   { var _bpl = $('bioPromoLater'); if (_bpl) _bpl.addEventListener('click', zapriPromoBio); }
 
+  /* ══════════ RAZKRIJ GESLO (očesce na vseh poljih za geslo) ══════════ */
+  var _OKO = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>';
+  var _OKO_OFF = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9.9 4.24A9.1 9.1 0 0 1 12 4c7 0 10 8 10 8a13.2 13.2 0 0 1-1.67 2.68"/><path d="M6.1 6.1A13.3 13.3 0 0 0 2 12s3 8 10 8a9.3 9.3 0 0 0 5.9-2.1"/><path d="M14.12 14.12A3 3 0 1 1 9.88 9.88"/><path d="m3 3 18 18"/></svg>';
+  function opremiGesla(koren) {
+    (koren || document).querySelectorAll('input[type="password"]').forEach(function (inp) {
+      if (inp._pwEye) return; inp._pwEye = true;
+      var wrap = document.createElement('span'); wrap.className = 'pw-wrap';
+      if (inp.parentNode) { inp.parentNode.insertBefore(wrap, inp); wrap.appendChild(inp); }
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'pw-eye';
+      b.setAttribute('aria-label', 'Pokaži geslo'); b.title = 'Pokaži geslo'; b.tabIndex = -1;
+      b.innerHTML = _OKO; wrap.appendChild(b);
+      b.addEventListener('click', function (e) {
+        e.preventDefault();
+        var pokazi = inp.type === 'password';
+        inp.type = pokazi ? 'text' : 'password';
+        b.innerHTML = pokazi ? _OKO_OFF : _OKO;
+        b.setAttribute('aria-label', pokazi ? 'Skrij geslo' : 'Pokaži geslo');
+        b.title = pokazi ? 'Skrij geslo' : 'Pokaži geslo';
+        try { inp.focus(); var n = inp.value.length; inp.setSelectionRange(n, n); } catch (_) {}
+      });
+    });
+  }
+  try { opremiGesla(document); } catch (e) {}
+
   /* ══════════ OBNOVITEV SEJE ══════════ */
   (async function () {
     if (!sb) return;
