@@ -6049,7 +6049,7 @@
     if (p && p.uid && bioPodprt() && bioVklopljen(p.uid)) {
       var m = $('ppMsg'); if (m) { m.className = 'msg show'; m.innerHTML = '<span class="bio-pulse"></span>Odkleni s Face ID / Touch ID …'; }
       try {
-        var ok = await bioOdkleni(p.uid);
+        var ok = await bioOdkleni(p.uid, email);
         if (!ok) { pokaziPrijavo(email); return; }
         if (m) { m.className = 'msg'; m.textContent = ''; }
         // Seja JE vzpostavljena (verifyOtp). Če izris aplikacije spodleti (prehodno),
@@ -6171,8 +6171,8 @@
   }
   // Prijava z biometrijo: strežnik preveri podpis in izda sejo (magiclink token_hash).
   // Vrne true ob uspehu; sejo vzpostavi verifyOtp. Ob prekinitvi/napaki vrže napako.
-  async function bioOdkleni(uid) {
-    var beg = await _fnWebauthn({ mode: 'auth-begin' });
+  async function bioOdkleni(uid, email) {
+    var beg = await _fnWebauthn({ mode: 'auth-begin', email: email || '' });
     var cred = await navigator.credentials.get(_waAuth2native(beg.options));
     var fin = await _fnWebauthn({ mode: 'auth-finish', handle: beg.handle, response: _waAuthJSON(cred) });
     if (!fin || !fin.token_hash) throw new Error('Prijava ni uspela.');
