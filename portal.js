@@ -1646,7 +1646,7 @@
     if (ostalo > 0.0001) segs.push({ ime: 'Ostalo', kg: ostalo, col: '#8a9099' });
     return { segs: segs, total: total };
   }
-  var _UC3D = { W: 580, H: 460, cx: 290, cy: 210, R: 150, r: 86, depth: 46 };
+  var _UC3D = { W: 580, H: 384, cx: 290, cy: 196, R: 150, r: 86, depth: 46 };
   var _UC3D_NEUTRAL = [91, 101, 112];               // #5b6570 — siva za začetni obroč
   function _uc3dPt(rad, ang, ky, cx, cy) { return [cx + rad * Math.cos(ang), cy + rad * ky * Math.sin(ang)]; }
   function _f2(a) { return a[0].toFixed(1) + ' ' + a[1].toFixed(1); }
@@ -1658,9 +1658,12 @@
   function _uc3dSub(p, a, b) { return Math.max(0, Math.min(1, (p - a) / (b - a))); }
   /* progres 0..1 → parametri koreografije: krog → razdelitev → barvanje+napisi → nagib v 3D */
   function _uc3dFrame(e) {
-    var pColor = _uc3dEoc(_uc3dSub(e, 0.30, 0.62));
-    var pTilt = _uc3dEio(_uc3dSub(e, 0.55, 1.0));
-    return { cmix: pColor, ky: 1 - (1 - 0.55) * pTilt, depth: _UC3D.depth * pTilt, labo: pColor, rot: pTilt * 0.10 };
+    // Postopna, dodelana animacija: 1) barve se napolnijo, 2) obroč se nagne v 3D,
+    // 3) napisi (leader lines) se pojavijo NAZADNJE — vsak korak s svojim easingom.
+    var pColor = _uc3dEoc(_uc3dSub(e, 0.08, 0.40));
+    var pTilt = _uc3dEio(_uc3dSub(e, 0.34, 0.82));
+    var pLab = _uc3dEoc(_uc3dSub(e, 0.74, 1.0));
+    return { cmix: pColor, ky: 1 - (1 - 0.55) * pTilt, depth: _UC3D.depth * pTilt, labo: pLab, rot: pTilt * 0.08 };
   }
   function uc3dSvgBuild(segs, total, e) {
     var P = _uc3dFrame(e);
@@ -1738,11 +1741,14 @@
         list.forEach(function (it) {
           var yy = Math.max(30, it.y), pct = Math.round(it.o.s.kg / total * 100);
           out += '<g class="uc3d-lab" data-i="' + it.i + '">';
+          // Vodilna črta in pika OSTANETA pri svoji barvi (se NE povečata ob hoverju).
           out += '<polyline class="uc3d-lead" points="' + it.p[0].toFixed(1) + ',' + it.p[1].toFixed(1) + ' ' + it.e1[0].toFixed(1) + ',' + it.e1[1].toFixed(1) + ' ' + elbow.toFixed(1) + ',' + yy.toFixed(1) + ' ' + xEdge.toFixed(1) + ',' + yy.toFixed(1) + '"/>';
           out += '<circle cx="' + it.p[0].toFixed(1) + '" cy="' + it.p[1].toFixed(1) + '" r="2.6" fill="' + it.o.s.col + '"/>';
+          // Samo besedilo se ob hoverju rahlo poveča (ločena skupina).
+          out += '<g class="uc3d-lab-txt">';
           out += '<text x="' + xEdge.toFixed(1) + '" y="' + (yy - 19).toFixed(1) + '" text-anchor="' + anchor + '" class="uc3d-nm">' + escape_(it.o.s.ime) + '</text>';
           out += '<text x="' + xEdge.toFixed(1) + '" y="' + (yy - 5).toFixed(1) + '" text-anchor="' + anchor + '" class="uc3d-pct">' + pct + ' %</text>';
-          out += '</g>';
+          out += '</g></g>';
         });
         return out;
       }
@@ -1760,8 +1766,11 @@
       });
       svgEl.querySelectorAll('.uc3d-lab[data-i="' + i + '"]').forEach(function (el) {
         el.classList.toggle('hot', on);
-        if (on) { var b = el.getBBox(), lx = b.x + b.width / 2, ly = b.y + b.height / 2; el.style.transform = 'translate(' + lx + 'px,' + ly + 'px) scale(1.14) translate(' + (-lx) + 'px,' + (-ly) + 'px)'; }
-        else el.style.transform = '';
+        // Poveča se SAMO besedilo (uc3d-lab-txt), ne pa vodilna črta/pika — sicer bi se
+        // pika premaknila z barve na sosednjo.
+        var txt = el.querySelector('.uc3d-lab-txt'); if (!txt) return;
+        if (on) { var b = txt.getBBox(), lx = b.x + b.width / 2, ly = b.y + b.height / 2; txt.style.transform = 'translate(' + lx + 'px,' + ly + 'px) scale(1.12) translate(' + (-lx) + 'px,' + (-ly) + 'px)'; }
+        else txt.style.transform = '';
       });
     }
     svgEl.querySelectorAll('.uc3d-hit').forEach(function (el) {
@@ -1776,8 +1785,14 @@
     var d = ucDonutSegs(range);
     if (!d.total) { svgEl.innerHTML = '<text x="' + (_UC3D.W / 2) + '" y="' + (_UC3D.H / 2) + '" text-anchor="middle" class="uc3d-nm">Ni podatkov za izbrano obdobje.</text>'; return; }
     var reduce = false; try { reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion:reduce)').matches; } catch (e) {}
-    if (!animate || reduce) { svgEl.innerHTML = uc3dSvgBuild(d.segs, d.total, 1); uc3dHover(svgEl); return; }
-    var t0 = 0, dur = 1900;
+    if (!animate || reduce) { try { svgEl.style.opacity = ''; svgEl.style.transform = ''; svgEl.style.transition = ''; } catch (e) {} svgEl.innerHTML = uc3dSvgBuild(d.segs, d.total, 1); uc3dHover(svgEl); return; }
+    // Nežen vstop: cel diagram se rahlo pojavi in zraste.
+    try {
+      svgEl.style.transformOrigin = '50% 56%'; svgEl.style.opacity = '0'; svgEl.style.transform = 'scale(.965)';
+      svgEl.style.transition = 'opacity .55s ease, transform .7s cubic-bezier(.22,.61,.36,1)';
+      requestAnimationFrame(function () { svgEl.style.opacity = '1'; svgEl.style.transform = 'none'; });
+    } catch (e) {}
+    var t0 = 0, dur = 2000;
     function frame(now) {
       if (!t0) t0 = now;
       var p = Math.min(1, (now - t0) / dur);
@@ -1810,12 +1825,16 @@
     if (!_ucDonutMonth) _ucDonutMonth = danes10().slice(0, 7);
     var rangeLbl = _ucDonutRange === 'vse' ? 'ves čas' : (_ucDonutRange === 'mesec' ? ucMesecIme(_ucDonutMonth) : 'zadnji 3 meseci');
     var mesecInput = _ucDonutRange === 'mesec' ? '<input type="month" id="ucDonutMesec" class="uc-d3-month" value="' + escape_(_ucDonutMonth) + '">' : '';
-    var cardDonut = '<div class="uc-card uc-donut3d-card">' +
-      '<div class="uc-d3-head"><div><h3 class="sec-h">Delež kg po strankah</h3><p class="u-sub" style="margin:-2px 0 0">' + rangeLbl + '</p></div>' +
-      '<div class="uc-d3-ctrl">' + mesecInput +
-      '<span class="pris-tabs"><button type="button" class="pris-tab' + (_ucDonutRange === 'mesec' ? ' on' : '') + '" data-ucrange="mesec">Mesec</button>' +
+    // Glava strani Statistika: en sam izbirnik obdobja (Mesec / 3 meseci / Vse) na vrhu.
+    var rangeTabs = '<span class="pris-tabs">' +
+      '<button type="button" class="pris-tab' + (_ucDonutRange === 'mesec' ? ' on' : '') + '" data-ucrange="mesec">Mesec</button>' +
       '<button type="button" class="pris-tab' + (_ucDonutRange === '3m' ? ' on' : '') + '" data-ucrange="3m">3 meseci</button>' +
-      '<button type="button" class="pris-tab' + (_ucDonutRange === 'vse' ? ' on' : '') + '" data-ucrange="vse">Vse</button></span></div></div>' +
+      '<button type="button" class="pris-tab' + (_ucDonutRange === 'vse' ? ' on' : '') + '" data-ucrange="vse">Vse</button></span>';
+    var pageHead = '<div class="uc-page-head"><div><h2 class="uc-page-title">Statistika</h2>' +
+      '<p class="u-sub" style="margin:3px 0 0">' + rangeLbl + '</p></div>' +
+      '<div class="uc-d3-ctrl">' + mesecInput + rangeTabs + '</div></div>';
+    var cardDonut = '<div class="uc-card uc-donut3d-card">' +
+      '<h3 class="sec-h">Delež kg po strankah</h3>' +
       '<div class="uc-d3-stage"><svg class="uc3d-svg" viewBox="-110 0 ' + (_UC3D.W + 220) + ' ' + _UC3D.H + '" preserveAspectRatio="xMidYMid meet"></svg></div></div>';
     var cardBars = '<div class="uc-card"><h3 class="sec-h">kg zadnjih 7 dni</h3><div class="bars-row" style="margin-top:14px">' +
       d7.map(function (o) { return '<div class="bars-col"><span class="bars-val">' + (o.kg ? Math.round(o.kg) : '') + '</span><div class="bars-bar" style="height:' + Math.round(o.kg / naj * 84) + 'px"></div><span class="bars-lab">' + o.lab + '</span></div>'; }).join('') + '</div></div>';
@@ -1841,7 +1860,7 @@
     // Zgoraj: diagram LEVO + lestvica €/kg po strankah DESNO. Spodaj: kg 7 dni + učinkovitost.
     // (Kartica »kg/uro po dnevih« odstranjena — nadomešča jo lestvica €/kg po strankah desno.)
     void cardLestvica;
-    var top = '<div class="uc-donut-row">' + cardDonut + cardLestEur + '</div>' +
+    var top = pageHead + '<div class="uc-donut-row">' + cardDonut + cardLestEur + '</div>' +
       '<div class="uc-top uc-top2">' + cardBars + cardProd + '</div>';
 
     var kljuc = _ucMesec ? _ucDan.slice(0, 7) : _ucDan;
