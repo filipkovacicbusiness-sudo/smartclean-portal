@@ -1,11 +1,3 @@
-/* ── Pisava: ENAKA kot na smartclean.si (napis »Enovita rešitev«) ─────────
-   Stack: Universal Sans → Instrument Sans → Inter. Če so datoteke Universal
-   Sans v /fonts/, se uporabijo (kot na spletni strani); sicer se pikselsko
-   enako izriše Instrument Sans (kot v priloženem index.html). */
-@font-face{font-family:'Universal Sans';src:url('/fonts/UniversalSans-Text-400.woff2') format('woff2');font-weight:400;font-style:normal;font-display:swap}
-@font-face{font-family:'Universal Sans';src:url('/fonts/UniversalSans-Text-550.woff2') format('woff2');font-weight:550;font-style:normal;font-display:swap}
-@font-face{font-family:'Universal Sans Display';src:url('/fonts/UniversalSans-Display-400.woff2') format('woff2');font-weight:400;font-style:normal;font-display:swap}
-@font-face{font-family:'Universal Sans Display';src:url('/fonts/UniversalSans-Display-550.woff2') format('woff2');font-weight:550;font-style:normal;font-display:swap}
 /* ── tokeni, podedovani s smartclean.si ───────────────────────────── */
 :root{
   /* eflitte light (faithful inversion) */
@@ -17,10 +9,11 @@
   --band:#0a0a0a; --white:#fff;
   --brand-rgb:10,10,10;
   --line:rgba(10,10,10,.12);
-  --serif:'Universal Sans','Instrument Sans','Inter',system-ui,-apple-system,sans-serif;
-  --sans:'Universal Sans','Instrument Sans','Inter',system-ui,-apple-system,sans-serif;
-  --mono:'Universal Sans','Instrument Sans','Inter',system-ui,-apple-system,sans-serif;
-  --wm:'Universal Sans','Instrument Sans','Inter',system-ui,-apple-system,sans-serif;
+  /* Privzeti font POVSOD = Archivo (font napisa »Enovita rešitev« na eflitteu). */
+  --sans:'Archivo','Instrument Sans','Inter',system-ui,-apple-system,sans-serif;
+  --serif:'Archivo','Instrument Sans','Inter',system-ui,-apple-system,sans-serif;
+  --mono:'Archivo','Instrument Sans','Inter',system-ui,-apple-system,sans-serif;
+  --wm:'Archivo','Instrument Sans','Inter',system-ui,-apple-system,sans-serif;
   --wm-blue:#2f66cc;
   --wm-ink:#0d1f17; --wm-green:#1a6644;
   --radius:14px;
