@@ -6050,9 +6050,15 @@
       var m = $('ppMsg'); if (m) { m.className = 'msg show'; m.innerHTML = '<span class="bio-pulse"></span>Odkleni s Face ID / Touch ID …'; }
       try {
         var ok = await bioOdkleni(p.uid);
-        if (ok) { if (m) { m.className = 'msg'; m.textContent = ''; } start(); return; }
-        pokaziPrijavo(email); return;
+        if (!ok) { pokaziPrijavo(email); return; }
+        if (m) { m.className = 'msg'; m.textContent = ''; }
+        // Seja JE vzpostavljena (verifyOtp). Če izris aplikacije spodleti (prehodno),
+        // NE vračaj na prijavo — seja je veljavna → osveži, obnovitev seje jo pobere.
+        try { await start(); }
+        catch (se) { try { console.warn('[bio] start() po uspešni prijavi ni uspel:', se); } catch (_) {} location.reload(); }
+        return;
       } catch (e) {
+        try { console.warn('[bio] prijava z biometrijo ni uspela:', (e && (e.name + ': ' + e.message)) || e); } catch (_) {}
         var preklic = /NotAllowed|AbortError|abort|timed|timeout|cancel/i.test(((e && e.name) || '') + ' ' + ((e && e.message) || ''));
         // Preklic (npr. zapreš Touch ID) → tiho nazaj na izbirnik, brez sporočila.
         // Prava napaka → geslo kot rezerva (prijazno, brez tehničnega besedila).
