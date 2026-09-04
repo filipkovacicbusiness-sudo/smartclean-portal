@@ -1418,6 +1418,9 @@ html[data-theme="dark"] .pris-chip-x:hover{background:rgba(255,138,122,.16);colo
 .pris-emp{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--line);}
 .pris-emp:last-of-type{border-bottom:none;}
 .pris-emp-act{display:inline-flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;}
+/* Oznaka povezanega uporabnika portala ob imenu zaposlenega. */
+.pris-upo-tag{display:inline-block;margin-left:8px;padding:1px 9px;border-radius:100px;background:var(--green-m);color:var(--ink);font-size:.72rem;font-weight:600;vertical-align:middle;font-variant-numeric:tabular-nums;}
+.pris-emp-act .cgrp-btn.on{border-color:var(--green-l);background:var(--green-m);color:var(--ink);}
 .pris-add{display:flex;gap:8px;align-items:stretch;margin-top:14px;}
 .pris-new{flex:1;min-width:0;padding:10px 13px;border:1.5px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink);font-size:16px;}
 .pris-new:focus{border-color:var(--green-l);outline:none;}

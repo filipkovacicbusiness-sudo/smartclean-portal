@@ -664,6 +664,7 @@
 
   /* ══════════ PRISOTNOST (registracija delovnega časa) ══════════ */
   var ZAPOSLENI = null, PRISDOG = null, _prisDan = null, _prisMesec = false;
+  var PRIS_UPO = [], PRIS_UPO_MAP = {};   // uporabniki portala (za povezavo zaposleni ↔ uporabnik)
   var _prisView = 'dan', _prisOseba = null;   // pogled: 'dan' | 'mesec' | 'oseba'
   function dniVMesecu(kljuc7) { var l = kljuc7.split('-'); return new Date(+l[0], +l[1], 0).getDate(); }
   // Premik obdobja: v dnevnem pogledu ±1 dan, v mesečnem/osebnem ±1 mesec.
@@ -687,8 +688,17 @@
   function trajanjeH(sek) { var m = Math.round(sek / 60); var h = Math.floor(m / 60); m = m % 60; if (!h) return m + 'min'; if (!m) return h + 'h'; return h + 'h ' + m + 'min'; }
 
   async function naloziPrisotnost() {
-    var e = await sb.from('employees').select('id,org_id,ime,card_token,active,created_at').order('ime');
+    var e = await sb.from('employees').select('id,org_id,ime,card_token,active,created_at,profile_id').order('ime');
+    if (e.error && /profile_id|column|schema/i.test(e.error.message || '')) {
+      e = await sb.from('employees').select('id,org_id,ime,card_token,active,created_at').order('ime');   // pred migracijo 48
+    }
     ZAPOSLENI = e.error ? [] : (e.data || []);
+    // Uporabniki portala (e-pošta + geslo) — za povezavo z zaposlenim. Napake tiho spregledamo.
+    try {
+      var pu = await sb.from('profiles').select('id,email,full_name').order('email');
+      PRIS_UPO = pu.error ? [] : (pu.data || []);
+    } catch (e2) { PRIS_UPO = []; }
+    PRIS_UPO_MAP = {}; PRIS_UPO.forEach(function (u) { PRIS_UPO_MAP[u.id] = u; });
     var meja = new Date(Date.now() - 62 * 24 * 3600 * 1000).toISOString();
     var r = await vseVrstice(function (a, b) {
       return sb.from('att_events').select('id,employee_id,terminal_id,ts,type,source,potrjeno').gte('ts', meja).order('ts', { ascending: true }).range(a, b);
@@ -999,9 +1009,13 @@
 
     // ── Blok 3: zaposleni ──
     var zapVrst = (ZAPOSLENI || []).map(function (z) {
-      return '<div class="pris-emp"><span class="pris-nm">' + escape_(z.ime) + (z.active ? '' : ' <span class="u-sub">(neaktiven)</span>') + '</span>' +
+      var upo = z.profile_id ? PRIS_UPO_MAP[z.profile_id] : null;
+      var upoLbl = upo ? (upo.email || upo.full_name || '') : '';
+      return '<div class="pris-emp"><span class="pris-nm">' + escape_(z.ime) + (z.active ? '' : ' <span class="u-sub">(neaktiven)</span>') +
+        (z.profile_id ? ' <span class="pris-upo-tag" title="Povezan uporabnik">' + escape_(upoLbl || 'povezan') + '</span>' : '') + '</span>' +
         '<span class="pris-emp-act">' +
         '<button type="button" class="cgrp-btn ghost" data-uredi="' + z.id + '">Uredi</button>' +
+        '<button type="button" class="cgrp-btn ghost' + (z.profile_id ? ' on' : '') + '" data-uporabnik="' + z.id + '">' + (z.profile_id ? 'Uporabnik ✓' : 'Poveži uporabnika') + '</button>' +
         '<button type="button" class="cgrp-btn ghost" data-karta="' + z.id + '">' + (z.card_token ? 'Nova kartica' : 'Dodeli kartico') + '</button>' +
         '<button type="button" class="cgrp-btn ghost" data-aktiv="' + z.id + '" data-v="' + (z.active ? '0' : '1') + '">' + (z.active ? 'Deaktiviraj' : 'Aktiviraj') + '</button>' +
         '<button type="button" class="cgrp-btn danger" data-izbrisi="' + z.id + '">Izbriši</button>' +
@@ -1027,6 +1041,7 @@
     box.querySelectorAll('[data-karta]').forEach(function (b) { b.addEventListener('click', function () { prisDodeliKarto(b.dataset.karta); }); });
     box.querySelectorAll('[data-aktiv]').forEach(function (b) { b.addEventListener('click', function () { prisAktiv(b.dataset.aktiv, b.dataset.v === '1'); }); });
     box.querySelectorAll('[data-uredi]').forEach(function (b) { b.addEventListener('click', function () { prisPreimenuj(b.dataset.uredi); }); });
+    box.querySelectorAll('[data-uporabnik]').forEach(function (b) { b.addEventListener('click', function () { prisPoveziUporabnika(b.dataset.uporabnik); }); });
     box.querySelectorAll('[data-izbrisi]').forEach(function (b) { b.addEventListener('click', function () { prisIzbrisi(b.dataset.izbrisi); }); });
     var nb = box.querySelector('.pris-add-btn'), ni = box.querySelector('.pris-new');
     if (nb && ni) { nb.addEventListener('click', function () { prisDodajZap(ni.value); }); ni.addEventListener('keydown', function (e) { if (e.key === 'Enter') prisDodajZap(ni.value); }); }
@@ -1080,6 +1095,33 @@
     var up = await sb.from('employees').update({ ime: novo }).eq('id', empId);
     if (up.error) { toast('Napaka: ' + up.error.message); return; }
     toast('Ime posodobljeno.'); await risiPrisotnost();
+  }
+  // Poveži zaposlenega (evidenca ur) z uporabnikom portala (e-pošta + geslo).
+  function prisPoveziUporabnika(empId) {
+    var z = (ZAPOSLENI || []).find(function (x) { return x.id === empId; }); if (!z) return;
+    if (!PRIS_UPO || !PRIS_UPO.length) { toast('Ni uporabnikov portala za povezavo.'); return; }
+    var opts = '<option value="">— brez povezave —</option>' + PRIS_UPO.map(function (u) {
+      var lbl = (u.full_name ? u.full_name + ' · ' : '') + (u.email || u.id);
+      return '<option value="' + u.id + '"' + (z.profile_id === u.id ? ' selected' : '') + '>' + escape_(lbl) + '</option>';
+    }).join('');
+    var back = document.createElement('div'); back.className = 'sc-modal-back';
+    back.innerHTML = '<div class="sc-modal" role="dialog" aria-modal="true"><h4>Poveži z uporabnikom — ' + escape_(z.ime) + '</h4>' +
+      '<p class="u-sub" style="margin:0 0 10px">Poveži zaposlenega z uporabnikom portala (tistim z e-pošto in geslom). Uporabnike urejaš v razdelku Uporabniki.</p>' +
+      '<label class="pris-lab">Uporabnik</label><select class="pu-sel sc-modal-input">' + opts + '</select>' +
+      '<div class="sc-modal-acts"><button type="button" class="sc-modal-btn ghost" data-no>Prekliči</button><button type="button" class="sc-modal-btn primary" data-yes>Shrani</button></div></div>';
+    document.body.appendChild(back);
+    requestAnimationFrame(function () { back.classList.add('show'); });
+    function zapri() { back.classList.remove('show'); setTimeout(function () { if (back.parentNode) back.parentNode.removeChild(back); }, 180); }
+    back.querySelector('[data-no]').addEventListener('click', zapri);
+    back.addEventListener('click', function (e) { if (e.target === back) zapri(); });
+    back.querySelector('[data-yes]').addEventListener('click', async function () {
+      var val = back.querySelector('.pu-sel').value || null;
+      if (val) { var ze = (ZAPOSLENI || []).find(function (x) { return x.profile_id === val && x.id !== empId; }); if (ze) { toast('Ta uporabnik je že povezan z: ' + ze.ime); return; } }
+      var up = await sb.from('employees').update({ profile_id: val }).eq('id', empId);
+      if (up.error) { toast('Napaka: ' + (/profile_id|column|schema/i.test(up.error.message || '') ? 'najprej zaženi 48_zaposleni_uporabnik.sql v Supabase.' : up.error.message)); return; }
+      logDodaj('Prisotnost', 'Urejeno', 'Zaposleni „' + z.ime + '" ' + (val ? 'povezan z uporabnikom ' + ((PRIS_UPO_MAP[val] && PRIS_UPO_MAP[val].email) || '') : 'odvezan od uporabnika'));
+      toast(val ? 'Uporabnik povezan.' : 'Povezava odstranjena.'); zapri(); await risiPrisotnost();
+    });
   }
   async function prisIzbrisi(empId) {
     var z = (ZAPOSLENI || []).find(function (x) { return x.id === empId; }); if (!z) return;
