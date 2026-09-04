@@ -1729,7 +1729,7 @@
       });
       function razporedi(list, xEdge, desno) {
         list.sort(function (a, b) { return a.y - b.y; });
-        var minGap = 44;
+        var minGap = 56;
         for (var i = 1; i < list.length; i++) if (list[i].y - list[i - 1].y < minGap) list[i].y = list[i - 1].y + minGap;
         var over = list.length ? (list[list.length - 1].y - (G.H - 16)) : 0;
         if (over > 0) list.forEach(function (it) { it.y -= over; });
@@ -1746,8 +1746,8 @@
           out += '<circle cx="' + it.p[0].toFixed(1) + '" cy="' + it.p[1].toFixed(1) + '" r="2.6" fill="' + it.o.s.col + '"/>';
           // Samo besedilo se ob hoverju rahlo poveča (ločena skupina).
           out += '<g class="uc3d-lab-txt">';
-          out += '<text x="' + xEdge.toFixed(1) + '" y="' + (yy - 19).toFixed(1) + '" text-anchor="' + anchor + '" class="uc3d-nm">' + escape_(it.o.s.ime) + '</text>';
-          out += '<text x="' + xEdge.toFixed(1) + '" y="' + (yy - 5).toFixed(1) + '" text-anchor="' + anchor + '" class="uc3d-pct">' + pct + ' %</text>';
+          out += '<text x="' + xEdge.toFixed(1) + '" y="' + (yy - 24).toFixed(1) + '" text-anchor="' + anchor + '" class="uc3d-nm">' + escape_(it.o.s.ime) + '</text>';
+          out += '<text x="' + xEdge.toFixed(1) + '" y="' + (yy - 6).toFixed(1) + '" text-anchor="' + anchor + '" class="uc3d-pct">' + pct + ' %</text>';
           out += '</g></g>';
         });
         return out;
