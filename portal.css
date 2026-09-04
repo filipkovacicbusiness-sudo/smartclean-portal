@@ -1400,7 +1400,7 @@ html[data-theme="dark"] .pris-chip-x:hover{background:rgba(255,138,122,.16);colo
   .pris-emp-act .cgrp-btn{width:100%;text-align:center;padding:9px 8px;}
   /* Prisotnost tabele: časi prihodov/odhodov ostanejo vidni; vodoravni scroll, imena v eni vrstici */
   #sec-prisotnost .pris-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -4px;}
-  #sec-prisotnost .pris-tbl{min-width:420px;}
+  #sec-prisotnost .pris-tbl-dan,#sec-prisotnost .pris-tbl-oseba{min-width:600px;}
   #sec-prisotnost .pris-tbl th{font-size:.64rem;padding:6px 6px;white-space:nowrap;}
   #sec-prisotnost .pris-tbl td{padding:8px 6px;font-size:.82rem;}
   #sec-prisotnost .pris-tbl td:first-child,#sec-prisotnost .pris-tbl th:first-child{white-space:nowrap;max-width:34vw;overflow:hidden;text-overflow:ellipsis;}
