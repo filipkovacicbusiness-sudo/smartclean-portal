@@ -6020,9 +6020,26 @@
     });
     var add = $('ppAdd');
     if (add) add.addEventListener('click', function () { pokaziPrijavo(''); });
+    // Stalni gumb pod karticami: »Prijava z geslom« — vedno na voljo (če biometrija ne dela ali je nočeš).
+    var pk = $('profilePicker');
+    if (pk) {
+      var lp = $('ppLoginPass');
+      if (!lp) {
+        lp = document.createElement('button');
+        lp.id = 'ppLoginPass'; lp.type = 'button'; lp.className = 'pp-loginpass';
+        lp.textContent = 'Prijava z geslom';
+        lp.style.cssText = 'display:block;margin:22px auto 0;background:none;border:none;color:var(--accent,#777);font-size:.92rem;cursor:pointer;text-decoration:underline;text-underline-offset:3px;padding:8px 12px;border-radius:8px;';
+        if (grid.parentNode) grid.parentNode.insertBefore(lp, grid.nextSibling);
+        lp.addEventListener('click', function () { pokaziPrijavo(''); });
+      }
+      lp.classList.remove('hidden');
+    }
   }
   function pokaziIzbirnik() {
     narisiIzbirnik();
+    // Sveže stanje: počisti sporočilo (stari, neuporabljeni gumb skrij, če obstaja v HTML).
+    var _pp = $('ppPass'); if (_pp) _pp.classList.add('hidden');
+    var _pm = $('ppMsg'); if (_pm) { _pm.className = 'msg'; _pm.textContent = ''; }
     $('profilePicker').classList.remove('hidden');
     $('authBox').classList.add('hidden');
   }
@@ -6060,8 +6077,8 @@
       } catch (e) {
         try { console.warn('[bio] prijava z biometrijo ni uspela:', (e && (e.name + ': ' + e.message)) || e); } catch (_) {}
         var preklic = /NotAllowed|AbortError|abort|timed|timeout|cancel/i.test(((e && e.name) || '') + ' ' + ((e && e.message) || ''));
-        // Preklic (npr. zapreš Touch ID) → tiho nazaj na izbirnik, brez sporočila.
-        // Prava napaka → geslo kot rezerva (prijazno, brez tehničnega besedila).
+        // Preklic → tiho nazaj na izbirnik (spodaj je stalni gumb »Prijava z geslom«).
+        // Prava napaka → naravnost na vpis gesla, prijazno.
         if (m) { m.className = 'msg'; m.textContent = ''; }
         if (!preklic) pokaziPrijavo(email, 'Poskusi znova ali vpiši geslo.');
         return;
