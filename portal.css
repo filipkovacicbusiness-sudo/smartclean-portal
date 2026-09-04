@@ -239,6 +239,18 @@ h3.sec:first-child{margin-top:0;}
 .panel h3.sec{margin:0 0 14px;}
 .pw-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
 .btn-narrow{width:auto;padding:11px 26px;margin-top:16px;}
+/* Programska oprema — čiste kartice z ikonami */
+.prog-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px;}
+.prog-card{border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);padding:24px 22px;display:flex;flex-direction:column;align-items:flex-start;gap:11px;transition:border-color .18s,box-shadow .18s;}
+.prog-card:hover{border-color:var(--mid);box-shadow:0 6px 22px rgba(10,10,10,.05);}
+.prog-ico{width:46px;height:46px;border-radius:13px;display:flex;align-items:center;justify-content:center;background:var(--green-m);color:var(--ink);}
+.prog-ico svg{width:24px;height:24px;}
+.prog-t{font-family:var(--serif);font-size:1.08rem;font-weight:700;margin:2px 0 0;color:var(--ink);}
+.prog-d{font-size:.86rem;color:var(--mid);line-height:1.5;margin:0;flex:1;}
+.prog-act{display:inline-flex!important;width:auto!important;align-items:center;gap:8px;margin-top:6px;padding:10px 20px;text-decoration:none;}
+.prog-act svg{width:16px;height:16px;flex:0 0 auto;}
+.prog-badge{margin-top:6px;font-size:.86rem;color:var(--mid);padding:10px 2px;}
+.prog-badge.off{color:var(--coral);}
 #pwPanel .msg{margin-top:14px;}
 @media(max-width:720px){.pw-grid{grid-template-columns:1fr;}.btn-narrow{width:100%;}}
 
@@ -1432,6 +1444,7 @@ html[data-theme="dark"] .pris-chip-x:hover{background:rgba(255,138,122,.16);colo
 .adm-item{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 2px;border-bottom:1px solid var(--line);}
 .adm-item:last-child{border-bottom:none;}
 .adm-item .adm-sec{font-size:.95rem;font-weight:600;color:var(--ink);}
+.adm-only{font-size:.66rem;font-weight:500;color:var(--mid);background:var(--green-m);padding:2px 8px;border-radius:100px;margin-left:8px;vertical-align:middle;}
 .adm-perms{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end;}
 .adm-pill{display:inline-flex;align-items:center;font-size:.78rem;font-weight:600;padding:6px 13px;border:1px solid var(--line);border-radius:100px;color:var(--mid);cursor:pointer;user-select:none;white-space:nowrap;transition:background .12s,color .12s,border-color .12s;}
 .adm-pill input{position:absolute;opacity:0;width:0;height:0;}

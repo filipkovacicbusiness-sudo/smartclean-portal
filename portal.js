@@ -324,7 +324,7 @@
   var ADMIN_RAZDELKI = [
     ['domov', 'Pregled'], ['dokumenti', 'Dokumenti'], ['prisotnost', 'Prisotnost'], ['stranke', 'Stranke'],
     ['arhiv', 'Arhiv'], ['artikli', 'Cenik & Artikli'], ['fakture', 'Fakture'], ['uporabniki', 'Uporabniki'],
-    ['statistika', 'Statistika'], ['aplikacija', 'Programska oprema'], ['katalog', 'Katalog']
+    ['statistika', 'Statistika'], ['konzola', 'Konzola'], ['aplikacija', 'Programska oprema'], ['katalog', 'Katalog']
   ];
   var ADMIN_VLOGE = ['super', 'admin', 'osebje', 'zaposleni', 'stranka'];
   var ADMIN_IMENA_PRIVZ = { super: 'Super admin', admin: 'Admin', osebje: 'Osebje', zaposleni: 'Zaposleni', stranka: 'Stranka' };
@@ -551,7 +551,7 @@
     }
     // Ostali: vidnost razdelkov po pravicah vloge (nastavljivo v Admin).
     var vl = mojaVloga(), out = [];
-    ADMIN_RAZDELKI.forEach(function (s) { if (rolePerm(vl, s[0], 'r')) out.push(s); });
+    ADMIN_RAZDELKI.forEach(function (s) { if (s[0] !== 'konzola' && rolePerm(vl, s[0], 'r')) out.push(s); });
     if (!out.some(function (x) { return x[0] === 'domov'; })) out.unshift(['domov', 'Pregled']);
     return out;
   }
@@ -4946,44 +4946,34 @@
     if (!p) return;
     var url = new URL(APK_POT, location.href).href;
 
-    var tabletPanel = '<div class="panel" id="apkTablet"><h3 class="sec-h">2. Aplikacija za tiskanje — tablica (Android)</h3><p class="u-sub">Preverjam …</p></div>';
+    var IKO_WEB = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M8.5 20.5h7M12 17v3.5"/></svg>';
+    var IKO_DL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5v11"/><path d="m7.5 10 4.5 4.5 4.5-4.5"/><path d="M4.5 20.5h15"/></svg>';
+    var IKO_TEL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M10.5 18.5h3"/></svg>';
+    var IKO_OUT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg>';
+    function _progCard(ico, naslov, opis, akcija, id) {
+      return '<div class="prog-card"' + (id ? ' id="' + id + '"' : '') + '>' +
+        '<span class="prog-ico">' + ico + '</span>' +
+        '<h3 class="prog-t">' + naslov + '</h3>' +
+        '<p class="prog-d">' + opis + '</p>' + akcija + '</div>';
+    }
+    var _odpri = '<a class="btn prog-act" href="mobile/" target="_blank" rel="noopener">' + IKO_OUT + 'Odpri</a>';
 
-    var telefonPanel =
-      '<div class="panel">' +
-        '<h3 class="sec-h">3. Aplikacija za tiskanje — telefon (iPhone in Android)</h3>' +
-        '<p class="uvoz-nav">Za vnos in tiskanje spremnih listov na telefonu. Odpre se v brskalniku; dodaj jo na začetni zaslon, da deluje kot prava aplikacija.</p>' +
-        '<p><a class="btn btn-narrow" href="mobile/" target="_blank" rel="noopener">Odpri aplikacijo za telefon</a></p>' +
-        '<div class="por"><div class="por-op">' +
-          '<b>iPhone (Safari):</b> tapni <b>Deli</b> (kvadratek s puščico) → podrsaj do <b>»Dodaj na začetni zaslon«</b> → <b>Dodaj</b>.<br><br>' +
-          '<b>Android (Chrome):</b> meni (⋮) → <b>»Dodaj na začetni zaslon«</b> oz. <b>»Namesti aplikacijo«</b>.' +
-        '</div></div>' +
+    p.innerHTML = '<div class="prog-grid">' +
+      _progCard(IKO_WEB, 'Spletni pogled', 'Deluje v vsakem brskalniku, brez namestitve — telefon, tablica ali računalnik.', _odpri) +
+      _progCard(IKO_DL, 'Tablica (Android)', 'Namestitveni paket za vnos in tiskanje spremnih listov na tablici.', '<span class="prog-badge">Preverjam …</span>', 'apkTablet') +
+      _progCard(IKO_TEL, 'Telefon', 'Odpre se v brskalniku; dodaj na začetni zaslon za občutek prave aplikacije.', _odpri) +
       '</div>';
-
-    var webPanel =
-      '<div class="panel">' +
-        '<h3 class="sec-h">1. Aplikacija za tiskanje — spletni pogled (Smartclean mobile)</h3>' +
-        '<p class="uvoz-nav">Deluje v katerem koli brskalniku, brez nameščanja — priročno za telefon, tablico ali računalnik.</p>' +
-        '<p><a class="btn btn-narrow" href="mobile/" target="_blank" rel="noopener">Odpri spletni pogled</a></p>' +
-      '</div>';
-
-    p.innerHTML = webPanel + tabletPanel + telefonPanel;
 
     fetch(url, { method: 'HEAD' }).then(function (r) {
       if (!r.ok) throw new Error('ni ga');
       var mb = Number(r.headers.get('content-length') || 0) / 1048576;
-      var t = document.getElementById('apkTablet');
-      if (t) t.innerHTML =
-        '<h3 class="sec-h">2. Aplikacija za tiskanje — tablica (Android)</h3>' +
-        '<p class="uvoz-nav">Za vnos in tiskanje spremnih listov na tablici. <b>To stran odpri na tablici</b> in tapni gumb — Android bo vprašal za dovoljenje za namestitev, dovoli ga.</p>' +
-        '<p><a class="btn btn-narrow" href="' + escape_(url) + '" download>Prenesi aplikacijo' +
-        (mb ? ' (' + mb.toFixed(1) + ' MB)' : '') + '</a></p>' +
-        '<p class="u-sub" style="margin-top:14px">Po namestitvi: koda 9999 → Admin → Portal — povezava.</p>';
+      var t = document.getElementById('apkTablet'); if (!t) return;
+      var b = t.querySelector('.prog-badge');
+      if (b) b.outerHTML = '<a class="btn prog-act" href="' + escape_(url) + '" download>' + IKO_DL + 'Prenesi' + (mb ? ' · ' + mb.toFixed(1) + ' MB' : '') + '</a>';
     }).catch(function () {
-      var t = document.getElementById('apkTablet');
-      if (t) t.innerHTML =
-        '<h3 class="sec-h">2. Aplikacija za tiskanje — tablica (Android)</h3>' +
-        '<div class="msg bad show">Namestitvenega paketa (<b>' + escape_(APK_POT) + '</b>) še ni na strežniku.</div>' +
-        '<p class="u-sub" style="margin-top:12px">Medtem deluje spletni pogled (točka 1), ki ga ni treba nameščati.</p>';
+      var t = document.getElementById('apkTablet'); if (!t) return;
+      var b = t.querySelector('.prog-badge');
+      if (b) b.outerHTML = '<span class="prog-badge off">Trenutno ni na voljo</span>';
     });
   }
 
@@ -6296,6 +6286,11 @@
         h += '<div class="adm-item adm-item-dok"><span class="adm-sec" title="' + escape_(ADMIN_OPISI.dokumenti) + '">Dokumenti</span><div class="adm-perms">' +
           _PRAV_DOK.map(function (p) { var on = o.perm[v].dokumenti[p[0]]; return '<label class="adm-pill' + (on ? ' on' : '') + (jeSuper ? ' dis' : '') + '"><input type="checkbox" data-s="dokumenti" data-p="' + p[0] + '"' + (on ? ' checked' : '') + (jeSuper ? ' disabled' : '') + '>' + p[1] + '</label>'; }).join('') +
           '</div></div>';
+      } else if (s[0] === 'konzola') {
+        // Konzola je na voljo SAMO lastniku — v seznamu je zaradi skladnosti s stranskim menijem,
+        // a je ni mogoče dodeliti drugim vlogam.
+        h += '<div class="adm-item"><span class="adm-sec" title="Konzola je na voljo samo lastniku.">Konzola <span class="adm-only">samo lastnik</span></span>' +
+          '<label class="adm-chk"><input type="checkbox" disabled' + (jeSuper ? ' checked' : '') + '><span></span></label></div>';
       } else {
         var on = o.perm[v][s[0]].r;
         h += '<div class="adm-item"><span class="adm-sec" title="' + escape_(ADMIN_OPISI[s[0]] || '') + '">' + escape_(s[1]) + '</span>' +
