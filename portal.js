@@ -1756,13 +1756,12 @@
     }
     return segOut.join('') + labels;
   }
-  /* hover: del kroga in njegov napis se rahlo povečata */
+  /* hover: segment se NE premika — obroби se s črto in rahlo posvetli/potemni (glede na temo). */
   function uc3dHover(svgEl) {
     if (!svgEl) return;
-    var cx = _UC3D.cx, cy = _UC3D.cy;
     function set(i, on) {
       svgEl.querySelectorAll('.uc3d-p[data-i="' + i + '"]').forEach(function (el) {
-        el.style.transform = on ? ('translate(' + cx + 'px,' + cy + 'px) scale(1.055) translate(' + (-cx) + 'px,' + (-cy) + 'px)') : '';
+        el.classList.toggle('hot', on);
       });
       svgEl.querySelectorAll('.uc3d-lab[data-i="' + i + '"]').forEach(function (el) {
         el.classList.toggle('hot', on);

@@ -63,9 +63,9 @@ html{overscroll-behavior:none;}
 .preg-status{display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:12px;margin:0 0 16px;font-size:.9rem;border:1px solid var(--line);}
 .preg-status b{font-weight:700;}
 .preg-status .ps-ik{flex:0 0 auto;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;}
-.preg-status.ps-ok{border-color:color-mix(in srgb,var(--st-ok) 40%,var(--line));background:color-mix(in srgb,var(--st-ok) 9%,var(--surface));}
+.preg-status.ps-ok{border-color:rgba(63,156,109,.4);border-color:color-mix(in srgb,var(--st-ok) 40%,var(--line));background:rgba(63,156,109,.09);background:color-mix(in srgb,var(--st-ok) 9%,var(--surface));}
 .preg-status.ps-ok .ps-ik{background:var(--st-ok);}
-.preg-status.ps-warn{border-color:color-mix(in srgb,var(--st-warn) 45%,var(--line));background:color-mix(in srgb,var(--st-warn) 10%,var(--surface));}
+.preg-status.ps-warn{border-color:rgba(194,149,31,.45);border-color:color-mix(in srgb,var(--st-warn) 45%,var(--line));background:rgba(194,149,31,.10);background:color-mix(in srgb,var(--st-warn) 10%,var(--surface));}
 .preg-status.ps-warn .ps-ik{background:var(--st-warn);}
 body{font-family:var(--sans);background:var(--bg);color:var(--ink);
   font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased;overscroll-behavior:none;}
@@ -81,7 +81,7 @@ button{-webkit-tap-highlight-color:transparent;}
 .wordmark{font-family:var(--wm);font-size:1.55rem;font-weight:700;letter-spacing:-.03em;line-height:1;color:var(--wm-ink);}
 .wordmark span{color:var(--wm-green);}
 /* Prijavni zaslon — glava kot v portalu (logo + preklop teme), prijava na sredini */
-.auth{min-height:100dvh;display:flex;flex-direction:column;background:var(--bg);color:var(--ink);position:relative;}
+.auth{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;background:var(--bg);color:var(--ink);position:relative;}
 .auth-top{border-bottom:1px solid var(--line);}
 .auth-top .topbar-in{justify-content:space-between;}
 .auth-top .wordmark{font-size:1.55rem;line-height:1.2;color:var(--wm-ink);}
@@ -140,7 +140,7 @@ input:focus,.field textarea:focus{border-color:var(--green-l);background:var(--s
 .pw-eye svg{display:block;}
 
 /* ══ APLIKACIJA ══ */
-.app{display:none;min-height:100dvh;flex-direction:column;}
+.app{display:none;min-height:100vh;min-height:100dvh;flex-direction:column;}
 .app.show{display:flex;}
 .topbar{position:sticky;top:0;z-index:20;background:var(--topbar-bg);
   backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
@@ -307,7 +307,7 @@ select:focus{border-color:var(--green-l);outline:none;}
 .shell{max-width:1240px;margin:0 auto;display:grid;grid-template-columns:212px 1fr;
   align-items:start;gap:0;}
 .side{position:sticky;top:65px;padding:22px 14px 12px;border-right:1px solid var(--line);
-  height:calc(100dvh - 65px);overflow-y:auto;display:flex;flex-direction:column;gap:2px;background:var(--bg);}
+  height:calc(100vh - 65px);height:calc(100dvh - 65px);overflow-y:auto;display:flex;flex-direction:column;gap:2px;background:var(--bg);}
 .side-foot{margin-top:auto;padding:18px 11px 0;display:flex;flex-direction:column;align-items:flex-start;gap:3px;}
 .side-ver{font-size:.62rem;letter-spacing:.04em;color:var(--mid);opacity:.6;}
 .side a.side-eflitte{display:block;padding:0;border-radius:0;background:none;font-size:.62rem;letter-spacing:.03em;
@@ -384,12 +384,12 @@ h3.sec-h{font-family:var(--serif);font-size:1.05rem;font-weight:700;margin:0 0 1
 .arh-chk.dis.leg{border-color:var(--mid);color:var(--mid);font-size:12px;}
 /* Status — nežno obarvan cel okvir (sledi zaobljenim robovom, brez rezanja).
    Zelena (potrjeno) je zadržana; rumena/rdeča bolj opazni ob scrollanju. */
-.arh-green .a-row{border-color:color-mix(in srgb, var(--st-ok) 30%, var(--line));background:color-mix(in srgb, var(--st-ok) 5%, var(--surface));}
-.arh-yellow .a-row{border-color:color-mix(in srgb, var(--st-warn) 55%, var(--line));background:color-mix(in srgb, var(--st-warn) 10%, var(--surface));}
-.arh-red .a-row{border-color:color-mix(in srgb, var(--st-bad) 55%, var(--line));background:color-mix(in srgb, var(--st-bad) 10%, var(--surface));}
-.arh-green .a-row:hover{border-color:color-mix(in srgb, var(--st-ok) 45%, var(--line));background:color-mix(in srgb, var(--st-ok) 9%, var(--surface));}
-.arh-yellow .a-row:hover{border-color:color-mix(in srgb, var(--st-warn) 72%, var(--line));background:color-mix(in srgb, var(--st-warn) 15%, var(--surface));}
-.arh-red .a-row:hover{border-color:color-mix(in srgb, var(--st-bad) 72%, var(--line));background:color-mix(in srgb, var(--st-bad) 15%, var(--surface));}
+.arh-green .a-row{border-color:rgba(63,156,109,.3);border-color:color-mix(in srgb, var(--st-ok) 30%, var(--line));background:rgba(63,156,109,.05);background:color-mix(in srgb, var(--st-ok) 5%, var(--surface));}
+.arh-yellow .a-row{border-color:rgba(194,149,31,.55);border-color:color-mix(in srgb, var(--st-warn) 55%, var(--line));background:rgba(194,149,31,.10);background:color-mix(in srgb, var(--st-warn) 10%, var(--surface));}
+.arh-red .a-row{border-color:rgba(207,107,92,.55);border-color:color-mix(in srgb, var(--st-bad) 55%, var(--line));background:rgba(207,107,92,.10);background:color-mix(in srgb, var(--st-bad) 10%, var(--surface));}
+.arh-green .a-row:hover{border-color:rgba(63,156,109,.45);border-color:color-mix(in srgb, var(--st-ok) 45%, var(--line));background:rgba(63,156,109,.09);background:color-mix(in srgb, var(--st-ok) 9%, var(--surface));}
+.arh-yellow .a-row:hover{border-color:rgba(194,149,31,.72);border-color:color-mix(in srgb, var(--st-warn) 72%, var(--line));background:rgba(194,149,31,.15);background:color-mix(in srgb, var(--st-warn) 15%, var(--surface));}
+.arh-red .a-row:hover{border-color:rgba(207,107,92,.72);border-color:color-mix(in srgb, var(--st-bad) 72%, var(--line));background:rgba(207,107,92,.15);background:color-mix(in srgb, var(--st-bad) 15%, var(--surface));}
 html[data-view="grid"] .lcell .a-row .arh-chk{position:absolute;top:12px;right:14px;}
 .a-det{display:none;padding:6px 18px 18px;border:1px solid var(--line);border-top:none;
   border-radius:0 0 var(--radius) var(--radius);background:var(--surface);margin-bottom:10px;}
@@ -1309,7 +1309,11 @@ html[data-view="grid"] #cenikList .sc-isolate .cgrp:not(.open){max-width:var(--t
 .uc-d3-stage{width:100%;margin-top:6px;flex:1;min-height:300px;display:flex;align-items:center;justify-content:center;}
 .uc3d-svg{display:block;width:100%;height:100%;max-height:none;overflow:visible;}
 .uc3d-p,.uc3d-lab,.uc3d-lab-txt{transition:transform .22s cubic-bezier(.22,.61,.36,1);transform-box:view-box;transform-origin:0 0;pointer-events:none;}
-.uc3d-p{stroke:rgba(0,0,0,.28);stroke-width:.8px;stroke-linejoin:round;}
+.uc3d-p{stroke:rgba(0,0,0,.28);stroke-width:.8px;stroke-linejoin:round;transition:filter .18s ease,stroke .18s ease,stroke-width .18s ease;}
+/* Hover: obroba + rahlo POTEMNI (light mode) — brez premikanja. */
+.uc3d-p.hot{stroke:rgba(0,0,0,.7);stroke-width:1.8px;filter:brightness(.92);}
+/* Dark mode: obroba svetla + rahlo POSVETLI. */
+:root[data-theme="dark"] .uc3d-p.hot,html[data-theme="dark"] .uc3d-p.hot{stroke:rgba(255,255,255,.72);filter:brightness(1.15);}
 .uc3d-hit{cursor:pointer;}
 .uc3d-lab.hot .uc3d-nm{fill:var(--ink);}
 .uc3d-lead{stroke:var(--mid);stroke-width:1;opacity:.55;fill:none;}
