@@ -322,7 +322,7 @@
   /* ══════════ VLOGE & PRAVICE (Admin — ureja samo lastnik) ══════════ */
   // Razdelki, katerih vidnost/pravice je mogoče nastavljati po vlogah.
   var ADMIN_RAZDELKI = [
-    ['domov', 'Pregled'], ['dokumenti', 'Dokumenti'], ['prisotnost', 'Prisotnost'], ['stranke', 'Stranke'],
+    ['domov', 'Domov'], ['dokumenti', 'Dokumenti'], ['prisotnost', 'Prisotnost'], ['stranke', 'Stranke'],
     ['arhiv', 'Arhiv'], ['artikli', 'Cenik & Artikli'], ['fakture', 'Fakture'], ['uporabniki', 'Uporabniki'],
     ['statistika', 'Statistika'], ['konzola', 'Konzola'], ['aplikacija', 'Programska oprema'], ['katalog', 'Katalog']
   ];
@@ -551,14 +551,14 @@
   function glavniMeni() {
     // Lastnik: vedno vse (Admin ureja pravice ostalih, sebi jih ne more odvzeti).
     if (JE_LASTNIK()) {
-      return [['domov', 'Pregled'], ['dokumenti', 'Dokumenti'], ['prisotnost', 'Prisotnost'], ['stranke', 'Stranke'],
+      return [['domov', 'Domov'], ['dokumenti', 'Dokumenti'], ['prisotnost', 'Prisotnost'], ['stranke', 'Stranke'],
         ['arhiv', 'Arhiv'], ['artikli', 'Cenik & Artikli'], ['fakture', 'Fakture'], ['uporabniki', 'Uporabniki'],
         ['statistika', 'Statistika'], ['konzola', 'Konzola'], ['aplikacija', 'Programska oprema']];
     }
     // Ostali: vidnost razdelkov po pravicah vloge (nastavljivo v Admin).
     var vl = mojaVloga(), out = [];
     ADMIN_RAZDELKI.forEach(function (s) { if (s[0] !== 'konzola' && rolePerm(vl, s[0], 'r')) out.push(s); });
-    if (!out.some(function (x) { return x[0] === 'domov'; })) out.unshift(['domov', 'Pregled']);
+    if (!out.some(function (x) { return x[0] === 'domov'; })) out.unshift(['domov', 'Domov']);
     return out;
   }
   function menijVrstni() { try { return JSON.parse(localStorage.getItem('sc-menu-order') || '[]') || []; } catch (e) { return []; } }
@@ -619,6 +619,8 @@
     document.body.classList.toggle('meni-odprt', on);
   });
   $('scrim').addEventListener('click', zapriMeni);
+  // Klik na logotip (zgoraj levo) → Domov.
+  { var _hl = $('homeLogo'); if (_hl) { _hl.style.cursor = 'pointer'; _hl.addEventListener('click', function () { pojdi('domov'); }); _hl.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pojdi('domov'); } }); } }
 
   /* ══════════ USMERJANJE ══════════ */
   function pojdi(kam) {
@@ -1204,33 +1206,65 @@
       toast('Vpis posodobljen.'); zapri(); await risiPrisotnost();
     });
   }
-  // Ročni vnos cele izmene (prihod + odhod) naenkrat — glavni način, dokler kartični sistem ni v uporabi.
+  // Ročni vnos ur — VEČ intervalov (izmen) na en dan; vmesni čas = pavza.
+  // Glavni način, dokler kartični sistem ni v uporabi.
   function prisRocni(empId, danArg) {
     var z = (ZAPOSLENI || []).find(function (x) { return x.id === empId; }); if (!z) return;
     var back = document.createElement('div'); back.className = 'sc-modal-back';
     var dan = (danArg && danArg.length === 10) ? danArg : ((_prisMesec || !_prisDan || _prisDan.length !== 10) ? danes10() : _prisDan);
+    function rowHtml(inv, outv) {
+      return '<div class="pris-int-row">' +
+        '<input type="time" class="pris-int-in sc-modal-input" value="' + (inv || '') + '" aria-label="Prihod">' +
+        '<span class="pris-int-sep">–</span>' +
+        '<input type="time" class="pris-int-out sc-modal-input" value="' + (outv || '') + '" aria-label="Odhod">' +
+        '<button type="button" class="pris-int-del" title="Odstrani interval" aria-label="Odstrani interval">×</button>' +
+        '</div>';
+    }
     back.innerHTML = '<div class="sc-modal" role="dialog" aria-modal="true"><h4>Ročni vnos ur — ' + escape_(z.ime) + '</h4>' +
       '<label class="pris-lab">Datum</label><input type="date" class="pris-r-dan sc-modal-input" value="' + dan + '">' +
-      '<div class="pris-r-cas"><div><label class="pris-lab">Prihod</label><input type="time" class="pris-r-in sc-modal-input"></div>' +
-      '<div><label class="pris-lab">Odhod <span class="u-sub">(neobvezno)</span></label><input type="time" class="pris-r-out sc-modal-input"></div></div>' +
-      '<p class="u-sub" style="margin:8px 0 0">Če pustiš odhod prazen, se zabeleži samo prihod (npr. če zaposleni še dela).</p>' +
+      '<label class="pris-lab" style="margin-top:12px">Intervali (izmene) — prihod – odhod</label>' +
+      '<div class="pris-intervali">' + rowHtml() + '</div>' +
+      '<button type="button" class="pris-int-add">+ Dodaj interval</button>' +
+      '<p class="u-sub" style="margin:10px 0 0">Vsak interval je ena izmena. Vmesni čas (npr. 9:00–13:00) šteje kot <b>pavza</b> in se NE všteje v ure. Zadnji odhod lahko pustiš prazen (izmena še traja).</p>' +
       '<div class="sc-modal-acts"><button type="button" class="sc-modal-btn ghost" data-no>Prekliči</button><button type="button" class="sc-modal-btn primary" data-yes>Shrani</button></div></div>';
     document.body.appendChild(back);
     requestAnimationFrame(function () { back.classList.add('show'); });
     function zapri() { back.classList.remove('show'); setTimeout(function () { if (back.parentNode) back.parentNode.removeChild(back); }, 180); }
     back.querySelector('[data-no]').addEventListener('click', zapri);
     back.addEventListener('click', function (e) { if (e.target === back) zapri(); });
+    var lst = back.querySelector('.pris-intervali');
+    back.querySelector('.pris-int-add').addEventListener('click', function () { lst.insertAdjacentHTML('beforeend', rowHtml()); });
+    lst.addEventListener('click', function (e) {
+      var b = e.target.closest('.pris-int-del'); if (!b) return;
+      var row = b.closest('.pris-int-row'), vse = lst.querySelectorAll('.pris-int-row');
+      if (vse.length > 1) row.parentNode.removeChild(row);
+      else { row.querySelector('.pris-int-in').value = ''; row.querySelector('.pris-int-out').value = ''; }
+    });
     back.querySelector('[data-yes]').addEventListener('click', async function () {
       var d = back.querySelector('.pris-r-dan').value;
-      var vin = back.querySelector('.pris-r-in').value;
-      var vout = back.querySelector('.pris-r-out').value;
-      if (!d || !vin) { toast('Vpiši datum in prihod.'); return; }
-      if (vout && vout <= vin) { toast('Odhod mora biti za prihodom.'); return; }
-      var rows = [{ org_id: z.org_id, employee_id: z.id, type: 'in', source: 'manual', ts: new Date(d + 'T' + vin).toISOString() }];
-      if (vout) rows.push({ org_id: z.org_id, employee_id: z.id, type: 'out', source: 'manual', ts: new Date(d + 'T' + vout).toISOString() });
-      var ins = await sb.from('att_events').insert(rows);
+      if (!d) { toast('Vpiši datum.'); return; }
+      var rows = [].slice.call(lst.querySelectorAll('.pris-int-row')), intervali = [];
+      for (var i = 0; i < rows.length; i++) {
+        var vin = rows[i].querySelector('.pris-int-in').value, vout = rows[i].querySelector('.pris-int-out').value;
+        if (!vin && !vout) continue;                                  // prazna vrstica → preskoči
+        if (!vin) { toast('Vsak interval potrebuje prihod.'); return; }
+        if (vout && vout <= vin) { toast('Odhod mora biti za prihodom (' + vin + '–' + vout + ').'); return; }
+        intervali.push({ in: vin, out: vout });
+      }
+      if (!intervali.length) { toast('Vpiši vsaj en interval.'); return; }
+      intervali.sort(function (a, b) { return a.in < b.in ? -1 : 1; });
+      for (var k = 1; k < intervali.length; k++) {                    // prekrivanje ni dovoljeno
+        if (intervali[k - 1].out && intervali[k].in < intervali[k - 1].out) { toast('Intervala se prekrivata — popravi ure.'); return; }
+      }
+      var vstavi = [];
+      intervali.forEach(function (iv) {
+        vstavi.push({ org_id: z.org_id, employee_id: z.id, type: 'in', source: 'manual', ts: new Date(d + 'T' + iv.in).toISOString() });
+        if (iv.out) vstavi.push({ org_id: z.org_id, employee_id: z.id, type: 'out', source: 'manual', ts: new Date(d + 'T' + iv.out).toISOString() });
+      });
+      var ins = await sb.from('att_events').insert(vstavi);
       if (ins.error) { toast('Napaka: ' + ins.error.message); return; }
-      toast('Ročni vnos shranjen (' + (vout ? 'prihod + odhod' : 'samo prihod') + ').'); zapri(); await risiPrisotnost();
+      try { logDodaj('Prisotnost', 'Ročni vnos', z.ime + ' · ' + d + ' · ' + intervali.map(function (iv) { return iv.in + '–' + (iv.out || '…'); }).join(', ')); } catch (e) {}
+      toast('Vpisano · ' + intervali.length + ' ' + (intervali.length === 1 ? 'interval' : 'intervalov') + '.'); zapri(); await risiPrisotnost();
     });
   }
 
@@ -1715,7 +1749,8 @@
     var pLab = _uc3dEoc(_uc3dSub(e, 0.74, 1.0));
     return { cmix: pColor, ky: 1 - (1 - 0.55) * pTilt, depth: _UC3D.depth * pTilt, labo: pLab, rot: pTilt * 0.08 };
   }
-  function uc3dSvgBuild(segs, total, e) {
+  function uc3dSvgBuild(segs, total, e, opts) {
+    opts = opts || {};
     var P = _uc3dFrame(e);
     var G = _UC3D, cx = G.cx, cy = G.cy, R = G.R, r = G.r;
     var ky = P.ky, depth = P.depth, cmix = P.cmix, labo = P.labo, rot = P.rot || 0;
@@ -1763,13 +1798,25 @@
     var hits = arr.map(function (o, i) {
       var large = (o.a1 - o.a0) > Math.PI ? 1 : 0;
       var o0 = _uc3dPt(R, o.a0, ky, cx, cy), o1 = _uc3dPt(R, o.a1, ky, cx, cy), i1 = _uc3dPt(r, o.a1, ky, cx, cy), i0 = _uc3dPt(r, o.a0, ky, cx, cy);
-      return '<path class="uc3d-hit" data-i="' + i + '" fill="transparent" d="M' + _f2(o0) + ' A' + R + ' ' + (R * ky).toFixed(1) + ' 0 ' + large + ' 1 ' + _f2(o1) +
+      var d = '<path class="uc3d-hit" data-i="' + i + '" fill="transparent" d="M' + _f2(o0) + ' A' + R + ' ' + (R * ky).toFixed(1) + ' 0 ' + large + ' 1 ' + _f2(o1) +
         ' L' + _f2(i1) + ' A' + r + ' ' + (r * ky).toFixed(1) + ' 0 ' + large + ' 0 ' + _f2(i0) + ' Z"/>';
+      // Pokrij tudi navpične stene (3D rob) — sicer se hover na robu ploskve ne sproži
+      // in ob prehodu vrh↔stena utripa. Ista data-i → isti segment.
+      if (depth > 0.5) {
+        subArcs(o.a0, o.a1).forEach(function (sa) {
+          var spredaj = Math.sin((sa[0] + sa[1]) / 2) > 0;
+          var rad = spredaj ? R : r, lw = (sa[1] - sa[0]) > Math.PI ? 1 : 0, rr = (rad * ky).toFixed(1);
+          var p0 = _uc3dPt(rad, sa[0], ky, cx, cy), p1 = _uc3dPt(rad, sa[1], ky, cx, cy), b1 = [p1[0], p1[1] + depth], b0 = [p0[0], p0[1] + depth];
+          d += '<path class="uc3d-hit" data-i="' + i + '" fill="transparent" d="M' + _f2(p0) + ' A' + rad + ' ' + rr + ' 0 ' + lw + ' 1 ' + _f2(p1) +
+            ' L' + _f2(b1) + ' A' + rad + ' ' + rr + ' 0 ' + lw + ' 0 ' + _f2(b0) + ' Z"/>';
+        });
+      }
+      return d;
     }).join('');
     var segOut = [backW.join('') + tops.join('') + frontW.join('') + hits];
     // napisi na črtah (leader lines) — levo/desno, brez prekrivanja
     var labels = '';
-    if (labo > 0.01) {
+    if (labo > 0.01 && !opts.hideLabels) {
       var right = [], left = [];
       arr.forEach(function (o, i) {
         var mid = o.mid;
@@ -1777,6 +1824,11 @@
         var desno = Math.cos(mid) >= 0;
         (desno ? right : left).push({ o: o, i: i, p: p, e1: e1, y: e1[1] });
       });
+      // Elegantna pojavitev OD LEVE PROTI DESNI: zamik po x-poziciji pike na diagramu.
+      if (opts.sweep) {
+        right.concat(left).slice().sort(function (a, b) { return a.p[0] - b.p[0]; })
+          .forEach(function (it, k) { it._d = 110 + k * 85; });
+      }
       function razporedi(list, xEdge, desno) {
         list.sort(function (a, b) { return a.y - b.y; });
         var minGap = 56;
@@ -1790,7 +1842,7 @@
         var anchor = desno ? 'end' : 'start';
         list.forEach(function (it) {
           var yy = Math.max(30, it.y), pct = Math.round(it.o.s.kg / total * 100);
-          out += '<g class="uc3d-lab" data-i="' + it.i + '">';
+          out += '<g class="uc3d-lab' + (opts.sweep ? ' sweep' : '') + '" data-i="' + it.i + '"' + (opts.sweep ? ' style="--d:' + (it._d || 0) + 'ms"' : '') + '>';
           // Vodilna črta in pika OSTANETA pri svoji barvi (se NE povečata ob hoverju).
           out += '<polyline class="uc3d-lead" points="' + it.p[0].toFixed(1) + ',' + it.p[1].toFixed(1) + ' ' + it.e1[0].toFixed(1) + ',' + it.e1[1].toFixed(1) + ' ' + elbow.toFixed(1) + ',' + yy.toFixed(1) + ' ' + xEdge.toFixed(1) + ',' + yy.toFixed(1) + '"/>';
           out += '<circle cx="' + it.p[0].toFixed(1) + '" cy="' + it.p[1].toFixed(1) + '" r="2.6" fill="' + it.o.s.col + '"/>';
@@ -1837,13 +1889,19 @@
       svgEl.style.transition = 'opacity .55s ease, transform .7s cubic-bezier(.22,.61,.36,1)';
       requestAnimationFrame(function () { svgEl.style.opacity = '1'; svgEl.style.transform = 'none'; });
     } catch (e) {}
-    var t0 = 0, dur = 2000;
+    var t0 = 0, dur = 1600;
     function frame(now) {
       if (!t0) t0 = now;
       var p = Math.min(1, (now - t0) / dur);
-      svgEl.innerHTML = uc3dSvgBuild(d.segs, d.total, p);
-      if (p < 1) { _uc3dRAF = requestAnimationFrame(frame); }
-      else { _uc3dRAF = null; uc3dHover(svgEl); }   // po animaciji poveži hover
+      if (p < 1) {
+        // Med sestavljanjem obroča napisov NE rišemo — pojavijo se šele nato, od leve proti desni.
+        svgEl.innerHTML = uc3dSvgBuild(d.segs, d.total, p, { hideLabels: true });
+        _uc3dRAF = requestAnimationFrame(frame);
+      } else {
+        _uc3dRAF = null;
+        svgEl.innerHTML = uc3dSvgBuild(d.segs, d.total, 1, { sweep: true });   // napisi zaplavajo od leve proti desni
+        uc3dHover(svgEl);
+      }
     }
     _uc3dRAF = requestAnimationFrame(frame);
   }
