@@ -2675,9 +2675,9 @@
       </div>
       <label class="ur-f"><span>Izdal (samodejno — prijavljeni uporabnik)</span><input type="text" data-izdal value="${escape_(JAZIME || '')}" readonly style="opacity:.6;cursor:not-allowed"></label>
       <div class="ur-f"><span>Vrsta prevoza</span>${segPrevoz('redni')}</div>
-      <p class="u-sub" style="margin:10px 0 4px">Postavke — izberi artikel (z ID) iz kataloga stranke</p>
+      <p class="u-sub" style="margin:10px 0 4px">Postavke — seznam se samodejno napolni z artikli stranke; vpiši samo količine. Prazne se ne shranijo.</p>
       <div data-postavke></div>
-      <button type="button" class="ur-add" data-dodaj>+ Dodaj postavko</button>
+      <button type="button" class="ur-add" data-dodaj>+ Dodaj postavko (izven seznama)</button>
       <div class="u-acts" style="margin-top:14px"><button type="button" class="ur-save" data-shrani>Ustvari</button><button type="button" data-preklici>Prekliči</button></div>
       <p class="u-sub ur-msg" data-msg></p></div>`;
     const pBox = box.querySelector('[data-postavke]');
@@ -2706,12 +2706,22 @@
       pBox.appendChild(row);
       osveziKg();
     };
-    dodajVrstico();
+    // »Premade« seznam: ob izbiri stranke se postavke samodejno napolnijo z VSEMI
+    // artikli iz kataloga te stranke (brez količin) — uporabnik samo vpiše številke.
+    // Nov artikel, dodan stranki, se samodejno pojavi tu naslednjič. Prazne vrstice se ob shranjevanju preskočijo.
+    const napolniPremade = () => {
+      pBox.innerHTML = '';
+      const arts = box._arts || [];
+      if (!arts.length) { dodajVrstico(); return; }     // ni izbrane stranke / prazen katalog → ena prazna vrstica
+      arts.forEach(function (a) { if (a.name) dodajVrstico(a.name, ''); });
+      osveziKg();
+    };
+    napolniPremade();
     box.querySelector('[data-dodaj]').addEventListener('click', () => dodajVrstico());
     box.querySelector('[data-preklici]').addEventListener('click', () => { box.innerHTML = ''; box.classList.remove('show'); });
     box.querySelector('[data-shrani]').addEventListener('click', () => shraniNovList(box));
     wireSeg(box);
-    { const _os = box.querySelector('[data-org]'); if (_os) _os.addEventListener('change', async () => { await nalozArtSez(box); box.querySelectorAll('.ur-post [data-pn]').forEach(function (sel) { napolniPn(sel, sel.value); }); osveziKgPrikaz(box); }); }
+    { const _os = box.querySelector('[data-org]'); if (_os) _os.addEventListener('change', async () => { await nalozArtSez(box); napolniPremade(); osveziKgPrikaz(box); }); }
     box.classList.add('show');
     box.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
@@ -2738,7 +2748,8 @@
         sifra: opt && opt.dataset.sifra ? parseInt(opt.dataset.sifra, 10) : null,
         kosov: parseInt(r.querySelector('[data-pk]').value, 10) || 0
       };
-    }).filter(p => p.naziv));
+    }).filter(p => p.naziv && p.kosov > 0));   // premade prazne vrstice (brez količine) preskočimo
+    if (!postavke.length) { msg.textContent = 'Vpiši količino vsaj pri enem artiklu.'; return; }
     msg.textContent = 'Ustvarjam …';
     try {
       const { data: arts } = await sb.from('articles').select('id,name').eq('org_id', org_id);

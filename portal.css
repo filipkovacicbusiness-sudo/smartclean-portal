@@ -398,10 +398,11 @@ html[data-view="grid"] .lcell .a-row .arh-chk{position:absolute;top:12px;right:1
 .a-det{display:none;padding:6px 18px 18px;border:1px solid var(--line);border-top:none;
   border-radius:0 0 var(--radius) var(--radius);background:var(--surface);margin-bottom:10px;}
 .a-det.show{display:block;}
-/* Postavke: pregledna mreža (ime levo, količina desno, tanka ločnica) namesto stolpcev. */
-.a-det ul{list-style:none;display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:0 30px;margin:4px 0 2px;}
+/* Postavke: pregledni stolpci — vrstni red najprej NAVZDOL, nato v nov stolpec desno
+   (CSS multicol). Ime levo, količina krepko desno, tanka ločnica pod vsako postavko. */
+.a-det ul{list-style:none;column-width:230px;column-gap:30px;margin:4px 0 2px;}
 .a-det li{font-size:.9rem;padding:7px 0;display:flex;align-items:baseline;justify-content:space-between;gap:12px;
-  color:var(--ink);border-bottom:1px solid var(--line);max-width:none;}
+  color:var(--ink);border-bottom:1px solid var(--line);max-width:none;break-inside:avoid;-webkit-column-break-inside:avoid;}
 .a-det li span{min-width:0;overflow-wrap:anywhere;}
 .a-det li b{color:var(--ink);font-weight:700;font-variant-numeric:tabular-nums;flex:0 0 auto;}
 .a-row[aria-expanded="true"] .chev{transform:rotate(90deg);}
@@ -424,7 +425,6 @@ html[data-view="grid"] .lcell .a-row .arh-chk{position:absolute;top:12px;right:1
   .a-row{grid-template-columns:26px 100px 1fr auto 20px;gap:10px;}
   .a-row .a-cli{display:none;}
   .a-row .num{white-space:nowrap;font-size:.8rem;}
-  .a-det ul{columns:1;}
   .a-det li{max-width:none;}
 }
 @media(max-width:520px){
