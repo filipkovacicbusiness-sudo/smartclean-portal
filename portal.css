@@ -398,10 +398,12 @@ html[data-view="grid"] .lcell .a-row .arh-chk{position:absolute;top:12px;right:1
 .a-det{display:none;padding:6px 18px 18px;border:1px solid var(--line);border-top:none;
   border-radius:0 0 var(--radius) var(--radius);background:var(--surface);margin-bottom:10px;}
 .a-det.show{display:block;}
-.a-det ul{list-style:none;columns:2;column-gap:26px;}
-.a-det li{font-size:.86rem;padding:3px 0;break-inside:avoid;color:var(--mid);
-  display:flex;justify-content:space-between;gap:16px;max-width:340px;}
-.a-det li b{color:var(--ink);font-weight:500;font-variant-numeric:tabular-nums;}
+/* Postavke: pregledna mreža (ime levo, količina desno, tanka ločnica) namesto stolpcev. */
+.a-det ul{list-style:none;display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:0 30px;margin:4px 0 2px;}
+.a-det li{font-size:.9rem;padding:7px 0;display:flex;align-items:baseline;justify-content:space-between;gap:12px;
+  color:var(--ink);border-bottom:1px solid var(--line);max-width:none;}
+.a-det li span{min-width:0;overflow-wrap:anywhere;}
+.a-det li b{color:var(--ink);font-weight:700;font-variant-numeric:tabular-nums;flex:0 0 auto;}
 .a-row[aria-expanded="true"] .chev{transform:rotate(90deg);}
 
 @media(max-width:900px){
@@ -1403,7 +1405,14 @@ html[data-view="grid"] #cenikList .sc-isolate .cgrp:not(.open){max-width:var(--t
 /* »Danes« — ponastavi datum na privzeto (današnji dan / tekoči mesec). */
 .dat-danes{flex:0 0 auto;height:40px;padding:0 14px;border:1.5px solid var(--line);border-radius:9px;background:var(--surface);color:var(--ink);font-family:var(--sans);font-size:.82rem;font-weight:600;cursor:pointer;white-space:nowrap;}
 .dat-danes:hover{border-color:var(--green-l);background:var(--green-m);}
-@media(max-width:560px){.pris-barvrsta{gap:8px}.pris-datum{flex:1;flex-wrap:wrap}.pris-datum input{flex:1;min-width:0}}
+/* Mobilno: datum-navigator v ENI vrstici (‹ datum ›), zavihki polna širina spodaj. */
+@media(max-width:560px){
+  .pris-barvrsta{flex-direction:column;align-items:stretch;gap:10px;}
+  .pris-datum{flex-wrap:nowrap;width:100%;gap:8px;}
+  .pris-datum input{flex:1 1 auto;min-width:0;}
+  .pris-tabs{display:flex;width:100%;}
+  .pris-tabs .pris-tab{flex:1;text-align:center;padding:7px 8px;}
+}
 .pris-tbl{width:100%;border-collapse:collapse;}
 .pris-tbl th{text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:var(--mid);font-weight:600;padding:6px 8px;border-bottom:1px solid var(--line);}
 .pris-tbl td{padding:9px 8px;border-bottom:1px solid var(--line);font-size:.9rem;color:var(--ink);vertical-align:middle;}

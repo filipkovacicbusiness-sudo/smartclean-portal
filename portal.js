@@ -621,6 +621,12 @@
   $('scrim').addEventListener('click', zapriMeni);
   // Klik na logotip (zgoraj levo) → Domov.
   { var _hl = $('homeLogo'); if (_hl) { _hl.style.cursor = 'pointer'; _hl.addEventListener('click', function () { pojdi('domov'); }); _hl.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pojdi('domov'); } }); } }
+  // Onemogoči nehoteno spreminjanje števil s kolescem miške (scroll) — velja povsod.
+  // Ko z miško podrsaš nad izbranim number poljem, se polje odjavi (blur) in stran se normalno pomika, vrednost pa ostane.
+  document.addEventListener('wheel', function (e) {
+    var t = e.target;
+    if (t && t.tagName === 'INPUT' && (t.type === 'number') && t === document.activeElement) { t.blur(); }
+  }, { passive: true });
 
   /* ══════════ USMERJANJE ══════════ */
   function pojdi(kam) {
@@ -2667,7 +2673,7 @@
         <label class="ur-f"><span>Datum</span><input type="date" data-datum value="${dnes}"></label>
         <label class="ur-f"><span>Teža (samodejno)</span><output class="ur-kg-auto" data-teza-auto>—</output></label>
       </div>
-      <label class="ur-f"><span>Izdal</span><input type="text" data-izdal value="${escape_(JAZIME || '')}"></label>
+      <label class="ur-f"><span>Izdal (samodejno — prijavljeni uporabnik)</span><input type="text" data-izdal value="${escape_(JAZIME || '')}" readonly style="opacity:.6;cursor:not-allowed"></label>
       <div class="ur-f"><span>Vrsta prevoza</span>${segPrevoz('redni')}</div>
       <p class="u-sub" style="margin:10px 0 4px">Postavke — izberi artikel (z ID) iz kataloga stranke</p>
       <div data-postavke></div>
