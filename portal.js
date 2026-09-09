@@ -527,6 +527,36 @@
     try { narociObvestila(); } catch (e) {}
     try { preberiReload(); } catch (e) {}
     try { morebitiPromoBio(); } catch (e) {}
+    // V OZADJU prednaloži razdelke, do katerih ima uporabnik dostop, da se ob
+    // kliku odprejo TAKOJ (brez nalagalnega traku). Zamik, da ne moti prvega izrisa.
+    try { setTimeout(prednaloziRazdelke, 700); } catch (e) {}
+  }
+  // Prednalaganje: renderira razdelke v skrite bloke (nastavi dataset.loaded), zamaknjeno,
+  // da ne pošljemo vseh poizvedb naenkrat. Napake tiho spregleda.
+  function prednaloziRazdelke() {
+    var op = [];
+    try {
+      if (OSEBJE) {
+        op.push(risiArhiv);
+        if (sme('prisotnost', 'r')) op.push(risiPrisotnost);
+        if (sme('statistika', 'r')) op.push(risiUcinek);
+        if (sme('stranke', 'r')) op.push(risiStranke);
+        if (sme('artikli', 'r')) op.push(risiArtikli);
+        if (JE_SUPER()) op.push(risiFakture);
+        if (sme('uporabniki', 'r')) op.push(loadUsers);
+      } else if (JE_ZAPOSLENI()) {
+        op.push(risiPrisotnost);
+      } else if (MOJEPODJETJE) {
+        op.push(risiKatalog);
+      }
+    } catch (e) {}
+    var i = 0;
+    (function naprej() {
+      if (i >= op.length) return;
+      var fn = op[i++];
+      try { Promise.resolve(fn()).catch(function () {}); } catch (e) {}
+      setTimeout(naprej, 450);   // zamik med razdelki
+    })();
   }
 
   /* ══════════ STRANSKI MENI ══════════ */
