@@ -4,7 +4,7 @@
    zato so posodobitve vidne takoj, ko si na spletu — brez menjave imen datotek.
    Slike/pisave/APK: cache-first (redko se menjajo). */
 var CACHE = 'sc-portal';
-var PRECACHE = ['./portal.css', './portal.js', './start.js', './supabase.js', './index.html'];
+var PRECACHE = ['./boot.js', './portal.css', './portal.js', './start.js', './supabase.js', './index.html'];
 self.addEventListener('install', function (e) {
   e.waitUntil(
     caches.open(CACHE).then(function (c) {
