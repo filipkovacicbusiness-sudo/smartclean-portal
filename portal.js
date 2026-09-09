@@ -309,7 +309,7 @@
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
   var APP_VERZIJA = '4.16 · BETA';
-  var NALAGANJE = '<div class="sc-load"><div class="sc-load-bar"></div></div>';
+  var NALAGANJE = '<div class="sc-skel" aria-hidden="true"><div class="sc-skel-row w60"></div><div class="sc-skel-row w90"></div><div class="sc-skel-row w75"></div><div class="sc-skel-row w85"></div><div class="sc-skel-row w55"></div><div class="sc-skel-row w80"></div></div>';
   var _reloadVal = null;   // vrednost 'reload' ob nalaganju (za potisnjeno osvežitev)
   const JE_LASTNIK = () => (JAZMAIL || '').trim().toLowerCase() === 'filip@eflitte.si';
   // Super admin = lastnik ali profil s super_admin=true. Samo super admin vidi Fakture.
@@ -517,6 +517,8 @@
     meni();
     await naloziListe();
     pojdi('domov');
+    // Portal je sestavljen in prva stran izrisana → gladko umakni zagonski zaslon.
+    try { requestAnimationFrame(function () { if (window.scBootDone) window.scBootDone(); }); } catch (e) { try { if (window.scBootDone) window.scBootDone(); } catch (_) {} }
     zazeniCustomSelecte();
     try { pokaziObvestila(); } catch (e) {}
     try { narociObvestila(); } catch (e) {}
@@ -6827,6 +6829,8 @@
         else pokaziPrijavo('');
       }
     }
+    // Prijavni zaslon je pripravljen → umakni zagonski zaslon.
+    try { if (window.scBootDone) window.scBootDone(); } catch (e) {}
   })();
 
   /* Šele tu vemo, da se je celotna skripta prevedla in izvedla. */

@@ -12,6 +12,7 @@
 
   function pokazi() {
     if (window.__SC.ok) return;
+    try { if (window.scBootDone) window.scBootDone(); } catch (e) {}   // umakni splash, da je napaka vidna
     var m = document.getElementById('loginMsg');
     if (!m) return;
     var t = 'Portal se na tej napravi ni zagnal.';

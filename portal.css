@@ -643,14 +643,20 @@ html.sc-notrans,html.sc-notrans *,html.sc-notrans *::before,html.sc-notrans *::a
 .side-sep{height:1px;background:var(--line);margin:14px 10px 10px;}
 /* Širok, centriran nalagalni trak (namesto »Nalagam«) */
 @keyframes scLoadDelayed{from{opacity:0}to{opacity:1}}
-/* Spinner se pokaže šele, če nalaganje traja dlje kot ~0,28s — hitri (cache) prehodi ga sploh ne pokažejo. */
-.sc-load{display:flex;align-items:center;justify-content:center;min-height:46vh;padding:24px 16px;opacity:0;animation:scLoadDelayed .2s ease .28s both;}
-/* V razširjenih karticah (stranke/arhiv) naj nalaganje ne napihne kartice. */
-.arts .sc-load,.a-det .sc-load{min-height:56px;padding:12px;}
-.sc-load-bar{width:min(440px,72%);height:5px;border-radius:5px;background:var(--line);overflow:hidden;position:relative;}
-.sc-load-bar::after{content:'';position:absolute;top:0;left:-40%;height:100%;width:40%;border-radius:5px;
-  background:linear-gradient(90deg,transparent,var(--ink),transparent);animation:scload 1s cubic-bezier(.65,0,.35,1) infinite;}
-@keyframes scload{0%{left:-40%}100%{left:100%}}
+/* Skeleton (namesto vrtavke/traku): sivi obrisi vsebine s prelivom — nalaganje je »skrito«.
+   Pokaže se šele, če traja >~0,22s, da hitri (cache) prehodi ne utripnejo. */
+.sc-skel{padding:8px 2px 2px;opacity:0;animation:scLoadDelayed .2s ease .22s both;}
+.sc-skel-row{height:17px;border-radius:8px;margin:0 0 15px;background:var(--line);position:relative;overflow:hidden;}
+.sc-skel-row:last-child{margin-bottom:4px;}
+.sc-skel-row.w90{width:90%}.sc-skel-row.w85{width:85%}.sc-skel-row.w80{width:80%}.sc-skel-row.w75{width:75%}.sc-skel-row.w60{width:60%}.sc-skel-row.w55{width:55%}
+.sc-skel-row::after{content:'';position:absolute;inset:0;transform:translateX(-100%);
+  background:linear-gradient(90deg,transparent 0,rgba(255,255,255,.45) 50%,transparent 100%);animation:scShimmer 1.3s ease-in-out infinite;}
+:root[data-theme="dark"] .sc-skel-row::after,html[data-theme="dark"] .sc-skel-row::after{background:linear-gradient(90deg,transparent 0,rgba(255,255,255,.09) 50%,transparent 100%);}
+@keyframes scShimmer{100%{transform:translateX(100%)}}
+/* Kompaktni konteksti (razširjene kartice) → krajši skeleton. */
+.arts .sc-skel,.a-det .sc-skel{padding:4px 0;}
+.arts .sc-skel .sc-skel-row:nth-child(n+3),.a-det .sc-skel .sc-skel-row:nth-child(n+3){display:none;}
+@media(prefers-reduced-motion:reduce){.sc-skel-row::after{animation:none;}}
 @keyframes scfadein{from{opacity:0}to{opacity:1}}
 /* Gladek prehod na razdelek ob menjavi */
 @keyframes secIn{from{opacity:0;transform:translateX(-18px)}to{opacity:1;transform:none}}
