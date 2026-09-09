@@ -309,7 +309,10 @@
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
   var APP_VERZIJA = '4.16 · BETA';
-  var NALAGANJE = '<div class="sc-skel" aria-hidden="true"><div class="sc-skel-row w60"></div><div class="sc-skel-row w90"></div><div class="sc-skel-row w75"></div><div class="sc-skel-row w85"></div><div class="sc-skel-row w55"></div><div class="sc-skel-row w80"></div></div>';
+  var NALAGANJE = '<div class="sc-load" aria-hidden="true"><span class="sc-load-line"></span></div>';
+  // Stale-while-revalidate: ob ponovnem obisku razdelka NE pobriši vsebine v nalagalnik —
+  // obdrži prejšnjo (takojšen prikaz) in jo osveži v ozadju. Trak le ob prvem nalaganju.
+  function pokaziNalaganje(box) { if (box && !box.dataset.loaded) box.innerHTML = NALAGANJE; }
   var _reloadVal = null;   // vrednost 'reload' ob nalaganju (za potisnjeno osvežitev)
   const JE_LASTNIK = () => (JAZMAIL || '').trim().toLowerCase() === 'filip@eflitte.si';
   // Super admin = lastnik ali profil s super_admin=true. Samo super admin vidi Fakture.
@@ -920,16 +923,17 @@
   }
   async function risiPrisotnost() {
     var box = $('prisList'); if (!box) return;
-    box.innerHTML = NALAGANJE;
+    pokaziNalaganje(box);
     try {
       await naloziPrisotnost();
       if (!Array.isArray(ZAPOSLENI)) ZAPOSLENI = [];
       if (!Array.isArray(PRISDOG)) PRISDOG = [];
       if (!_prisDan) _prisDan = danes10();
       prisRender();
+      box.dataset.loaded = '1';
       if (!_prisTimer) _prisTimer = setInterval(prisAuto, 12000);
     } catch (e) {
-      box.innerHTML = '<div class="pris-card"><p class="u-sub">Napake pri nalaganju: ' + escape_(e && e.message ? e.message : e) + '</p></div>';
+      if (!box.dataset.loaded) box.innerHTML = '<div class="pris-card"><p class="u-sub">Napake pri nalaganju: ' + escape_(e && e.message ? e.message : e) + '</p></div>';
     }
   }
   function prisRender() {
@@ -1330,13 +1334,14 @@
   }
   async function risiArtikli() {
     var box = $('artList'); if (!box) return;
-    box.innerHTML = NALAGANJE;
+    pokaziNalaganje(box);
     try {
       await nalozicenik(true);
       await naloziClane(true);
       await naloziSkupineImena();
       artRender();
-    } catch (e) { box.innerHTML = '<div class="pris-card"><p class="u-sub">Napaka pri nalaganju: ' + escape_(e && e.message ? e.message : e) + '</p></div>'; }
+      box.dataset.loaded = '1';
+    } catch (e) { if (!box.dataset.loaded) box.innerHTML = '<div class="pris-card"><p class="u-sub">Napaka pri nalaganju: ' + escape_(e && e.message ? e.message : e) + '</p></div>'; }
   }
   function artRender() {
     var box = $('artList'); if (!box) return;
@@ -1915,13 +1920,14 @@
   }
   async function risiUcinek() {
     var box = $('ucList'); if (!box) return;
-    box.innerHTML = NALAGANJE;
+    pokaziNalaganje(box);
     try {
       await naloziUcinek();
       if (!_ucDan) _ucDan = danes10();
       _uc3dAnim = true;
       ucRender();
-    } catch (e) { box.innerHTML = '<div class="uc-card"><p class="u-sub">Napaka pri nalaganju: ' + escape_(e && e.message ? e.message : e) + '</p></div>'; }
+      box.dataset.loaded = '1';
+    } catch (e) { if (!box.dataset.loaded) box.innerHTML = '<div class="uc-card"><p class="u-sub">Napaka pri nalaganju: ' + escape_(e && e.message ? e.message : e) + '</p></div>'; }
   }
   function ucRender() {
     var box = $('ucList'); if (!box) return;
@@ -2908,7 +2914,7 @@
     const list = $('fakList');
     const od = $('fakOd').value, doo = $('fakDo').value, orgFilter = $('fakOrg').value;
     if (!fakDatumOK(od, doo)) { list.innerHTML = '<div class="panel"><p class="u-sub">Izberi veljavno obdobje (od ≤ do).</p></div>'; return; }
-    list.innerHTML = NALAGANJE;
+    pokaziNalaganje(list);
     const res = await fakZberi(od, doo, orgFilter ? [orgFilter] : null);
     if (res.error) { list.innerHTML = '<div class="panel"><p class="u-sub">Napaka: ' + escape_(res.error.message) + '</p></div>'; return; }
     const skupine = res.skupine;
@@ -2916,6 +2922,7 @@
     $('fakPod').textContent = skupine.length ? '' : 'V izbranem obdobju ni spremnih listov';
     if (!skupine.length) { list.innerHTML = '<div class="panel"><p class="u-sub">V izbranem obdobju ni spremnih listov.</p></div>'; return; }
     list.innerHTML = '<div class="fak-grid">' + skupine.map((g, gi) => fakKartica(g, gi)).join('') + '</div>';
+    list.dataset.loaded = '1';
     list.querySelectorAll('[data-fakprint]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); natisniFakturo(parseInt(b.dataset.fakprint, 10)); }));
     list.querySelectorAll('[data-faktoggle]').forEach(h => h.addEventListener('click', () => {
       const gi = h.dataset.faktoggle, body = document.getElementById('fakbody' + gi);
@@ -4825,19 +4832,23 @@
       $('katalogList').innerHTML = '<div class="rows"><div class="empty">' + '<h3>Tu še ni ničesar za prikaz</h3><p>Vaš račun ni povezan z nobenim podjetjem.<br>' + 'Javite se nam in vam ga uredimo.</p></div></div>';
       return;
     }
-    $('katalogList').innerHTML = NALAGANJE;
+    var kbox = $('katalogList');
+    pokaziNalaganje(kbox);
     const {
       data, error
     } = await sb.from('articles').select('name').eq('org_id', MOJEPODJETJE.id).order('sort_order');
     if (error) {
-      $('katalogPod').textContent = '';
-      $('katalogList').innerHTML = '<div class="rows"><div class="empty"><h3>Nalaganje ni uspelo</h3><p>Kataloga trenutno ni bilo mogoče naložiti.<br>Preveri povezavo in poskusi znova.</p><button type="button" class="btn ghost" data-act="katalog-ponovi" style="margin-top:14px">Poskusi znova</button></div></div>';
-      var _kp = $('katalogList').querySelector('[data-act="katalog-ponovi"]');
-      if (_kp) _kp.addEventListener('click', function () { risiKatalog(); });
+      if (!kbox.dataset.loaded) {
+        $('katalogPod').textContent = '';
+        kbox.innerHTML = '<div class="rows"><div class="empty"><h3>Nalaganje ni uspelo</h3><p>Kataloga trenutno ni bilo mogoče naložiti.<br>Preveri povezavo in poskusi znova.</p><button type="button" class="btn ghost" data-act="katalog-ponovi" style="margin-top:14px">Poskusi znova</button></div></div>';
+        var _kp = kbox.querySelector('[data-act="katalog-ponovi"]');
+        if (_kp) _kp.addEventListener('click', function () { risiKatalog(); });
+      }
       return;
     }
     $('katalogPod').textContent = ((data === null || data === void 0 ? void 0 : data.length) || 0) + ' artiklov';
-    $('katalogList').innerHTML = '<div class="rows"><div class="arts show" style="border:none">' + (data !== null && data !== void 0 && data.length ? '<ul>' + data.map(a => '<li>' + escape_(a.name) + '</li>').join('') + '</ul>' : '<p class="none">Katalog še ni izpolnjen.</p>') + '</div></div>';
+    kbox.innerHTML = '<div class="rows"><div class="arts show" style="border:none">' + (data !== null && data !== void 0 && data.length ? '<ul>' + data.map(a => '<li>' + escape_(a.name) + '</li>').join('') + '</ul>' : '<p class="none">Katalog še ni izpolnjen.</p>') + '</div></div>';
+    kbox.dataset.loaded = '1';
   }
 
   /* ══════════ UVOZ S TABLICE ══════════
@@ -5852,7 +5863,7 @@
     };
   }
   async function loadUsers() {
-    $('usersList').innerHTML = NALAGANJE;
+    pokaziNalaganje($('usersList'));
     if (!$('nuOrg').options.length) {
       $('nuOrg').innerHTML = '<option value="">— osebje SmartClean —</option>' + ORGSEZNAM.map(o => `<option value="${o.id}">${escape_(o.name)}</option>`).join('');
     }
@@ -5866,9 +5877,11 @@
       else ljudje = fb.data;
     }
     if (!ljudje) {   // vsi poskusi branja niso uspeli → napaka, ne prazno
-      $('usersList').innerHTML = '<div class="empty"><h3>Nalaganje ni uspelo</h3><p>Seznama uporabnikov trenutno ni bilo mogoče naložiti.<br>Preveri povezavo in poskusi znova.</p><button type="button" class="btn ghost" data-act="users-ponovi" style="margin-top:14px">Poskusi znova</button></div>';
-      var _up = $('usersList').querySelector('[data-act="users-ponovi"]');
-      if (_up) _up.addEventListener('click', function () { loadUsers(); });
+      if (!$('usersList').dataset.loaded) {
+        $('usersList').innerHTML = '<div class="empty"><h3>Nalaganje ni uspelo</h3><p>Seznama uporabnikov trenutno ni bilo mogoče naložiti.<br>Preveri povezavo in poskusi znova.</p><button type="button" class="btn ghost" data-act="users-ponovi" style="margin-top:14px">Poskusi znova</button></div>';
+        var _up = $('usersList').querySelector('[data-act="users-ponovi"]');
+        if (_up) _up.addEventListener('click', function () { loadUsers(); });
+      }
       return;
     }
     const clanPo = {};
@@ -5919,6 +5932,7 @@
       </div>
     </div>`;
     }).join('') || '<p class="u-sub">Ni uporabnikov.</p>';
+    $('usersList').dataset.loaded = '1';
     document.querySelectorAll('#usersList select[data-role]').forEach(sel => {
       sel.addEventListener('change', () => spremeniVlogo(sel));
     });
