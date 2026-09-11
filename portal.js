@@ -2524,6 +2524,17 @@
       (CENIK || []).forEach(function (x) {
         if (x.org_id === org_id && !vid[x.sifra]) { vid[x.sifra] = true; box._arts.push({ id: null, name: x.naziv || '', koda: normId(x.koda), sifra: x.sifra, teza: (x.teza != null && x.teza !== '') ? parseFloat(x.teza) : null }); }
       });
+      // UPORABA PO STRANKI iz obstoječe evidence: skupno opranih kosov na artikel
+      // (RPC stranka_kosi — isti podatek kot v razdelku Stranke). Premade pokaže
+      // NAJBOLJ uporabljene (po kosih), v tem vrstnem redu — ne celotnega kataloga.
+      try {
+        var kosMap = {};
+        var _kr = await sb.rpc('stranka_kosi', { p_org: org_id });
+        if (_kr && !_kr.error) (_kr.data || []).forEach(function (x) { kosMap[x.article_id] = Number(x.kosov) || 0; });
+        box._arts.forEach(function (a, i) { a._u = (a.id && kosMap[a.id]) ? kosMap[a.id] : 0; a._i0 = i; });
+        box._imaUporabo = box._arts.some(function (a) { return a._u > 0; });
+        box._arts.sort(function (x2, y2) { return (y2._u - x2._u) || (x2._i0 - y2._i0); });   // najbolj uporabljeni najprej, sicer katalog
+      } catch (e2) { box._imaUporabo = false; }
     } catch (e) { box._arts = []; }
   }
   async function urediList(box) {
@@ -2793,8 +2804,12 @@
       pBox.innerHTML = '';
       const arts = box._arts || [];
       if (!arts.length) { dodajVrstico(); return; }     // ni izbrane stranke / prazen katalog → ena prazna vrstica
+      // Če stranka ima zgodovino, pokaži SAMO najbolj uporabljene (že razvrščene po pogostosti);
+      // sicer (nova stranka brez zgodovine) pokaži cel katalog.
+      var izbor = box._imaUporabo ? arts.filter(function (a) { return a._u > 0; }) : arts;
+      if (!izbor.length) izbor = arts;
       var vid = {};
-      arts.forEach(function (a) {
+      izbor.forEach(function (a) {
         if (!a.name) return;
         var k = (a.sifra != null && !isNaN(a.sifra)) ? ('s' + a.sifra) : (a.id ? ('a' + a.id) : ('n' + a.name.trim().toLowerCase()));
         if (vid[k]) return; vid[k] = true;             // brez dvojnikov v premade seznamu
