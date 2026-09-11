@@ -1561,17 +1561,22 @@
     }
     _artOpen = {}; _artOpen[pre] = true; logDodaj('Artikli', 'Dodano', 'Artikel „' + nm + '" (' + id + ')'); toast('Artikel dodan' + (dodanih ? ' · propagirano ' + dodanih + ' strankam' : '') + '.'); artRender();
   }
-  function artNovCenik() {
+  // Modal »Nov cenik (skupina)«. opts.ime = predizpolnjeno ime; opts.onCreated(pre, ime)
+  // se pokliče po uspešnem ustvarjanju (če ni podan, osveži pogled Artikli).
+  function novCenikModal(opts) {
+    opts = opts || {};
+    var imeVal = opts.ime ? escape_(opts.ime) : '';
     var back = document.createElement('div'); back.className = 'sc-modal-back';
     back.innerHTML = '<div class="sc-modal" role="dialog" aria-modal="true"><h4>Nov cenik (skupina)</h4>' +
-      '<label class="pris-lab">Ime cenika</label><input type="text" class="nc-ime sc-modal-input" placeholder="npr. Posteljnina">' +
+      '<label class="pris-lab">Ime cenika</label><input type="text" class="nc-ime sc-modal-input" placeholder="npr. Posteljnina" value="' + imeVal + '">' +
       '<label class="pris-lab">Predpona ID <span class="u-sub">(2 črki, npr. PO)</span></label><input type="text" class="nc-pre sc-modal-input" maxlength="2" placeholder="PO" style="text-transform:uppercase;font-family:var(--mono)">' +
       '<div class="sc-modal-acts"><button type="button" class="sc-modal-btn ghost" data-no>Prekliči</button><button type="button" class="sc-modal-btn primary" data-yes>Ustvari</button></div></div>';
     document.body.appendChild(back); requestAnimationFrame(function () { back.classList.add('show'); });
     function zapri() { back.classList.remove('show'); setTimeout(function () { if (back.parentNode) back.parentNode.removeChild(back); }, 180); }
     back.querySelector('[data-no]').addEventListener('click', zapri);
     back.addEventListener('click', function (e) { if (e.target === back) zapri(); });
-    setTimeout(function () { var el = back.querySelector('.nc-ime'); if (el) el.focus(); }, 60);
+    // Če je ime že predizpolnjeno (npr. iz naziva stranke), skoči na predpono.
+    setTimeout(function () { var el = back.querySelector(opts.ime ? '.nc-pre' : '.nc-ime'); if (el) el.focus(); }, 60);
     back.querySelector('[data-yes]').addEventListener('click', async function () {
       var ime = back.querySelector('.nc-ime').value.trim();
       var pre = normId(back.querySelector('.nc-pre').value);
@@ -1581,8 +1586,18 @@
       var r = await sb.from('article_groups').upsert({ prefix: pre, name: ime || null, updated_at: new Date().toISOString() }, { onConflict: 'prefix' });
       if (r.error) { toast('Napaka: ' + r.error.message + (/relation|does not exist/i.test(r.error.message) ? ' (poženi migracijo 13_skupine.sql)' : '')); return; }
       if (ime) SKUPINE_IME[pre] = ime;
-      _artOpen = {}; _artOpen[pre] = true; zapri(); toast('Cenik ustvarjen. Dodaj artikle.'); artRender();
+      zapri();
+      if (typeof opts.onCreated === 'function') { opts.onCreated(pre, ime); }
+      else { _artOpen = {}; _artOpen[pre] = true; toast('Cenik ustvarjen. Dodaj artikle.'); artRender(); }
     });
+  }
+  function artNovCenik() { novCenikModal({}); }
+  // Seznam vseh cenikov (skupin) za izbirni spustni seznam: predpona, ime, št. artiklov.
+  function cenikMoznosti() {
+    var grupe = artikliGrupe(); var set = {};
+    Object.keys(grupe).forEach(function (k) { if (k !== '—') set[k] = 1; });
+    Object.keys(SKUPINE_IME).forEach(function (k) { set[k] = 1; });
+    return Object.keys(set).sort().map(function (pre) { return { pre: pre, ime: imeSkupine(pre), n: (grupe[pre] || []).length }; });
   }
   async function artPreimenujSkupino(pre) {
     var novo = await vnesiModal({ naslov: 'Ime skupine ' + pre, sporocilo: 'Prijazno ime skupine (pusti prazno za privzeto »Skupina ' + pre + '«).', privzeto: SKUPINE_IME[pre] || '', placeholder: 'npr. Posteljnina', potrdi: 'Shrani' });
@@ -4870,21 +4885,50 @@
         <label class="ur-f"><span>Davčna</span><input type="text" data-davcna></label>
       </div>
       <label class="ur-f"><span>Naslov</span><input type="text" data-naslov></label>
-      <p class="u-sub" style="margin:10px 0 4px">Artikli</p>
-      <div data-artikli></div>
-      <button type="button" class="ur-add" data-dodaj>+ Dodaj artikel</button>
+      <p class="u-sub" style="margin:10px 0 4px">Cenik</p>
+      <div class="ns-cenik">
+        <div class="ns-cenik-btns">
+          <button type="button" class="btn btn-narrow ns-add-cenik">Dodaj v cenik</button>
+          <button type="button" class="btn btn-narrow ghost ns-new-cenik">Ustvari nov cenik</button>
+        </div>
+        <select class="ns-cenik-sel" data-cenik-sel hidden></select>
+        <p class="ns-cenik-info u-sub" data-cenik-info hidden></p>
+      </div>
       <div class="u-acts" style="margin-top:14px"><button type="button" class="ur-save" data-shrani>Ustvari</button><button type="button" data-preklici>Prekliči</button></div>
       <p class="u-sub ur-msg" data-msg></p></div>`;
-    const aBox = box.querySelector('[data-artikli]');
-    const dodajVrstico = (val = '') => {
-      const row = document.createElement('div');
-      row.className = 'ur-post';
-      row.innerHTML = `<input type="text" data-an placeholder="artikel" value="${escape_(val)}"><button type="button" class="ur-del" data-del title="odstrani">×</button>`;
-      row.querySelector('[data-del]').addEventListener('click', () => row.remove());
-      aBox.appendChild(row);
+    box._cenikPre = null;
+    const sel = box.querySelector('[data-cenik-sel]');
+    const info = box.querySelector('[data-cenik-info]');
+    const pokaziInfo = (pre) => {
+      if (!pre) { info.hidden = true; return; }
+      const g = artikliGrupe()[pre] || [];
+      info.innerHTML = 'Cenik: <b>' + escape_(imeSkupine(pre)) + '</b> · ' + escape_(pre) + ' · ' + g.length + ' art.' +
+        (g.length ? '' : ' <span class="u-sub">(prazen — artikle dodaš v zavihku Ceniki)</span>');
+      info.hidden = false;
     };
-    dodajVrstico();
-    box.querySelector('[data-dodaj]').addEventListener('click', () => dodajVrstico());
+    const napolniSel = () => {
+      const moz = cenikMoznosti();
+      sel.innerHTML = '<option value="">— izberi cenik —</option>' +
+        moz.map(m => '<option value="' + escape_(m.pre) + '">' + escape_(m.ime) + ' · ' + escape_(m.pre) + ' · ' + m.n + ' art.</option>').join('');
+      if (box._cenikPre) sel.value = box._cenikPre;
+    };
+    box.querySelector('.ns-add-cenik').addEventListener('click', async () => {
+      const b = box.querySelector('.ns-add-cenik'); b.disabled = true;
+      try { await nalozicenik(); await naloziSkupineImena(); } catch (e) {}
+      b.disabled = false;
+      if (!cenikMoznosti().length) { toast('Ni še nobenega cenika. Uporabi »Ustvari nov cenik«.'); return; }
+      napolniSel(); sel.hidden = false; sel.focus();
+    });
+    sel.addEventListener('change', () => { box._cenikPre = sel.value || null; pokaziInfo(box._cenikPre); });
+    box.querySelector('.ns-new-cenik').addEventListener('click', async () => {
+      const naziv = (box.querySelector('[data-naziv]').value || '').trim();
+      if (!naziv) { box.querySelector('[data-msg]').textContent = 'Najprej vpiši naziv stranke — cenik se poimenuje po njej.'; box.querySelector('[data-naziv]').focus(); return; }
+      try { await nalozicenik(); await naloziSkupineImena(); } catch (e) {}
+      novCenikModal({ ime: naziv, onCreated: (pre) => {
+        box._cenikPre = pre; sel.hidden = true; napolniSel(); pokaziInfo(pre);
+        toast('Cenik ustvarjen · izbran za to stranko.');
+      } });
+    });
     box.querySelector('[data-preklici]').addEventListener('click', () => { box.innerHTML = ''; box.classList.remove('show'); });
     box.querySelector('[data-shrani]').addEventListener('click', () => shraniNovaStranka(box));
     box.classList.add('show');
@@ -4899,20 +4943,21 @@
     const podjetje = g('[data-podjetje]').value.trim();
     const davcna = g('[data-davcna]').value.trim();
     const naslov = g('[data-naslov]').value.trim();
-    const artikli = [...box.querySelectorAll('[data-an]')].map(i => i.value.trim()).filter(Boolean);
+    const cenikPre = box._cenikPre || null;
     msg.textContent = 'Shranjujem …';
     try {
       const legacyId = 'p' + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);
       const { data: novOrg, error: e1 } = await sb.from('orgs').insert({ name: naziv, legal_name: podjetje || null, address: naslov || null, vat_id: davcna || null, legacy_id: legacyId }).select('id,name,legal_name,address,vat_id').single();
       if (e1) throw e1;
-      if (artikli.length) {
-        const rows = artikli.map((nm, idx) => ({ org_id: novOrg.id, name: nm, sort_order: idx }));
-        const { error: e2 } = await sb.from('articles').insert(rows);
-        if (e2) throw e2;
+      let dodanihArt = 0;
+      if (cenikPre) {
+        try { await nalozicenik(); } catch (e) {}
+        const sifre = (artikliGrupe()[cenikPre] || []).map(x => x.sifra);
+        if (sifre.length) { await nastaviSkupinoStranki(novOrg.id, sifre); dodanihArt = sifre.length; }
       }
       ORGSEZNAM.push(novOrg); ORGIME[novOrg.id] = novOrg.name;
       box.innerHTML = ''; box.classList.remove('show');
-      toast('Stranka ustvarjena · ' + (artikli.length ? artikli.length + ' artiklov' : 'brez artiklov'));
+      toast('Stranka ustvarjena · ' + (cenikPre ? ('cenik ' + cenikPre + (dodanihArt ? ' (' + dodanihArt + ' art.)' : ' — prazen')) : 'brez cenika'));
       render();
     } catch (e) {
       msg.textContent = 'Napaka: ' + (e.message || e);
