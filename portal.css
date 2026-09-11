@@ -500,13 +500,6 @@ main.main{max-width:1500px;margin:0 auto;padding:30px 34px 90px;}
 .ur-add:hover{border-color:var(--mid);color:var(--ink)}
 .ur-save{background:var(--green);color:var(--btn-ink);border-color:var(--green)}
 .ur-save:hover{background:var(--green-l);border-color:var(--green-l);color:var(--btn-ink)}
-/* Nova stranka — izbira/ustvarjanje cenika */
-.ns-cenik{margin:2px 0 2px;}
-.ns-cenik-btns{display:flex;gap:10px;flex-wrap:wrap;}
-.ns-cenik-btns .btn-narrow{margin-top:0;}
-.ns-cenik-sel{margin-top:12px;}
-.ns-cenik-info{margin:10px 0 0;color:var(--mid);}
-.ns-cenik-info b{color:var(--ink);}
 .ur-msg{margin-top:8px}
 .sc-toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);
   background:var(--ink);color:var(--bg);padding:11px 18px;border-radius:100px;font-size:.85rem;

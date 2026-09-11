@@ -1382,22 +1382,32 @@
     var ks = Object.keys(prefs); return ks.length === 1 ? ks[0] : null;
   }
   // Zamenja cenik stranke z danimi šiframi (prazen seznam → izprazni).
+  // Vsak napačen odgovor baze VRŽE napako (klicatelj jo mora prestreči in prikazati) —
+  // prej se je tiho pogoltnila, zato je »dodal« lokalno, v bazi pa ne.
   async function nastaviSkupinoStranki(orgId, ciljneSifre) {
     ciljneSifre = ciljneSifre || [];
     var obst = {}; (CLANI || []).forEach(function (a) { if (a.org_id === orgId && a.cena_sifra != null) obst[a.cena_sifra] = a; });
+    var vstavi = [];
     for (var j = 0; j < ciljneSifre.length; j++) {
       var sif = ciljneSifre[j];
-      if (obst[sif]) { await sb.from('articles').update({ sort_order: j }).eq('org_id', orgId).eq('cena_sifra', sif); obst[sif].sort_order = j; delete obst[sif]; }
-      else { var p = CENIKMAP[sif]; var ins = await sb.from('articles').insert({ org_id: orgId, name: (p ? p.naziv : '') || '', cena_sifra: sif, sort_order: j }).select('id').maybeSingle(); if (CLANI) CLANI.push({ id: ins.data ? ins.data.id : null, org_id: orgId, name: (p ? p.naziv : '') || '', cena_sifra: sif, sort_order: j }); }
+      if (obst[sif]) { var u = await sb.from('articles').update({ sort_order: j }).eq('org_id', orgId).eq('cena_sifra', sif); if (u.error) throw u.error; obst[sif].sort_order = j; delete obst[sif]; }
+      else { var p = CENIKMAP[sif]; vstavi.push({ org_id: orgId, name: (p ? p.naziv : '') || '', cena_sifra: sif, sort_order: j }); }
+    }
+    // Manjkajoče artikle vstavi v ENEM zahtevku (hitro + brez delnega stanja).
+    if (vstavi.length) {
+      var ins = await sb.from('articles').insert(vstavi).select('id,org_id,name,cena_sifra,sort_order');
+      if (ins.error) throw ins.error;
+      if (CLANI && ins.data) ins.data.forEach(function (r) { CLANI.push(r); });
     }
     var odstrani = Object.keys(obst);
     for (var k = 0; k < odstrani.length; k++) {
       var s2 = parseInt(odstrani[k], 10);
-      await sb.from('articles').delete().eq('org_id', orgId).eq('cena_sifra', s2);
+      var d = await sb.from('articles').delete().eq('org_id', orgId).eq('cena_sifra', s2);
+      if (d.error) throw d.error;
       if (CLANI) CLANI = CLANI.filter(function (a) { return !(a.org_id === orgId && a.cena_sifra === s2); });
     }
     var brez = (CLANI || []).filter(function (a) { return a.org_id === orgId && a.cena_sifra == null && a.id != null; });
-    for (var m = 0; m < brez.length; m++) { await sb.from('articles').delete().eq('id', brez[m].id); }
+    for (var m = 0; m < brez.length; m++) { var d2 = await sb.from('articles').delete().eq('id', brez[m].id); if (d2.error) throw d2.error; }
     if (CLANI) CLANI = CLANI.filter(function (a) { return !(a.org_id === orgId && a.cena_sifra == null); });
   }
   async function risiArtikli() {
@@ -1592,13 +1602,6 @@
     });
   }
   function artNovCenik() { novCenikModal({}); }
-  // Seznam vseh cenikov (skupin) za izbirni spustni seznam: predpona, ime, št. artiklov.
-  function cenikMoznosti() {
-    var grupe = artikliGrupe(); var set = {};
-    Object.keys(grupe).forEach(function (k) { if (k !== '—') set[k] = 1; });
-    Object.keys(SKUPINE_IME).forEach(function (k) { set[k] = 1; });
-    return Object.keys(set).sort().map(function (pre) { return { pre: pre, ime: imeSkupine(pre), n: (grupe[pre] || []).length }; });
-  }
   async function artPreimenujSkupino(pre) {
     var novo = await vnesiModal({ naslov: 'Ime skupine ' + pre, sporocilo: 'Prijazno ime skupine (pusti prazno za privzeto »Skupina ' + pre + '«).', privzeto: SKUPINE_IME[pre] || '', placeholder: 'npr. Posteljnina', potrdi: 'Shrani' });
     if (novo === null) return;
@@ -1641,12 +1644,19 @@
     back.querySelector('[data-yes]').addEventListener('click', async function () {
       var checks = [].slice.call(back.querySelectorAll('.assign-chk input'));
       zapri(); toast('Posodabljam cenike …');
-      for (var i = 0; i < checks.length; i++) {
-        var org = checks[i].dataset.org, wasP = strankaSkupina(org) === pre, isC = checks[i].checked;
-        if (isC) await nastaviSkupinoStranki(org, sifre);        // uskladi (doda manjkajoče, popravi vrstni red)
-        else if (wasP) await nastaviSkupinoStranki(org, []);     // odstrani skupino
+      try {
+        for (var i = 0; i < checks.length; i++) {
+          var org = checks[i].dataset.org, wasP = strankaSkupina(org) === pre, isC = checks[i].checked;
+          if (isC) await nastaviSkupinoStranki(org, sifre);        // uskladi (doda manjkajoče, popravi vrstni red)
+          else if (wasP) await nastaviSkupinoStranki(org, []);     // odstrani skupino
+        }
+        await naloziClane(true);                                  // uskladi lokalno stanje z bazo (resnica)
+        toast('Stranke posodobljene.');
+      } catch (e) {
+        try { await naloziClane(true); } catch (e2) {}
+        toast('Napaka pri shranjevanju: ' + (e && e.message ? e.message : e));
       }
-      toast('Stranke posodobljene.'); artRender();
+      artRender();
     });
   }
   // Poskrbi, da ima vsaka stranka natanko vse artikle svojega cenika (doda manjkajoče).
@@ -2684,13 +2694,14 @@
     const prevozP = ` &nbsp;·&nbsp; ${n.transport === 'izredni' ? 'Izredni prevoz' : 'Redni prevoz'}`;
     const kg = (n.weight_kg != null && n.weight_kg !== '') ? `<div class="t">Skupaj teža perila: <b>${tezaFmt(n.weight_kg)}</b></div>` : '';
     const popr = n.popravljeno_at ? `<div class="popr">✎ Popravljeno v portalu · ${escape_(n.popravil || 'osebje')} · ${datumcas(n.popravljeno_at)}</div>` : '';
-    const ustv = n.source === 'portal' ? `<div class="popr" style="background:#eaf4ee;color:#1f6b3b">✚ Ustvarjeno v portalu${n.issued_name ? ' · ' + escape_(n.issued_name) : ''}</div>` : '';
+    const ustv = '';   // »Ustvarjeno v portalu« se NE tiska (ostane le v pregledu na zaslonu)
     const opombaP = n.opomba ? `<div class="opomba"><div class="oh">Opomba</div><div class="ob">${escape_(n.opomba)}</div><div class="oa">— ${escape_(n.opomba_avtor || 'osebje')}${n.opomba_at ? ' · ' + datumcas(n.opomba_at) : ''}</div></div>` : '';
     const opombaStrankaP = n.opomba_stranka ? `<div class="opomba"><div class="oh">Opomba</div><div class="ob">${escape_(n.opomba_stranka)}</div></div>` : '';
     const html = `<!DOCTYPE html><html lang="sl"><head><meta charset="utf-8"><title>Spremni list ${escape_(n.number || '')}</title><style>
-      @page{size:A4;margin:14mm}
+      /* margin:0 → brskalnik NE natisne glave/noge (URL, »1/1«); rob damo prek body paddinga */
+      @page{size:A4;margin:0}
       @media screen{html{background:#e9edeb;margin:0}body{width:210mm;min-height:297mm;padding:14mm;margin:0 auto;background:#fff}}
-      @media print{html{background:#fff}body{width:auto;min-height:0;padding:0;margin:0}}
+      @media print{html{background:#fff}body{width:auto;min-height:0;padding:14mm;margin:0}}
       *{box-sizing:border-box;font-family:-apple-system,'Segoe UI',Roboto,Arial,sans-serif;color:#16202b}
       body{margin:0;font-size:13px}
       .head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #1a6644;padding-bottom:11px;margin-bottom:18px}
@@ -4885,50 +4896,9 @@
         <label class="ur-f"><span>Davčna</span><input type="text" data-davcna></label>
       </div>
       <label class="ur-f"><span>Naslov</span><input type="text" data-naslov></label>
-      <p class="u-sub" style="margin:10px 0 4px">Cenik</p>
-      <div class="ns-cenik">
-        <div class="ns-cenik-btns">
-          <button type="button" class="btn btn-narrow ns-add-cenik">Dodaj v cenik</button>
-          <button type="button" class="btn btn-narrow ghost ns-new-cenik">Ustvari nov cenik</button>
-        </div>
-        <select class="ns-cenik-sel" data-cenik-sel hidden></select>
-        <p class="ns-cenik-info u-sub" data-cenik-info hidden></p>
-      </div>
+      <p class="u-sub" style="margin:10px 0 0">Cenik dodeliš pozneje v zavihku »Ceniki & artikli« → gumb »Uredi stranke«.</p>
       <div class="u-acts" style="margin-top:14px"><button type="button" class="ur-save" data-shrani>Ustvari</button><button type="button" data-preklici>Prekliči</button></div>
       <p class="u-sub ur-msg" data-msg></p></div>`;
-    box._cenikPre = null;
-    const sel = box.querySelector('[data-cenik-sel]');
-    const info = box.querySelector('[data-cenik-info]');
-    const pokaziInfo = (pre) => {
-      if (!pre) { info.hidden = true; return; }
-      const g = artikliGrupe()[pre] || [];
-      info.innerHTML = 'Cenik: <b>' + escape_(imeSkupine(pre)) + '</b> · ' + escape_(pre) + ' · ' + g.length + ' art.' +
-        (g.length ? '' : ' <span class="u-sub">(prazen — artikle dodaš v zavihku Ceniki)</span>');
-      info.hidden = false;
-    };
-    const napolniSel = () => {
-      const moz = cenikMoznosti();
-      sel.innerHTML = '<option value="">— izberi cenik —</option>' +
-        moz.map(m => '<option value="' + escape_(m.pre) + '">' + escape_(m.ime) + ' · ' + escape_(m.pre) + ' · ' + m.n + ' art.</option>').join('');
-      if (box._cenikPre) sel.value = box._cenikPre;
-    };
-    box.querySelector('.ns-add-cenik').addEventListener('click', async () => {
-      const b = box.querySelector('.ns-add-cenik'); b.disabled = true;
-      try { await nalozicenik(); await naloziSkupineImena(); } catch (e) {}
-      b.disabled = false;
-      if (!cenikMoznosti().length) { toast('Ni še nobenega cenika. Uporabi »Ustvari nov cenik«.'); return; }
-      napolniSel(); sel.hidden = false; sel.focus();
-    });
-    sel.addEventListener('change', () => { box._cenikPre = sel.value || null; pokaziInfo(box._cenikPre); });
-    box.querySelector('.ns-new-cenik').addEventListener('click', async () => {
-      const naziv = (box.querySelector('[data-naziv]').value || '').trim();
-      if (!naziv) { box.querySelector('[data-msg]').textContent = 'Najprej vpiši naziv stranke — cenik se poimenuje po njej.'; box.querySelector('[data-naziv]').focus(); return; }
-      try { await nalozicenik(); await naloziSkupineImena(); } catch (e) {}
-      novCenikModal({ ime: naziv, onCreated: (pre) => {
-        box._cenikPre = pre; sel.hidden = true; napolniSel(); pokaziInfo(pre);
-        toast('Cenik ustvarjen · izbran za to stranko.');
-      } });
-    });
     box.querySelector('[data-preklici]').addEventListener('click', () => { box.innerHTML = ''; box.classList.remove('show'); });
     box.querySelector('[data-shrani]').addEventListener('click', () => shraniNovaStranka(box));
     box.classList.add('show');
@@ -4943,21 +4913,14 @@
     const podjetje = g('[data-podjetje]').value.trim();
     const davcna = g('[data-davcna]').value.trim();
     const naslov = g('[data-naslov]').value.trim();
-    const cenikPre = box._cenikPre || null;
     msg.textContent = 'Shranjujem …';
     try {
       const legacyId = 'p' + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);
       const { data: novOrg, error: e1 } = await sb.from('orgs').insert({ name: naziv, legal_name: podjetje || null, address: naslov || null, vat_id: davcna || null, legacy_id: legacyId }).select('id,name,legal_name,address,vat_id').single();
       if (e1) throw e1;
-      let dodanihArt = 0;
-      if (cenikPre) {
-        try { await nalozicenik(); } catch (e) {}
-        const sifre = (artikliGrupe()[cenikPre] || []).map(x => x.sifra);
-        if (sifre.length) { await nastaviSkupinoStranki(novOrg.id, sifre); dodanihArt = sifre.length; }
-      }
       ORGSEZNAM.push(novOrg); ORGIME[novOrg.id] = novOrg.name;
       box.innerHTML = ''; box.classList.remove('show');
-      toast('Stranka ustvarjena · ' + (cenikPre ? ('cenik ' + cenikPre + (dodanihArt ? ' (' + dodanihArt + ' art.)' : ' — prazen')) : 'brez cenika'));
+      toast('Stranka ustvarjena');
       render();
     } catch (e) {
       msg.textContent = 'Napaka: ' + (e.message || e);
