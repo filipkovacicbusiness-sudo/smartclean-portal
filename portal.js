@@ -1614,7 +1614,7 @@
     var grupe = artikliGrupe(); var arts = grupe[pre] || []; var sifre = arts.map(function (x) { return x.sifra; });
     var seznam = (ORGSEZNAM || []).slice().sort(function (a, b) { return (a.name || '').localeCompare(b.name || '', 'sl'); });
     var back = document.createElement('div'); back.className = 'sc-modal-back';
-    var rows = seznam.map(function (o) { var checked = strankaSkupina(o.id) === pre; return '<label class="art-chk"><input type="checkbox" data-org="' + o.id + '"' + (checked ? ' checked' : '') + '><span>' + escape_(o.name || '') + '</span></label>'; }).join('') || '<p class="u-sub">Ni strank.</p>';
+    var rows = seznam.map(function (o) { var checked = strankaSkupina(o.id) === pre; return '<label class="assign-chk"><input type="checkbox" data-org="' + o.id + '"' + (checked ? ' checked' : '') + '><span>' + escape_(o.name || '') + '</span></label>'; }).join('') || '<p class="u-sub">Ni strank.</p>';
     back.innerHTML = '<div class="sc-modal" role="dialog" aria-modal="true"><h4>Dodeli skupino ' + escape_(pre) + ' strankam</h4>' +
       '<p class="u-sub" style="margin:-6px 0 12px">Odkljukane stranke dobijo TE artikle — zamenja njihov cenik. Odkljukane, ki so bile v tej skupini, se izpraznijo.</p>' +
       '<div class="art-chk-list">' + rows + '</div>' +
@@ -1624,7 +1624,7 @@
     back.querySelector('[data-no]').addEventListener('click', zapri);
     back.addEventListener('click', function (e) { if (e.target === back) zapri(); });
     back.querySelector('[data-yes]').addEventListener('click', async function () {
-      var checks = [].slice.call(back.querySelectorAll('.art-chk input'));
+      var checks = [].slice.call(back.querySelectorAll('.assign-chk input'));
       zapri(); toast('Posodabljam cenike …');
       for (var i = 0; i < checks.length; i++) {
         var org = checks[i].dataset.org, wasP = strankaSkupina(org) === pre, isC = checks[i].checked;
