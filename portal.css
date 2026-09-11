@@ -400,10 +400,11 @@ html[data-view="grid"] .lcell .a-row .arh-chk{position:absolute;top:12px;right:1
 .a-det.show{display:block;}
 /* Postavke: pregledni stolpci — vrstni red najprej NAVZDOL, nato v nov stolpec desno
    (CSS multicol). Ime levo, količina krepko desno, tanka ločnica pod vsako postavko. */
-.a-det ul{list-style:none;column-width:230px;column-gap:30px;margin:4px 0 2px;}
-.a-det li{font-size:.9rem;padding:7px 0;display:flex;align-items:baseline;justify-content:space-between;gap:12px;
-  color:var(--ink);border-bottom:1px solid var(--line);max-width:none;break-inside:avoid;-webkit-column-break-inside:avoid;}
-.a-det li span{min-width:0;overflow-wrap:anywhere;}
+.a-det ul{list-style:none;column-width:250px;column-gap:30px;margin:4px 0 2px;}
+/* Vsaka postavka v ENI vrstici (predolgo ime → …), da so ločnice na enakih višinah. */
+.a-det li{font-size:.9rem;height:34px;padding:0;display:flex;align-items:center;justify-content:space-between;gap:12px;
+  color:var(--ink);border-bottom:1px solid var(--line);max-width:none;break-inside:avoid;-webkit-column-break-inside:avoid;white-space:nowrap;}
+.a-det li span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .a-det li b{color:var(--ink);font-weight:700;font-variant-numeric:tabular-nums;flex:0 0 auto;}
 .a-row[aria-expanded="true"] .chev{transform:rotate(90deg);}
 
@@ -479,11 +480,19 @@ main.main{max-width:1500px;margin:0 auto;padding:30px 34px 90px;}
 /* spustni seznami v obrazcih po standardu portala (puščica + enak rob), le kompaktnejši */
 .ur-form select{font-size:.9rem;padding:10px 34px 10px 12px;background-color:var(--surface);width:100%;}
 .ur-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
-.ur-post{display:grid;grid-template-columns:1fr 92px 34px;gap:8px;margin-bottom:6px}
+.ur-post{display:grid;grid-template-columns:28px 1fr 92px 34px;gap:8px;margin-bottom:6px;align-items:center;}
+.ur-post .ur-grip{border:1px solid var(--line);background:var(--surface);border-radius:8px;height:100%;min-height:38px;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;padding:0;}
+.ur-post .ur-grip:hover{border-color:var(--mid);}
 .ur-post .ur-pn{min-width:0;width:100%;text-overflow:ellipsis;}
 .ur-post .ur-del{border:1px solid var(--line);border-radius:8px;background:var(--surface);
   color:var(--mid);cursor:pointer;font-size:1rem;line-height:1;padding:0;}
 .ur-post .ur-del:hover{border-color:var(--coral);color:var(--coral)}
+/* Opozorilne barve: RDEČ = ni izbran artikel, ORANŽEN = artikel brez količine. */
+.ur-post .ur-pn.post-err{border-color:var(--st-bad)!important;box-shadow:0 0 0 1px var(--st-bad) inset;}
+.ur-post input[data-pk].post-warn{border-color:var(--st-warn)!important;box-shadow:0 0 0 1px var(--st-warn) inset;}
+/* Utrip obstoječe vrstice ob poskusu dvojnika. */
+@keyframes postFlash{0%{box-shadow:0 0 0 0 rgba(207,107,92,0)}18%{box-shadow:0 0 0 3px var(--st-bad)}100%{box-shadow:0 0 0 0 rgba(207,107,92,0)}}
+.ur-post.post-flash{animation:postFlash 1.3s ease-in-out 1;border-radius:10px;}
 .ur-add{margin-top:2px;font-size:.8rem;padding:6px 12px;border:1px dashed var(--line);
   border-radius:8px;background:none;color:var(--mid);cursor:pointer}
 .ur-add:hover{border-color:var(--mid);color:var(--ink)}
