@@ -492,7 +492,50 @@
     var qv = pk ? (pk.value || '').trim() : '';
     var hasQty = qv !== '' && Number(qv) > 0;
     if (sel) sel.classList.toggle('post-err', !hasArt);
+    var btn = row.querySelector('[data-artbtn]'); if (btn) btn.classList.toggle('post-err', !hasArt);   // rdeč okvir na po meri izbirniku
     if (pk) pk.classList.toggle('post-warn', hasArt && !hasQty);
+  }
+  // Po meri izdelan izbirnik artikla: skrit <select data-pn> ostane vir resnice (vsa
+  // ostala logika bere njega); zgoraj narišemo gumb + meni z ID v okvirčku levo (kot katalog).
+  function artPickWire(row) {
+    var pick = row && row.querySelector('[data-artpick]'); if (!pick || pick._wired) return;
+    var sel = pick.querySelector('[data-pn]'), btn = pick.querySelector('[data-artbtn]'), menu = pick.querySelector('[data-artmenu]');
+    if (!sel || !btn || !menu) return;
+    pick._wired = true;
+    function sync() {
+      var o = sel.options[sel.selectedIndex] || null;
+      var koda = o ? (o.getAttribute('data-koda') || '') : '';
+      var t = btn.querySelector('.ur-artbtn-txt');
+      if (o && o.value) t.innerHTML = (koda ? '<span class="ur-opt-id">' + escape_(koda) + '</span>' : '') + '<span class="ur-opt-nm">' + escape_(o.value) + '</span>';
+      else t.innerHTML = '<span class="ur-artbtn-ph">' + escape_(o ? o.textContent : '— izberi artikel —') + '</span>';
+      btn.classList.toggle('ima', !!(o && o.value));
+    }
+    function zapri() { menu.hidden = true; btn.setAttribute('aria-expanded', 'false'); document.removeEventListener('click', vzunaj, true); }
+    function vzunaj(e) { if (!pick.contains(e.target)) zapri(); }
+    function odpri() {
+      var html = '';
+      for (var i = 0; i < sel.options.length; i++) {
+        var o = sel.options[i];
+        var koda = o.getAttribute('data-koda') || '';
+        var ime = o.value || o.textContent;
+        html += '<button type="button" class="ur-artopt' + (i === sel.selectedIndex ? ' sel' : '') + '" role="option" data-i="' + i + '">' +
+          '<span class="ur-opt-id' + (koda ? '' : ' prazno') + '">' + escape_(koda) + '</span>' +
+          '<span class="ur-opt-nm">' + escape_(ime) + '</span></button>';
+      }
+      menu.innerHTML = html; menu.hidden = false; btn.setAttribute('aria-expanded', 'true');
+      var s = menu.querySelector('.ur-artopt.sel'); if (s) { try { s.scrollIntoView({ block: 'nearest' }); } catch (e) {} }
+      setTimeout(function () { document.addEventListener('click', vzunaj, true); }, 0);
+    }
+    btn.addEventListener('click', function (e) { e.stopPropagation(); if (menu.hidden) odpri(); else zapri(); });
+    menu.addEventListener('click', function (e) {
+      var it = e.target.closest ? e.target.closest('.ur-artopt') : null; if (!it) return;
+      sel.selectedIndex = parseInt(it.getAttribute('data-i'), 10);
+      zapri();
+      sel.dispatchEvent(new Event('change', { bubbles: true }));
+      sync();
+    });
+    sel.addEventListener('change', sync);
+    sync();
   }
   // Ključ artikla v vrstici (sifra > article_id > ime) — za zaznavo dvojnikov.
   function _artKljuc(row) {
@@ -2550,15 +2593,16 @@
         if (x.org_id === org_id && !vid[x.sifra]) { vid[x.sifra] = true; box._arts.push({ id: null, name: x.naziv || '', koda: normId(x.koda), sifra: x.sifra, teza: (x.teza != null && x.teza !== '') ? parseFloat(x.teza) : null }); }
       });
       // UPORABA PO STRANKI iz obstoječe evidence: skupno opranih kosov na artikel
-      // (RPC stranka_kosi — isti podatek kot v razdelku Stranke). Premade pokaže
-      // NAJBOLJ uporabljene (po kosih), v tem vrstnem redu — ne celotnega kataloga.
+      // (RPC stranka_kosi — isti podatek kot v razdelku Stranke). Uporabo uporabimo le
+      // za FILTER (skrij artikle, ki jih stranka (skoraj) ne uporablja), VRSTNI RED pa
+      // ostane enak kot v ceniku (sort_order) — ne po pogostosti.
       try {
         var kosMap = {};
         var _kr = await sb.rpc('stranka_kosi', { p_org: org_id });
         if (_kr && !_kr.error) (_kr.data || []).forEach(function (x) { kosMap[x.article_id] = Number(x.kosov) || 0; });
         box._arts.forEach(function (a, i) { a._u = (a.id && kosMap[a.id]) ? kosMap[a.id] : 0; a._i0 = i; });
         box._imaUporabo = box._arts.some(function (a) { return a._u > 0; });
-        box._arts.sort(function (x2, y2) { return (y2._u - x2._u) || (x2._i0 - y2._i0); });   // najbolj uporabljeni najprej, sicer katalog
+        box._arts.sort(function (x2, y2) { return x2._i0 - y2._i0; });   // vrstni red kot v ceniku
       } catch (e2) { box._imaUporabo = false; }
     } catch (e) { box._arts = []; }
   }
@@ -2592,7 +2636,7 @@
       opts += '<option value="">— izberi artikel —</option>';
       arts.forEach(function (a) {
         var lab = a.name + (a.koda ? ' · ' + a.koda : '');
-        opts += '<option value="' + escape_(a.name) + '" data-aid="' + escape_(String(a.id || '')) + '" data-sifra="' + escape_(String(a.sifra != null ? a.sifra : '')) + '" data-teza="' + escape_(String(a.teza != null ? a.teza : '')) + '"' + (a.name === curName ? ' selected' : '') + '>' + escape_(lab) + '</option>';
+        opts += '<option value="' + escape_(a.name) + '" data-aid="' + escape_(String(a.id || '')) + '" data-sifra="' + escape_(String(a.sifra != null ? a.sifra : '')) + '" data-teza="' + escape_(String(a.teza != null ? a.teza : '')) + '" data-koda="' + escape_(a.koda || '') + '"' + (a.name === curName ? ' selected' : '') + '>' + escape_(lab) + '</option>';
       });
       sel.innerHTML = opts;
     }
@@ -2600,8 +2644,9 @@
     const dodajVrstico = (naziv = '', kosov = '') => {
       const row = document.createElement('div');
       row.className = 'ur-post';
-      row.innerHTML = `<button type="button" class="ur-grip dnd-handle" title="povleci za razvrščanje" aria-label="razvrsti">${DND_ICON}</button><select data-pn class="ur-pn" aria-label="Artikel"></select><input type="number" inputmode="numeric" min="0" step="1" aria-label="Količina (kosov)" data-pk placeholder="kos" value="${kosov}"><button type="button" class="ur-del" data-del title="odstrani">×</button>`;
+      row.innerHTML = `<button type="button" class="ur-grip dnd-handle" title="povleci za razvrščanje" aria-label="razvrsti">${DND_ICON}</button><div class="ur-artpick" data-artpick><select data-pn class="ur-pn" aria-label="Artikel" hidden></select><button type="button" class="ur-artbtn" data-artbtn aria-haspopup="listbox" aria-expanded="false"><span class="ur-artbtn-txt"><span class="ur-artbtn-ph">— izberi artikel —</span></span><span class="ur-artbtn-chev" aria-hidden="true">▾</span></button><div class="ur-artmenu" data-artmenu role="listbox" hidden></div></div><input type="number" inputmode="numeric" min="0" step="1" aria-label="Količina (kosov)" data-pk placeholder="kos" value="${kosov}"><button type="button" class="ur-del" data-del title="odstrani">×</button>`;
       napolniPn(row.querySelector('[data-pn]'), naziv);
+      artPickWire(row);
       row.querySelector('[data-del]').addEventListener('click', () => { row.remove(); osveziKg(); });
       row.querySelector('[data-pn]').addEventListener('change', () => { if (_dvojnikArtikla(row)) { var s = row.querySelector('[data-pn]'); if (s) s.value = ''; toast('Ta artikel je že na seznamu.'); } osveziKg(); _ocenaPostavke(row); });
       row.querySelector('[data-pk]').addEventListener('input', () => { osveziKg(); _ocenaPostavke(row); });
@@ -2793,6 +2838,11 @@
       <p class="u-sub" style="margin:10px 0 4px">Postavke — seznam se samodejno napolni z artikli stranke; vpiši samo količine. Prazne se ne shranijo.</p>
       <div data-postavke></div>
       <button type="button" class="ur-add" data-dodaj>+ Dodaj postavko (izven seznama)</button>
+      <p class="u-sub" style="margin:12px 0 4px">Opombi (neobvezno)</p>
+      <div class="ur-opomba">
+        <label class="ur-f"><span>Za stranko — natisne se na spremni list</span><textarea class="ur-opomba-txt" data-opomba-stranka rows="2" maxlength="600" placeholder="Vidno stranki, natisne se …"></textarea></label>
+        <label class="ur-f"><span>Interno — samo osebje, se NE natisne</span><textarea class="ur-opomba-txt" data-opomba-interno rows="2" maxlength="600" placeholder="Vidno samo osebju …"></textarea></label>
+      </div>
       <div class="u-acts" style="margin-top:14px"><button type="button" class="ur-save" data-shrani>Ustvari</button><button type="button" data-preklici>Prekliči</button></div>
       <p class="u-sub ur-msg" data-msg></p></div>`;
     const pBox = box.querySelector('[data-postavke]');
@@ -2805,7 +2855,7 @@
       opts += '<option value="">— izberi artikel —</option>';
       arts.forEach(function (a) {
         var lab = a.name + (a.koda ? ' · ' + a.koda : '');
-        opts += '<option value="' + escape_(a.name) + '" data-aid="' + escape_(String(a.id || '')) + '" data-sifra="' + escape_(String(a.sifra != null ? a.sifra : '')) + '" data-teza="' + escape_(String(a.teza != null ? a.teza : '')) + '"' + (a.name === curName ? ' selected' : '') + '>' + escape_(lab) + '</option>';
+        opts += '<option value="' + escape_(a.name) + '" data-aid="' + escape_(String(a.id || '')) + '" data-sifra="' + escape_(String(a.sifra != null ? a.sifra : '')) + '" data-teza="' + escape_(String(a.teza != null ? a.teza : '')) + '" data-koda="' + escape_(a.koda || '') + '"' + (a.name === curName ? ' selected' : '') + '>' + escape_(lab) + '</option>';
       });
       sel.innerHTML = opts;
     }
@@ -2813,8 +2863,9 @@
     const dodajVrstico = (naziv = '', kosov = '') => {
       const row = document.createElement('div');
       row.className = 'ur-post';
-      row.innerHTML = `<button type="button" class="ur-grip dnd-handle" title="povleci za razvrščanje" aria-label="razvrsti">${DND_ICON}</button><select data-pn class="ur-pn" aria-label="Artikel"></select><input type="number" inputmode="numeric" min="0" step="1" aria-label="Količina (kosov)" data-pk placeholder="kos" value="${kosov}"><button type="button" class="ur-del" data-del title="odstrani">×</button>`;
+      row.innerHTML = `<button type="button" class="ur-grip dnd-handle" title="povleci za razvrščanje" aria-label="razvrsti">${DND_ICON}</button><div class="ur-artpick" data-artpick><select data-pn class="ur-pn" aria-label="Artikel" hidden></select><button type="button" class="ur-artbtn" data-artbtn aria-haspopup="listbox" aria-expanded="false"><span class="ur-artbtn-txt"><span class="ur-artbtn-ph">— izberi artikel —</span></span><span class="ur-artbtn-chev" aria-hidden="true">▾</span></button><div class="ur-artmenu" data-artmenu role="listbox" hidden></div></div><input type="number" inputmode="numeric" min="0" step="1" aria-label="Količina (kosov)" data-pk placeholder="kos" value="${kosov}"><button type="button" class="ur-del" data-del title="odstrani">×</button>`;
       napolniPn(row.querySelector('[data-pn]'), naziv);
+      artPickWire(row);
       row.querySelector('[data-del]').addEventListener('click', () => { row.remove(); osveziKg(); });
       row.querySelector('[data-pn]').addEventListener('change', () => { if (_dvojnikArtikla(row)) { var s = row.querySelector('[data-pn]'); if (s) s.value = ''; toast('Ta artikel je že na seznamu.'); } osveziKg(); _ocenaPostavke(row); });
       row.querySelector('[data-pk]').addEventListener('input', () => { osveziKg(); _ocenaPostavke(row); });
@@ -2863,6 +2914,8 @@
     const _kgEl = q('[data-teza-auto]');
     const _kgAuto = _kgEl && _kgEl.dataset.kg !== '' && _kgEl.dataset.kg != null ? Number(_kgEl.dataset.kg) : null;
     const izdal = q('[data-izdal]').value.trim() || (JAZIME || null);
+    const opStranka = q('[data-opomba-stranka]') ? q('[data-opomba-stranka]').value.trim() : '';
+    const opInterno = q('[data-opomba-interno]') ? q('[data-opomba-interno]').value.trim() : '';
     if (!org_id) { msg.textContent = 'Izberi stranko.'; return; }
     if (!seq || !leto) { msg.textContent = 'Vpiši številko in leto.'; return; }
     if (!doc_date) { msg.textContent = 'Vpiši datum.'; return; }
@@ -2894,6 +2947,8 @@
         weight_kg: _kgAuto,
         transport: beriPrevoz(box),
         issued_name: izdal, source: 'portal',
+        opomba_stranka: opStranka || null,
+        opomba_evidenca: opInterno || null,
         legacy_id: 'portal-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7)
       }).select('id').single();
       if (error) throw error;
