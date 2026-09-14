@@ -816,7 +816,7 @@
     if (_prisView === 'dan') { d = new Date(_prisDan + 'T00:00:00'); d.setDate(d.getDate() + delta); }
     else { var p = _prisDan.slice(0, 7).split('-'); d = new Date(+p[0], (+p[1] - 1) + delta, 1); }
     _prisDan = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
-    prisRender();
+    prisObdobje();
   }
   var DNEVI_KR = ['ned', 'pon', 'tor', 'sre', 'čet', 'pet', 'sob'];
 
@@ -829,6 +829,28 @@
   function uraMin(ts) { return new Date(ts).toLocaleTimeString('sl-SI', { hour: '2-digit', minute: '2-digit' }); }
   function trajanjeH(sek) { var m = Math.round(sek / 60); var h = Math.floor(m / 60); m = m % 60; if (!h) return m + 'min'; if (!m) return h + 'h'; return h + 'h ' + m + 'min'; }
 
+  // Spodnja meja nalaganja dogodkov: začetek PRIKAZANEGA meseca ALI zadnjih 62 dni (kar je prej),
+  // da so vidni tudi starejši meseci (npr. julij), tabela »Trenutno prisotni« pa ostane sveža.
+  function _prisMejaISO() {
+    var baseDan = (_prisDan && _prisDan.length >= 7) ? _prisDan : danes10();
+    var monthStart = baseDan.slice(0, 7) + '-01';
+    var r = new Date(Date.now() - 62 * 24 * 3600 * 1000);
+    var recent = r.getFullYear() + '-' + ('0' + (r.getMonth() + 1)).slice(-2) + '-' + ('0' + r.getDate()).slice(-2);
+    var dan = monthStart < recent ? monthStart : recent;   // ISO nizi se primerjajo leksikografsko
+    return new Date(dan + 'T00:00:00Z').toISOString();
+  }
+  async function naloziPrisDog() {
+    var meja = _prisMejaISO();
+    var r = await vseVrstice(function (a, b) {
+      return sb.from('att_events').select('id,employee_id,terminal_id,ts,type,source,potrjeno').gte('ts', meja).order('ts', { ascending: true }).range(a, b);
+    });
+    PRISDOG = (r && r.data) ? r.data : [];
+  }
+  // Po menjavi obdobja (mesec/dan): donaloži dogodke za prikazano obdobje in znova izriši.
+  async function prisObdobje() {
+    try { await naloziPrisDog(); } catch (e) {}
+    prisRender();
+  }
   async function naloziPrisotnost() {
     var e = await sb.from('employees').select('id,org_id,ime,card_token,active,created_at,profile_id').order('ime');
     if (e.error && /profile_id|column|schema/i.test(e.error.message || '')) {
@@ -841,11 +863,7 @@
       PRIS_UPO = pu.error ? [] : (pu.data || []);
     } catch (e2) { PRIS_UPO = []; }
     PRIS_UPO_MAP = {}; PRIS_UPO.forEach(function (u) { PRIS_UPO_MAP[u.id] = u; });
-    var meja = new Date(Date.now() - 62 * 24 * 3600 * 1000).toISOString();
-    var r = await vseVrstice(function (a, b) {
-      return sb.from('att_events').select('id,employee_id,terminal_id,ts,type,source,potrjeno').gte('ts', meja).order('ts', { ascending: true }).range(a, b);
-    });
-    PRISDOG = (r && r.data) ? r.data : [];
+    await naloziPrisDog();
   }
   function prisZadnji(empId) {
     var last = null;
@@ -1169,8 +1187,8 @@
 
     box.innerHTML = blok1 + blok2 + blok3;
 
-    var dat = $('prisDatum'); if (dat) dat.addEventListener('change', function () { var v = this.value || danes10(); if (v.length === 7) v += '-01'; _prisDan = v; prisRender(); });
-    { var pdn = $('prisDanes'); if (pdn) pdn.addEventListener('click', function () { _prisDan = danes10(); prisRender(); }); }
+    var dat = $('prisDatum'); if (dat) dat.addEventListener('change', function () { var v = this.value || danes10(); if (v.length === 7) v += '-01'; _prisDan = v; prisObdobje(); });
+    { var pdn = $('prisDanes'); if (pdn) pdn.addEventListener('click', function () { _prisDan = danes10(); prisObdobje(); }); }
     box.querySelectorAll('[data-obd]').forEach(function (b) { b.addEventListener('click', function () { _prisView = b.dataset.obd; _prisMesec = (_prisView !== 'dan'); prisRender(); }); });
     box.querySelectorAll('[data-nav]').forEach(function (b) { b.addEventListener('click', function () { prisPremakni(parseInt(b.dataset.nav, 10)); }); });
     { var os = $('prisOsebaSel'); if (os) os.addEventListener('change', function () { _prisOseba = this.value; prisRender(); }); }
