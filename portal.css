@@ -370,7 +370,7 @@ h3.sec-h{font-family:var(--serif);font-size:1.05rem;font-weight:700;margin:0 0 1
 .bars-val{font-size:.72rem;color:var(--mid);}
 
 /* ══════════ ARHIV ══════════ */
-.a-row{display:grid;grid-template-columns:26px 118px 1fr auto auto 24px;gap:14px;align-items:center;position:relative;
+.a-row{display:grid;grid-template-columns:26px 118px 1fr auto 24px;gap:14px;align-items:center;position:relative;
   padding:15px 18px;border:1px solid var(--line);border-radius:var(--radius);cursor:pointer;
   background:var(--surface);width:100%;text-align:left;margin-bottom:10px;
   transition:background .18s,border-color .18s,box-shadow .18s,transform .18s;}
@@ -378,7 +378,8 @@ h3.sec-h{font-family:var(--serif);font-size:1.05rem;font-weight:700;margin:0 0 1
 html[data-view="grid"] .a-row:hover{transform:translateY(-2px);}
 .a-row[aria-expanded="true"]{margin-bottom:0;border-bottom-left-radius:0;border-bottom-right-radius:0;}
 .a-num{font-weight:500;font-variant-numeric:tabular-nums;}
-.a-foot{display:contents;}
+.a-foot{display:flex;align-items:center;gap:10px;justify-content:flex-end;white-space:nowrap;}
+html[data-view="grid"] .a-foot{display:contents;}   /* v mreži naj se datum/izdal/kos zložijo navpično */
 .a-date,.a-qty{white-space:nowrap;}
 /* Oznaka izrednega prevoza na kartici arhiva. */
 .a-izr{display:inline-block;margin-left:8px;padding:1px 9px;border-radius:100px;font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.03em;vertical-align:middle;white-space:nowrap;background:var(--st-warn);color:#141414;}
@@ -964,6 +965,11 @@ html[data-view="list"] .lcell .row > span:first-child{display:flex;flex-directio
 html[data-view="list"] .lcell .row > span:first-child br{display:none;}
 html[data-view="list"] .row-name,
 html[data-view="list"] .row-legal{display:block;}
+html[data-view="list"] .row-legal{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+/* Enotna višina kartic strank v seznamu: značka »Splošni cenik« ne sme večati vrstice —
+   postavimo jo absolutno v prazni prostor desno od naziva. */
+html[data-view="list"] .lcell .row > span:first-child{position:relative;padding-right:150px;}
+html[data-view="list"] .lcell .row .sc-tag{position:absolute;right:0;top:50%;transform:translateY(-50%);margin:0;}
 
 /* ── ENOTNI GUMBI POD NASLOVOM (isti razmak, velikost, barva, levi rob) ── */
 .head-act{margin:0 0 18px;margin-left:0;align-self:flex-start;}
@@ -1650,6 +1656,16 @@ html[data-theme="dark"] .pris-chip-x:hover{background:rgba(255,138,122,.16);colo
 .dok-menu-i.danger{color:#d9695c;}
 .dok-menu-i.danger:hover{background:rgba(217,105,92,.1);}
 @media(max-width:560px){.dok-grid{grid-template-columns:repeat(3,1fr);gap:10px;}.dok-x,.dok-more{opacity:1;}}
+/* Dokumenti — spoštuj pogled SEZNAM (ikona levo, ime, velikost, meni desno) */
+html[data-view="list"] .dok-grid{grid-template-columns:1fr;gap:8px;}
+html[data-view="list"] .dok-item{flex-direction:row;align-items:center;text-align:left;gap:14px;padding:10px 46px 10px 14px;min-height:62px;}
+html[data-view="list"] .dok-item .dok-ic{width:36px;height:36px;border-radius:8px;}
+html[data-view="list"] .dok-item .dok-ic svg{width:26px;height:26px;}
+html[data-view="list"] .dok-item .dok-ic-img{width:46px;height:36px;}
+html[data-view="list"] .dok-item .dok-nm{flex:1 1 auto;min-width:0;text-align:left;-webkit-line-clamp:1;}
+html[data-view="list"] .dok-item .dok-sub{flex:0 0 auto;}
+html[data-view="list"] .dok-item .dok-more{opacity:1;top:50%;right:10px;transform:translateY(-50%);}
+@media(max-width:560px){html[data-view="list"] .dok-grid{grid-template-columns:1fr;}}
 /* Skener */
 .sken-modal{max-width:520px;width:100%;}
 .sken-strani{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px;min-height:96px;padding:12px;border:1px dashed var(--line);border-radius:12px;align-items:flex-start;align-content:flex-start;}

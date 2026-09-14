@@ -620,7 +620,7 @@
       if (OSEBJE) {
         op.push(risiArhiv);
         if (sme('prisotnost', 'r')) op.push(risiPrisotnost);
-        if (sme('statistika', 'r')) op.push(risiUcinek);
+        if (sme('statistika', 'r')) op.push(function () { return risiUcinek(true); });
         if (sme('stranke', 'r')) op.push(risiStranke);
         if (sme('artikli', 'r')) op.push(risiArtikli);
         if (JE_SUPER()) op.push(risiFakture);
@@ -2054,13 +2054,16 @@
     }
     _uc3dRAF = requestAnimationFrame(frame);
   }
-  async function risiUcinek() {
+  async function risiUcinek(prefetch) {
     var box = $('ucList'); if (!box) return;
+    // Prepreči »najprej final, nato animacija«: ob ODPRTJU sinhrono zbriši morebitni že
+    // prednaloženi (končni) diagram, da se med čakanjem na podatke ne izriše in nato reset.
+    if (!prefetch) { var _pre = box.querySelector('.uc3d-svg'); if (_pre) _pre.innerHTML = ''; }
     pokaziNalaganje(box);
     try {
       await naloziUcinek();
       if (!_ucDan) _ucDan = danes10();
-      _uc3dAnim = true;
+      _uc3dAnim = !prefetch;   // med prednalaganjem (skrito) NE animiramo; animira se šele ob odprtju
       ucRender();
       box.dataset.loaded = '1';
     } catch (e) { if (!box.dataset.loaded) box.innerHTML = '<div class="uc-card"><p class="u-sub">Napaka pri nalaganju: ' + escape_(e && e.message ? e.message : e) + '</p></div>'; }
