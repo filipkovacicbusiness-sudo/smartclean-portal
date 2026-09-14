@@ -2875,45 +2875,58 @@
     const naziv = org.legal_name || org.name || ORGIME[n.org_id] || '—';
     const nazivSek = (org.legal_name && org.name && org.name !== org.legal_name) ? org.name : '';
     const rows = items.length
-      ? items.map(p => `<tr><td>${escape_(p.naziv)}</td><td class="q">${stevilo(p.kosov)}</td></tr>`).join('')
-      : '<tr><td colspan="2" style="color:#888">Ni postavk</td></tr>';
+      ? items.map(p => `<tr><td class="an">${escape_(p.naziv)}</td><td class="qty">${stevilo(p.kosov)}</td></tr>`).join('')
+      : '<tr><td class="an" colspan="2" style="color:#888">Ni postavk</td></tr>';
     const izdal = n.issued_name ? ` &nbsp;·&nbsp; Izdal: ${escape_(n.issued_name)}` : '';
     const prevozP = ` &nbsp;·&nbsp; ${n.transport === 'izredni' ? 'Izredni prevoz' : 'Redni prevoz'}`;
-    const kg = (n.weight_kg != null && n.weight_kg !== '') ? `<div class="t">Skupaj teža perila: <b>${tezaFmt(n.weight_kg)}</b></div>` : '';
-    const popr = n.popravljeno_at ? `<div class="popr">✎ Popravljeno v portalu · ${escape_(n.popravil || 'osebje')} · ${datumcas(n.popravljeno_at)}</div>` : '';
-    const ustv = '';   // »Ustvarjeno v portalu« se NE tiska (ostane le v pregledu na zaslonu)
-    const opombaP = n.opomba ? `<div class="opomba"><div class="oh">Opomba</div><div class="ob">${escape_(n.opomba)}</div><div class="oa">— ${escape_(n.opomba_avtor || 'osebje')}${n.opomba_at ? ' · ' + datumcas(n.opomba_at) : ''}</div></div>` : '';
-    const opombaStrankaP = n.opomba_stranka ? `<div class="opomba"><div class="oh">Opomba</div><div class="ob">${escape_(n.opomba_stranka)}</div></div>` : '';
+    const kg = (n.weight_kg != null && n.weight_kg !== '') ? `<div class="sc-weight">Skupaj teža perila: <b>${tezaFmt(n.weight_kg)}</b></div>` : '';
+    // Na spremni list se tiska SAMO opomba za stranko (interna opomba ostane le v portalu) — enako kot v spletni aplikaciji.
+    const opombaP = n.opomba_stranka ? `<div class="sc-note"><b>Opomba:</b> ${escape_(n.opomba_stranka)}</div>` : '';
+    const popr = n.popravljeno_at ? `<div class="sc-popr">Popravljeno v portalu · ${escape_(n.popravil || 'osebje')} · ${datum(String(n.popravljeno_at).slice(0, 10))}</div>` : '';
+    // Enak izgled kot v spletni aplikaciji (mobile): pisave iz /fonts/ (Archivo + Playfair), postavitev A4 ».a4«.
     const html = `<!DOCTYPE html><html lang="sl"><head><meta charset="utf-8"><title>Spremni list ${escape_(n.number || '')}</title><style>
-      /* margin:0 → brskalnik NE natisne glave/noge (URL, »1/1«); rob damo prek body paddinga */
+      /* Pisave (samostojen dokument v iframe-u; datoteke iz /fonts/, dovoljene prek font-src 'self') */
+      @font-face{font-family:'Archivo';font-style:normal;font-weight:100 900;font-display:swap;src:url('fonts/archivo-latin-wght-normal.woff2') format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}
+      @font-face{font-family:'Archivo';font-style:normal;font-weight:100 900;font-display:swap;src:url('fonts/archivo-latin-ext-wght-normal.woff2') format('woff2');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;}
+      @font-face{font-family:'Playfair Display';font-style:normal;font-weight:700;font-display:swap;src:url('fonts/playfair-display-latin-700-normal.woff2') format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}
+      @font-face{font-family:'Playfair Display';font-style:normal;font-weight:700;font-display:swap;src:url('fonts/playfair-display-latin-ext-700-normal.woff2') format('woff2');unicode-range:U+0100-02AF,U+0304,U+0308,U+0329,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;}
+      /* margin:0 → brskalnik NE natisne glave/noge (URL, »1/1«); rob damo prek .a4 paddinga */
       @page{size:A4;margin:0}
-      @media screen{html{background:#e9edeb;margin:0}body{width:210mm;min-height:297mm;padding:14mm;margin:0 auto;background:#fff}}
-      @media print{html{background:#fff}body{width:auto;min-height:0;padding:14mm;margin:0}}
-      *{box-sizing:border-box;font-family:-apple-system,'Segoe UI',Roboto,Arial,sans-serif;color:#16202b}
-      body{margin:0;font-size:13px}
-      .head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #1a6644;padding-bottom:11px;margin-bottom:18px}
-      .wm{height:30px;width:auto;display:block}.head{align-items:center}
-      .biz{font-size:11px;text-align:right;color:#5c6873;line-height:1.5}
-      .num{font-size:15px;margin:4px 0 14px}
-      .client{display:flex;justify-content:space-between;border:1px solid #dce2e0;border-radius:8px;padding:12px 14px;margin-bottom:14px}
-      .dates{color:#5c6873;margin-top:5px}
-      table{width:100%;border-collapse:collapse;margin-top:4px}
-      th,td{text-align:left;padding:7px 8px;border-bottom:1px solid #e6ebe9}
-      th{background:#f2f5f4;text-transform:uppercase;font-size:11px;letter-spacing:.04em}
-      td.q,th.q{text-align:right;font-variant-numeric:tabular-nums;width:120px}
-      .t{margin-top:12px;font-size:14px}
-      .popr{margin-top:18px;padding:9px 13px;border-radius:8px;background:#fdf3e8;color:#8a5a00;font-size:12px;font-weight:600}
-      .opomba{margin-top:18px;padding:11px 14px;border:1px solid #dce2e0;border-radius:8px;background:#f7faf9;font-size:12.5px}
-      .opomba .oh{text-transform:uppercase;font-size:10px;letter-spacing:.05em;color:#5c6873;margin-bottom:4px}
-      .opomba .ob{white-space:pre-wrap;line-height:1.5}
-      .opomba .oa{margin-top:6px;color:#5c6873;font-size:11px}
-      .sign{margin-top:30px;color:#5c6873}
+      *{box-sizing:border-box}
+      html{background:#e9edeb}
+      body{margin:0;background:#fff;color:#0a0a0a;font-family:'Archivo',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif}
+      @media print{html,body{background:#fff}}
+      .a4{position:relative;padding:12mm 12mm 14mm;color:#0a0a0a}
+      .a4 .sc-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin-bottom:18px;padding-bottom:14px;border-bottom:1.5px solid #0a0a0a}
+      .a4 .sc-wm{font-family:'Playfair Display',Georgia,serif;font-weight:700;letter-spacing:-.03em;line-height:.9;font-size:32px;color:#0d1f17}
+      .a4 .sc-wm span{color:#1a6644}
+      .a4 .sc-biz{font-size:9px;line-height:1.6;text-align:right;color:#666;white-space:nowrap;font-weight:500}
+      .a4 .sc-box{border:1px solid #dcdcdc;border-radius:9px;padding:10px 14px;margin-bottom:10px}
+      .a4 .sc-num{font-size:13px;font-weight:700}
+      .a4 .sc-num b{font-variant-numeric:tabular-nums;letter-spacing:.01em}
+      .a4 .sc-client{display:flex;justify-content:space-between;gap:14px}
+      .a4 .sc-client .cl{font-size:12px}
+      .a4 .sc-client .cname{font-weight:700;border-bottom:2px solid #0a0a0a;padding:0 2px}
+      .a4 .sc-client .cname-sec{font-weight:400;color:#6b7280;font-size:.85em;margin-left:4px}
+      .a4 .sc-client .sc-dates{margin-top:10px;font-size:11px;color:#666}
+      .a4 .sc-sign{border-left:1px solid #dcdcdc;padding-left:16px;font-weight:600;font-size:12px;min-width:110px;color:#666}
+      .a4 table.sc-table{width:100%;border-collapse:collapse;font-size:10px;margin-top:4px}
+      .a4 table.sc-table th{color:#0a0a0a;font-weight:700;font-size:9px;letter-spacing:.09em;text-transform:uppercase;padding:0 8px 8px;text-align:center;border-bottom:1.5px solid #0a0a0a}
+      .a4 table.sc-table th.l{text-align:left}
+      .a4 table.sc-table td{border-bottom:1px solid #ececec;padding:5px 8px;height:15px}
+      .a4 table.sc-table td.an{color:#0a0a0a;font-weight:600;text-align:left}
+      .a4 table.sc-table td.qty{text-align:center;font-variant-numeric:tabular-nums;font-weight:700;width:34%;color:#0a0a0a}
+      .a4 .sc-weight{margin-top:12px;font-size:12px;color:#0a0a0a;text-align:right;font-weight:600}
+      .a4 .sc-note{margin-top:10px;padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:12px;white-space:pre-wrap}
+      .a4 .sc-popr{margin-top:10px;padding:6px 10px;border-radius:8px;background:#fdf3e8;color:#8a5a00;font-size:11px;font-weight:600}
     </style></head><body>
-      <div class="head"><img class="wm" alt="SmartClean" src="${SC_LOGO}"><div class="biz">BSMART d.o.o.<br>Škalska cesta 6, 3210 Slovenske Konjice<br>+386 41 209 676<br>+386 68 693 988<br>blanka.kovacic1@gmail.com</div></div>
-      <div class="num">Št. spremnega lista: <b>${escape_(n.number || '—')}</b></div>
-      <div class="client"><div><b>Naročnik storitve:</b> ${escape_(naziv)}${nazivSek ? ' <span style="font-weight:400;color:#6b7280;font-size:.9em">(' + escape_(nazivSek) + ')</span>' : ''}<div class="dates">Oddaja: ${datum(n.doc_date)}${izdal}${prevozP}</div></div><div>Podpis: ______________</div></div>
-      <table><thead><tr><th>Naziv artikla</th><th class="q">Kosov</th></tr></thead><tbody>${rows}</tbody></table>
-      ${kg}${ustv}${popr}${opombaStrankaP}${opombaP}<div class="sign"></div>
+      <div class="a4">
+        <div class="sc-head"><div class="sc-wm">Smart<span>Clean</span></div><div class="sc-biz">BSMART d.o.o.<br>Škalska cesta 6, 3210 Slovenske Konjice<br>+386 41 209 676<br>+386 68 693 988<br>blanka.kovacic1@gmail.com</div></div>
+        <div class="sc-box sc-num">Št. spremnega lista: <b>${escape_(n.number || '—')}</b></div>
+        <div class="sc-box sc-client"><div class="cl"><div><b>Naročnik storitve:</b> <span class="cname">${escape_(naziv)}</span>${nazivSek ? ' <span class="cname-sec">(' + escape_(nazivSek) + ')</span>' : ''}</div><div class="sc-dates">Oddaja: ${datum(n.doc_date)}${izdal}${prevozP}</div></div><div class="sc-sign">Podpis:</div></div>
+        <table class="sc-table"><thead><tr><th class="l">Naziv Artikla</th><th>Oddaja (št. kosov)</th></tr></thead><tbody>${rows}</tbody></table>
+        ${kg}${opombaP}${popr}
+      </div>
     </body></html>`;
     return html;
   }
