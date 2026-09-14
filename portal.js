@@ -495,6 +495,14 @@
     var btn = row.querySelector('[data-artbtn]'); if (btn) btn.classList.toggle('post-err', !hasArt);   // rdeč okvir na po meri izbirniku
     if (pk) pk.classList.toggle('post-warn', hasArt && !hasQty);
   }
+  // Izolirani okvirček z ID izbranega artikla (levo od imena); prazen, dokler ni izbire.
+  function _osveziPid(row) {
+    if (!row) return;
+    var sel = row.querySelector('[data-pn]'), pid = row.querySelector('[data-pid]');
+    if (!sel || !pid) return;
+    var o = sel.options[sel.selectedIndex] || null;
+    pid.textContent = (o && o.value) ? (o.getAttribute('data-koda') || '') : '';
+  }
   // Po meri izdelan izbirnik artikla: skrit <select data-pn> ostane vir resnice (vsa
   // ostala logika bere njega); zgoraj narišemo gumb + meni z ID v okvirčku levo (kot katalog).
   function artPickWire(row) {
@@ -2003,7 +2011,7 @@
         });
         return out;
       }
-      labels = '<g style="opacity:' + labo.toFixed(2) + '">' + razporedi(right, G.W + 96, true) + razporedi(left, -96, false) + '</g>';
+      labels = '<g class="' + (opts.labFade ? 'uc3d-labfade' : '') + '" style="opacity:' + labo.toFixed(2) + '">' + razporedi(right, G.W + 96, true) + razporedi(left, -96, false) + '</g>';
     }
     return segOut.join('') + labels;
   }
@@ -2079,9 +2087,11 @@
       var segs = [], total = 0;
       slots.forEach(function (s) { var kg = s.k0 + (s.k1 - s.k0) * e; if (kg > 0.00001) { segs.push({ ime: s.ime, kg: kg, col: s.col }); total += kg; } });
       if (total <= 0) total = 1;
-      svgEl.innerHTML = uc3dSvgBuild(segs, total, 1);
+      // Med preoblikovanjem napise SKRIJEMO (sicer se postavitev vsak okvir premešča → »glitch«);
+      // rezine se gladko spreminjajo, napisi se čisto pojavijo šele na koncu.
+      svgEl.innerHTML = uc3dSvgBuild(segs, total, 1, { hideLabels: true });
       if (p < 1) { _uc3dRAF = requestAnimationFrame(frame); }
-      else { _uc3dRAF = null; svgEl.innerHTML = uc3dSvgBuild(toSegs, toTotal, 1); uc3dHover(svgEl); }
+      else { _uc3dRAF = null; svgEl.innerHTML = uc3dSvgBuild(toSegs, toTotal, 1, { labFade: true }); uc3dHover(svgEl); }
     }
     _uc3dRAF = requestAnimationFrame(frame);
   }
@@ -2673,7 +2683,7 @@
       if (curName && !matched) opts += '<option value="' + escape_(curName) + '" data-aid="" selected>' + escape_(curName) + ' — star zapis</option>';
       opts += '<option value="">— izberi artikel —</option>';
       arts.forEach(function (a) {
-        var lab = a.name + (a.koda ? ' · ' + a.koda : '');
+        var lab = a.name;
         opts += '<option value="' + escape_(a.name) + '" data-aid="' + escape_(String(a.id || '')) + '" data-sifra="' + escape_(String(a.sifra != null ? a.sifra : '')) + '" data-teza="' + escape_(String(a.teza != null ? a.teza : '')) + '" data-koda="' + escape_(a.koda || '') + '"' + (a.name === curName ? ' selected' : '') + '>' + escape_(lab) + '</option>';
       });
       sel.innerHTML = opts;
@@ -2682,11 +2692,11 @@
     const dodajVrstico = (naziv = '', kosov = '') => {
       const row = document.createElement('div');
       row.className = 'ur-post';
-      row.innerHTML = `<button type="button" class="ur-grip dnd-handle" title="povleci za razvrščanje" aria-label="razvrsti">${DND_ICON}</button><div class="ur-artpick" data-artpick><select data-pn class="ur-pn" aria-label="Artikel" hidden></select><button type="button" class="ur-artbtn" data-artbtn aria-haspopup="listbox" aria-expanded="false"><span class="ur-artbtn-txt"><span class="ur-artbtn-ph">— izberi artikel —</span></span><span class="ur-artbtn-chev" aria-hidden="true">▾</span></button><div class="ur-artmenu" data-artmenu role="listbox" hidden></div></div><input type="number" inputmode="numeric" min="0" step="1" aria-label="Količina (kosov)" data-pk placeholder="kos" value="${kosov}"><button type="button" class="ur-del" data-del title="odstrani">×</button>`;
+      row.innerHTML = `<button type="button" class="ur-grip dnd-handle" title="povleci za razvrščanje" aria-label="razvrsti">${DND_ICON}</button><span class="ur-pid" data-pid aria-hidden="true"></span><select data-pn class="ur-pn" aria-label="Artikel"></select><input type="number" inputmode="numeric" min="0" step="1" aria-label="Količina (kosov)" data-pk placeholder="kos" value="${kosov}"><button type="button" class="ur-del" data-del title="odstrani">×</button>`;
       napolniPn(row.querySelector('[data-pn]'), naziv);
-      artPickWire(row);
+      _osveziPid(row);
       row.querySelector('[data-del]').addEventListener('click', () => { row.remove(); osveziKg(); });
-      row.querySelector('[data-pn]').addEventListener('change', () => { if (_dvojnikArtikla(row)) { var s = row.querySelector('[data-pn]'); if (s) s.value = ''; toast('Ta artikel je že na seznamu.'); } osveziKg(); _ocenaPostavke(row); });
+      row.querySelector('[data-pn]').addEventListener('change', () => { if (_dvojnikArtikla(row)) { var s = row.querySelector('[data-pn]'); if (s) s.value = ''; toast('Ta artikel je že na seznamu.'); } osveziKg(); _ocenaPostavke(row); _osveziPid(row); });
       row.querySelector('[data-pk]').addEventListener('input', () => { osveziKg(); _ocenaPostavke(row); });
       pBox.appendChild(row);
       _ocenaPostavke(row);
@@ -2892,7 +2902,7 @@
       if (curName && !matched) opts += '<option value="' + escape_(curName) + '" data-aid="" selected>' + escape_(curName) + ' — ročno</option>';
       opts += '<option value="">— izberi artikel —</option>';
       arts.forEach(function (a) {
-        var lab = a.name + (a.koda ? ' · ' + a.koda : '');
+        var lab = a.name;
         opts += '<option value="' + escape_(a.name) + '" data-aid="' + escape_(String(a.id || '')) + '" data-sifra="' + escape_(String(a.sifra != null ? a.sifra : '')) + '" data-teza="' + escape_(String(a.teza != null ? a.teza : '')) + '" data-koda="' + escape_(a.koda || '') + '"' + (a.name === curName ? ' selected' : '') + '>' + escape_(lab) + '</option>';
       });
       sel.innerHTML = opts;
@@ -2901,11 +2911,11 @@
     const dodajVrstico = (naziv = '', kosov = '') => {
       const row = document.createElement('div');
       row.className = 'ur-post';
-      row.innerHTML = `<button type="button" class="ur-grip dnd-handle" title="povleci za razvrščanje" aria-label="razvrsti">${DND_ICON}</button><div class="ur-artpick" data-artpick><select data-pn class="ur-pn" aria-label="Artikel" hidden></select><button type="button" class="ur-artbtn" data-artbtn aria-haspopup="listbox" aria-expanded="false"><span class="ur-artbtn-txt"><span class="ur-artbtn-ph">— izberi artikel —</span></span><span class="ur-artbtn-chev" aria-hidden="true">▾</span></button><div class="ur-artmenu" data-artmenu role="listbox" hidden></div></div><input type="number" inputmode="numeric" min="0" step="1" aria-label="Količina (kosov)" data-pk placeholder="kos" value="${kosov}"><button type="button" class="ur-del" data-del title="odstrani">×</button>`;
+      row.innerHTML = `<button type="button" class="ur-grip dnd-handle" title="povleci za razvrščanje" aria-label="razvrsti">${DND_ICON}</button><span class="ur-pid" data-pid aria-hidden="true"></span><select data-pn class="ur-pn" aria-label="Artikel"></select><input type="number" inputmode="numeric" min="0" step="1" aria-label="Količina (kosov)" data-pk placeholder="kos" value="${kosov}"><button type="button" class="ur-del" data-del title="odstrani">×</button>`;
       napolniPn(row.querySelector('[data-pn]'), naziv);
-      artPickWire(row);
+      _osveziPid(row);
       row.querySelector('[data-del]').addEventListener('click', () => { row.remove(); osveziKg(); });
-      row.querySelector('[data-pn]').addEventListener('change', () => { if (_dvojnikArtikla(row)) { var s = row.querySelector('[data-pn]'); if (s) s.value = ''; toast('Ta artikel je že na seznamu.'); } osveziKg(); _ocenaPostavke(row); });
+      row.querySelector('[data-pn]').addEventListener('change', () => { if (_dvojnikArtikla(row)) { var s = row.querySelector('[data-pn]'); if (s) s.value = ''; toast('Ta artikel je že na seznamu.'); } osveziKg(); _ocenaPostavke(row); _osveziPid(row); });
       row.querySelector('[data-pk]').addEventListener('input', () => { osveziKg(); _ocenaPostavke(row); });
       pBox.appendChild(row);
       _ocenaPostavke(row);
@@ -5302,20 +5312,21 @@
 
     p.innerHTML = '<div class="prog-grid">' +
       _progCard(IKO_WEB, 'Spletni pogled', 'Deluje v vsakem brskalniku, brez namestitve — telefon, tablica ali računalnik.', _odpri) +
-      _progCard(IKO_DL, 'Tablica (Android)', 'Namestitveni paket za vnos in tiskanje spremnih listov na tablici.', '<span class="prog-badge">Preverjam …</span>', 'apkTablet') +
+      _progCard(IKO_DL, 'Tablica (Android)', 'Namestitveni paket za vnos in tiskanje spremnih listov na tablici.', '<a class="btn prog-act apk-dl" href="' + escape_(url) + '" download>' + IKO_DL + 'Prenesi<span class="apk-mb"></span></a>', 'apkTablet') +
       _progCard(IKO_TEL, 'Telefon', 'Odpre se v brskalniku; dodaj na začetni zaslon za občutek prave aplikacije.', _odpri) +
       '</div>';
 
+    // Gumb »Prenesi« je viden TAKOJ (skupaj z ostalimi); velikost (MB) se le pripiše, ko HEAD odgovori.
     fetch(url, { method: 'HEAD' }).then(function (r) {
       if (!r.ok) throw new Error('ni ga');
       var mb = Number(r.headers.get('content-length') || 0) / 1048576;
       var t = document.getElementById('apkTablet'); if (!t) return;
-      var b = t.querySelector('.prog-badge');
-      if (b) b.outerHTML = '<a class="btn prog-act" href="' + escape_(url) + '" download>' + IKO_DL + 'Prenesi' + (mb ? ' · ' + mb.toFixed(1) + ' MB' : '') + '</a>';
+      var mbEl = t.querySelector('.apk-mb');
+      if (mbEl && mb) mbEl.textContent = ' · ' + mb.toFixed(1) + ' MB';
     }).catch(function () {
       var t = document.getElementById('apkTablet'); if (!t) return;
-      var b = t.querySelector('.prog-badge');
-      if (b) b.outerHTML = '<span class="prog-badge off">Trenutno ni na voljo</span>';
+      var a = t.querySelector('.apk-dl');
+      if (a) a.outerHTML = '<span class="prog-badge off">Trenutno ni na voljo</span>';
     });
   }
 

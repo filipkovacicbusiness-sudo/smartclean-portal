@@ -504,7 +504,10 @@ main.main{max-width:1500px;margin:0 auto;padding:30px 34px 90px;}
 /* spustni seznami v obrazcih po standardu portala (puščica + enak rob), le kompaktnejši */
 .ur-form select{font-size:.9rem;padding:10px 34px 10px 12px;background-color:var(--surface);width:100%;}
 .ur-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
-.ur-post{display:grid;grid-template-columns:28px 1fr 92px 34px;gap:8px;margin-bottom:6px;align-items:center;}
+.ur-post{display:grid;grid-template-columns:28px auto 1fr 92px 34px;gap:8px;margin-bottom:6px;align-items:center;}
+/* Izoliran okvirček z ID artikla (levo od izbire); prazen se skrije (brez izbire). */
+.ur-pid{font-family:var(--mono);font-size:.74rem;color:var(--mid);border:1px solid var(--line);border-radius:6px;padding:3px 7px;white-space:nowrap;text-align:center;min-width:44px;}
+.ur-pid:empty{padding:0;border:0;min-width:0;width:0;overflow:hidden;}   /* brez izbire: ostane mrežni element, a nič ne zavzame (da se stolpci ne premaknejo) */
 .ur-post .ur-grip{border:1px solid var(--line);background:var(--surface);border-radius:8px;height:100%;min-height:38px;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;padding:0;}
 .ur-post .ur-grip:hover{border-color:var(--mid);}
 .ur-post .ur-pn{min-width:0;width:100%;text-overflow:ellipsis;}
@@ -519,6 +522,7 @@ main.main{max-width:1500px;margin:0 auto;padding:30px 34px 90px;}
 .ur-post.post-flash{animation:postFlash 1.3s ease-in-out 1;border-radius:10px;}
 /* Po meri izdelan izbirnik artikla (ID v okvirčku levo, kot katalog) */
 .ur-post .ur-pn[hidden]{display:none!important;}
+.ur-artpick select[data-pn]{display:none!important;}   /* surova izbira je le vir podatkov — nikoli vidna (prepreči »2× izberi artikel«) */
 .ur-artpick{position:relative;min-width:0;}
 .ur-artbtn{width:100%;display:flex;align-items:center;gap:8px;min-width:0;text-align:left;
   border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);
@@ -528,14 +532,18 @@ main.main{max-width:1500px;margin:0 auto;padding:30px 34px 90px;}
 .ur-artbtn.post-err{border-color:var(--st-bad)!important;box-shadow:0 0 0 1px var(--st-bad) inset;}
 .ur-artbtn-txt{flex:1 1 auto;min-width:0;display:flex;align-items:center;gap:8px;overflow:hidden;}
 .ur-artbtn-ph{color:var(--mid);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.ur-artbtn-chev{flex:0 0 auto;color:var(--mid);font-size:.8rem;}
+.ur-artbtn-chev{flex:0 0 auto;color:var(--mid);font-size:.8rem;transition:transform .16s ease;}
+.ur-artbtn[aria-expanded="true"] .ur-artbtn-chev{transform:rotate(180deg);}
 .ur-opt-id{font-family:var(--mono);font-size:.74rem;color:var(--mid);border:1px solid var(--line);
   border-radius:6px;padding:1px 6px;white-space:nowrap;flex:0 0 auto;}
 .ur-opt-id.prazno{border-color:transparent;padding:1px 0;}
 .ur-opt-nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .ur-artmenu{position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:60;max-height:280px;overflow:auto;
   background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:5px;
-  box-shadow:0 12px 30px rgba(10,10,10,.16);}
+  box-shadow:0 12px 30px rgba(10,10,10,.16);
+  transform-origin:top center;animation:urMenuIn .15s cubic-bezier(.22,.61,.36,1);}
+@keyframes urMenuIn{from{opacity:0;transform:translateY(-6px) scale(.985);}to{opacity:1;transform:translateY(0) scale(1);}}
+@media(prefers-reduced-motion:reduce){.ur-artmenu{animation:none;}}
 .ur-artopt{display:flex;align-items:center;gap:9px;width:100%;text-align:left;border:none;background:none;
   color:var(--ink);padding:8px 9px;border-radius:8px;cursor:pointer;font-size:.9rem;}
 .ur-artopt:hover{background:var(--green-m);}
@@ -1415,6 +1423,9 @@ html[data-view="grid"] #cenikList .sc-isolate .cgrp:not(.open){max-width:var(--t
 .uc3d-lab.sweep{animation:uc3d-lab-fade .45s ease both;animation-delay:var(--d,0ms);}
 .uc3d-lab.sweep .uc3d-lab-txt{animation:uc3d-txt-slide .55s cubic-bezier(.22,.61,.36,1) both;animation-delay:var(--d,0ms);}
 @media(prefers-reduced-motion:reduce){.uc3d-lab.sweep,.uc3d-lab.sweep .uc3d-lab-txt{animation:none;}}
+/* Ob menjavi obdobja: napisi se po koncu preoblikovanja rezin hitro in čisto pojavijo (brez glitcha). */
+.uc3d-labfade{animation:uc3d-lab-fade .22s ease both;}
+@media(prefers-reduced-motion:reduce){.uc3d-labfade{animation:none;}}
 @media(max-width:560px){.uc3d-nm{font-size:22px;}.uc3d-pct{font-size:19px;}}
 .uc-card .sec-h{margin:0 0 6px;}
 .uc-donut-wrap{display:flex;gap:14px;align-items:center;flex-wrap:wrap;}
