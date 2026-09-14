@@ -3216,14 +3216,18 @@
   }
   // Zberi in izračunaj skupine po strankah za obdobje (orgIds: null/[] = vse, sicer seznam ID-jev).
   async function fakZberi(od, doo, orgIds) {
-    let q = sb.from('delivery_notes')
-      .select('id,number,doc_date,weight_kg,total_pieces,org_id,transport,delivery_note_items(article_name,article_id,pieces)')
-      .gte('doc_date', od).lte('doc_date', doo).order('doc_date', { ascending: true }).limit(5000);
-    if (orgIds && orgIds.length === 1) q = q.eq('org_id', orgIds[0]);
-    else if (orgIds && orgIds.length) q = q.in('org_id', orgIds);
-    const { data, error } = await q;
-    if (error) return { error: error };
-    const notes = data || [];
+    // Naloži VSE spremne liste v obdobju (stranično), brez trde meje — da noben list/stranka ne izpade iz obračuna.
+    const r = await vseVrstice(function (a, b) {
+      let q = sb.from('delivery_notes')
+        .select('id,number,doc_date,weight_kg,total_pieces,org_id,transport,delivery_note_items(article_name,article_id,pieces)')
+        .gte('doc_date', od).lte('doc_date', doo)
+        .order('doc_date', { ascending: true }).order('id', { ascending: true }).range(a, b);
+      if (orgIds && orgIds.length === 1) q = q.eq('org_id', orgIds[0]);
+      else if (orgIds && orgIds.length) q = q.in('org_id', orgIds);
+      return q;
+    });
+    if (r.error) return { error: r.error };
+    const notes = r.data || [];
     const poOrg = {};
     notes.forEach(n => {
       const oid = n.org_id || '—';
