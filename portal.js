@@ -383,9 +383,9 @@
     STAR_SET = new Set();   // note_id-ji, ki vsebujejo star zapis (postavka brez article_id)
 
   async function naloziOrge() {
-    // skrij izbrisane stranke; če stolpca še ni, beri vse
-    let r = await sb.from('orgs').select('id,name,legal_name,address,vat_id,sort_order').is('deleted_at', null).order('name');
-    if (r.error) r = await sb.from('orgs').select('id,name,legal_name,address,vat_id').order('name');
+    // skrij izbrisane stranke; če stolpca še ni, beri vse. Stranično (brez meje 1000).
+    let r = await vseVrstice(function (a, b) { return sb.from('orgs').select('id,name,legal_name,address,vat_id,sort_order').is('deleted_at', null).order('name').range(a, b); });
+    if (r.error) r = await vseVrstice(function (a, b) { return sb.from('orgs').select('id,name,legal_name,address,vat_id').order('name').range(a, b); });
     ORGSEZNAM = r.data || [];
     ORGSEZNAM.sort(function (a, b) {
       var sa = a.sort_order, sb2 = b.sort_order;
@@ -2353,7 +2353,7 @@
   async function _domUreSek() {
     var mk = danes10().slice(0, 7), evs;
     if (UCEN_DOG) { evs = UCEN_DOG.filter(function (d) { return d.ts && d.ts.slice(0, 7) === mk; }); }
-    else { var r = await sb.from('att_events').select('employee_id,ts,type').gte('ts', mk + '-01T00:00:00Z').order('ts', { ascending: true }); evs = (r && r.data) ? r.data : []; }
+    else { var r = await vseVrstice(function (a, b) { return sb.from('att_events').select('employee_id,ts,type').gte('ts', mk + '-01T00:00:00Z').order('ts', { ascending: true }).order('id', { ascending: true }).range(a, b); }); evs = (r && r.data) ? r.data : []; }
     var byEmp = {}; evs.forEach(function (d) { (byEmp[d.employee_id] = byEmp[d.employee_id] || []).push(d); });
     var sek = 0;
     Object.keys(byEmp).forEach(function (eid) { var a = byEmp[eid].sort(function (x, y) { return x.ts < y.ts ? -1 : 1; }); var odprt = null; a.forEach(function (d) { if (d.type === 'in') { if (!odprt) odprt = d; } else if (d.type === 'out') { if (odprt) { sek += (new Date(d.ts) - new Date(odprt.ts)) / 1000; odprt = null; } } }); });
@@ -2589,7 +2589,10 @@
     var ids = (listi || []).map(function (l) { return l.id; }).filter(function (id) { return id && !_POST_CACHE[id]; }).slice(0, 80);
     if (!ids.length) return;
     try {
-      var r = await sb.from('delivery_note_items').select('note_id,article_name,pieces,sort_order').in('note_id', ids).order('sort_order');
+      // Stranično (brez meje 1000): pri 80 listih bi vsota postavk lahko presegla privzeto mejo in bi kateri list dobil nepopolne postavke.
+      var r = await vseVrstice(function (a, b) {
+        return sb.from('delivery_note_items').select('note_id,article_name,pieces,sort_order').in('note_id', ids).order('note_id', { ascending: true }).order('sort_order', { ascending: true }).range(a, b);
+      });
       if (r && !r.error) {
         var by = {}; (r.data || []).forEach(function (it) { (by[it.note_id] = by[it.note_id] || []).push({ naziv: it.article_name, kosov: it.pieces }); });
         ids.forEach(function (id) { _POST_CACHE[id] = by[id] || []; });
@@ -5396,7 +5399,7 @@
       await naloziListe();
       const {
         data: sveze
-      } = await sb.from('orgs').select('id,name,legal_name,address,vat_id').order('name');
+      } = await vseVrstice(function (a, b) { return sb.from('orgs').select('id,name,legal_name,address,vat_id').order('name').range(a, b); });
       ORGSEZNAM = sveze || ORGSEZNAM;
       ORGIME = {};
       ORGSEZNAM.forEach(o => {
@@ -5534,15 +5537,16 @@
     box.innerHTML = NALAGANJE;
     var res;
     _dokFsOk = true; _dokZaklepOk = true;
-    try { res = await sb.from('documents').select('id,opomba,datum,storage_path,mime,velikost,created_at,mapa,ime,je_mapa,zaklenjeno').order('je_mapa', { ascending: false }).order('created_at', { ascending: false }); } catch (e) { res = { error: e }; }
+    // Stranično (brez privzete meje 1000): čez leta se lahko nabere >1000 dokumentov, starejši ne smejo izginiti.
+    try { res = await vseVrstice(function (a, b) { return sb.from('documents').select('id,opomba,datum,storage_path,mime,velikost,created_at,mapa,ime,je_mapa,zaklenjeno').order('je_mapa', { ascending: false }).order('created_at', { ascending: false }).order('id', { ascending: false }).range(a, b); }); } catch (e) { res = { error: e }; }
     if (res && res.error && /zaklenjeno/i.test(res.error.message || '')) {
       // stolpec zaklenjeno še ne obstaja — poskusi brez njega
       _dokZaklepOk = false;
-      try { res = await sb.from('documents').select('id,opomba,datum,storage_path,mime,velikost,created_at,mapa,ime,je_mapa').order('je_mapa', { ascending: false }).order('created_at', { ascending: false }); } catch (e) { res = { error: e }; }
+      try { res = await vseVrstice(function (a, b) { return sb.from('documents').select('id,opomba,datum,storage_path,mime,velikost,created_at,mapa,ime,je_mapa').order('je_mapa', { ascending: false }).order('created_at', { ascending: false }).order('id', { ascending: false }).range(a, b); }); } catch (e) { res = { error: e }; }
     }
     if (res && res.error && /mapa|ime|je_mapa/i.test(res.error.message || '')) {
       _dokFsOk = false; _dokZaklepOk = false;
-      try { res = await sb.from('documents').select('id,opomba,datum,storage_path,mime,velikost,created_at').order('created_at', { ascending: false }); } catch (e) { res = { error: e }; }
+      try { res = await vseVrstice(function (a, b) { return sb.from('documents').select('id,opomba,datum,storage_path,mime,velikost,created_at').order('created_at', { ascending: false }).order('id', { ascending: false }).range(a, b); }); } catch (e) { res = { error: e }; }
     }
     if (res.error) {
       box.innerHTML = '<div class="msg bad show">Napaka pri nalaganju: ' + escape_(res.error.message || String(res.error)) +
