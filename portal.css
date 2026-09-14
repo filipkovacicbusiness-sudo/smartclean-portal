@@ -778,6 +778,9 @@ input[type=email],input[type=password],input[type=search],.field input[type=text
 }
 /* Kartica arhiva: animacija razpiranja (mora biti ZA zgornjim skupnim pravilom, da ni prepisana). */
 .a-det{transition:grid-template-rows .24s cubic-bezier(.22,.61,.36,1),opacity .18s ease,margin-bottom .24s ease,background-color .24s ease,border-color .24s ease;}
+/* Spodnja kota kartice naj se ob odpiranju/zapiranju animirata SKUPAJ z dropdownom (prej sta skočila).
+   border-radius + margin-bottom v istem času/krivulji kot razpiranje .a-det. Mora biti ZA skupnim pravilom. */
+.a-row{transition:background-color .24s cubic-bezier(.4,0,.2,1),border-color .24s cubic-bezier(.4,0,.2,1),box-shadow .22s cubic-bezier(.4,0,.2,1),transform .18s cubic-bezier(.4,0,.2,1),border-radius .24s cubic-bezier(.22,.61,.36,1),margin-bottom .24s cubic-bezier(.22,.61,.36,1);}
 
 /* ══════════ CENIKI ══════════ */
 .cenik{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);overflow:hidden;}
