@@ -430,12 +430,17 @@ html[data-view="grid"] .a-foot{display:contents;}   /* v mreži naj se datum/izd
   background:linear-gradient(135deg, color-mix(in srgb, var(--st-bad) 26%, var(--surface)) 0%, color-mix(in srgb, var(--st-bad) 11%, var(--surface)) 46%, var(--surface) 100%);}
 html[data-view="grid"] .lcell .a-row .arh-chk{position:absolute;top:12px;right:14px;}
 /* Razpiranje kartice: gladek »spust« (grid-template-rows 0fr→1fr) — brez rezanja vsebine. */
-.a-det{display:grid;grid-template-rows:0fr;opacity:0;border:0 solid var(--line);border-top:none;
+.a-det{display:grid;grid-template-rows:0fr;opacity:0;border:0 solid var(--line);border-top:none;padding:0 18px;
   border-radius:0 0 var(--radius) var(--radius);background:var(--surface);margin-bottom:0;
   transition:grid-template-rows .24s cubic-bezier(.22,.61,.36,1),opacity .18s ease,margin-bottom .24s ease;}
 .a-det.show{grid-template-rows:1fr;opacity:1;border-width:0 1px 1px;margin-bottom:10px;}
 .a-det > *{min-height:0;overflow:hidden;}
-.a-det-pad{padding:6px 18px 18px;}   /* padding v NOTRANJEM ovoju (na mrežnem elementu bi preprečil sklop na 0) */
+.a-det-pad{padding:6px 0 18px;}   /* vodoravni odmik je zdaj na .a-det (velja za vse vsebine, tudi obrazec za urejanje) */
+/* Vsebina se ob razpiranju NEŽNO pojavi od leve proti desni (potem ko se kartica razpre). */
+.a-det-pad{opacity:0;}
+.a-det.show .a-det-pad{animation:adReveal .42s ease .08s both;}
+@keyframes adReveal{from{opacity:0;clip-path:inset(0 100% 0 0);}to{opacity:1;clip-path:inset(0 0 0 0);}}
+@media(prefers-reduced-motion:reduce){.a-det-pad{opacity:1;}.a-det.show .a-det-pad{animation:none;}}
 @media(prefers-reduced-motion:reduce){.a-det{transition:opacity .12s ease;}}
 /* Postavke: pregledni stolpci — vrstni red najprej NAVZDOL, nato v nov stolpec desno
    (CSS multicol). Ime levo, količina krepko desno, tanka ločnica pod vsako postavko. */

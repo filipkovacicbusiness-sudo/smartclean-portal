@@ -2427,6 +2427,7 @@
     var kolikoNaj = Math.max(6, Math.min(40, Math.floor((window.innerHeight - 230) / 62)));
     const zadnjiListi = razvrsceni.slice(0, kolikoNaj);
     $('zadnji').innerHTML = '<h3 class="sec-h">Zadnji prevzemi</h3>' + tabelaListov(zadnjiListi, false);
+    prednaloziPostavke(zadnjiListi);
   }
 
   /* ══════════ ARHIV ══════════ */
@@ -2530,6 +2531,7 @@
     else if (sortv === 'stranka_za') vrstice.sort((a, b) => imeStr(b).localeCompare(imeStr(a), 'sl', { sensitivity: 'base' }));
     $('arhivPod').textContent = LISTI.length ? vrstice.length + ' od ' + stevilo(VSEHLISTOV) + ' spremnih listov' : 'v bazi še ni spremnih listov';
     $('arhivList').innerHTML = tabelaListov(vrstice, true);
+    prednaloziPostavke(vrstice);   // v ozadju pripravi postavke → prvo razpiranje je takoj gladko
     naloziKonflikte().then(risiKonflikti);
     document.querySelectorAll('#arhivList .a-row').forEach(b => {
       b.addEventListener('click', () => odpriList(b));
@@ -2558,6 +2560,19 @@
   { const dd = $('arhivDo'); if (dd) dd.addEventListener('change', risiArhiv); }
   { const xb = $('arhivObdX'); if (xb) xb.addEventListener('click', () => { const a = $('arhivOd'), b = $('arhivDo'); if (a) a.value = ''; if (b) b.value = ''; risiArhiv(); }); }
   { const _nb = $('arhivNovBtn'); if (_nb) _nb.addEventListener('click', () => novList()); }
+  // Predpomnilnik postavk (za takojšnje, gladko razpiranje kartic — brez skoka).
+  var _POST_CACHE = {};
+  async function prednaloziPostavke(listi) {
+    var ids = (listi || []).map(function (l) { return l.id; }).filter(function (id) { return id && !_POST_CACHE[id]; }).slice(0, 80);
+    if (!ids.length) return;
+    try {
+      var r = await sb.from('delivery_note_items').select('note_id,article_name,pieces,sort_order').in('note_id', ids).order('sort_order');
+      if (r && !r.error) {
+        var by = {}; (r.data || []).forEach(function (it) { (by[it.note_id] = by[it.note_id] || []).push({ naziv: it.article_name, kosov: it.pieces }); });
+        ids.forEach(function (id) { _POST_CACHE[id] = by[id] || []; });
+      }
+    } catch (e) {}
+  }
   async function odpriList(btn) {
     const box = btn.nextElementSibling && btn.nextElementSibling.classList.contains('a-det') ? btn.nextElementSibling : $('det' + btn.dataset.i);
     const lcell = btn.closest('.lcell');
@@ -2570,23 +2585,31 @@
     document.querySelectorAll('#arhivList .a-row[aria-expanded="true"]').forEach(o => {
       if (o !== btn) { o.setAttribute('aria-expanded', 'false'); const d = (o.nextElementSibling && o.nextElementSibling.classList.contains('a-det')) ? o.nextElementSibling : document.getElementById('det' + o.dataset.i); if (d) d.classList.remove('show'); const lc = o.closest('.lcell'); if (lc) lc.classList.remove('open'); }
     });
-    btn.setAttribute('aria-expanded', 'true');
-    box.classList.add('show'); if (lcell) lcell.classList.add('open');
-    if (box.dataset.loaded) return;
-    box.innerHTML = NALAGANJE;
-    const {
-      data,
-      error
-    } = await sb.from('delivery_note_items').select('article_name,pieces,sort_order').eq('note_id', btn.dataset.id).order('sort_order');
-    if (error) {
-      box.innerHTML = '<p class="u-sub">Napaka: ' + escape_(error.message) + '</p>';
+    const odpri = () => { btn.setAttribute('aria-expanded', 'true'); box.classList.add('show'); if (lcell) lcell.classList.add('open'); };
+    // Že naloženo (prej odprto) → samo razpri.
+    if (box.dataset.loaded) { odpri(); return; }
+    // Vsebina PRIPRAVLJENA vnaprej (predpomnilnik) → izriši SINHRONO, nato razpri v končno višino (brez skoka).
+    if (_POST_CACHE[btn.dataset.id]) {
+      box._id = btn.dataset.id;
+      box._note = LISTI.find(l => l.id === btn.dataset.id) || {};
+      box._items = _POST_CACHE[btn.dataset.id];
+      risiListDetajl(box);
+      box.dataset.loaded = '1';
+      odpri();
       return;
     }
-    box._id = btn.dataset.id;
-    box._note = LISTI.find(l => l.id === btn.dataset.id) || {};
-    box._items = (data || []).map(p => ({ naziv: p.article_name, kosov: p.pieces }));
-    risiListDetajl(box);
-    box.dataset.loaded = '1';
+    // Prvič brez predpomnilnika: naloži PRED razpiranjem, da se odpre naravnost v pravo višino (brez skoka).
+    try {
+      const { data, error } = await sb.from('delivery_note_items').select('article_name,pieces,sort_order').eq('note_id', btn.dataset.id).order('sort_order');
+      if (error) { box.innerHTML = '<div class="a-det-in"><div class="a-det-pad"><p class="u-sub">Napaka: ' + escape_(error.message) + '</p></div></div>'; odpri(); return; }
+      box._id = btn.dataset.id;
+      box._note = LISTI.find(l => l.id === btn.dataset.id) || {};
+      box._items = (data || []).map(p => ({ naziv: p.article_name, kosov: p.pieces }));
+      _POST_CACHE[btn.dataset.id] = box._items;
+      risiListDetajl(box);
+      box.dataset.loaded = '1';
+      odpri();
+    } catch (e) { box.innerHTML = '<div class="a-det-in"><div class="a-det-pad"><p class="u-sub">Napaka pri nalaganju.</p></div></div>'; odpri(); }
   }
 
   /* prikaz postavk + (samo osebje) gumbi Uredi / Izbriši */
@@ -3077,6 +3100,7 @@
         const r2 = await sb.from('delivery_note_items').insert(rows);
         if (r2.error) throw r2.error;
       }
+      logDodaj('Arhiv', 'Dodano', 'Spremni list ' + seq + '/' + leto + ' · ' + (ORGIME[org_id] || ''));
       toast('Spremni list ustvarjen');
       box.innerHTML = ''; box.classList.remove('show');
       await naloziListe();
