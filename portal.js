@@ -1730,7 +1730,7 @@
   var UCEN_LISTI = null, UCEN_DOG = null, _ucDan = null, _ucMesec = false;
   var _ucEur = {}, _ucEurTot = null, _ucEurKljuc = null, _ucEurLoading = false, _ucSort = 'kg_desc';
   var UC_PAL = ['#4e79a7', '#59a14f', '#f28e2b', '#e15759', '#b07aa1', '#76b7b2', '#edc948'];
-  var _ucDonutRange = '3m', _uc3dAnim = false, _kgVseMap = null, _uc3dRAF = null, _ucDonutMonth = null;
+  var _ucDonutRange = '3m', _uc3dAnim = false, _kgVseMap = null, _uc3dRAF = null, _ucDonutMonth = null, _uc3dTweenFromSegs = null;
   var _ucLestSort = 'desc';   // lestvica kg/uro po dnevih: 'desc' padajoče / 'asc' naraščajoče
   var _ucLestEurSort = 'desc'; // lestvica €/kg po strankah: 'desc' padajoče / 'asc' naraščajoče
   // Prihodek po strankah za OBSEG diagrama (Mesec/3m/Vse) — ločeno od Evidence kg.
@@ -2054,6 +2054,37 @@
     }
     _uc3dRAF = requestAnimationFrame(frame);
   }
+  // Ob menjavi obdobja (mesec/3m/vse ali izbira meseca) NE gradimo obroča znova —
+  // le PREOBLIKUJEMO obstoječega: deleži (širine) in napisi/odstotki se tekoče
+  // zmanjšajo/povečajo iz starega v novo stanje. Obroč ostane ves čas v 3D.
+  function uc3dTween(svgEl, from, to, dur) {
+    if (!svgEl) return;
+    if (_uc3dRAF) { cancelAnimationFrame(_uc3dRAF); _uc3dRAF = null; }
+    var toSegs = (to && to.segs) || [], toTotal = (to && to.total) || 0;
+    var fromSegs = (from && from.segs) || [], fromTotal = (from && from.total) || 0;
+    var reduce = false; try { reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion:reduce)').matches; } catch (e) {}
+    if (!toTotal) { svgEl.innerHTML = uc3dSvgBuild([], 0, 1); return; }
+    if (!fromTotal || reduce) { svgEl.innerHTML = uc3dSvgBuild(toSegs, toTotal, 1); uc3dHover(svgEl); return; }
+    // Poravnava po mestu (barve so itak po rangu): mesto i se preoblikuje iz starega v novi delež.
+    var n = Math.max(fromSegs.length, toSegs.length), slots = [];
+    for (var i = 0; i < n; i++) {
+      var f = fromSegs[i], t = toSegs[i];
+      slots.push({ ime: (t ? t.ime : (f ? f.ime : '')), col: (t ? t.col : (f ? f.col : '#8a9099')), k0: f ? f.kg : 0, k1: t ? t.kg : 0 });
+    }
+    var t0 = 0, D = dur || 620;
+    function ease(x) { x = Math.max(0, Math.min(1, x)); return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; }
+    function frame(now) {
+      if (!t0) t0 = now;
+      var p = Math.min(1, (now - t0) / D), e = ease(p);
+      var segs = [], total = 0;
+      slots.forEach(function (s) { var kg = s.k0 + (s.k1 - s.k0) * e; if (kg > 0.00001) { segs.push({ ime: s.ime, kg: kg, col: s.col }); total += kg; } });
+      if (total <= 0) total = 1;
+      svgEl.innerHTML = uc3dSvgBuild(segs, total, 1);
+      if (p < 1) { _uc3dRAF = requestAnimationFrame(frame); }
+      else { _uc3dRAF = null; svgEl.innerHTML = uc3dSvgBuild(toSegs, toTotal, 1); uc3dHover(svgEl); }
+    }
+    _uc3dRAF = requestAnimationFrame(frame);
+  }
   async function risiUcinek(prefetch) {
     var box = $('ucList'); if (!box) return;
     // Prepreči »najprej final, nato animacija«: ob ODPRTJU sinhrono zbriši morebitni že
@@ -2152,12 +2183,16 @@
       '</div>' + tbl + '</div>';
 
     box.innerHTML = top + ev;
-    var _svg3d = box.querySelector('.uc3d-svg'); if (_svg3d) uc3dAnimate(_svg3d, _ucDonutRange, _uc3dAnim);
+    var _svg3d = box.querySelector('.uc3d-svg');
+    if (_svg3d) {
+      if (_uc3dTweenFromSegs) { uc3dTween(_svg3d, _uc3dTweenFromSegs, ucDonutSegs(_ucDonutRange)); _uc3dTweenFromSegs = null; }
+      else uc3dAnimate(_svg3d, _ucDonutRange, _uc3dAnim);
+    }
     _uc3dAnim = false;
-    box.querySelectorAll('[data-ucrange]').forEach(function (b) { b.addEventListener('click', function () { if (_ucDonutRange === b.dataset.ucrange) return; _ucDonutRange = b.dataset.ucrange; _uc3dAnim = true; ucRender(); }); });
+    box.querySelectorAll('[data-ucrange]').forEach(function (b) { b.addEventListener('click', function () { if (_ucDonutRange === b.dataset.ucrange) return; _uc3dTweenFromSegs = ucDonutSegs(_ucDonutRange); _ucDonutRange = b.dataset.ucrange; _uc3dAnim = false; ucRender(); }); });
     { var _lt = box.querySelector('[data-uclest]'); if (_lt) _lt.addEventListener('click', function () { _ucLestSort = (_ucLestSort === 'desc' ? 'asc' : 'desc'); ucRender(); }); }
     { var _le = box.querySelector('[data-uclesteur]'); if (_le) _le.addEventListener('click', function () { _ucLestEurSort = (_ucLestEurSort === 'desc' ? 'asc' : 'desc'); var l = box.querySelector('.uc-lest-eur-list'); if (l) l.innerHTML = ucLestEurRows(); this.textContent = (_ucLestEurSort === 'desc' ? 'Padajoče ↓' : 'Naraščajoče ↑'); }); }
-    var _dm = $('ucDonutMesec'); if (_dm) _dm.addEventListener('change', function () { if (!this.value) return; _ucDonutMonth = this.value; _uc3dAnim = true; ucRender(); });
+    var _dm = $('ucDonutMesec'); if (_dm) _dm.addEventListener('change', function () { if (!this.value) return; _uc3dTweenFromSegs = ucDonutSegs(_ucDonutRange); _ucDonutMonth = this.value; _uc3dAnim = false; ucRender(); });
     var dat = $('ucDatum'); if (dat) dat.addEventListener('change', function () { var v = this.value || danes10(); if (v.length === 7) v += '-01'; _ucDan = v; ucRender(); });
     { var _ud = $('ucDanes'); if (_ud) _ud.addEventListener('click', function () { _ucDan = danes10(); ucRender(); }); }
     box.querySelectorAll('[data-ucobd]').forEach(function (b) { b.addEventListener('click', function () { _ucMesec = (b.dataset.ucobd === 'mesec'); ucRender(); }); });

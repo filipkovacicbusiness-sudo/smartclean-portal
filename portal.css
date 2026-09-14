@@ -370,7 +370,7 @@ h3.sec-h{font-family:var(--serif);font-size:1.05rem;font-weight:700;margin:0 0 1
 .bars-val{font-size:.72rem;color:var(--mid);}
 
 /* ══════════ ARHIV ══════════ */
-.a-row{display:grid;grid-template-columns:26px 118px 1fr auto 24px;gap:14px;align-items:center;position:relative;
+.a-row{display:grid;grid-template-columns:32px 118px 1fr auto 24px;gap:14px;align-items:center;position:relative;
   padding:15px 18px;border:1px solid var(--line);border-radius:var(--radius);cursor:pointer;
   background:var(--surface);width:100%;text-align:left;margin-bottom:10px;
   transition:background .18s,border-color .18s,box-shadow .18s,transform .18s;}
@@ -384,12 +384,16 @@ html[data-view="grid"] .a-foot{display:contents;}   /* v mreži naj se datum/izd
 /* Oznaka izrednega prevoza na kartici arhiva. */
 .a-izr{display:inline-block;margin-left:8px;padding:1px 9px;border-radius:100px;font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.03em;vertical-align:middle;white-space:nowrap;background:var(--st-warn);color:#141414;}
 /* Arhiv — status potrditve (zeleno potrjeno / rumeno nepotrjeno / rdeče prazno) */
-.arh-chk{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border:2px solid var(--line);border-radius:6px;background:var(--bg);color:#fff;font-size:13px;line-height:1;flex:0 0 auto;}
-.arh-chk.clk{cursor:pointer;transition:border-color .15s,background .15s;}
+/* Kljukica v slogu strani: plosko, brez barvnih ozadij — večji zaobljen kvadrat z obrobo.
+   POTRJENO = ZELENA kljukica + zelena obroba (brez zelenega ozadja). */
+.arh-chk{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border:2px solid var(--line);border-radius:9px;background:var(--bg);color:var(--st-ok);font-size:16px;font-weight:800;line-height:1;flex:0 0 auto;
+  transition:border-color .16s,transform .1s;}
+.arh-chk.clk{cursor:pointer;}
 .arh-chk.clk:hover{border-color:var(--st-ok);}
-.arh-chk.on{background:var(--st-ok);border-color:var(--st-ok);}
-.arh-chk.dis{border-color:var(--st-bad);background:transparent;color:var(--st-bad);cursor:default;}
-.arh-chk.dis.leg{border-color:var(--mid);color:var(--mid);font-size:12px;}
+.arh-chk.clk:active{transform:scale(.9);}
+.arh-chk.on{border-color:var(--st-ok);color:var(--st-ok);}
+.arh-chk.dis{border-color:var(--st-bad);color:var(--st-bad);cursor:default;font-weight:700;}
+.arh-chk.dis.leg{border-color:var(--mid);color:var(--mid);font-size:13px;}
 /* Status — barvni levi rob + nežen diagonalni preliv (ne le enakomerno bledo).
    Ob hoverju mehak barvni sij in rahel dvig. Zelena zadržana, rumena/rdeča opaznejši.
    rgba je varnostni fallback; color-mix je glavni (kot drugod v datoteki). */
@@ -443,14 +447,14 @@ html[data-view="grid"] .lcell .a-row .arh-chk{position:absolute;top:12px;right:1
   .filtri{flex-direction:column;align-items:stretch;width:100%;}
   .filtri input,.filtri select,.fak-lab input{max-width:none;width:100%;}
   .fak-lab{width:100%;}
-  .a-row{grid-template-columns:26px 100px 1fr auto 20px;gap:10px;}
+  .a-row{grid-template-columns:32px 100px 1fr auto 20px;gap:10px;}
   .a-row .a-cli{display:none;}
   .a-row .num{white-space:nowrap;font-size:.8rem;}
   .a-det li{max-width:none;}
 }
 @media(max-width:520px){
   .stat-grid{grid-template-columns:1fr;}
-  .a-row{grid-template-columns:26px 1fr auto 20px;}
+  .a-row{grid-template-columns:32px 1fr auto 20px;}
   .a-row .a-date{display:none;}
 }
 
