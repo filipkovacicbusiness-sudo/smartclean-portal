@@ -1014,6 +1014,7 @@ html[data-view="list"] .lcell .row .sc-tag{position:absolute;right:0;top:50%;tra
 
 /* ── ENOTNI GUMBI POD NASLOVOM (isti razmak, velikost, barva, levi rob) ── */
 .head-act{margin:0 0 18px;margin-left:0;align-self:flex-start;}
+.arh-actbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
 /* enak razmik med naslovom in vsebino na vseh podstraneh */
 .main .head{margin-bottom:20px;}
 

@@ -380,6 +380,8 @@
     LISTI = [],
     LISTI_NAPAKA = false,   // true = nalaganje ni uspelo (loči napako od praznega arhiva)
     VSEHLISTOV = 0,
+    _softDelDN = true,      // ali obstaja stolpec delivery_notes.deleted_at (migracija 50)
+    _softDelDoc = true,     // ali obstaja stolpec documents.deleted_at (migracija 50)
     STAR_SET = new Set();   // note_id-ji, ki vsebujejo star zapis (postavka brez article_id)
 
   async function naloziOrge() {
@@ -1832,13 +1834,13 @@
 
   async function naloziUcinek() {
     var meja = danLocal(new Date(Date.now() - 400 * 24 * 3600 * 1000).getTime());
-    var rl = await vseVrstice(function (a, b) { return sb.from('delivery_notes').select('id,org_id,doc_date,weight_kg').gte('doc_date', meja).order('doc_date', { ascending: true }).range(a, b); });
+    var rl = await vseVrstice(function (a, b) { return sb.from('delivery_notes').select('id,org_id,doc_date,weight_kg').is('deleted_at', null).gte('doc_date', meja).order('doc_date', { ascending: true }).range(a, b); });
     UCEN_LISTI = (rl && rl.data) ? rl.data : [];
     var rd = await vseVrstice(function (a, b) { return sb.from('att_events').select('id,employee_id,ts,type').gte('ts', meja + 'T00:00:00Z').order('ts', { ascending: true }).range(a, b); });
     UCEN_DOG = (rd && rd.data) ? rd.data : [];
     // Vsota kg po strankah za VES čas (za 3D krog »Vse«).
     try {
-      var rv = await vseVrstice(function (a, b) { return sb.from('delivery_notes').select('org_id,weight_kg').range(a, b); });
+      var rv = await vseVrstice(function (a, b) { return sb.from('delivery_notes').select('org_id,weight_kg').is('deleted_at', null).range(a, b); });
       var m = {}; (rv && rv.data ? rv.data : []).forEach(function (l) { if (l.org_id) m[l.org_id] = (m[l.org_id] || 0) + (parseFloat(l.weight_kg) || 0); });
       _kgVseMap = m;
     } catch (e) { _kgVseMap = null; }
@@ -2290,9 +2292,14 @@
     // Beri VSE liste po straneh (brez 1000-vrstičnega limita — mora delati še čez leta).
     // Stabilna paginacija: doc_date + id kot razločevalo.
     const _kol = 'id,number,doc_date,total_pieces,weight_kg,org_id,issued_name,popravil,popravljeno_at,popravki,source,transport,potrjeno,legacy_id,opomba,opomba_avtor,opomba_at,opomba_stranka,opomba_evidenca';
-    let r = await vseVrstice((od, do_) => sb.from('delivery_notes').select(_kol).order('doc_date', { ascending: false }).order('id', { ascending: false }).range(od, do_));
+    let r = await vseVrstice((od, do_) => sb.from('delivery_notes').select(_kol).is('deleted_at', null).order('doc_date', { ascending: false }).order('id', { ascending: false }).range(od, do_));
     // Rezerva: če stolpci za opombo/popravke še niso dodani, naloži brez njih.
     if (r.error) {
+      r = await vseVrstice((od, do_) => sb.from('delivery_notes').select('id,number,doc_date,total_pieces,weight_kg,org_id,issued_name,popravil,popravljeno_at,source,transport,potrjeno,legacy_id').is('deleted_at', null).order('doc_date', { ascending: false }).order('id', { ascending: false }).range(od, do_));
+    }
+    // Rezerva 2: če stolpca deleted_at še ni (migracija 50 ni zagnana) → beri brez tega filtra.
+    if (r.error) {
+      _softDelDN = false;
       r = await vseVrstice((od, do_) => sb.from('delivery_notes').select('id,number,doc_date,total_pieces,weight_kg,org_id,issued_name,popravil,popravljeno_at,source,transport,potrjeno,legacy_id').order('doc_date', { ascending: false }).order('id', { ascending: false }).range(od, do_));
     }
     LISTI_NAPAKA = !!(r && r.error);
@@ -2302,7 +2309,7 @@
     } = await sb.from('delivery_notes').select('id', {
       count: 'exact',
       head: true
-    });
+    }).is('deleted_at', null);
     VSEHLISTOV = count || 0;
     // Zberi liste s starim zapisom (postavka brez povezave na artikel → article_id IS NULL)
     STAR_SET = new Set();
@@ -2530,7 +2537,7 @@
     if (OSEBJE) {
       const sel = $('arhivOrg');
       sel.classList.remove('hidden');
-      const _nb = $('arhivNovBtn'); if (_nb) _nb.classList.remove('hidden');
+      const _ab = $('arhivActBar'); if (_ab) _ab.classList.remove('hidden');
       if (!sel.options.length) {
         sel.innerHTML = '<option value="">Vse stranke</option>' + ORGSEZNAM.map(o => `<option value="${o.id}">${escape_(o.name)}</option>`).join('');
         sel.addEventListener('change', risiArhiv);
@@ -2583,6 +2590,46 @@
   { const dd = $('arhivDo'); if (dd) dd.addEventListener('change', risiArhiv); }
   { const xb = $('arhivObdX'); if (xb) xb.addEventListener('click', () => { const a = $('arhivOd'), b = $('arhivDo'); if (a) a.value = ''; if (b) b.value = ''; risiArhiv(); }); }
   { const _nb = $('arhivNovBtn'); if (_nb) _nb.addEventListener('click', () => novList()); }
+  { const _kb = $('arhivKosBtn'); if (_kb) _kb.addEventListener('click', () => arhivKos()); }
+  // ── Koš spremnih listov (Nedavno brisani — obnovljivi) ──
+  async function arhivKos() {
+    var box = $('arhivList'); if (!box) return;
+    box.innerHTML = NALAGANJE;
+    var mejnik = new Date(Date.now() - 30 * 864e5).toISOString();
+    var r = await sb.from('delivery_notes').select('id,number,doc_date,org_id,weight_kg,total_pieces,deleted_at')
+      .not('deleted_at', 'is', null).gte('deleted_at', mejnik).order('deleted_at', { ascending: false });
+    var arr = (r && !r.error) ? (r.data || []) : [];
+    var html = '<div class="cgrp-bar"><button type="button" class="cgrp-btn" id="kosNazajArhiv">← Nazaj na arhiv</button></div>' +
+      '<h3 class="sec-h" style="margin:6px 0 10px">Nedavno brisani spremni listi <span class="u-sub">(obnovljivi 30 dni)</span></h3>';
+    if (r && r.error) html += '<div class="msg bad show">Napaka: ' + escape_(r.error.message) + '</div>';
+    else if (!arr.length) html += '<div class="empty"><h3>Koš je prazen</h3><p>Zadnjih 30 dni ni brisanih spremnih listov.</p></div>';
+    else html += '<div class="cenik">' + arr.map(function (l) {
+      return '<div class="cenik-row"><div class="cenik-nm">' + escape_(l.number || '—') + ' · ' + escape_(ORGIME[l.org_id] || '—') + '</div>' +
+        '<div class="cenik-meta">' + datum(l.doc_date) + ' · ' + stevilo(l.total_pieces || 0) + ' kos' + (l.weight_kg != null && l.weight_kg !== '' ? ' · ' + tezaFmt(l.weight_kg) : '') + ' · izbrisan ' + datumcas(l.deleted_at) + '</div>' +
+        '<div class="cenik-cena"><button type="button" class="btn-mini cenik-restore" data-obnovi="' + l.id + '">Obnovi</button> ' +
+        '<button type="button" class="btn-mini" data-dokoncno="' + l.id + '" title="Izbriši dokončno">Izbriši dokončno</button></div></div>';
+    }).join('') + '</div>';
+    box.innerHTML = html;
+    var nz = document.getElementById('kosNazajArhiv'); if (nz) nz.addEventListener('click', function () { risiArhiv(); });
+    box.querySelectorAll('[data-obnovi]').forEach(function (bn) { bn.addEventListener('click', function () { spremniObnovi(bn.dataset.obnovi); }); });
+    box.querySelectorAll('[data-dokoncno]').forEach(function (bn) { bn.addEventListener('click', function () { spremniIzbrisiDokoncno(bn.dataset.dokoncno); }); });
+  }
+  async function spremniObnovi(id) {
+    var r = await sb.from('delivery_notes').update({ deleted_at: null }).eq('id', id);
+    if (r.error) { toast('Napaka: ' + r.error.message); return; }
+    logDodaj('Arhiv', 'Obnovljeno', 'Spremni list obnovljen iz koša');
+    toast('Spremni list obnovljen'); await naloziListe(); arhivKos();
+  }
+  async function spremniIzbrisiDokoncno(id) {
+    var ok = await potrdiModal({ naslov: 'Izbriši dokončno', sporocilo: 'Dokončno izbrišem ta spremni list? Tega NI mogoče razveljaviti.', potrdi: 'Izbriši dokončno', preklici: 'Prekliči', nevarno: true });
+    if (!ok) return;
+    try {
+      var r1 = await sb.from('delivery_note_items').delete().eq('note_id', id); if (r1.error) throw r1.error;
+      var r2 = await sb.from('delivery_notes').delete().eq('id', id); if (r2.error) throw r2.error;
+      logDodaj('Arhiv', 'Izbrisano dokončno', 'Spremni list dokončno izbrisan iz koša');
+      toast('Dokončno izbrisano'); arhivKos();
+    } catch (e) { toast('Napaka: ' + (e && e.message ? e.message : e)); }
+  }
   // Predpomnilnik postavk (za takojšnje, gladko razpiranje kartic — brez skoka).
   var _POST_CACHE = {};
   async function prednaloziPostavke(listi) {
@@ -2720,16 +2767,23 @@
   }
 
   async function izbrisiList(box) {
-    var _ok = await potrdiModal({ naslov: 'Izbriši spremni list', sporocilo: 'Izbrisati spremni list ' + (box._note.number || '') + '? Tega ni mogoče razveljaviti.', potrdi: 'Izbriši', preklici: 'Prekliči', nevarno: true });
+    var _ok = await potrdiModal({ naslov: 'Izbriši spremni list', sporocilo: 'Izbrišem spremni list ' + (box._note.number || '') + '? Shrani se v »Nedavno brisani« in ga je mogoče 30 dni obnoviti.', potrdi: 'Izbriši', preklici: 'Prekliči', nevarno: true });
     if (!_ok) return;
     box.innerHTML = '<p class="u-sub">Brišem …</p>';
     try {
-      let r = await sb.from('delivery_note_items').delete().eq('note_id', box._id);
-      if (r.error) throw r.error;
-      r = await sb.from('delivery_notes').delete().eq('id', box._id);
-      if (r.error) throw r.error;
-      logDodaj('Arhiv', 'Izbrisano', 'Spremni list ' + ((box._note && box._note.number) || ''));
-      toast('Spremni list izbrisan');
+      if (_softDelDN) {
+        // Soft-delete (koš): podatek OSTANE, samo skrit. Postavke pustimo (za obnovitev).
+        var r = await sb.from('delivery_notes').update({ deleted_at: new Date().toISOString() }).eq('id', box._id);
+        if (r.error) throw r.error;
+      } else {
+        // Rezerva, če migracija 50 (deleted_at) še ni zagnana → staro dokončno brisanje.
+        var r1 = await sb.from('delivery_note_items').delete().eq('note_id', box._id);
+        if (r1.error) throw r1.error;
+        var r2 = await sb.from('delivery_notes').delete().eq('id', box._id);
+        if (r2.error) throw r2.error;
+      }
+      logDodaj('Arhiv', 'Izbrisano', 'Spremni list ' + ((box._note && box._note.number) || '') + (_softDelDN ? ' (v koš)' : ''));
+      toast(_softDelDN ? 'Premaknjeno v »Nedavno brisani«' : 'Spremni list izbrisan');
       await naloziListe();
       risiArhiv();
     } catch (e) {
@@ -3223,6 +3277,7 @@
     const r = await vseVrstice(function (a, b) {
       let q = sb.from('delivery_notes')
         .select('id,number,doc_date,weight_kg,total_pieces,org_id,transport,delivery_note_items(article_name,article_id,pieces)')
+        .is('deleted_at', null)
         .gte('doc_date', od).lte('doc_date', doo)
         .order('doc_date', { ascending: true }).order('id', { ascending: true }).range(a, b);
       if (orgIds && orgIds.length === 1) q = q.eq('org_id', orgIds[0]);
@@ -5538,15 +5593,22 @@
     var res;
     _dokFsOk = true; _dokZaklepOk = true;
     // Stranično (brez privzete meje 1000): čez leta se lahko nabere >1000 dokumentov, starejši ne smejo izginiti.
-    try { res = await vseVrstice(function (a, b) { return sb.from('documents').select('id,opomba,datum,storage_path,mime,velikost,created_at,mapa,ime,je_mapa,zaklenjeno').order('je_mapa', { ascending: false }).order('created_at', { ascending: false }).order('id', { ascending: false }).range(a, b); }); } catch (e) { res = { error: e }; }
+    try { res = await vseVrstice(function (a, b) { return sb.from('documents').select('id,opomba,datum,storage_path,mime,velikost,created_at,mapa,ime,je_mapa,zaklenjeno').is('deleted_at', null).order('je_mapa', { ascending: false }).order('created_at', { ascending: false }).order('id', { ascending: false }).range(a, b); }); } catch (e) { res = { error: e }; }
     if (res && res.error && /zaklenjeno/i.test(res.error.message || '')) {
       // stolpec zaklenjeno še ne obstaja — poskusi brez njega
       _dokZaklepOk = false;
-      try { res = await vseVrstice(function (a, b) { return sb.from('documents').select('id,opomba,datum,storage_path,mime,velikost,created_at,mapa,ime,je_mapa').order('je_mapa', { ascending: false }).order('created_at', { ascending: false }).order('id', { ascending: false }).range(a, b); }); } catch (e) { res = { error: e }; }
+      try { res = await vseVrstice(function (a, b) { return sb.from('documents').select('id,opomba,datum,storage_path,mime,velikost,created_at,mapa,ime,je_mapa').is('deleted_at', null).order('je_mapa', { ascending: false }).order('created_at', { ascending: false }).order('id', { ascending: false }).range(a, b); }); } catch (e) { res = { error: e }; }
     }
     if (res && res.error && /mapa|ime|je_mapa/i.test(res.error.message || '')) {
       _dokFsOk = false; _dokZaklepOk = false;
-      try { res = await vseVrstice(function (a, b) { return sb.from('documents').select('id,opomba,datum,storage_path,mime,velikost,created_at').order('created_at', { ascending: false }).order('id', { ascending: false }).range(a, b); }); } catch (e) { res = { error: e }; }
+      try { res = await vseVrstice(function (a, b) { return sb.from('documents').select('id,opomba,datum,storage_path,mime,velikost,created_at').is('deleted_at', null).order('created_at', { ascending: false }).order('id', { ascending: false }).range(a, b); }); } catch (e) { res = { error: e }; }
+    }
+    // Rezerva: če stolpca deleted_at še ni (migracija 50 ni zagnana) → beri brez tega filtra.
+    if (res && res.error && /deleted_at/i.test(res.error.message || '')) {
+      _softDelDoc = false;
+      try { res = await vseVrstice(function (a, b) { return sb.from('documents').select('id,opomba,datum,storage_path,mime,velikost,created_at,mapa,ime,je_mapa,zaklenjeno').order('je_mapa', { ascending: false }).order('created_at', { ascending: false }).order('id', { ascending: false }).range(a, b); }); } catch (e) { res = { error: e }; }
+      if (res && res.error) { _dokZaklepOk = false; try { res = await vseVrstice(function (a, b) { return sb.from('documents').select('id,opomba,datum,storage_path,mime,velikost,created_at,mapa,ime,je_mapa').order('je_mapa', { ascending: false }).order('created_at', { ascending: false }).order('id', { ascending: false }).range(a, b); }); } catch (e) { res = { error: e }; } }
+      if (res && res.error) { _dokFsOk = false; try { res = await vseVrstice(function (a, b) { return sb.from('documents').select('id,opomba,datum,storage_path,mime,velikost,created_at').order('created_at', { ascending: false }).order('id', { ascending: false }).range(a, b); }); } catch (e) { res = { error: e }; } }
     }
     if (res.error) {
       box.innerHTML = '<div class="msg bad show">Napaka pri nalaganju: ' + escape_(res.error.message || String(res.error)) +
@@ -5772,18 +5834,68 @@
     var jeMapa = !!r.je_mapa;
     var potMape = (r.mapa ? r.mapa + '/' : '') + dokImeRow(r);
     var otroci = jeMapa ? (DOKUMENTI || []).filter(function (x) { return x.id !== id && ((x.mapa || '') === potMape || (x.mapa || '').indexOf(potMape + '/') === 0); }) : [];
-    var ok = await potrdiModal({ naslov: jeMapa ? 'Izbriši mapo' : 'Izbriši datoteko', sporocilo: jeMapa ? ('Izbrišem mapo „' + dokImeRow(r) + '"' + (otroci.length ? ' in vso vsebino (' + otroci.length + ' elementov)' : '') + '? Tega ni mogoče razveljaviti.') : ('Izbrišem „' + dokImeRow(r) + '"? Tega ni mogoče razveljaviti.'), potrdi: 'Izbriši', preklici: 'Prekliči', nevarno: true });
+    var obnovljivo = _softDelDoc;
+    var ok = await potrdiModal({ naslov: jeMapa ? 'Izbriši mapo' : 'Izbriši datoteko', sporocilo: jeMapa ? ('Izbrišem mapo „' + dokImeRow(r) + '"' + (otroci.length ? ' in vso vsebino (' + otroci.length + ' elementov)' : '') + '?' + (obnovljivo ? ' Shrani se v »Nedavno brisani« (30 dni).' : ' Tega ni mogoče razveljaviti.')) : ('Izbrišem „' + dokImeRow(r) + '"?' + (obnovljivo ? ' Shrani se v »Nedavno brisani« (30 dni).' : ' Tega ni mogoče razveljaviti.')), potrdi: 'Izbriši', preklici: 'Prekliči', nevarno: true });
     if (!ok) return;
     var vsi = [r].concat(otroci);
-    var poti = vsi.map(function (x) { return x.storage_path; }).filter(Boolean);
+    var ids = vsi.map(function (x) { return x.id; });
     try {
-      if (poti.length) { try { await sb.storage.from('dokumenti').remove(poti); } catch (e) {} }
-      var ids = vsi.map(function (x) { return x.id; });
-      var del = await sb.from('documents').delete().in('id', ids);
-      if (del.error) throw del.error;
+      if (obnovljivo) {
+        // Soft-delete (koš): datoteka v shrambi OSTANE (za obnovitev); samo skrijemo zapis.
+        var upd = await sb.from('documents').update({ deleted_at: new Date().toISOString() }).in('id', ids);
+        if (upd.error) throw upd.error;
+      } else {
+        // Rezerva, če migracija 50 (deleted_at) še ni zagnana → staro dokončno brisanje (tudi iz shrambe).
+        var poti = vsi.map(function (x) { return x.storage_path; }).filter(Boolean);
+        if (poti.length) { try { await sb.storage.from('dokumenti').remove(poti); } catch (e) {} }
+        var del = await sb.from('documents').delete().in('id', ids);
+        if (del.error) throw del.error;
+      }
       DOKUMENTI = (DOKUMENTI || []).filter(function (x) { return ids.indexOf(x.id) < 0; });
       dokRisi();
+      toast(obnovljivo ? 'Premaknjeno v »Nedavno brisani«' : 'Izbrisano');
     } catch (e) { toast('Napaka pri brisanju: ' + (e && e.message ? e.message : e)); }
+  }
+  // ── Koš dokumentov (Nedavno brisani — obnovljivi) ──
+  async function dokKos() {
+    var box = $('dokList'); if (!box) return;
+    if (!sme('dokumenti', 'x')) { toast('Za to vlogo ni dovoljeno.'); return; }
+    box.innerHTML = NALAGANJE;
+    var mejnik = new Date(Date.now() - 30 * 864e5).toISOString();
+    var r = await sb.from('documents').select('id,ime,mapa,storage_path,je_mapa,deleted_at')
+      .not('deleted_at', 'is', null).gte('deleted_at', mejnik).order('deleted_at', { ascending: false });
+    var arr = (r && !r.error) ? (r.data || []) : [];
+    var html = '<div class="cgrp-bar"><button type="button" class="cgrp-btn" id="kosNazajDok">← Nazaj na dokumente</button></div>' +
+      '<h3 class="sec-h" style="margin:6px 0 10px">Nedavno brisano <span class="u-sub">(obnovljivo 30 dni)</span></h3>';
+    if (r && r.error) html += '<div class="msg bad show">Napaka: ' + escape_(r.error.message) + '</div>';
+    else if (!arr.length) html += '<div class="empty"><h3>Koš je prazen</h3><p>Zadnjih 30 dni ni brisanih dokumentov.</p></div>';
+    else html += '<div class="cenik">' + arr.map(function (d) {
+      var nm = d.ime || (d.storage_path ? String(d.storage_path).split('/').pop() : '—');
+      return '<div class="cenik-row"><div class="cenik-nm">' + (d.je_mapa ? '📁 ' : '') + escape_(nm) + '</div>' +
+        '<div class="cenik-meta">' + (d.mapa ? escape_(d.mapa) + ' · ' : '') + 'izbrisano ' + datumcas(d.deleted_at) + '</div>' +
+        '<div class="cenik-cena"><button type="button" class="btn-mini cenik-restore" data-dobnovi="' + d.id + '">Obnovi</button> ' +
+        '<button type="button" class="btn-mini" data-ddokoncno="' + d.id + '">Izbriši dokončno</button></div></div>';
+    }).join('') + '</div>';
+    box.innerHTML = html;
+    var nz = document.getElementById('kosNazajDok'); if (nz) nz.addEventListener('click', function () { risiDokumenti(); });
+    box.querySelectorAll('[data-dobnovi]').forEach(function (bn) { bn.addEventListener('click', function () { dokObnovi(bn.dataset.dobnovi); }); });
+    box.querySelectorAll('[data-ddokoncno]').forEach(function (bn) { bn.addEventListener('click', function () { dokIzbrisiDokoncno(bn.dataset.ddokoncno); }); });
+  }
+  async function dokObnovi(id) {
+    var r = await sb.from('documents').update({ deleted_at: null }).eq('id', id);
+    if (r.error) { toast('Napaka: ' + r.error.message); return; }
+    toast('Obnovljeno'); dokKos();
+  }
+  async function dokIzbrisiDokoncno(id) {
+    var ok = await potrdiModal({ naslov: 'Izbriši dokončno', sporocilo: 'Dokončno izbrišem to datoteko? Tega NI mogoče razveljaviti.', potrdi: 'Izbriši dokončno', preklici: 'Prekliči', nevarno: true });
+    if (!ok) return;
+    var rec = null;
+    try { var g = await sb.from('documents').select('storage_path').eq('id', id).maybeSingle(); rec = g && g.data ? g.data : null; } catch (e) {}
+    try {
+      if (rec && rec.storage_path) { try { await sb.storage.from('dokumenti').remove([rec.storage_path]); } catch (e) {} }
+      var del = await sb.from('documents').delete().eq('id', id); if (del.error) throw del.error;
+      toast('Dokončno izbrisano'); dokKos();
+    } catch (e) { toast('Napaka: ' + (e && e.message ? e.message : e)); }
   }
   // Prenos datoteke z ORIGINALNIM imenom (ne s poti s časovnim žigom).
   async function dokPrenesi(r) {
@@ -6000,6 +6112,7 @@
   { var _fw = $('dokFwd'); if (_fw) _fw.addEventListener('click', dokNaprej); }
   { var _pp = $('dokPaste'); if (_pp) _pp.addEventListener('click', dokPrilepi); }
   { var _sk = $('dokSkenirajBtn'); if (_sk) _sk.addEventListener('click', dokSkenirajOdpri); }
+  { var _dk = $('dokKosBtn'); if (_dk) _dk.addEventListener('click', dokKos); }
   { var _sd = $('sec-dokumenti'); if (_sd) {
     _sd.addEventListener('dragover', function (e) { e.preventDefault(); var h = $('dokDropHint'); if (h) h.hidden = false; });
     _sd.addEventListener('dragleave', function (e) { if (e.target === _sd) { var h = $('dokDropHint'); if (h) h.hidden = true; } });

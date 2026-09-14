@@ -235,7 +235,10 @@ html[data-theme="light"] .sc-hex{opacity:.5}
             <input type="search" id="arhivIsci" placeholder="Iskanje po številki …" aria-label="Iskanje"/>
           </div>
         </div>
-        <button type="button" id="arhivNovBtn" class="btn btn-narrow head-act hidden">+ Nov spremni list</button>
+        <div class="head-act arh-actbar hidden" id="arhivActBar">
+          <button type="button" id="arhivNovBtn" class="btn btn-narrow">+ Nov spremni list</button>
+          <button type="button" id="arhivKosBtn" class="btn btn-narrow btn-alt">Nedavno brisani</button>
+        </div>
         <div id="arhivKonflikti"></div>
         <div id="novListBox"></div>
         <div id="arhivList"></div>
@@ -325,6 +328,7 @@ html[data-theme="light"] .sc-hex{opacity:.5}
             <button type="button" id="dokSkenirajBtn" class="btn btn-narrow dok-tbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8V6a2 2 0 0 1 2-2h2M17 4h2a2 2 0 0 1 2 2v2M21 16v2a2 2 0 0 1-2 2h-2M7 20H5a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="3.2"/></svg>Skeniraj račun</button>
             <button type="button" id="dokNovaMapa" class="btn btn-narrow btn-alt dok-tbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 11v5M9.5 13.5h5"/></svg>Nova mapa</button>
             <button type="button" id="dokNaloziBtn" class="btn btn-narrow dok-tbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M5 20h14"/></svg>Naloži datoteke</button>
+            <button type="button" id="dokKosBtn" class="btn btn-narrow btn-alt dok-tbtn">Nedavno brisani</button>
             <input type="file" id="dokFile" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.heic,.heif,image/*,application/pdf,.csv" hidden/>
             <input type="file" id="dokKamera" accept="image/*" capture="environment" hidden/>
             <input type="file" id="dokKameraLib" accept="image/*" multiple hidden/>

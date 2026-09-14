@@ -2811,10 +2811,15 @@ async function potegniIzPortala(){
     var pl = [], off = 0;
     var _selPoln="id,legacy_id,doc_year,doc_seq,doc_date,weight_kg,transport,issued_name,opomba_stranka,opomba_evidenca,popravil,popravljeno_at,potrjeno,orgs(id,name,legal_name,address,vat_id,legacy_id)";
     var _selOsn ="id,legacy_id,doc_year,doc_seq,doc_date,weight_kg,transport,issued_name,popravil,popravljeno_at,potrjeno,orgs(id,name,legal_name,address,vat_id,legacy_id)";
+    var _delFrag = "&deleted_at=is.null";   /* izbrisani (koš) se NE prenesejo na napravo (migracija 50) */
     while(true){
       var page;
-      try{ page = await api("delivery_notes?select=" + _selPoln + "&order=doc_date.desc&limit=1000&offset=" + off); }
-      catch(_e){ /* stolpci za opombo (42_opombe.sql) še niso dodani — naloži brez njih */ page = await api("delivery_notes?select=" + _selOsn + "&order=doc_date.desc&limit=1000&offset=" + off); }
+      try{ page = await api("delivery_notes?select=" + _selPoln + _delFrag + "&order=doc_date.desc&limit=1000&offset=" + off); }
+      catch(_e){
+        /* stolpci za opombo (42_opombe.sql) še niso dodani — naloži brez njih */
+        try{ page = await api("delivery_notes?select=" + _selOsn + _delFrag + "&order=doc_date.desc&limit=1000&offset=" + off); }
+        catch(_e2){ /* stolpca deleted_at (migracija 50) še ni — naloži brez filtra */ _delFrag = ""; page = await api("delivery_notes?select=" + _selOsn + "&order=doc_date.desc&limit=1000&offset=" + off); }
+      }
       if(!Array.isArray(page) || !page.length) break;
       pl = pl.concat(page);
       if(page.length < 1000) break;

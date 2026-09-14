@@ -7,11 +7,17 @@ Bralnik tipa "keyboard wedge" (najpogostejši poceni USB RFID bralnik) ob prislo
 kartice "natipka" njeno številko in pritisne Enter. Ta skripta to prebere, pošlje
 v portal (Supabase funkcija terminal_stamp) in na LCD izpiše potrditev.
 
+OFFLINE VRSTA (novo): če ob prislonu ni interneta, se žig NE izgubi — shrani se v
+lokalno datoteko (QUEUE_FILE) skupaj s časom prislona in se pošlje takoj, ko je
+mreža spet na voljo. Ker se pošlje ČAS PRISLONA (parameter p_ts), so ure pravilne.
+Za to je potrebna migracija 49_terminal_offline.sql v Supabase.
+
 Zagon za iskanje bralnika:   python3 stemplj.py --list
 Navaden zagon:               python3 stemplj.py
 """
 
-import sys, os, json, time, select, urllib.request, urllib.error
+import sys, os, json, time, select, tempfile, urllib.request, urllib.error
+from datetime import datetime, timezone
 
 # ─────────────────────────── NASTAVITVE ───────────────────────────
 SUPABASE_URL = "https://anrhtgbckxrccnafcmsz.supabase.co"
@@ -24,6 +30,11 @@ LCD_ROWS = 2
 
 # Pot do bralnika iz `python3 stemplj.py --list`. Pusti "" za samodejno iskanje.
 READER_DEVICE = ""
+
+# Datoteka z offline vrsto (žigi brez mreže). Mora biti na zapisljivem, OBSTOJNEM
+# mestu (preživi izpad elektrike). Privzeto poleg te skripte.
+QUEUE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "stemplj_vrsta.jsonl")
+FLUSH_INTERVAL = 20    # sekunde: kako pogosto v mirovanju poskusimo poslati vrsto
 # ───────────────────────────────────────────────────────────────────
 
 from evdev import InputDevice, categorize, ecodes, list_devices
@@ -78,14 +89,70 @@ class Lcd:
         if LCD_ROWS > 1:
             self.lcd.cursor_pos = (1, 0); self.lcd.write_string(b)
 
-    def ura(self):
+    def ura(self, cakajocih=0):
         t = time.localtime()
-        self.dve("Prisloni karto", time.strftime("  %H:%M   %d.%m.", t))
+        spodaj = time.strftime("  %H:%M   %d.%m.", t)
+        if cakajocih:
+            # namig, da so neposlani žigi v vrsti (brez mreže)
+            spodaj = ("v vrsti: %d" % cakajocih).ljust(LCD_COLS)
+        self.dve("Prisloni karto", spodaj)
 
 
-def poslji(card):
+# ─────────────────────────── OFFLINE VRSTA ───────────────────────────
+def nalozi_vrsto():
+    """Preberi vrsto iz datoteke (vsaka vrstica = JSON {card, ts})."""
+    out = []
+    try:
+        with open(QUEUE_FILE, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    o = json.loads(line)
+                    if o.get("card") and o.get("ts"):
+                        out.append({"card": str(o["card"]), "ts": str(o["ts"])})
+                except Exception:
+                    pass
+    except FileNotFoundError:
+        pass
+    except Exception:
+        pass
+    return out
+
+
+def shrani_vrsto(vrsta):
+    """Atomarno zapiši vrsto (temp + rename + fsync) — varno ob izpadu elektrike."""
+    try:
+        d = os.path.dirname(QUEUE_FILE) or "."
+        fd, tmp = tempfile.mkstemp(dir=d, prefix=".vrsta_", suffix=".tmp")
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                for o in vrsta:
+                    f.write(json.dumps({"card": o["card"], "ts": o["ts"]}, ensure_ascii=False) + "\n")
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(tmp, QUEUE_FILE)
+        finally:
+            if os.path.exists(tmp):
+                try: os.remove(tmp)
+                except Exception: pass
+    except Exception as e:
+        print("Napaka pri shranjevanju vrste:", e)
+
+
+def dodaj_v_vrsto(vrsta, card, ts_iso):
+    vrsta.append({"card": card, "ts": ts_iso})
+    shrani_vrsto(vrsta)
+
+
+def poslji(card, ts_iso=None):
+    """Pošlji žig v portal. Če je ts_iso podan (offline flush), pošlji čas prislona (p_ts)."""
     url = SUPABASE_URL.rstrip("/") + "/rest/v1/rpc/terminal_stamp"
-    body = json.dumps({"p_card": card, "p_terminal": TERMINAL_ID}).encode("utf-8")
+    payload = {"p_card": card, "p_terminal": TERMINAL_ID}
+    if ts_iso:
+        payload["p_ts"] = ts_iso
+    body = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(url, data=body, method="POST", headers={
         "apikey": SUPABASE_KEY,
         "Authorization": "Bearer " + SUPABASE_KEY,
@@ -94,6 +161,27 @@ def poslji(card):
     })
     with urllib.request.urlopen(req, timeout=10) as r:
         return json.loads(r.read().decode("utf-8"))
+
+
+def flush_vrsto(vrsta):
+    """Poskusi poslati vse žige iz vrste (najstarejši najprej). Vrne (poslanih, se_je_kaj_zgodilo).
+    Ob prvi mrežni napaki se ustavi in pusti ostanek v vrsti. Strežnik ima dedup → ponovni poskus je varen."""
+    poslano = 0
+    while vrsta:
+        o = vrsta[0]
+        try:
+            res = poslji(o["card"], o["ts"])
+            # uspeh (tudi 'dup' je uspeh — žig je zabeležen); odstrani iz vrste
+            vrsta.pop(0)
+            poslano += 1
+            shrani_vrsto(vrsta)
+        except (urllib.error.URLError, urllib.error.HTTPError, OSError):
+            break   # še vedno brez mreže → pusti ostanek, poskusimo kasneje
+        except Exception:
+            # nepričakovana napaka za ta zapis → odstrani, da ne zablokira vrste za vekomaj
+            vrsta.pop(0)
+            shrani_vrsto(vrsta)
+    return poslano
 
 
 def prikazi_odgovor(lcd, res):
@@ -129,6 +217,11 @@ def main():
     lcd.dve("SmartClean", "  zagon...")
     time.sleep(1)
 
+    # naloži morebitne neposlane žige in jih poskusi takoj poslati
+    vrsta = nalozi_vrsto()
+    if vrsta:
+        flush_vrsto(vrsta)
+
     dev = InputDevice(READER_DEVICE) if READER_DEVICE else najdi_bralnik()
     if dev is None:
         lcd.dve("Ni bralnika", "preveri USB")
@@ -141,9 +234,10 @@ def main():
         pass
 
     buf = ""
-    lcd.ura()
+    lcd.ura(len(vrsta))
     zadnja_ura = 0
-    prikaz_do = 0     # do kdaj naj ostane rezultat na zaslonu
+    prikaz_do = 0          # do kdaj naj ostane rezultat na zaslonu
+    zadnji_flush = 0       # kdaj smo nazadnje poskusili poslati vrsto
 
     while True:
         r, _, _ = select.select([dev.fd], [], [], 1.0)
@@ -158,24 +252,35 @@ def main():
                     card = buf.strip(); buf = ""
                     if not card:
                         continue
+                    ts_iso = datetime.now(timezone.utc).isoformat()
                     lcd.dve("Obdelujem...", card[:16])
+                    # najprej poskusi izprazniti morebitno staro vrsto (da ostane zaporedje pravilno)
+                    if vrsta:
+                        flush_vrsto(vrsta)
                     try:
-                        res = poslji(card)
+                        res = poslji(card)                 # spletno: strežnik uporabi svoj čas (now())
                         prikazi_odgovor(lcd, res)
                     except (urllib.error.URLError, urllib.error.HTTPError, OSError):
-                        lcd.dve("Napaka mreze", "poskusi znova")
+                        # BREZ MREŽE → žig shranimo lokalno s časom prislona (ne izgubi se!)
+                        dodaj_v_vrsto(vrsta, card, ts_iso)
+                        lcd.dve("Shranjeno offln.", "poslem kasneje")
                     except Exception as e:
                         lcd.dve("Napaka", str(e)[:16])
                     prikaz_do = time.time() + 4.0
+                    zadnji_flush = time.time()
                 elif code in KEYMAP:
                     buf += KEYMAP[code]
                     if len(buf) > 64:
                         buf = buf[-64:]
         else:
-            # v mirovanju: če je rezultat potekel, spet kaži uro (osveži enkrat/min)
+            # v mirovanju: periodično poskusi poslati vrsto (če se je mreža vrnila)
+            if vrsta and (now - zadnji_flush) >= FLUSH_INTERVAL:
+                flush_vrsto(vrsta)
+                zadnji_flush = now
+            # če je rezultat potekel, spet kaži uro (osveži enkrat/min ali ob spremembi vrste)
             if now >= prikaz_do:
                 if int(now) // 60 != zadnja_ura:
-                    lcd.ura(); zadnja_ura = int(now) // 60
+                    lcd.ura(len(vrsta)); zadnja_ura = int(now) // 60
 
 
 if __name__ == "__main__":
