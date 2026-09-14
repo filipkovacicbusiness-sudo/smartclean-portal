@@ -996,27 +996,32 @@
   function _mesecLabel(kljuc) { try { return new Date(kljuc + '-01T00:00:00').toLocaleDateString('sl-SI', { month: 'long', year: 'numeric' }); } catch (e) { return kljuc; } }
 
   // Izvoz ur ZA IZBRANI MESEC v pravi Excel (.xlsx): povzetek + sheet za vsako zaposleno.
-  function prisIzvoz() {
+  async function prisIzvoz() {
     var mesecKljuc = _prisDan.slice(0, 7);
-    var aktivni = (ZAPOSLENI || []).filter(function (z) { return z.active; });
+    // Zagotovi, da so naloženi dogodki za izvoženi mesec (tudi če PRISDOG še ne pokriva tega meseca).
+    try { await naloziPrisDog(); } catch (e) {}
+    // Izvozimo ISTE zaposlene kot v Evidenci: aktivne + deaktivirane, ki imajo v tem mesecu ure
+    // (prej so bili v izvozu samo aktivni → deaktivirani z urami, npr. sezonci, so manjkali).
+    var osebe = prisOsebeZaEvidenco(mesecKljuc);
     var B = function (t) { return { v: t, bold: true }; };      // glava
     var T = function (t) { return { v: t, s: 2 }; };            // krepko (skupaj)
     var dec = function (sek) { return Math.round(sek / 3600 * 100) / 100; };
     var mesecIme = _mesecLabel(mesecKljuc);
     var sheets = [];
+    var imeIzvoz = function (z) { return z.ime + (z.active ? '' : ' (neaktiven)'); };
     // 1) Povzetek — vse zaposlene skupaj
     var pov = [[{ v: 'Povzetek ur — ' + mesecIme, s: 2 }], [], [B('Zaposleni'), B('Dni'), B('Ure'), B('Ure (decimalno)')]];
     var skupSek = 0, skupDni = 0;
-    aktivni.forEach(function (z) {
+    osebe.forEach(function (z) {
       var p = prisPovzetek(z.id, mesecKljuc);
       skupSek += p.sek; skupDni += p.dni;
-      pov.push([z.ime, p.dni, trajanjeH(p.sek), { v: dec(p.sek) }]);
+      pov.push([imeIzvoz(z), p.dni, trajanjeH(p.sek), { v: dec(p.sek) }]);
     });
     pov.push([]);
     pov.push([T('SKUPAJ'), T(skupDni), T(trajanjeH(skupSek)), { v: dec(skupSek), s: 2 }]);
     sheets.push({ name: 'Povzetek', rows: pov, freeze: false });
     // 2) Sheet za vsako zaposleno — dnevne ure
-    aktivni.forEach(function (z) {
+    osebe.forEach(function (z) {
       var rows = [[B('Datum'), B('Prihod'), B('Odhod'), B('Ure'), B('Ure (decimalno)')]];
       var r = prisPari(z.id, mesecKljuc);
       r.pari.forEach(function (p) {
