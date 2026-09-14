@@ -503,6 +503,16 @@
     var o = sel.options[sel.selectedIndex] || null;
     pid.textContent = (o && o.value) ? (o.getAttribute('data-koda') || '') : '';
   }
+  // Enter v polju za količino → skoči na količino naslednjega artikla (hitrejši vnos).
+  function _pkEnter(e) {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    var row = e.target.closest ? e.target.closest('.ur-post') : null; if (!row) return;
+    var next = row.nextElementSibling;
+    while (next && !(next.classList && next.classList.contains('ur-post'))) next = next.nextElementSibling;
+    var pk = next ? next.querySelector('[data-pk]') : null;
+    if (pk) { pk.focus(); try { pk.select(); } catch (e2) {} } else { try { e.target.blur(); } catch (e3) {} }
+  }
   // Po meri izdelan izbirnik artikla: skrit <select data-pn> ostane vir resnice (vsa
   // ostala logika bere njega); zgoraj narišemo gumb + meni z ID v okvirčku levo (kot katalog).
   function artPickWire(row) {
@@ -2530,7 +2540,7 @@
     const ustvarjenoV = n.source === 'portal' ? `<p class="ur-ustvarjeno">✚ Ustvarjeno v portalu${n.issued_name ? ' · ' + escape_(n.issued_name) : ''}</p>` : '';
     const gumbi = '<div class="u-acts" style="margin-top:12px"><button type="button" data-natisni>Natisni</button>' +
       (OSEBJE ? '<button type="button" data-uredi>Uredi</button><button type="button" class="danger" data-izbrisi>Izbriši</button>' : '') + '</div>';
-    box.innerHTML = seznam + izdalV + ustvarjenoV + popravek + opombeAppHtml(n) + opombaHtml(n) + gumbi;
+    box.innerHTML = '<div class="a-det-in"><div class="a-det-pad">' + seznam + izdalV + ustvarjenoV + popravek + opombeAppHtml(n) + opombaHtml(n) + gumbi + '</div></div>';
     box.querySelector('[data-natisni]').addEventListener('click', () => natisniList(box));
     if (OSEBJE) {
       box.querySelector('[data-uredi]').addEventListener('click', () => urediList(box));
@@ -2698,6 +2708,7 @@
       row.querySelector('[data-del]').addEventListener('click', () => { row.remove(); osveziKg(); });
       row.querySelector('[data-pn]').addEventListener('change', () => { if (_dvojnikArtikla(row)) { var s = row.querySelector('[data-pn]'); if (s) s.value = ''; toast('Ta artikel je že na seznamu.'); } osveziKg(); _ocenaPostavke(row); _osveziPid(row); });
       row.querySelector('[data-pk]').addEventListener('input', () => { osveziKg(); _ocenaPostavke(row); });
+      row.querySelector('[data-pk]').addEventListener('keydown', _pkEnter);
       pBox.appendChild(row);
       _ocenaPostavke(row);
       dndSort(pBox, '.ur-post', '.ur-grip', osveziKg);   // povleci za vrstni red
@@ -2917,6 +2928,7 @@
       row.querySelector('[data-del]').addEventListener('click', () => { row.remove(); osveziKg(); });
       row.querySelector('[data-pn]').addEventListener('change', () => { if (_dvojnikArtikla(row)) { var s = row.querySelector('[data-pn]'); if (s) s.value = ''; toast('Ta artikel je že na seznamu.'); } osveziKg(); _ocenaPostavke(row); _osveziPid(row); });
       row.querySelector('[data-pk]').addEventListener('input', () => { osveziKg(); _ocenaPostavke(row); });
+      row.querySelector('[data-pk]').addEventListener('keydown', _pkEnter);
       pBox.appendChild(row);
       _ocenaPostavke(row);
       dndSort(pBox, '.ur-post', '.ur-grip', osveziKg);   // povleci za vrstni red
