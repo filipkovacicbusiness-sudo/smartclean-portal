@@ -1771,6 +1771,7 @@
 
   /* ══════════ UČINKOVITOST (kilaža + produktivnost) ══════════ */
   var UCEN_LISTI = null, UCEN_DOG = null, _ucDan = null, _ucMesec = false;
+  var _ucEvObd = 'dan';   // Evidenca kg — obdobje: 'dan' | 'mesec' | 'vse' (ves čas / skupaj)
   var _ucEur = {}, _ucEurTot = null, _ucEurKljuc = null, _ucEurLoading = false, _ucSort = 'kg_desc';
   var UC_PAL = ['#4e79a7', '#59a14f', '#f28e2b', '#e15759', '#b07aa1', '#76b7b2', '#edc948'];
   var _ucDonutRange = '3m', _uc3dAnim = false, _kgVseMap = null, _uc3dRAF = null, _ucDonutMonth = null, _uc3dTweenFromSegs = null;
@@ -1862,6 +1863,24 @@
     var m = {};
     (UCEN_LISTI || []).forEach(function (l) { if (l.doc_date && l.doc_date.slice(0, kljuc.length) === kljuc) m[l.org_id] = (m[l.org_id] || 0) + (parseFloat(l.weight_kg) || 0); });
     return m;
+  }
+  // Skupni vir podatkov za Evidenco kg (tabela + izvoz): kg + €/kg po strankah za izbrano obdobje.
+  // _ucEvObd: 'dan' | 'mesec' | 'vse' (ves čas — iz _kgVseMap, vse stranke skupaj).
+  function ucEvidencaData() {
+    var mapK, ekljuc, obLabel, obKratko;
+    if (_ucEvObd === 'vse') { mapK = _kgVseMap || {}; ekljuc = 'V'; obLabel = 'ves čas'; obKratko = 'vse'; }
+    else if (_ucEvObd === 'mesec') { var mk = _ucDan.slice(0, 7); mapK = ucKgPoStranki(mk); ekljuc = 'M' + mk; obLabel = ucMesecIme(mk); obKratko = mk; }
+    else { mapK = ucKgPoStranki(_ucDan); ekljuc = 'D' + _ucDan; obLabel = datum(_ucDan); obKratko = _ucDan; }
+    var eurReady = _ucEurKljuc === ekljuc;
+    var eurMap = eurReady ? _ucEur : {};
+    var arr = Object.keys(mapK).map(function (id) { return { id: id, ime: ORGIME[id] || '—', kg: mapK[id], eur: (eurMap[id] != null ? eurMap[id] : null) }; }).filter(function (x) { return x.kg > 0; });
+    arr.sort(function (a, b) {
+      if (_ucSort === 'kg_asc') return a.kg - b.kg;
+      if (_ucSort === 'eur_asc' || _ucSort === 'eur_desc') { var ea = a.eur == null ? -1 : a.eur, eb = b.eur == null ? -1 : b.eur; return _ucSort === 'eur_asc' ? ea - eb : eb - ea; }
+      return b.kg - a.kg;
+    });
+    var kgSkup = arr.reduce(function (s, x) { return s + x.kg; }, 0);
+    return { arr: arr, kgSkup: kgSkup, eurReady: eurReady, eurTot: (eurReady ? _ucEurTot : null), obLabel: obLabel, obKratko: obKratko, ekljuc: ekljuc };
   }
   function ucUreSek(kljuc) {
     var byEmp = {};
@@ -2194,38 +2213,33 @@
     var top = pageHead + '<div class="uc-donut-row">' + cardDonut + cardLestEur + '</div>' +
       '<div class="uc-top uc-top2">' + cardBars + cardProd + '</div>';
 
-    var kljuc = _ucMesec ? _ucDan.slice(0, 7) : _ucDan;
-    var ekljuc = (_ucMesec ? 'M' : 'D') + kljuc;
+    var d = ucEvidencaData();
+    var ekljuc = d.ekljuc;
     var evOd, evDo;
-    if (_ucMesec) { evOd = kljuc + '-01'; evDo = kljuc + '-' + ('0' + dniVMesecu(kljuc)).slice(-2); }
-    else { evOd = evDo = kljuc; }
-    var eurReady = _ucEurKljuc === ekljuc;
-    var eurMap = eurReady ? _ucEur : {};
-    var mapK = ucKgPoStranki(kljuc);
-    var arr = Object.keys(mapK).map(function (id) { return { id: id, ime: ORGIME[id] || '—', kg: mapK[id], eur: (eurMap[id] != null ? eurMap[id] : null) }; }).filter(function (x) { return x.kg > 0; });
-    arr.sort(function (a, b) {
-      if (_ucSort === 'kg_asc') return a.kg - b.kg;
-      if (_ucSort === 'eur_asc' || _ucSort === 'eur_desc') { var ea = a.eur == null ? -1 : a.eur, eb = b.eur == null ? -1 : b.eur; return _ucSort === 'eur_asc' ? ea - eb : eb - ea; }
-      return b.kg - a.kg;
-    });
-    var kgSkup = arr.reduce(function (s, x) { return s + x.kg; }, 0);
+    if (_ucEvObd === 'vse') { evOd = '2000-01-01'; evDo = '2100-01-01'; }
+    else if (_ucEvObd === 'mesec') { var _mk = _ucDan.slice(0, 7); evOd = _mk + '-01'; evDo = _mk + '-' + ('0' + dniVMesecu(_mk)).slice(-2); }
+    else { evOd = evDo = _ucDan; }
+    var eurReady = d.eurReady;
     function eurCela(v) { return !eurReady ? '<span class="u-sub">…</span>' : (v != null ? cenaFmt(v) : '<span class="u-sub">—</span>'); }
-    var rows = arr.map(function (x) { return '<tr><td>' + escape_(x.ime) + '</td><td class="pris-ure">' + fmtKg(x.kg) + '</td><td class="pris-ure uc-eur" data-org="' + escape_(x.id) + '">' + eurCela(x.eur) + '</td></tr>'; }).join('');
+    var rows = d.arr.map(function (x) { return '<tr><td>' + escape_(x.ime) + '</td><td class="pris-ure">' + fmtKg(x.kg) + '</td><td class="pris-ure uc-eur" data-org="' + escape_(x.id) + '">' + eurCela(x.eur) + '</td></tr>'; }).join('');
     var tbl = '<table class="pris-tbl"><thead><tr><th>Stranka</th><th>Kilaža</th><th>€/kg</th></tr></thead><tbody>' +
       (rows || '<tr><td colspan="3" class="u-sub">Ni podatkov.</td></tr>') + '</tbody>' +
-      (rows ? '<tfoot><tr><td>Skupaj</td><td class="pris-ure">' + fmtKg(kgSkup) + '</td><td class="pris-ure uc-eur uc-eur-tot">' + eurCela(eurReady ? _ucEurTot : null) + '</td></tr></tfoot>' : '') + '</table>';
+      (rows ? '<tfoot><tr><td>Skupaj</td><td class="pris-ure">' + fmtKg(d.kgSkup) + '</td><td class="pris-ure uc-eur uc-eur-tot">' + eurCela(d.eurTot) + '</td></tr></tfoot>' : '') + '</table>';
     var sortSel = '<select class="uc-sort" aria-label="Razvrsti">' +
       '<option value="kg_desc"' + (_ucSort === 'kg_desc' ? ' selected' : '') + '>Kilaža ↓</option>' +
       '<option value="kg_asc"' + (_ucSort === 'kg_asc' ? ' selected' : '') + '>Kilaža ↑</option>' +
       '<option value="eur_desc"' + (_ucSort === 'eur_desc' ? ' selected' : '') + '>€/kg ↓</option>' +
       '<option value="eur_asc"' + (_ucSort === 'eur_asc' ? ' selected' : '') + '>€/kg ↑</option></select>';
+    var datumCtrl = (_ucEvObd === 'vse')
+      ? '<div class="pris-datum"><span class="uc-obd-lbl">Ves čas — vse stranke, skupaj</span></div>'
+      : '<div class="pris-datum"><input type="' + (_ucEvObd === 'mesec' ? 'month' : 'date') + '" id="ucDatum" value="' + (_ucEvObd === 'mesec' ? _ucDan.slice(0, 7) : _ucDan) + '">' +
+        ((_ucEvObd === 'mesec' ? (_ucDan.slice(0, 7) === danes10().slice(0, 7)) : (_ucDan === danes10())) ? '' : '<button type="button" class="dat-danes" id="ucDanes" title="Nazaj na danes">Danes</button>') + '</div>';
     var ev = '<div class="pris-card"><div class="pris-h"><h3 class="sec-h">Evidenca kg</h3>' +
-      '<span class="pris-hbtns">' + sortSel + '<button type="button" class="cgrp-btn ghost uc-izvoz">Izvozi (Excel)</button>' +
-      '<span class="pris-tabs"><button type="button" class="pris-tab' + (!_ucMesec ? ' on' : '') + '" data-ucobd="dan">Dan</button>' +
-      '<button type="button" class="pris-tab' + (_ucMesec ? ' on' : '') + '" data-ucobd="mesec">Mesec</button></span></span></div>' +
-      '<div class="pris-datum"><input type="' + (_ucMesec ? 'month' : 'date') + '" id="ucDatum" value="' + (_ucMesec ? _ucDan.slice(0, 7) : _ucDan) + '">' +
-      ((_ucMesec ? (_ucDan.slice(0, 7) === danes10().slice(0, 7)) : (_ucDan === danes10())) ? '' : '<button type="button" class="dat-danes" id="ucDanes" title="Nazaj na danes">Danes</button>') +
-      '</div>' + tbl + '</div>';
+      '<span class="pris-hbtns">' + sortSel + '<button type="button" class="cgrp-btn ghost uc-izvoz">Izvozi</button>' +
+      '<span class="pris-tabs"><button type="button" class="pris-tab' + (_ucEvObd === 'dan' ? ' on' : '') + '" data-ucobd="dan">Dan</button>' +
+      '<button type="button" class="pris-tab' + (_ucEvObd === 'mesec' ? ' on' : '') + '" data-ucobd="mesec">Mesec</button>' +
+      '<button type="button" class="pris-tab' + (_ucEvObd === 'vse' ? ' on' : '') + '" data-ucobd="vse">Vse</button></span></span></div>' +
+      datumCtrl + tbl + '</div>';
 
     box.innerHTML = top + ev;
     var _svg3d = box.querySelector('.uc3d-svg');
@@ -2240,8 +2254,8 @@
     var _dm = $('ucDonutMesec'); if (_dm) _dm.addEventListener('change', function () { if (!this.value) return; _uc3dTweenFromSegs = ucDonutSegs(_ucDonutRange); _ucDonutMonth = this.value; _uc3dAnim = false; ucRender(); });
     var dat = $('ucDatum'); if (dat) dat.addEventListener('change', function () { var v = this.value || danes10(); if (v.length === 7) v += '-01'; _ucDan = v; ucRender(); });
     { var _ud = $('ucDanes'); if (_ud) _ud.addEventListener('click', function () { _ucDan = danes10(); ucRender(); }); }
-    box.querySelectorAll('[data-ucobd]').forEach(function (b) { b.addEventListener('click', function () { _ucMesec = (b.dataset.ucobd === 'mesec'); ucRender(); }); });
-    var ib = box.querySelector('.uc-izvoz'); if (ib) ib.addEventListener('click', ucIzvoz);
+    box.querySelectorAll('[data-ucobd]').forEach(function (b) { b.addEventListener('click', function () { _ucEvObd = b.dataset.ucobd; ucRender(); }); });
+    var ib = box.querySelector('.uc-izvoz'); if (ib) ib.addEventListener('click', ucIzvozOdpri);
     var _us = box.querySelector('.uc-sort'); if (_us) _us.addEventListener('change', function () { _ucSort = this.value; ucRender(); });
     if (!eurReady && !_ucEurLoading) ucNaloziPrihodek(evOd, evDo, ekljuc);
     ucNaloziPrihodekObseg();   // prihodek/€kg za obseg diagrama (lestvica €/kg po strankah)
@@ -2275,16 +2289,80 @@
       if (lst) lst.innerHTML = ucLestEurRows();
     }
   }
-  function ucIzvoz() {
-    var kljuc = _ucMesec ? _ucDan.slice(0, 7) : _ucDan;
-    var map = ucKgPoStranki(kljuc);
-    var arr = Object.keys(map).map(function (id) { return { ime: ORGIME[id] || '—', kg: map[id] }; }).filter(function (x) { return x.kg > 0; }).sort(function (a, b) { return b.kg - a.kg; });
-    var sep = ';', vrst = [['Stranka', 'Kilaža (kg)'].map(csvC).join(sep)], skup = 0;
-    arr.forEach(function (x) { skup += x.kg; vrst.push([x.ime, (Math.round(x.kg * 10) / 10).toString().replace('.', ',')].map(csvC).join(sep)); });
-    vrst.push(''); vrst.push(['SKUPAJ', (Math.round(skup * 10) / 10).toString().replace('.', ',')].map(csvC).join(sep));
-    var blob = new Blob(['\ufeff' + vrst.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
-    var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'kilaza_' + kljuc + '.csv'; document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    toast('Izvoz pripravljen: kilaza_' + kljuc + '.csv');
+  // ── Izvoz Evidence kg: predogled + Excel ali PDF (za izbrano obdobje dan/mesec/vse) ──
+  function ucIzvozOdpri() {
+    var d = ucEvidencaData();
+    if (!d.arr.length) { toast('Ni podatkov za izvoz.'); return; }
+    predogledDokument({
+      naslov: 'Evidenca kg · ' + d.obLabel,
+      docHtml: ucKgDocHtml(d),
+      xlsx: function () { ucKgXlsx(d); },
+      pdf: function () { return ucKgPdf(d); }
+    });
+  }
+  function _ucEurStr(v) { return v == null ? '—' : (Math.round(v * 100) / 100).toFixed(2).replace('.', ',') + ' €'; }
+  function ucKgFileBase(d) { return 'evidenca_kg_' + (d.obKratko || 'obdobje').replace(/[^0-9A-Za-z-]/g, '_'); }
+  // Predogled (HTML) — enak izgled kot spletni print (Playfair logotip, tabela).
+  function ucKgDocHtml(d) {
+    var rows = d.arr.map(function (x) {
+      return '<tr><td class="an">' + escape_(x.ime) + '</td><td class="qty">' + fmtKg(x.kg) + '</td><td class="qty">' + _ucEurStr(x.eur) + '</td></tr>';
+    }).join('');
+    return '<!DOCTYPE html><html lang="sl"><head><meta charset="utf-8"><title>Evidenca kg ' + escape_(d.obLabel) + '</title><style>' +
+      '@font-face{font-family:\'Archivo\';font-weight:100 900;font-display:swap;src:url(\'fonts/archivo-latin-wght-normal.woff2\') format(\'woff2\');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}' +
+      '@font-face{font-family:\'Archivo\';font-weight:100 900;font-display:swap;src:url(\'fonts/archivo-latin-ext-wght-normal.woff2\') format(\'woff2\');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;}' +
+      '@font-face{font-family:\'Playfair Display\';font-weight:700;font-display:swap;src:url(\'fonts/playfair-display-latin-700-normal.woff2\') format(\'woff2\');}' +
+      '@page{size:A4;margin:0}*{box-sizing:border-box}html{background:#e9edeb}body{margin:0;background:#fff;color:#0a0a0a;font-family:\'Archivo\',system-ui,-apple-system,sans-serif}@media print{html,body{background:#fff}}' +
+      '.a4{padding:14mm 14mm 16mm}.h{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:1.5px solid #0a0a0a;padding-bottom:12px;margin-bottom:16px}' +
+      '.wm{font-family:\'Playfair Display\',Georgia,serif;font-weight:700;letter-spacing:-.03em;font-size:30px;color:#0d1f17}.wm span{color:#1a6644}' +
+      '.sub{font-size:13px;font-weight:700;text-align:right}.sub small{display:block;font-weight:400;color:#666;font-size:11px;margin-top:3px}' +
+      'table{width:100%;border-collapse:collapse;font-size:11px;margin-top:6px}th{text-transform:uppercase;font-size:9px;letter-spacing:.08em;color:#0a0a0a;font-weight:700;padding:0 8px 8px;border-bottom:1.5px solid #0a0a0a;text-align:right}th.l{text-align:left}' +
+      'td{padding:6px 8px;border-bottom:1px solid #ececec}td.an{font-weight:600}td.qty{text-align:right;font-variant-numeric:tabular-nums;font-weight:700}' +
+      'tfoot td{border-top:1.5px solid #0a0a0a;border-bottom:none;font-weight:800;padding-top:8px}' +
+      '</style></head><body><div class="a4"><div class="h"><div class="wm">Smart<span>Clean</span></div><div class="sub">Evidenca kg<small>' + escape_(d.obLabel) + '</small></div></div>' +
+      '<table><thead><tr><th class="l">Stranka</th><th>Kilaža</th><th>&euro;/kg</th></tr></thead><tbody>' + rows + '</tbody>' +
+      '<tfoot><tr><td class="an">Skupaj</td><td class="qty">' + fmtKg(d.kgSkup) + '</td><td class="qty">' + _ucEurStr(d.eurTot) + '</td></tr></tfoot></table></div></body></html>';
+  }
+  // Excel (.xlsx)
+  function ucKgXlsx(d) {
+    var B = function (t) { return { v: t, bold: true }; };
+    var T = function (t) { return { v: t, s: 2 }; };
+    var rows = [[{ v: 'Evidenca kg — ' + d.obLabel, s: 2 }], [], [B('Stranka'), B('Kilaža (kg)'), B('€/kg')]];
+    d.arr.forEach(function (x) { rows.push([x.ime, { v: Math.round(x.kg * 100) / 100 }, x.eur != null ? { v: Math.round(x.eur * 100) / 100 } : '—']); });
+    rows.push([]);
+    rows.push([T('SKUPAJ'), { v: Math.round(d.kgSkup * 100) / 100, s: 2 }, d.eurTot != null ? { v: Math.round(d.eurTot * 100) / 100, s: 2 } : '—']);
+    prenesiXlsx(ucKgFileBase(d) + '.xlsx', [{ name: 'Evidenca kg', rows: rows }]);
+    toast('Excel pripravljen.');
+  }
+  // PDF (prava datoteka, vektorsko — kot fakture)
+  async function ucKgPdf(d) {
+    var logo = await scLogo();
+    var doc = new PDFDoc();
+    var M = 44, right = doc.W - M;
+    doc.addPage();
+    var y = _pdfGlava(doc, logo, M);
+    doc.text(M, y, 'Evidenca kg', { size: 13, bold: true, color: _PDF.INK });
+    doc.text(right, y, d.obLabel, { size: 10, align: 'right', color: _PDF.GREY }); y += 22;
+    var cKg = right - 150, cEur = right;
+    function glava() {
+      doc.rect(M, y, right - M, 20, { fill: _PDF.HEAD });
+      doc.text(M + 6, y + 13.5, 'Stranka', { size: 8.5, bold: true, color: _PDF.INK });
+      doc.text(cKg, y + 13.5, 'Kilaža', { size: 8.5, bold: true, align: 'right', color: _PDF.INK });
+      doc.text(cEur, y + 13.5, '€/kg', { size: 8.5, bold: true, align: 'right', color: _PDF.INK });
+      y += 20;
+    }
+    glava();
+    d.arr.forEach(function (x) {
+      if (y + 18 > doc.H - 90) { doc.addPage(); y = _pdfGlava(doc, logo, M); glava(); }
+      doc.text(M + 6, y + 13, x.ime, { size: 9.5, color: _PDF.INK });
+      doc.text(cKg, y + 13, fmtKg(x.kg), { size: 9.5, align: 'right', color: _PDF.INK });
+      doc.text(cEur, y + 13, _ucEurStr(x.eur), { size: 9.5, align: 'right', color: _PDF.INK });
+      y += 18; doc.line(M, y, right, y, { width: 0.6, color: _PDF.LINE });
+    });
+    y += 6; doc.line(M, y, right, y, { width: 1.4, color: _PDF.GREEN }); y += 16;
+    doc.text(M + 6, y, 'Skupaj', { size: 11, bold: true, color: _PDF.INK });
+    doc.text(cKg, y, fmtKg(d.kgSkup), { size: 11, bold: true, align: 'right', color: _PDF.INK });
+    doc.text(cEur, y, _ucEurStr(d.eurTot), { size: 11, bold: true, align: 'right', color: _PDF.INK });
+    doc.save(ucKgFileBase(d) + '.pdf');
   }
 
   /* ══════════ SPREMNI LISTI ══════════ */
