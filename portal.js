@@ -2304,6 +2304,47 @@
   });
 
   /* ══════════ PREGLED ══════════ */
+  // Oblikovanje števke v KPI ploščici (med štetjem tone kot 0,00t; ob koncu s fmtTona).
+  function _fmtStat(v, fmt, konec) {
+    if (fmt === 'tona') return konec ? fmtTona(v) : ((v / 1000).toLocaleString('sl-SI', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + 't');
+    return stevilo(Math.round(v));
+  }
+  // »Big-tech« štetje od 0 do cilja.
+  function _countUp(el, target, fmt, dur) {
+    dur = dur || 900; var t0 = 0;
+    function ease(x) { return 1 - Math.pow(1 - x, 3); }
+    function fr(now) { if (!t0) t0 = now; var p = Math.min(1, (now - t0) / dur); el.textContent = _fmtStat(target * ease(p), fmt, false); if (p < 1) requestAnimationFrame(fr); else el.textContent = _fmtStat(target, fmt, true); }
+    requestAnimationFrame(fr);
+  }
+  function _animStat(grid) {
+    if (!grid) return;
+    var reduce = false; try { reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion:reduce)').matches; } catch (e) {}
+    [].slice.call(grid.querySelectorAll('.stat')).forEach(function (t, i) { t.style.setProperty('--si', i); t.classList.add('stat-in'); });
+    grid.querySelectorAll('.stat-num[data-count]').forEach(function (el) {
+      var target = parseFloat(el.getAttribute('data-count')) || 0, fmt = el.getAttribute('data-fmt') || 'int';
+      if (reduce) { el.textContent = _fmtStat(target, fmt, true); return; }
+      _countUp(el, target, fmt);
+    });
+  }
+  // Oddelane ure (tekoči mesec) — iz att_events; par in/out po zaposlenih.
+  async function _domUreSek() {
+    var mk = danes10().slice(0, 7), evs;
+    if (UCEN_DOG) { evs = UCEN_DOG.filter(function (d) { return d.ts && d.ts.slice(0, 7) === mk; }); }
+    else { var r = await sb.from('att_events').select('employee_id,ts,type').gte('ts', mk + '-01T00:00:00Z').order('ts', { ascending: true }); evs = (r && r.data) ? r.data : []; }
+    var byEmp = {}; evs.forEach(function (d) { (byEmp[d.employee_id] = byEmp[d.employee_id] || []).push(d); });
+    var sek = 0;
+    Object.keys(byEmp).forEach(function (eid) { var a = byEmp[eid].sort(function (x, y) { return x.ts < y.ts ? -1 : 1; }); var odprt = null; a.forEach(function (d) { if (d.type === 'in') { if (!odprt) odprt = d; } else if (d.type === 'out') { if (odprt) { sek += (new Date(d.ts) - new Date(odprt.ts)) / 1000; odprt = null; } } }); });
+    return sek;
+  }
+  async function _domUreFill() {
+    var el = document.querySelector('#statGrid .stat-num[data-pending="ure"]'); if (!el) return;
+    var sek = 0; try { sek = await _domUreSek(); } catch (e) {}
+    var ure = Math.round(sek / 3600);
+    if (!document.body.contains(el)) return;
+    el.setAttribute('data-count', ure); el.setAttribute('data-fmt', 'int'); el.removeAttribute('data-pending');
+    var reduce = false; try { reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion:reduce)').matches; } catch (e) {}
+    if (reduce) el.textContent = stevilo(ure); else _countUp(el, ure, 'int');
+  }
   function risiPregled() {
     $('domovNaslov').textContent = OSEBJE ? ('Pozdravljen/a, ' + prvoIme()) : MOJEPODJETJE ? MOJEPODJETJE.name : 'Vaš pregled';
     $('domovPod').textContent = OSEBJE ? ORGSEZNAM.length + ' strank v bazi' : MOJEPODJETJE ? [MOJEPODJETJE.legal_name, MOJEPODJETJE.address].filter(Boolean).join(' · ') : '';
@@ -2317,9 +2358,28 @@
     const zadnji = LISTI[0];
     const pred90 = new Date(zdaj.getTime() - 90 * 864e5);
     const aktivnih = new Set(LISTI.filter(l => new Date(l.doc_date) >= pred90).map(l => l.org_id)).size;
-    const kartice = OSEBJE ? [['Ta mesec', fmtTona(kgMesec), ''], ['Skupaj', fmtTona(kgSkupaj), ''], ['Dostav ta mesec', stevilo(vMesecu.length), ''], ['Kosov opranih', stevilo(kosovSkupaj), '']] : [['Prevzemov', stevilo(VSEHLISTOV), 'skupaj'], ['Ta mesec', stevilo(vMesecu.length), stevilo(kosovMesec) + ' kosov'], ['Kosov skupaj', stevilo(kosovSkupaj), 'v vseh prevzemih'], ['Zadnji prevzem', zadnji ? datum(zadnji.doc_date) : '—', zadnji ? stevilo(zadnji.total_pieces) + ' kosov' : 'še ni podatkov']];
-    $('statGrid').innerHTML = kartice.map(([l, n, s]) => `<div class="stat"><div class="stat-num">${escape_(n)}</div>
-     <div class="stat-lab">${escape_(l)}</div><div class="stat-sub">${escape_(s)}</div></div>`).join('');
+    const kartice = OSEBJE ? [
+      { lab: 'Ta mesec', num: kgMesec, fmt: 'tona' },
+      { lab: 'Oddelanih ur', pending: 'ure' },
+      { lab: 'Dostav ta mesec', num: vMesecu.length, fmt: 'int' },
+      { lab: 'Kosov opranih', num: kosovSkupaj, fmt: 'int' }
+    ] : [
+      { lab: 'Prevzemov', num: VSEHLISTOV, fmt: 'int', sub: 'skupaj' },
+      { lab: 'Ta mesec', num: vMesecu.length, fmt: 'int', sub: stevilo(kosovMesec) + ' kosov' },
+      { lab: 'Kosov skupaj', num: kosovSkupaj, fmt: 'int', sub: 'v vseh prevzemih' },
+      { lab: 'Zadnji prevzem', text: zadnji ? datum(zadnji.doc_date) : '—', sub: zadnji ? stevilo(zadnji.total_pieces) + ' kosov' : 'še ni podatkov' }
+    ];
+    $('statGrid').innerHTML = kartice.map(function (k) {
+      var num;
+      if (k.text != null) num = escape_(k.text);
+      else if (k.pending) num = '<span class="stat-dots">···</span>';
+      else num = escape_(_fmtStat(k.num, k.fmt, true));
+      var attr = (k.pending) ? ' data-pending="' + k.pending + '"' : ((k.text == null) ? ' data-count="' + k.num + '" data-fmt="' + k.fmt + '"' : '');
+      return '<div class="stat"><div class="stat-num"' + attr + '>' + num + '</div>' +
+        '<div class="stat-lab">' + escape_(k.lab) + '</div><div class="stat-sub">' + escape_(k.sub || '') + '</div></div>';
+    }).join('');
+    _animStat($('statGrid'));
+    if (OSEBJE) _domUreFill();
 
     /* zadnjih šest mesecev */
     if ($('domovStatus')) $('domovStatus').innerHTML = '';
