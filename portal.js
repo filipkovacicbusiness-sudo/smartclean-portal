@@ -2729,6 +2729,7 @@
         await sb.from('delivery_note_items').delete().eq('note_id', k.note_id);
         var items = (Array.isArray(k.postavke) ? k.postavke : []).filter(function (p) { return p && p.naziv; }).map(function (p, i) { return { note_id: k.note_id, article_name: String(p.naziv), pieces: Number(p.kosov) || 0, sort_order: i }; });
         if (items.length) { var e2 = (await sb.from('delivery_note_items').insert(items)).error; if (e2) throw e2; }
+        pozabiPostavke(k.note_id);
         logDodaj('Arhiv', 'Urejeno', 'Prekrivanje rešeno (tablica) · ' + (k.number || ''));
       } else {
         logDodaj('Arhiv', 'Urejeno', 'Prekrivanje rešeno (portal) · ' + (k.number || ''));
@@ -2831,12 +2832,18 @@
     try {
       var r1 = await sb.from('delivery_note_items').delete().eq('note_id', id); if (r1.error) throw r1.error;
       var r2 = await sb.from('delivery_notes').delete().eq('id', id); if (r2.error) throw r2.error;
+      pozabiPostavke(id);
       logDodaj('Arhiv', 'Izbrisano dokončno', 'Spremni list dokončno izbrisan iz koša');
       toast('Dokončno izbrisano'); arhivKos();
     } catch (e) { toast('Napaka: ' + (e && e.message ? e.message : e)); }
   }
   // Predpomnilnik postavk (za takojšnje, gladko razpiranje kartic — brez skoka).
   var _POST_CACHE = {};
+  // Postavke spremnega lista so predpomnjene (glej odpiranje detajla). Po VSAKI
+  // spremembi je treba vnos pozabiti, sicer se ob ponovnem odprtju lista prikažejo
+  // stare količine, čeprav je shranjevanje uspelo.
+  // Brez argumenta počisti vse (uvoz s tablice zadene več listov naenkrat).
+  function pozabiPostavke(id) { if (id) { delete _POST_CACHE[id]; } else { _POST_CACHE = {}; } }
   async function prednaloziPostavke(listi) {
     var ids = (listi || []).map(function (l) { return l.id; }).filter(function (id) { return id && !_POST_CACHE[id]; }).slice(0, 80);
     if (!ids.length) return;
@@ -2987,6 +2994,7 @@
         var r2 = await sb.from('delivery_notes').delete().eq('id', box._id);
         if (r2.error) throw r2.error;
       }
+      pozabiPostavke(box._id);
       logDodaj('Arhiv', 'Izbrisano', 'Spremni list ' + ((box._note && box._note.number) || '') + (_softDelDN ? ' (v koš)' : ''));
       toast(_softDelDN ? 'Premaknjeno v »Nedavno brisani«' : 'Spremni list izbrisan');
       await naloziListe();
@@ -3144,6 +3152,7 @@
         r = await sb.from('delivery_note_items').insert(rows);
         if (r.error) throw r.error;
       }
+      pozabiPostavke(box._id);
       logDodaj('Arhiv', 'Urejeno', 'Spremni list ' + ((box._note && box._note.number) || ''));
       toast('Spremni list shranjen');
       await naloziListe();
@@ -5649,6 +5658,7 @@
             por.tezav.push('list ' + e.stevilka + ': ' + error.message);
             continue;
           }
+          pozabiPostavke();
           por.posodobljenih++;
           await sb.from('delivery_note_items').delete().eq('note_id', noteId);
         } else {
