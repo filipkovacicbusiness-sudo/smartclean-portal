@@ -2200,7 +2200,7 @@
       '<h3 class="sec-h">Delež kg po strankah</h3>' +
       '<div class="uc-d3-stage"><svg class="uc3d-svg" viewBox="-110 0 ' + (_UC3D.W + 220) + ' ' + _UC3D.H + '" preserveAspectRatio="xMidYMid meet"></svg></div></div>';
     var cardBars = '<div class="uc-card"><h3 class="sec-h">kg zadnjih 7 dni</h3><div class="bars-row" style="margin-top:14px">' +
-      d7.map(function (o) { return '<div class="bars-col"><span class="bars-val">' + (o.kg ? Math.round(o.kg) : '') + '</span><div class="bars-bar" style="height:' + Math.round(o.kg / naj * 84) + 'px"></div><span class="bars-lab">' + o.lab + '</span></div>'; }).join('') + '</div></div>';
+      d7.map(function (o) { return '<div class="bars-col"><span class="bars-val">' + (o.kg ? Math.round(o.kg) : '—') + '</span><div class="bars-bar" style="height:' + Math.round(o.kg / naj * 84) + 'px"></div><span class="bars-lab">' + o.lab + '</span></div>'; }).join('') + '</div></div>';
     var cardProd = '<div class="uc-card uc-stat"><h3 class="sec-h">Skupna učinkovitost</h3><div class="uc-big">' + (kgh ? fmtStevilo1(kgh) : '—') + ' <span>kg/uro</span></div>' +
       '<p class="u-sub">' + fmtKg(kgMon) + ' · ' + stevilo(Math.round(ureMon)) + ' delovnih ur · ' + ucMesecIme(mesecKljuc) + '</p></div>';
     // Lestvica kg/uro po dnevih (izbran mesec) — naraščajoče/padajoče.
@@ -2545,7 +2545,7 @@
     }
     const naj = Math.max(...meseci.map(m => m.kos), 1);
     $('mesecni').innerHTML = '<div class="bars"><h3 class="sec-h">Kosov po mesecih</h3><div class="bars-row">' + meseci.map(m => `<div class="bars-col">
-        <span class="bars-val">${m.kos ? stevilo(m.kos) : ''}</span>
+        <span class="bars-val">${m.kos ? stevilo(m.kos) : '—'}</span>
         <div class="bars-bar" style="height:${Math.round(m.kos / naj * 88)}px"></div>
         <span class="bars-lab">${escape_(m.ime)}</span></div>`).join('') + '</div></div>';
     const stKljuc = l => { const d = String(l.number || '').split('/'); return (parseInt(d[1], 10) || 0) * 1e7 + (parseInt(d[0], 10) || 0); };
