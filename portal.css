@@ -1431,8 +1431,22 @@ html[data-view="grid"] #cenikList .sc-isolate .cgrp:not(.open){max-width:var(--t
 .uc-range-lbl{font-size:.9rem;font-weight:600;color:var(--mid);margin:0;line-height:1.2;text-transform:capitalize;}
 .uc-d3-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;}
 .uc-d3-ctrl{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
-.uc-d3-month{padding:7px 12px;border:1.5px solid var(--line);border-radius:100px;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:.85rem;}
+/* Izbirnik obdobja (Statistika): ko je izbran »Mesec«, se poleg pilul pojavi še
+   mesečni vnos. Ta je bil višji od pilul (40,8 px proti 37,0 px), zato se je ob
+   vsakem preklopu spremenila višina glave in vse kartice pod njo so poskočile.
+   Višino obeh kontrolnikov poenotimo, da je vrstica ves čas enako visoka. */
+.uc-d3-ctrl{min-height:var(--ctrl-h,37px);}
+.uc-d3-month{height:var(--ctrl-h,37px);box-sizing:border-box;padding:0 12px;border:1.5px solid var(--line);border-radius:100px;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:.85rem;}
 .uc-d3-month:focus{border-color:var(--green-l);outline:none;}
+/* Ozki zasloni: oznaka obdobja nad kontrolnike, ta pa čez celo širino.
+   Prej so se pilule stiskale ob oznako in se je »3 meseci« prelomilo v dve
+   vrstici, glava pa je ob preklopu poskočila za ~57 px. */
+@media(max-width:560px){
+  .uc-page-head{flex-direction:column;align-items:stretch;gap:10px;}
+  .uc-d3-ctrl{width:100%;}
+  .uc-d3-ctrl .uc-d3-month{width:100%;}
+  .uc-d3-ctrl .pris-tab{white-space:nowrap;}
+}
 .uc-d3-stage{width:100%;margin-top:6px;flex:1;min-height:0;display:flex;align-items:center;justify-content:center;}
 /* Velikost je določena z razmerjem (viewBox 800×384) — NE z višino kartice.
    Tako se diagram ob osvežitvi (ko se sosednja lestvica naloži) ne poveča. */
