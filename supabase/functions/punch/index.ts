@@ -2,14 +2,14 @@
 // Edge Function: punch  — registracija prihoda/odhoda s kartico
 // ═══════════════════════════════════════════════════════════════════════════
 // Terminal (Raspberry Pi + čitalec ACR1252U) pošlje POST:
-//   { terminal_id, card_token, nonce, hmac }
+//   { terminal_id, card_token, nonce, hmac, ts? }
 //
 //   terminal_id = SLUG terminala (npr. "pralnica-vhod")
 //   card_token  = skrivnost, prebrana s kartice (NE UID!)
 //   nonce       = naključen niz, unikaten na vsak tap
 //   hmac        = lowercase hex HMAC-SHA256
 //
-//   message = terminal_id + "." + card_token + "." + nonce
+//   message = terminal_id + "." + card_token + "." + nonce [+ "." + ts]
 //   hmac    = HMAC_SHA256(key = att_terminals.secret, message)
 //
 // Funkcija:
@@ -87,8 +87,23 @@ Deno.serve(async (req) => {
   const card_token = String(body?.card_token || "");
   const nonce = String(body?.nonce || "");
   const hmac = String(body?.hmac || "").toLowerCase();
+  // ts je NEOBVEZEN: pošlje ga terminal za žig, posnet brez povezave.
+  // Ker je del podpisa, ga brez skrivnosti terminala ni mogoče ponarediti.
+  const ts = body?.ts ? String(body.ts) : "";
   if (!terminal_id || !card_token || !nonce || !hmac) {
     return json({ ok: false, error: "missing_fields" }, 400);
+  }
+
+  // Čas mora biti razumen: ne v prihodnosti (5 min tolerance za razliko ur) in
+  // ne starejši od 14 dni — tudi pravi terminal ne sme pisati zgodovine.
+  let tsIso = "";
+  if (ts) {
+    const t0 = Date.parse(ts);
+    if (!Number.isFinite(t0)) return json({ ok: false, error: "bad_ts" }, 400);
+    const zdaj = Date.now();
+    if (t0 > zdaj + 5 * 60 * 1000) return json({ ok: false, error: "bad_ts" }, 400);
+    if (t0 < zdaj - 14 * 24 * 3600 * 1000) return json({ ok: false, error: "stale_ts" }, 200);
+    tsIso = new Date(t0).toISOString();
   }
 
   // 1) najdi terminal PO SLUGU + vzemi secret
@@ -101,7 +116,11 @@ Deno.serve(async (req) => {
   if (!t.data || !t.data.active) return json({ ok: false, error: "unknown_terminal" }, 200);
 
   // 2) preveri HMAC:  message = terminal_id + "." + card_token + "." + nonce
-  const pricakovan = await hmacHex(t.data.secret, `${terminal_id}.${card_token}.${nonce}`);
+  // Če je ts prisoten, je DEL sporočila — sicer bi ga bilo mogoče podtakniti.
+  const sporocilo = ts
+    ? `${terminal_id}.${card_token}.${nonce}.${ts}`
+    : `${terminal_id}.${card_token}.${nonce}`;
+  const pricakovan = await hmacHex(t.data.secret, sporocilo);
   if (!enakaVarno(pricakovan, hmac)) return json({ ok: false, error: "bad_hmac" }, 200);
 
   // 3) idempotenca — isti (terminal_id, nonce) že obstaja?
@@ -130,6 +149,7 @@ Deno.serve(async (req) => {
     .from("att_events")
     .select("type, ts")
     .eq("employee_id", emp.data.id)
+    .lte("ts", tsIso || new Date().toISOString())
     .order("ts", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -138,7 +158,8 @@ Deno.serve(async (req) => {
   //     (prepreči nehoteno prihod+odhod ob dvojnem prislonu iste kartice)
   const COOLDOWN_SEK = 60;
   if (zadnji.data && zadnji.data.ts) {
-    const razmik = (Date.now() - new Date(zadnji.data.ts).getTime()) / 1000;
+    const cas = tsIso ? new Date(tsIso).getTime() : Date.now();
+    const razmik = (cas - new Date(zadnji.data.ts).getTime()) / 1000;
     if (razmik < COOLDOWN_SEK) {
       return json({
         ok: false,
@@ -161,6 +182,7 @@ Deno.serve(async (req) => {
       type,
       source: "terminal",
       nonce,
+      ...(tsIso ? { ts: tsIso } : {}),
     })
     .select("id, type, ts")
     .single();

@@ -1,141 +1,196 @@
-# Terminal za štemplanje — Raspberry Pi 5 + HD44780 16×2 (I2C) + RFID kartice
+# Terminal za štemplanje — Raspberry Pi 5 + ACR1252U + DESFire EV3 + LCD 16×2
 
-## Kaj imaš in kako deluje
+## Kako deluje
 
-Zaslon je **znakovni LCD (16×2)**, ne zaslon za brskalnik. Zato na Pi-ju ne teče
-Chromium, ampak majhna Python skripta:
+1. Zaposleni prisloni kartico MIFARE DESFire EV3.
+2. Kartica se overi z **AES-128** — ključ je izpeljan iz njenega UID.
+3. Iz šifrirane datoteke na kartici preberemo **žeton**.
+4. Žeton podpišemo s skrivnostjo terminala (HMAC-SHA256) in pošljemo
+   Edge funkciji **`punch`**.
+5. Strežnik sam ugotovi, ali je prihod ali odhod, zapiše dogodek in vrne ime.
+6. LCD izpiše `PRIHOD  07:32` / `Brigita`.
 
-1. zaposleni prisloni kartico k USB bralniku,
-2. skripta pošlje številko kartice v portal (funkcija `terminal_stamp`),
-3. portal sam ugotovi, ali je to **prihod** ali **odhod**, zapiše dogodek in vrne ime,
-4. LCD izpiše npr. `PRIHOD  07:32` / `Brigita`.
+Pregled ur, popravki in PDF so v portalu pod **Prisotnost**.
 
-Vse ostalo (pregled »Trenutno prisotni«, ure, popravki, PDF) je že v portalu pod **Prisotnost**.
+### Zakaj DESFire in ne navadna kartica
 
----
+Pri NTAG ali MIFARE Classic bi na kartici ležala skrivnost, ki jo zna vsak
+telefon prebrati in prepisati. DESFire se **overi** — dokaže, da ima ključ,
+ne da bi ga izdal. Klon z enakim UID odpove, ker ključa nima.
 
-## 1) Priklop LCD na Pi 5
-
-Štiri žice na 40-pinski konektor Pi-ja:
-
-| LCD (I2C backpack) | Pi pin |
-|---|---|
-| GND | pin 6 |
-| SDA | pin 3 (GPIO2) |
-| SCL | pin 5 (GPIO3) |
-| VCC | pin 2 (5V) |
-
-**Pomembno glede napetosti:** backpack ima pull-up upore na VCC. Če je VCC = 5V, gresta
-SDA/SCL na 5V, Pi pa prenese le 3,3V. Možnosti:
-
-- **Najbolje:** vmes daj majhen **I2C level shifter** (VCC backpacka 5V, logika prek shifterja).
-- **Brez dodatkov, varno:** VCC na **3,3V (pin 1)**. LCD bo morda malce medel — kontrast
-  nastaviš z **modrim potenciometrom** zadaj na backpacku.
-- (Direktno 5V na Pi GPIO marsikomu dela leta, a je uradno izven specifikacije.)
+Vsaka kartica ima svoj ključ (NXP AN10922, izpeljan iz UID). Če kdo razbije
+eno, ostale niso ogrožene.
 
 ---
 
-## 2) Prvi zagon — omogoči I2C in poišči naslov LCD
+## 1) Priklop LCD
+
+Štiri žice na 40-pinski konektor: GND→pin 6, SDA→pin 3 (GPIO2),
+SCL→pin 5 (GPIO3), VCC→**3,3 V (pin 1)**.
+
+> Backpack ima pull-up upore na VCC. Pri 5 V gresta SDA/SCL na 5 V, Pi pa
+> prenese 3,3 V. Zato 3,3 V (LCD je malce medel — popravi s potenciometrom)
+> ali vmesni I²C level shifter.
 
 ```bash
 sudo raspi-config          # Interface Options → I2C → Enable → reboot
+i2cdetect -y 1             # naslov, običajno 0x27 ali 0x3F → v LCD_ADDR
+```
+
+Če `i2cdetect` ne pokaže ničesar, sta najpogosteje zamenjana SDA/SCL.
+
+---
+
+## 2) Namestitev
+
+```bash
 sudo apt update
-sudo apt install -y i2c-tools python3-evdev python3-smbus python3-venv
-i2cdetect -y 1             # zapomni si naslov, ponavadi 0x27 ali 0x3F
+sudo apt install -y pcscd pcsc-tools python3-pip python3-venv i2c-tools
+sudo systemctl enable --now pcscd
+
+python3 -m venv ~/stemplj-venv
+~/stemplj-venv/bin/pip install pyscard python-desfire RPLCD smbus2
 ```
 
-Če `i2cdetect` ne pokaže ničesar → preveri žice (SDA/SCL zamenjana je najpogostejša napaka).
-
----
-
-## 3) Namesti skripto
+Preveri bralnik — prisloni kartico, izpisati mora ATR:
 
 ```bash
-mkdir -p ~/terminal
-# skopiraj vanj stemplj.py  (iz repozitorija: terminal/stemplj.py)
-python3 -m venv --system-site-packages ~/stemplj-venv
-~/stemplj-venv/bin/pip install RPLCD smbus2
+pcsc_scan
 ```
 
 ---
 
-## 4) Nastavi skripto
-
-Odpri `~/terminal/stemplj.py` in na vrhu popravi:
-
-- `SUPABASE_KEY` → isti **`sb_publishable_…`** ključ, kot ga uporabljaš v portalu.
-- `LCD_ADDR`   → naslov iz koraka 2 (npr. `0x27`).
-- `TERMINAL_ID`→ poljubno ime terminala (npr. `pralnica`).
-
-`SUPABASE_URL` je že pravilen.
-
----
-
-## 5) Poišči bralnik
+## 3) Ključi — enkrat, na TVOJEM računalniku
 
 ```bash
-~/stemplj-venv/bin/python ~/terminal/stemplj.py --list
+python3 vpisi_karto.py --nov-kljucnik
 ```
 
-Večina poceni USB RFID bralnikov se obnaša kot tipkovnica in jih skripta najde sama —
-takrat pusti `READER_DEVICE = ""`. Če imaš priklopljeno tudi navadno tipkovnico, v seznamu
-poišči vrstico bralnika (npr. `/dev/input/event3  HID 1234:5678`) in jo vpiši v
-`READER_DEVICE`.
+Nastaneta dva osnovna ključa:
 
----
+| ključ | čemu služi | kje sme biti |
+|---|---|---|
+| `app_master` | vpisovanje in prepis kartic | **samo** tvoj računalnik |
+| `read` | branje žetona ob prislonu | Pi in tvoj računalnik |
 
-## 6) Zaženi SQL v Supabase (enkrat)
+**Shrani oba v upravitelja gesel.** Brez njiju kartic ni mogoče niti brati niti
+vpisovati znova, in ker sta osnova za izpeljavo, se ju ne da obnoviti.
 
-V Supabase SQL editorju zaženi **`41_terminal_stamp.sql`**. Ta ustvari funkcijo
-`terminal_stamp`, ki jo kliče terminal. (Varno za ponoven zagon.)
-
----
-
-## 7) Dodeli kartice zaposlenim (v portalu)
-
-Najlažje: **USB bralnik priklopi v računalnik**, kjer imaš odprt portal.
-
-Portal → **Prisotnost** → pri zaposlenem klikni **Dodeli kartico** → **prisloni kartico**
-(številka se vpiše sama v polje) → **Shrani**. Ponovi za vsakega. Nato bralnik prestavi na Pi.
-
-> Če bralnika nimaš pri portalu: prisloni novo kartico na terminalu — LCD pokaže
-> `Neznana karta` + njen ID; to številko vpiši v portalu ročno.
-
----
-
-## 8) Test
+Na Pi prenesi `kljuci.json`, v katerem je **samo `read`**:
 
 ```bash
-~/stemplj-venv/bin/python ~/terminal/stemplj.py
+python3 -c "import json;k=json.load(open('kljuci.json'));json.dump({'read':k['read']},open('kljuci-pi.json','w'),indent=2)"
+scp kljuci-pi.json pi@raspberrypi:~/terminal/kljuci.json
+ssh pi@raspberrypi 'chmod 600 ~/terminal/kljuci.json'
 ```
 
-Prisloni dodeljeno kartico → na LCD se izpiše `PRIHOD` + ime; še enkrat → `ODHOD`.
-V portalu pod **Prisotnost → Trenutno prisotni** se mora pojaviti isto. Ustavi z `Ctrl+C`.
+Tako tat Pi-ja kartic ne more prepisovati.
 
 ---
 
-## 9) Samodejni zagon ob prižigu (systemd)
+## 4) Terminal v bazi
+
+Zaženi `baza/54_terminal_pralnica.sql` v Supabase → SQL Editor. Izpiše
+skrivnost terminala. Na Pi:
 
 ```bash
-sudo cp ~/terminal/stemplj.service /etc/systemd/system/stemplj.service
-# če tvoj uporabnik ni "pi", popravi poti v datoteki (/home/<user>/…)
+echo '{"secret":"<skrivnost iz izpisa>"}' > ~/terminal/terminal.json
+chmod 600 ~/terminal/terminal.json
+```
+
+---
+
+## 5) Vpis kartic
+
+Na svojem računalniku, z bralnikom priklopljenim nanj:
+
+```bash
+python3 vpisi_karto.py --ime "Brigita Kaker"
+```
+
+Izpiše žeton in SQL, ki ga prilepiš v Supabase. Ostalo:
+
+```bash
+python3 vpisi_karto.py --preberi     # kaj je na tej kartici?
+python3 vpisi_karto.py --ponovno     # kartica je že naša, vpiši na novo
+python3 vpisi_karto.py --pocisti     # pobriši SmartClean s kartice
+```
+
+Glavni ključ kartice **ostane tovarniški**, zato je kartico vedno mogoče
+počistiti in vpisati znova — nepopravljivo je ni mogoče pokvariti.
+
+---
+
+## 6) Zagon
+
+```bash
+python3 stemplj.py --preizkus    # brez LCD, izpis na zaslon
+python3 stemplj.py --preberi     # prisloni karto in pokaži žeton
+python3 stemplj.py               # normalno
+```
+
+Kot storitev (v `stemplj.service` popravi poti, če uporabnik ni `pi`):
+
+```bash
+sudo cp stemplj.service /etc/systemd/system/
 sudo systemctl daemon-reload
-sudo systemctl enable --now stemplj.service
-systemctl status stemplj.service          # mora pisati "active (running)"
-journalctl -u stemplj.service -f          # živ dnevnik (za odpravo napak)
+sudo systemctl enable --now stemplj
+journalctl -u stemplj -f
 ```
-
-Odslej se terminal zažene sam ob vsakem vklopu Pi-ja.
 
 ---
 
-## Opombe
+## Brez povezave
 
-- **Šumniki:** HD44780 nima č/š/ž — skripta jih samodejno pretvori v c/s/z (npr. »Špela« → »Spela«).
-- **Ime predolgo:** LCD ima 16 znakov na vrstico; daljša imena se odrežejo.
-- **Kontrast:** če je zaslon prazen a osvetljen, zavrti modri potenciometer zadaj.
-- **Varnost:** klic `terminal_stamp` je anonimen, a zmore izključno obračanje prihod/odhod
-  za veljavno kartico — kartic ali drugih podatkov ne bere in ne vrača. Za majhno pralnico
-  je to primerno; če boš kdaj želel strožje, se da dodati skrivni ključ terminala.
-- **En terminal, WiFi:** poskrbi za stabilen WiFi; ob izpadu omrežja LCD pokaže
-  `Napaka mreze` in štempljanje takrat ne gre (dogodek se ne izgubi — samo počakaj in ponovi).
+Žig se shrani v `stemplj_vrsta.jsonl` **s časom prislona** in se pošlje, ko je
+mreža spet na voljo. Zapis je atomaren (temp + rename + fsync), zato preživi
+izpad elektrike sredi pisanja.
+
+Čas je **del podpisa HMAC**, zato ga strežnik sprejme kot verodostojnega —
+brez skrivnosti terminala ga ni mogoče ponarediti. Sprejme ga do 14 dni nazaj
+in največ 5 minut v prihodnost.
+
+`nonce` gre skozi vrsto nespremenjen: če je zahteva prišla skozi, odgovor pa se
+je izgubil, strežnik drugi poskus prepozna kot podvojen in ur ne šteje dvakrat.
+
+---
+
+## Kaj v resnici ščiti kaj
+
+| Grožnja | Kaj jo ustavi |
+|---|---|
+| Klon kartice s prebranim UID | AES overitev — klon nima ključa |
+| Branje žetona z drugim bralnikom | datoteka je berljiva šele po overitvi |
+| Razbita ena kartica | ključi so izpeljani — ostale niso ogrožene |
+| Ponovitev prestreženega zahtevka | `nonce` + varovalka 60 s |
+| Ponarejen čas žiga | čas je del podpisa |
+| Klic `punch` z interneta | brez skrivnosti terminala podpis ne bo pravi |
+
+Kar **ni** ustavljeno: kolega, ki prinese tujo kartico in z njo štempla. To je
+organizacijsko vprašanje, ne tehnično.
+
+---
+
+## Ko terminal deluje
+
+Stara pot `terminal_stamp` je odveč; migracija `52_zapri_anon_rpc.sql` jo je že
+zaprla. Smiselno je pobrisati še deset pravil `device_*`, ki se sklicujejo na
+`profiles.is_device`, česar nihče ne nastavlja.
+
+---
+
+## Če kaj ne dela
+
+| Znak | Kje pogledati |
+|---|---|
+| `pcsc_scan` ne vidi kartice | `sudo systemctl status pcscd`, drug USB priključek |
+| `To ni SmartClean kartica` | kartica ni vpisana → `vpisi_karto.py` |
+| `Kartica se ni overila` | napačen `read` ključ ali kartica z drugega ključnika |
+| `Napacen podpis` | `terminal.json` se ne ujema z `att_terminals.secret` |
+| `Terminal ni vpisan` | `TERMINAL_SLUG` se ne ujema z `att_terminals.slug` |
+| `Kartica ni vpisana` | `employees.card_token` ni nastavljen na ta žeton |
+| `Ze zabelezeno` | ista oseba je tapnila pred manj kot 60 s |
+| LCD prazen | `i2cdetect -y 1`, `LCD_ADDR`, kontrast, 3,3 V |
+
+**Šumniki:** HD44780 nima č/š/ž — skripta jih pretvori v c/s/z (»Špela« → »Spela«).
+**Dolga imena:** LCD ima 16 znakov na vrstico, daljša se odrežejo.
