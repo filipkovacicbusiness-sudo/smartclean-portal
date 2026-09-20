@@ -375,7 +375,7 @@ h3.sec-h{font-family:var(--serif);font-size:1.05rem;font-weight:700;margin:0 0 1
    vrstica, v kateri je vsak napis sedel na vrhu SVOJEGA stolpca — napisi so
    bili na sedmih različnih višinah, najvišji pa je ušel v naslov kartice,
    ker je stolpec (~124 px) presegel višino vrstice (110 px). */
-.bars-row{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;
+.bars-row{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);
   grid-template-rows:auto 1fr auto;gap:0 12px;height:132px;margin-top:16px;}
 .bars-col{display:contents;}
 .bars-bar{align-self:end;width:100%;background:var(--green);

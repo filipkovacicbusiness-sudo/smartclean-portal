@@ -1905,12 +1905,94 @@
     });
     return sek;
   }
-  function ucZadnjih7() {
-    var out = []; var now = new Date();
-    for (var i = 6; i >= 0; i--) { var d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i); var key = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); out.push({ key: key, lab: ('0' + d.getDate()).slice(-2) + '.' + ('0' + (d.getMonth() + 1)).slice(-2) + '.', kg: 0 }); }
-    var idx = {}; out.forEach(function (o) { idx[o.key] = o; });
-    (UCEN_LISTI || []).forEach(function (l) { var k = l.doc_date && l.doc_date.slice(0, 10); if (idx[k]) idx[k].kg += (parseFloat(l.weight_kg) || 0); });
-    return out;
+  // ── Stolpčni graf se ravna po izbirniku obdobja na vrhu strani ─────────
+  // Gostota se prilagodi: mesec → dnevi, 3 meseci → tedni, vse → meseci.
+  function _ucK(d) { return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+  function _ucMesLab(mk) { var m = ['jan', 'feb', 'mar', 'apr', 'maj', 'jun', 'jul', 'avg', 'sep', 'okt', 'nov', 'dec']; return m[+mk.slice(5, 7) - 1] + ' ' + mk.slice(2, 4); }
+  // Koliko stolpcev še prenese napise nad njimi in kako gost naj bo razmik.
+  function ucBarsGostota(n) {
+    return { gap: n <= 14 ? 12 : (n <= 24 ? 6 : 3) };
+  }
+  // Napisi se izrišejo VSI, nato jih po dejanski meritvi toliko skrijemo, da se
+  // preostali ne prekrivajo. Tako se graf sam prilagodi širini zaslona — fiksni
+  // korak tega ne zna, ker ob izrisu širine kartice še ne poznamo.
+  var _barsFitT = null;
+  window.addEventListener('resize', function () {
+    clearTimeout(_barsFitT);
+    _barsFitT = setTimeout(function () { try { ucBarsFit(document); } catch (e) {} }, 150);
+  });
+  function ucBarsFit(scope) {
+    var rows = (scope || document).querySelectorAll('.bars-row');
+    [].forEach.call(rows, function (row) {
+      var cols = [].slice.call(row.querySelectorAll('.bars-col'));
+      if (!cols.length) return;
+      var colW = row.clientWidth / cols.length;
+      ['.bars-lab', '.bars-val'].forEach(function (sel) {
+        var els = cols.map(function (c) { return c.querySelector(sel); }).filter(Boolean);
+        if (!els.length) return;
+        els.forEach(function (e) { e.style.visibility = ''; });
+        var w = 1;
+        els.forEach(function (e) { if (e.textContent.trim() && e.scrollWidth > w) w = e.scrollWidth; });
+        var step = Math.max(1, Math.ceil((w + 6) / Math.max(colW, 1)));
+        if (step === 1) return;
+        els.forEach(function (e, i) { if (i % step !== 0 && i !== els.length - 1) e.style.visibility = 'hidden'; });
+      });
+    });
+  }
+  // Vrne { rows:[{key,lab,kg,opis}], naslov } za izbrano obdobje.
+  function ucSerija(range) {
+    var rows = [], naslov = '', idx = {};
+    if (range === 'mesec') {
+      var mk = _ucDonutMonth || danes10().slice(0, 7);
+      var dni = new Date(+mk.slice(0, 4), +mk.slice(5, 7), 0).getDate();
+      for (var i = 1; i <= dni; i++) { var k = mk + '-' + ('0' + i).slice(-2); rows.push({ key: k, lab: String(i), kg: 0, opis: datum(k) }); }
+      rows.forEach(function (o) { idx[o.key] = o; });
+      (UCEN_LISTI || []).forEach(function (l) { var kk = l.doc_date && l.doc_date.slice(0, 10); if (idx[kk]) idx[kk].kg += (parseFloat(l.weight_kg) || 0); });
+      naslov = 'kg po dnevih · ' + ucMesecIme(mk);
+    } else if (range === 'vse') {
+      var kljuci = (UCEN_LISTI || []).map(function (l) { return l.doc_date ? l.doc_date.slice(0, 7) : null; }).filter(Boolean).sort();
+      if (!kljuci.length) return { rows: [], naslov: 'kg po mesecih · ves čas' };
+      var kon = kljuci[kljuci.length - 1], cy = +kljuci[0].slice(0, 4), cm = +kljuci[0].slice(5, 7);
+      while (cy * 12 + cm <= +kon.slice(0, 4) * 12 + +kon.slice(5, 7)) {
+        var mk2 = cy + '-' + ('0' + cm).slice(-2);
+        rows.push({ key: mk2, lab: _ucMesLab(mk2), kg: 0, opis: ucMesecIme(mk2) });
+        cm++; if (cm > 12) { cm = 1; cy++; }
+      }
+      rows.forEach(function (o) { idx[o.key] = o; });
+      (UCEN_LISTI || []).forEach(function (l) { var km = l.doc_date && l.doc_date.slice(0, 7); if (idx[km]) idx[km].kg += (parseFloat(l.weight_kg) || 0); });
+      naslov = 'kg po mesecih · ves čas';
+    } else {
+      // 3 meseci → po tednih (od ponedeljka), enak obseg kot ucKgMesecev(3)
+      var d = new Date(), fl = new Date(d.getFullYear(), d.getMonth() - 2, 1);
+      var st = new Date(fl); st.setDate(st.getDate() - ((st.getDay() + 6) % 7));
+      for (var c = new Date(st); c <= d; c.setDate(c.getDate() + 7)) {
+        var k1 = _ucK(c), e = new Date(c); e.setDate(e.getDate() + 6);
+        rows.push({ key: k1, kon: _ucK(e), lab: ('0' + c.getDate()).slice(-2) + '.' + ('0' + (c.getMonth() + 1)).slice(-2) + '.', kg: 0, opis: 'teden ' + datum(k1) + ' – ' + datum(_ucK(e)) });
+      }
+      (UCEN_LISTI || []).forEach(function (l) {
+        var kd = l.doc_date && l.doc_date.slice(0, 10); if (!kd) return;
+        for (var j = rows.length - 1; j >= 0; j--) { if (kd >= rows[j].key && kd <= rows[j].kon) { rows[j].kg += (parseFloat(l.weight_kg) || 0); break; } }
+      });
+      naslov = 'kg po tednih · zadnji 3 meseci';
+    }
+    return { rows: rows, naslov: naslov };
+  }
+  // Delovne ure za izbrano obdobje (ucUreSek zna le predpono, tu rabimo še razpon).
+  function ucUreSekObseg(range) {
+    if (range === 'mesec') return ucUreSek(_ucDonutMonth || danes10().slice(0, 7));
+    if (range === 'vse') return ucUreSek('');
+    var d = new Date(), fl = new Date(d.getFullYear(), d.getMonth() - 2, 1);
+    return ucUreSekOd(_ucK(fl));
+  }
+  function ucUreSekOd(odKljuc) {
+    var byEmp = {};
+    (UCEN_DOG || []).forEach(function (d) { if (d.ts.slice(0, 10) >= odKljuc) (byEmp[d.employee_id] = byEmp[d.employee_id] || []).push(d); });
+    var sek = 0;
+    Object.keys(byEmp).forEach(function (eid) {
+      var evs = byEmp[eid].sort(function (a, b) { return a.ts < b.ts ? -1 : 1; }); var odprt = null;
+      evs.forEach(function (d) { if (d.type === 'in') { if (!odprt) odprt = d; } else if (d.type === 'out') { if (odprt) { sek += (new Date(d.ts) - new Date(odprt.ts)) / 1000; odprt = null; } } });
+    });
+    return sek;
   }
   function ucMesecIme(mk) { var p = mk.split('-'); var mes = ['januar', 'februar', 'marec', 'april', 'maj', 'junij', 'julij', 'avgust', 'september', 'oktober', 'november', 'december']; return (mes[parseInt(p[1], 10) - 1] || '') + ' ' + p[0]; }
   // Lestvica kg/uro po dnevih izbranega meseca (samo dnevi z opranim in odprtimi urami).
@@ -2179,14 +2261,18 @@
   function ucRender() {
     var box = $('ucList'); if (!box) return;
     var _sy = window.scrollY;
-    var mesecKljuc = _ucDan.slice(0, 7);
-    var mapMon = ucKgPoStranki(mesecKljuc);
-    var kgMon = Object.keys(mapMon).reduce(function (s, k) { return s + mapMon[k]; }, 0);
-    var ureMon = ucUreSek(mesecKljuc) / 3600;
-    var kgh = ureMon > 0 ? kgMon / ureMon : 0;
-    var d7 = ucZadnjih7(); var naj = Math.max.apply(null, d7.map(function (o) { return o.kg; }).concat([1]));
-
     if (!_ucDonutMonth) _ucDonutMonth = danes10().slice(0, 7);
+    var mesecKljuc = _ucDan.slice(0, 7);   // še vedno za lestvico kg/uro po dnevih
+    // »Skupna učinkovitost« se ravna po izbirniku obdobja na vrhu strani.
+    // Prej je brala _ucDan — to je stanje razdelka Evidenca kg, ne te glave.
+    var mapMon = ucKgObseg(_ucDonutRange) || {};
+    var kgMon = Object.keys(mapMon).reduce(function (s, k) { return s + mapMon[k]; }, 0);
+    var ureMon = ucUreSekObseg(_ucDonutRange) / 3600;
+    var kgh = ureMon > 0 ? kgMon / ureMon : 0;
+    var ser = ucSerija(_ucDonutRange);
+    var naj = Math.max.apply(null, ser.rows.map(function (o) { return o.kg; }).concat([1]));
+    var gost = ucBarsGostota(ser.rows.length);
+
     var rangeLbl = _ucDonutRange === 'vse' ? 'ves čas' : (_ucDonutRange === 'mesec' ? ucMesecIme(_ucDonutMonth) : 'zadnji 3 meseci');
     var mesecInput = _ucDonutRange === 'mesec' ? '<input type="month" id="ucDonutMesec" class="uc-d3-month" value="' + escape_(_ucDonutMonth) + '">' : '';
     // Glava strani Statistika: en sam izbirnik obdobja (Mesec / 3 meseci / Vse) na vrhu.
@@ -2199,10 +2285,17 @@
     var cardDonut = '<div class="uc-card uc-donut3d-card">' +
       '<h3 class="sec-h">Delež kg po strankah</h3>' +
       '<div class="uc-d3-stage"><svg class="uc3d-svg" viewBox="-110 0 ' + (_UC3D.W + 220) + ' ' + _UC3D.H + '" preserveAspectRatio="xMidYMid meet"></svg></div></div>';
-    var cardBars = '<div class="uc-card"><h3 class="sec-h">kg zadnjih 7 dni</h3><div class="bars-row" style="margin-top:14px">' +
-      d7.map(function (o) { return '<div class="bars-col"><span class="bars-val">' + (o.kg ? Math.round(o.kg) : '—') + '</span><div class="bars-bar" style="height:' + Math.round(o.kg / naj * 84) + 'px"></div><span class="bars-lab">' + o.lab + '</span></div>'; }).join('') + '</div></div>';
+    var cardBars = '<div class="uc-card"><h3 class="sec-h">' + escape_(ser.naslov) + '</h3>' +
+      (ser.rows.length ? '<div class="bars-row" style="margin-top:14px;column-gap:' + gost.gap + 'px">' +
+        ser.rows.map(function (o) {
+          return '<div class="bars-col" title="' + escape_(o.opis + ' · ' + fmtKg(o.kg)) + '">' +
+            '<span class="bars-val">' + (o.kg ? Math.round(o.kg) : '—') + '</span>' +
+            '<div class="bars-bar" style="height:' + Math.round(o.kg / naj * 84) + 'px"></div>' +
+            '<span class="bars-lab">' + escape_(o.lab) + '</span></div>';
+        }).join('') + '</div>'
+      : '<p class="u-sub" style="margin:14px 0 0">V izbranem obdobju ni podatkov.</p>') + '</div>';
     var cardProd = '<div class="uc-card uc-stat"><h3 class="sec-h">Skupna učinkovitost</h3><div class="uc-big">' + (kgh ? fmtStevilo1(kgh) : '—') + ' <span>kg/uro</span></div>' +
-      '<p class="u-sub">' + fmtKg(kgMon) + ' · ' + stevilo(Math.round(ureMon)) + ' delovnih ur · ' + ucMesecIme(mesecKljuc) + '</p></div>';
+      '<p class="u-sub">' + fmtKg(kgMon) + ' · ' + stevilo(Math.round(ureMon)) + ' delovnih ur · ' + escape_(rangeLbl) + '</p></div>';
     // Lestvica kg/uro po dnevih (izbran mesec) — naraščajoče/padajoče.
     var lestDni = ucKgUroPoDnevih(mesecKljuc);
     lestDni.sort(function (a, b) { return _ucLestSort === 'asc' ? a.kgh - b.kgh : b.kgh - a.kgh; });
@@ -2255,6 +2348,8 @@
       datumCtrl + tbl + '</div>';
 
     box.innerHTML = top + ev;
+    // Napisi se redčijo po dejanski širini — šele ko je vsebina v dokumentu.
+    try { ucBarsFit(box); } catch (e) {}
     var _svg3d = box.querySelector('.uc3d-svg');
     if (_svg3d) {
       if (_uc3dTweenFromSegs) { uc3dTween(_svg3d, _uc3dTweenFromSegs, ucDonutSegs(_ucDonutRange)); _uc3dTweenFromSegs = null; }
