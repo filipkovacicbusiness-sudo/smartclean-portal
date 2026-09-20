@@ -5,22 +5,32 @@ v projektu Supabase `anrhtgbckxrccnafcmsz`. Če se ta projekt izgubi ali ga je
 treba postaviti na novo (npr. za preizkusno okolje), ga iz te mape **ni mogoče
 obnoviti**. Ta datoteka pove, kaj vse bi bilo treba obnoviti.
 
-> **Največje tveganje v projektu.** Portal ima 14 migracij, ki jih koda kliče po
-> imenu, v mapi pa je samo ena. Ker pravil RLS ni nikjer v repozitoriju, jih tudi
-> ni mogoče pregledati — in RLS je edino, kar portal v resnici varuje (glej
-> »Pravice« spodaj).
+> **Shema je zdaj izvožena** (`shema.sql`, `shema-app.sql`) — brez podatkov,
+> ker je repozitorij javen. Ostaja pa, da 14 od 16 oštevilčenih migracij ni v
+> mapi; `shema.sql` je posnetek KONČNEGA stanja, ne zgodovina korakov.
+>
+> **Pregled pravil je odkril kritično napako** — povišanje lastnih pravic prek
+> `profiles`. Popravek je `51_profiles_zascita_pravic.sql`. Glej razdelek 4.
 
 ---
 
 ## 1. Izvoz sheme (naredi to najprej)
 
+Edge funkcije so **že izvožene** v `supabase/functions/` (vse štiri).
+Manjkata še shema in pravila RLS — `supabase db dump` za to potrebuje Docker:
+
 ```bash
-supabase login
-supabase link --project-ref anrhtgbckxrccnafcmsz
-supabase db dump --schema public       -f baza/shema.sql   # tabele, pogledi, funkcije
+# možnost A — Docker Desktop, nato dump brez gesla za bazo
+brew install --cask docker && open -a Docker
+supabase db dump --schema public -f baza/shema.sql
 supabase db dump --schema public --data-only --use-copy -f baza/podatki.sql
-supabase functions download uporabniki
-supabase functions download webauthn
+
+# možnost B — brez Dockerja, prek pg_dump (rabi geslo baze iz
+# Supabase → Project Settings → Database)
+brew install libpq
+"$(brew --prefix libpq)"/bin/pg_dump --schema-only --schema=public \
+  "postgresql://postgres:GESLO@db.anrhtgbckxrccnafcmsz.supabase.co:5432/postgres" \
+  > baza/shema.sql
 ```
 
 Pravil RLS `db dump` ne zajame vedno v berljivi obliki; izpiši jih še posebej:
@@ -70,11 +80,37 @@ Poleg tega sta v mapi dve enkratni opravili, ki nista del sheme:
 `memberships` · `app_config` · `article_groups` · `avatars` ·
 `webauthn_credentials` · `delivery_note_conflicts` · `audit_log`
 
-**RPC:** `terminal_stamp` (terminal) · `touch_last_login` · `touch_seen` ·
-`stranka_kosi` · `shrani_nastavitve` · `posodobi_ime_artikla`
+**RPC:** `terminal_stamp` (star terminal) · `odprte_izmene` · `touch_last_login` ·
+`touch_seen` · `stranka_kosi` · `shrani_nastavitve` · `posodobi_ime_artikla`
 
-**Edge funkcije:** `uporabniki` (dodajanje/brisanje uporabnikov, gesla) ·
-`webauthn` (preverjanje podpisa Face ID / prstnega odtisa)
+> `terminal/stemplj.py` v tem repozitoriju kliče **star** `terminal_stamp`
+> s številko kartice in javnim ključem. Objavljena funkcija `punch` je novejša
+> (žeton s kartice + HMAC + nonce). Skripta na Raspberry Pi je torej eno
+> generacijo zadaj — preveri, katera od obeh v resnici teče.
+
+**Edge funkcije** — štiri, ne dve (izvožene v `supabase/functions/`):
+
+| Funkcija | Verify JWT | Kako se zaščiti |
+|---|---|---|
+| `uporabniki` | da | žeton + `is_staff` + **`super_admin`** (glej opozorilo spodaj) |
+| `webauthn` | da | žeton; preveri podpis passkeya |
+| `punch` | **ne** | HMAC-SHA256 s skrivnostjo terminala + nonce |
+| `odprte-izmene` | **ne** | skupna skrivnost v glavi `x-report-secret` |
+
+`punch` in `odprte-izmene` sta namenoma brez preverjanja žetona — kliče ju
+terminal oziroma razporejeno opravilo, ne prijavljen uporabnik.
+
+> **Opozorilo (odpravljeno v izvorni kodi, NEOBJAVLJENO):** `uporabniki` je
+> zahtevala samo `is_staff`, vmesnik pa razdelek Uporabniki pokaže le vlogama
+> super in admin. Vsak račun osebja je lahko mimo vmesnika ustvarjal in brisal
+> račune ter menjal gesla — tudi lastniku. Popravek je v
+> `supabase/functions/uporabniki/index.ts`, objaviti ga je treba z
+> `supabase functions deploy uporabniki`.
+
+> **Skrivnost v kodi:** `odprte-izmene` je imela `REPORT_SECRET` zapisan v
+> komentarju. V izvozu je zamenjan z opozorilom. Ker je repozitorij javen,
+> skrivnost zamenjaj (Supabase → Edge Functions → Secrets) in popravi
+> razporejeno opravilo, ki funkcijo kliče.
 
 **Storage:** `avatars` · `dokumenti`
 
@@ -87,13 +123,36 @@ V portalu `sme()` in `rolePerm()` (`portal.js`) samo **skrivata gumbe**.
 kdorkoli s ključem `sb_publishable_…` (ta je javen) in veljavno prijavo lahko
 gre mimo vmesnika naravnost na REST.
 
-Ob pregledu pravil je vredno preveriti predvsem troje:
+Pravila so zdaj izvožena (`shema.sql`, 62 pravil na 23 tabelah) in pregledana:
 
-1. **`app_config`** — portal ga piše iz brskalnika (`upsert` na ključ
-   `role_config`). Kdor sme pisati to vrstico, si lahko dodeli pravice.
-2. **`profiles`** — portal piše `last_seen`/`last_login` neposredno, kot rezervo
-   za RPC. Pravilo mora dovoliti samo *lastno* vrstico in samo ta dva stolpca.
-3. **`delivery_notes` / `orgs`** — stranka sme videti le svojo organizacijo.
+| Kaj | Ugotovitev |
+|---|---|
+| `app_config` | **V redu.** Pisanje omejeno na `auth.jwt() ->> 'email' = 'filip@eflitte.si'`. Vloge si nihče ne more dodeliti sam. |
+| `orgs` / `delivery_notes` | **V redu.** Stranka vidi svoje prek `app.my_org_ids()` (membership + `active`). |
+| `profiles` | **KRITIČNO — glej spodaj.** |
+
+### Povišanje lastnih pravic prek `profiles`
+
+Trije dejavniki skupaj:
+
+1. `profiles_self_update` dovoli UPDATE lastne vrstice (`id = auth.uid()`),
+2. `GRANT ALL ON TABLE profiles TO authenticated` — **brez omejitve stolpcev**,
+3. na `profiles` ni nobenega sprožilca.
+
+`is_staff`, `super_admin` in `zaposleni` so navadni stolpci te iste vrstice.
+Zato je vsak prijavljen uporabnik — tudi navadna stranka — lahko naredil:
+
+```js
+await sb.from('profiles').update({ is_staff: true, super_admin: true }).eq('id', mojUid);
+```
+
+`app.is_staff()` bere prav ta stolpec, zato se za tem odpre pravilo
+`staff_all_profiles` in za njim vse, kar je vezano na osebje: vse stranke,
+spremni listi, fakture, dokumenti, uporabniki.
+
+**Popravek:** `51_profiles_zascita_pravic.sql` (preizkušen na Postgres 17 —
+stranka in osebje ne moreta povišati sebe, osebje ne more tujih pravic,
+lastnik in service_role delujeta naprej).
 
 ---
 
