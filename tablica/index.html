@@ -2,6 +2,7 @@
 <html lang="sl">
 <head>
 <meta charset="UTF-8" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-src 'self' data: blob:; base-uri 'none'; form-action 'none'; object-src 'none'"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <title>Pralnica — Spremni listi</title>
 <link rel="manifest" href="manifest.json" />
@@ -11,9 +12,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default" />
 <meta name="apple-mobile-web-app-title" content="Pralnica" />
 <link rel="apple-touch-icon" href="icon-192.png" />
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet" />
+<!-- Pisave so vgrajene v <style> spodaj (base64). Zunanjih Google Fonts ne nalagamo:
+     stran jih ni uporabljala, delujejo brez povezave, in IP naprav ne gre h Googlu. -->
 <script src="xlsx.full.min.js"></script>
 <script src="supabase.js"></script>
 <style>
@@ -1228,7 +1228,9 @@
   function buildPrintDoc(pages){
     var st=document.getElementsByTagName("style")[0];
     var css=st?st.innerHTML:"";
-    var fontImport="@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&display=swap');";
+    /* Pisav ne uvažamo z Googla: spodnji 'css' je kopija glavnega <style>,
+       ki Playfair Display že vsebuje kot vgrajen @font-face (base64). */
+    var fontImport="";
     /* Vsebina v samostojnem dokumentu — VIDNA sama po sebi (brez #printAll trika
        'visibility:hidden', ki na iOS pogosto natisne prazno). Override na koncu
        razveljavi morebitna skrivalna pravila iz kopiranega CSS. */
@@ -1237,7 +1239,7 @@
       + ' .pa-page{background:#fff;page-break-after:always} .pa-page:last-child{page-break-after:auto}'
       + ' .pa-page .a4{box-shadow:none;border-radius:0;aspect-ratio:auto;width:100%;padding:2% 2% 3%}'
       + ' @media print{ #printDoc,#printDoc *{visibility:visible!important} body *{visibility:visible} }';
-    return '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><style>'+fontImport+css+extra+'</style></head><body><div id="printDoc">'+pages+'</div></body></html>';
+    return '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>'+fontImport+css+extra+'</style></head><body><div id="printDoc">'+pages+'</div></body></html>';
   }
   function printLists(arr, single){
     if(!arr||!arr.length){ toast("Ni spremnih listov za tiskanje."); return; }
