@@ -2048,3 +2048,42 @@ html[data-theme="dark"] .u-acts .u-pin.on{background:rgba(52,199,110,.16);color:
 .konf-keep{align-self:flex-start;margin-top:auto;}
 .konf-keep.primary{background:var(--ink);color:var(--bg);border-color:var(--ink);}
 .konf-keep.primary:hover{opacity:.85;}
+
+/* ── Gorivo ─────────────────────────────────────────────────────────────
+   Štiri številke na vrhu, pod njimi tankanja. Stolpci s številkami so
+   desno poravnani, znaka za račun in urejanje na sredini. */
+.gor-stat{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;}
+.gor-s{border:1px solid var(--line);border-radius:12px;background:var(--surface);padding:14px 16px;min-width:0;}
+.gor-s>span{display:block;font-size:.7rem;text-transform:uppercase;letter-spacing:.04em;color:var(--mid);}
+.gor-s>b{display:block;margin-top:5px;font-size:1.25rem;font-weight:700;font-variant-numeric:tabular-nums;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.gor-s>small{display:block;margin-top:3px;font-size:.72rem;color:var(--mid);}
+@media(max-width:860px){.gor-stat{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:420px){.gor-stat{grid-template-columns:1fr;}}
+
+#sec-gorivo .gor-tbl th:not(:first-child):not(:nth-child(7)),
+#sec-gorivo .gor-tbl td:not(:first-child):not(:nth-child(7)){text-align:right;}
+#sec-gorivo .gor-tbl th.gor-c,#sec-gorivo .gor-tbl td.gor-c{text-align:center;}
+.gor-tbl th{white-space:nowrap;}
+.gor-tbl .gor-rac{border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--mid);
+  padding:4px 8px;display:inline-flex;align-items:center;cursor:pointer;}
+.gor-tbl .gor-rac:hover{border-color:var(--mid);color:var(--ink);}
+.gor-tbl .gor-ur{border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--mid);
+  padding:4px 11px;font-size:.78rem;cursor:pointer;}
+.gor-tbl .gor-ur:hover{border-color:var(--mid);color:var(--ink);}
+/* Tankanje brez priloženega računa je treba opaziti — zaradi tega se ta evidenca vodi. */
+.gor-tbl tr.gor-nerac td:first-child{box-shadow:inset 2px 0 0 var(--st-warn);}
+.gor-tbl .gor-brez{color:var(--st-warn);}
+.gor-leto{height:32px;padding:0 30px 0 12px;border:1px solid var(--line);border-radius:100px;background:var(--surface);
+  color:var(--ink);font:inherit;font-size:.8rem;font-weight:600;cursor:pointer;}
+.gor-modal{max-width:620px;width:min(94vw,620px);text-align:left;}
+.gor-modal .ur-form{margin-top:6px;}
+.gor-modal input[type=file]{padding:9px 11px;border:1px dashed var(--line);border-radius:10px;
+  background:var(--surface);color:var(--ink);font-size:.85rem;width:100%;}
+.gor-rac-stanje{margin:2px 0 0;}
+.gor-odstrani{border:none;background:none;padding:0;color:var(--st-bad);text-decoration:underline;
+  font:inherit;font-size:inherit;cursor:pointer;}
+/* Devet stolpcev se v vsebinski stolpec ob meniju ne izide, zato se tabela
+   vodoravno drsi; glava kartice ostane na mestu. */
+.gor-scroll{overflow-x:auto;margin:0 -2px;}
+.gor-tbl{min-width:730px;}

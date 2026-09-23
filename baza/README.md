@@ -65,6 +65,7 @@ določenega razdelka ne odpre. **Kljukica = datoteka je v tej mapi.**
 | 48 | `48_zaposleni_uporabnik.sql` | povezava zaposleni ↔ uporabnik | ✗ |
 | 49 | `49_terminal_offline.sql` | parameter `p_ts` — žigi brez povezave | ✗ |
 | 50 | *(brez imena v kodi)* | `deleted_at` na `delivery_notes` in `documents` | ✗ |
+| 55 | `55_gorivo.sql` | `fuel_logs` + bucket `gorivo` (razdelek Gorivo) | **✓** |
 
 Poleg tega sta v mapi dve enkratni opravili, ki nista del sheme:
 `cenik_pocisti_nepovezane.sql` in `id_kljuc_migracija.sql`.

@@ -327,18 +327,18 @@
   var ADMIN_RAZDELKI = [
     ['domov', 'Domov'], ['dokumenti', 'Dokumenti'], ['prisotnost', 'Prisotnost'], ['stranke', 'Stranke'],
     ['arhiv', 'Arhiv'], ['artikli', 'Cenik & Artikli'], ['fakture', 'Fakture'], ['uporabniki', 'Uporabniki'],
-    ['statistika', 'Statistika'], ['konzola', 'Konzola'], ['aplikacija', 'Programska oprema'], ['katalog', 'Katalog']
+    ['statistika', 'Statistika'], ['gorivo', 'Gorivo'], ['konzola', 'Konzola'], ['aplikacija', 'Programska oprema'], ['katalog', 'Katalog']
   ];
   var ADMIN_VLOGE = ['super', 'admin', 'osebje', 'zaposleni', 'stranka'];
   var ADMIN_IMENA_PRIVZ = { super: 'Super admin', admin: 'Admin', osebje: 'Osebje', zaposleni: 'Zaposleni', stranka: 'Stranka' };
   // Privzete vidne pravice (r,w,x,d) — ujemajo se z obstajajočim obnašanjem.
   function _perm(r, w, x, d) { return { r: !!r, w: !!w, x: !!x, d: !!d }; }
   var ADMIN_PRIVZ = {
-    super: { domov: _perm(1, 1, 1, 1), prisotnost: _perm(1, 1, 1, 1), arhiv: _perm(1, 1, 1, 1), katalog: _perm(0, 0, 0, 0), statistika: _perm(1, 1, 1, 1), artikli: _perm(1, 1, 1, 1), stranke: _perm(1, 1, 1, 1), dokumenti: _perm(1, 1, 1, 1), aplikacija: _perm(1, 1, 1, 1), fakture: _perm(1, 1, 1, 1), uporabniki: _perm(1, 1, 1, 1) },
-    admin: { domov: _perm(1, 1, 1, 1), prisotnost: _perm(1, 1, 1, 1), arhiv: _perm(1, 1, 1, 1), katalog: _perm(0, 0, 0, 0), statistika: _perm(1, 1, 1, 1), artikli: _perm(1, 1, 1, 1), stranke: _perm(1, 1, 1, 1), dokumenti: _perm(1, 1, 1, 1), aplikacija: _perm(1, 1, 1, 1), fakture: _perm(1, 1, 1, 1), uporabniki: _perm(1, 1, 1, 1) },
-    osebje: { domov: _perm(1, 1, 1, 1), prisotnost: _perm(1, 1, 1, 1), arhiv: _perm(1, 1, 1, 1), katalog: _perm(0, 0, 0, 0), statistika: _perm(1, 1, 1, 1), artikli: _perm(1, 1, 1, 1), stranke: _perm(1, 1, 1, 1), dokumenti: _perm(1, 1, 1, 1), aplikacija: _perm(1, 1, 1, 1), fakture: _perm(0, 0, 0, 0), uporabniki: _perm(0, 0, 0, 0) },
-    zaposleni: { domov: _perm(1, 0, 0, 0), prisotnost: _perm(1, 0, 0, 1), arhiv: _perm(0, 0, 0, 0), katalog: _perm(0, 0, 0, 0), statistika: _perm(0, 0, 0, 0), artikli: _perm(0, 0, 0, 0), stranke: _perm(0, 0, 0, 0), dokumenti: _perm(0, 0, 0, 0), aplikacija: _perm(0, 0, 0, 0), fakture: _perm(0, 0, 0, 0), uporabniki: _perm(0, 0, 0, 0) },
-    stranka: { domov: _perm(1, 0, 0, 0), prisotnost: _perm(0, 0, 0, 0), arhiv: _perm(1, 0, 0, 1), katalog: _perm(1, 0, 0, 0), statistika: _perm(0, 0, 0, 0), artikli: _perm(0, 0, 0, 0), stranke: _perm(0, 0, 0, 0), dokumenti: _perm(0, 0, 0, 0), aplikacija: _perm(0, 0, 0, 0), fakture: _perm(0, 0, 0, 0), uporabniki: _perm(0, 0, 0, 0) }
+    super: { gorivo: _perm(1, 1, 1, 1), domov: _perm(1, 1, 1, 1), prisotnost: _perm(1, 1, 1, 1), arhiv: _perm(1, 1, 1, 1), katalog: _perm(0, 0, 0, 0), statistika: _perm(1, 1, 1, 1), artikli: _perm(1, 1, 1, 1), stranke: _perm(1, 1, 1, 1), dokumenti: _perm(1, 1, 1, 1), aplikacija: _perm(1, 1, 1, 1), fakture: _perm(1, 1, 1, 1), uporabniki: _perm(1, 1, 1, 1) },
+    admin: { gorivo: _perm(1, 1, 1, 1), domov: _perm(1, 1, 1, 1), prisotnost: _perm(1, 1, 1, 1), arhiv: _perm(1, 1, 1, 1), katalog: _perm(0, 0, 0, 0), statistika: _perm(1, 1, 1, 1), artikli: _perm(1, 1, 1, 1), stranke: _perm(1, 1, 1, 1), dokumenti: _perm(1, 1, 1, 1), aplikacija: _perm(1, 1, 1, 1), fakture: _perm(1, 1, 1, 1), uporabniki: _perm(1, 1, 1, 1) },
+    osebje: { gorivo: _perm(0, 0, 0, 0), domov: _perm(1, 1, 1, 1), prisotnost: _perm(1, 1, 1, 1), arhiv: _perm(1, 1, 1, 1), katalog: _perm(0, 0, 0, 0), statistika: _perm(1, 1, 1, 1), artikli: _perm(1, 1, 1, 1), stranke: _perm(1, 1, 1, 1), dokumenti: _perm(1, 1, 1, 1), aplikacija: _perm(1, 1, 1, 1), fakture: _perm(0, 0, 0, 0), uporabniki: _perm(0, 0, 0, 0) },
+    zaposleni: { gorivo: _perm(0, 0, 0, 0), domov: _perm(1, 0, 0, 0), prisotnost: _perm(1, 0, 0, 1), arhiv: _perm(0, 0, 0, 0), katalog: _perm(0, 0, 0, 0), statistika: _perm(0, 0, 0, 0), artikli: _perm(0, 0, 0, 0), stranke: _perm(0, 0, 0, 0), dokumenti: _perm(0, 0, 0, 0), aplikacija: _perm(0, 0, 0, 0), fakture: _perm(0, 0, 0, 0), uporabniki: _perm(0, 0, 0, 0) },
+    stranka: { gorivo: _perm(0, 0, 0, 0), domov: _perm(1, 0, 0, 0), prisotnost: _perm(0, 0, 0, 0), arhiv: _perm(1, 0, 0, 1), katalog: _perm(1, 0, 0, 0), statistika: _perm(0, 0, 0, 0), artikli: _perm(0, 0, 0, 0), stranke: _perm(0, 0, 0, 0), dokumenti: _perm(0, 0, 0, 0), aplikacija: _perm(0, 0, 0, 0), fakture: _perm(0, 0, 0, 0), uporabniki: _perm(0, 0, 0, 0) }
   };
   var ROLE_CFG = null;  // { imena:{...}, perm:{ vloga:{ razdelek:{r,w,x,d} } } }
   function roleIme(v) { return (ROLE_CFG && ROLE_CFG.imena && ROLE_CFG.imena[v]) || ADMIN_IMENA_PRIVZ[v] || v; }
@@ -706,7 +706,8 @@
     dokumenti: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6"/><path d="M9 17h4"/>',
     konzola: '<path d="M3 11v2a1 1 0 0 0 1 1h2l4 4V6L6 10H4a1 1 0 0 0-1 1Z"/><path d="M15 8a4 4 0 0 1 0 8"/><path d="M18 5a8 8 0 0 1 0 14"/>',
     nastavitve: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
-    admin: '<path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6z"/><path d="M9.5 12.2l1.8 1.8 3.4-3.6"/>'
+    admin: '<path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6z"/><path d="M9.5 12.2l1.8 1.8 3.4-3.6"/>',
+    gorivo: '<path d="M4 20V5.5A1.5 1.5 0 0 1 5.5 4h6A1.5 1.5 0 0 1 13 5.5V20"/><path d="M3 20h11"/><path d="M6 8h4"/><path d="M13 10h3.5a1.5 1.5 0 0 1 1.5 1.5V16a1.5 1.5 0 0 0 3 0V9l-2.5-2.5"/>'
   };
   const ikona = k => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' + 'stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + IKONE[k] + '</svg>';
   // Osnovni (privzeti) glavni razdelki menija za trenutnega uporabnika.
@@ -715,7 +716,7 @@
     if (JE_LASTNIK()) {
       return [['domov', 'Domov'], ['dokumenti', 'Dokumenti'], ['prisotnost', 'Prisotnost'], ['stranke', 'Stranke'],
         ['arhiv', 'Arhiv'], ['artikli', 'Cenik & Artikli'], ['fakture', 'Fakture'], ['uporabniki', 'Uporabniki'],
-        ['statistika', 'Statistika'], ['konzola', 'Konzola'], ['aplikacija', 'Programska oprema']];
+        ['statistika', 'Statistika'], ['gorivo', 'Gorivo'], ['konzola', 'Konzola'], ['aplikacija', 'Programska oprema']];
     }
     // Ostali: vidnost razdelkov po pravicah vloge (nastavljivo v Admin).
     var vl = mojaVloga(), out = [];
@@ -829,7 +830,333 @@
     if (kam === 'prisotnost') risiPrisotnost();
     if (kam === 'statistika' || kam === 'ucinek') risiUcinek();
     if (kam === 'artikli') risiArtikli();
+    if (kam === 'gorivo') risiGorivo();
     if (kam === 'admin') risiAdmin();
+  }
+
+  /* ══════════ GORIVO (tankanja + računi) ══════════
+     Eno vozilo. Poraba se računa iz razlike stanj števca med zaporednima
+     tankanjema in litrov POZNEJŠEGA tankanja — standardni način »od polnega
+     do polnega«. Ob delnem tankanju je posamezen odsek previsok ali prenizek,
+     povprečje čez več tankanj pa se izravna; v kartici to tudi piše.
+     Računi so v svojem bucketu »gorivo« (glej baza/55_gorivo.sql), ne med
+     Dokumenti — tam ima pravila vse osebje, Gorivo pa je samo za vodstvo. */
+  var GORIVO = null, GOR_NAPAKA = null, GOR_URL = {}, _gorLeto = 'vse';
+  var GOR_MAX_MB = 10;
+
+  function gorLitriFmt(l) { return (Number(l) || 0).toLocaleString('sl-SI', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' l'; }
+  function gorKmFmt(km) { return km == null ? '—' : stevilo(km) + ' km'; }
+
+  async function naloziGorivo() {
+    try {
+      var r = await sb.from('fuel_logs')
+        .select('id,datum,litri,znesek,km,tankal,opomba,storage_path,mime,velikost,created_at,popravil,popravljeno_at')
+        .is('deleted_at', null).order('datum', { ascending: false }).order('created_at', { ascending: false });
+      if (r.error) throw r.error;
+      GORIVO = (r.data || []).map(function (x) {
+        return { id: x.id, datum: x.datum, litri: parseFloat(x.litri) || 0, znesek: parseFloat(x.znesek) || 0,
+          km: (x.km == null ? null : parseInt(x.km, 10)), tankal: x.tankal || '', opomba: x.opomba || '',
+          storage_path: x.storage_path || '', mime: x.mime || '', velikost: x.velikost || 0,
+          popravil: x.popravil || '', popravljeno_at: x.popravljeno_at || null };
+      });
+      GOR_NAPAKA = null;
+    } catch (e) {
+      // Prej bi seznam ostal prazen in videti bi bilo, kot da ni tankanj.
+      GORIVO = []; GOR_NAPAKA = (e && e.message) || String(e);
+    }
+  }
+
+  // Poraba na odsek: tankanja uredi po števcu naraščajoče in vsakemu pripiši
+  // prevožene km od prejšnjega ter l/100 km. Odsek brez enega od stanj števca
+  // ali z nesmiselno razliko ostane brez izračuna.
+  function gorPoraba(vrstice) {
+    var s = vrstice.filter(function (x) { return x.km != null; })
+      .slice().sort(function (a, b) { return a.km - b.km; });
+    var po = {};
+    for (var i = 1; i < s.length; i++) {
+      var d = s[i].km - s[i - 1].km;
+      if (d > 0 && s[i].litri > 0) po[s[i].id] = { km: d, l100: s[i].litri / d * 100 };
+    }
+    return po;
+  }
+
+  function gorLeta() {
+    var l = {};
+    (GORIVO || []).forEach(function (x) { if (x.datum) l[x.datum.slice(0, 4)] = 1; });
+    return Object.keys(l).sort().reverse();
+  }
+  function gorIzbrane() {
+    var v = GORIVO || [];
+    return _gorLeto === 'vse' ? v : v.filter(function (x) { return (x.datum || '').slice(0, 4) === _gorLeto; });
+  }
+
+  // Poraba in €/km se računata SAMO iz tankanj, ki imajo izmerjen odsek —
+  // prvo tankanje in tista brez stanja števca nimajo prevoženih km, zato bi
+  // njihovi litri in evri spačili razmerje.
+  function gorPovzetek(vrstice, poraba) {
+    var litri = 0, znesek = 0, kmSkup = 0, litriMer = 0, znesekMer = 0;
+    vrstice.forEach(function (x) {
+      litri += x.litri; znesek += x.znesek;
+      var p = poraba[x.id];
+      if (p) { kmSkup += p.km; litriMer += x.litri; znesekMer += x.znesek; }
+    });
+    return {
+      litri: litri, znesek: znesek, km: kmSkup,
+      cenaL: litri > 0 ? znesek / litri : null,
+      l100: kmSkup > 0 ? litriMer / kmSkup * 100 : null,
+      eurKm: kmSkup > 0 ? znesekMer / kmSkup : null
+    };
+  }
+
+  async function gorPodpisiUrl(pot) {
+    if (!pot) return null;
+    if (GOR_URL[pot]) return GOR_URL[pot];
+    try {
+      var s = await sb.storage.from('gorivo').createSignedUrl(pot, 3600);
+      if (s && s.data && s.data.signedUrl) { GOR_URL[pot] = s.data.signedUrl; return GOR_URL[pot]; }
+    } catch (e) {}
+    return null;
+  }
+
+  async function risiGorivo() {
+    var box = $('gorList'); if (!box) return;
+    if (!sme('gorivo', 'r')) { box.innerHTML = '<p class="u-sub">Za to vlogo Gorivo ni na voljo.</p>'; return; }
+    if (GORIVO === null) {
+      box.innerHTML = '<p class="u-sub" style="padding:8px 2px">Nalagam …</p>';
+      await naloziGorivo();
+    }
+    gorRisi();
+  }
+
+  function gorRisi() {
+    var box = $('gorList'); if (!box) return;
+    if (GOR_NAPAKA) {
+      box.innerHTML = '<div class="pris-card"><p class="msg bad show">Tankanj ni bilo mogoče naložiti: ' + escape_(GOR_NAPAKA) + '</p>' +
+        '<p class="u-sub">Če razdelek uporabljaš prvič, v Supabase → SQL Editor zaženi <b>baza/55_gorivo.sql</b>.</p></div>';
+      return;
+    }
+    var vse = gorIzbrane();
+    var poraba = gorPoraba(GORIVO || []);
+    var p = gorPovzetek(vse, poraba);
+    var lahkoPise = sme('gorivo', 'w');
+
+    var leta = gorLeta();
+    var letoSel = '<select class="gor-leto" aria-label="Leto"><option value="vse"' + (_gorLeto === 'vse' ? ' selected' : '') + '>Vsa leta</option>' +
+      leta.map(function (l) { return '<option value="' + l + '"' + (_gorLeto === l ? ' selected' : '') + '>' + l + '</option>'; }).join('') + '</select>';
+
+    var kart = '<div class="gor-stat">' +
+      '<div class="gor-s"><span>Skupaj gorivo</span><b>' + gorLitriFmt(p.litri) + '</b></div>' +
+      '<div class="gor-s"><span>Skupaj strošek</span><b>' + cenaFmt(p.znesek) + '</b></div>' +
+      '<div class="gor-s"><span>Povprečna cena</span><b>' + (p.cenaL != null ? cenaFmt(p.cenaL) + '/l' : '—') + '</b></div>' +
+      '<div class="gor-s"><span>Povprečna poraba</span><b>' + (p.l100 != null ? fmtStevilo1(p.l100) + ' l/100 km' : '—') + '</b>' +
+      (p.km > 0 ? '<small>' + stevilo(p.km) + ' km' + (p.eurKm != null ? ' · ' + cenaFmt(p.eurKm) + '/km' : '') + '</small>' : '') + '</div>' +
+      '</div>';
+
+    var vrstice = vse.map(function (x) {
+      var po = poraba[x.id];
+      var racun = x.storage_path
+        ? '<button type="button" class="gor-rac" data-rac="' + escape_(x.id) + '" title="Odpri račun">' + GOR_IKONA_PDF + '</button>'
+        : '<span class="u-sub gor-brez" title="Račun ni priložen">—</span>';
+      return '<tr' + (x.storage_path ? '' : ' class="gor-nerac"') + '>' +
+        '<td>' + datum(x.datum) + '</td>' +
+        '<td class="pris-ure">' + gorLitriFmt(x.litri) + '</td>' +
+        '<td class="pris-ure">' + cenaFmt(x.znesek) + '</td>' +
+        '<td class="pris-ure">' + (x.litri > 0 ? cenaFmt(x.znesek / x.litri) : '—') + '</td>' +
+        '<td class="pris-ure">' + gorKmFmt(x.km) + '</td>' +
+        '<td class="pris-ure">' + (po ? fmtStevilo1(po.l100) : '<span class="u-sub">—</span>') + '</td>' +
+        '<td>' + escape_(x.tankal || '—') + '</td>' +
+        '<td class="gor-c">' + racun + '</td>' +
+        (lahkoPise ? '<td class="gor-c"><button type="button" class="gor-ur" data-ur="' + escape_(x.id) + '" title="Uredi">Uredi</button></td>' : '') +
+        '</tr>';
+    }).join('');
+
+    var glave = '<tr><th>Datum</th><th>Litri</th><th>Znesek</th><th>€/l</th><th>Števec</th><th>l/100&nbsp;km</th><th>Tankal</th><th class="gor-c">Račun</th>' +
+      (lahkoPise ? '<th></th>' : '') + '</tr>';
+    var stolpcev = lahkoPise ? 9 : 8;
+    var tbl = '<div class="gor-scroll"><table class="pris-tbl gor-tbl"><thead>' + glave + '</thead><tbody>' +
+      (vrstice || '<tr><td colspan="' + stolpcev + '" class="u-sub">V izbranem obdobju ni tankanj.</td></tr>') + '</tbody></table></div>';
+
+    box.innerHTML = kart +
+      '<div class="pris-card"><div class="pris-h">' +
+      '<div><h3 class="sec-h">Tankanja</h3><p class="uc-obd-lbl">poraba računana od polnega do polnega rezervoarja</p></div>' +
+      '<span class="pris-hbtns">' + letoSel +
+      (lahkoPise ? '<button type="button" class="cgrp-btn gor-novo">Novo tankanje</button>' : '') + '</span></div>' +
+      tbl + '</div>';
+
+    var ls = box.querySelector('.gor-leto');
+    if (ls) ls.addEventListener('change', function () { _gorLeto = this.value; gorRisi(); });
+    var nb = box.querySelector('.gor-novo');
+    if (nb) nb.addEventListener('click', function () { gorObrazec(null); });
+    box.querySelectorAll('[data-ur]').forEach(function (b) {
+      b.addEventListener('click', function () { gorObrazec((GORIVO || []).find(function (x) { return x.id === b.dataset.ur; }) || null); });
+    });
+    box.querySelectorAll('[data-rac]').forEach(function (b) {
+      b.addEventListener('click', async function () {
+        var rec = (GORIVO || []).find(function (x) { return x.id === b.dataset.rac; });
+        if (!rec) return;
+        var url = await gorPodpisiUrl(rec.storage_path);
+        if (!url) { toast('Računa ni bilo mogoče odpreti.'); return; }
+        window.open(url, '_blank', 'noopener');
+      });
+    });
+  }
+
+  var GOR_IKONA_PDF = '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 14h6"/><path d="M9 17h4"/></svg>';
+
+  /* Obrazec za novo tankanje ali urejanje obstoječega. rec = null → novo. */
+  function gorObrazec(rec) {
+    if (!sme('gorivo', 'w')) { toast('Za to vlogo vnos ni dovoljen.'); return; }
+    var nov = !rec;
+    var back = document.createElement('div');
+    back.className = 'sc-modal-back show';
+    back.innerHTML = '<div class="sc-modal gor-modal" role="dialog" aria-modal="true">' +
+      '<h4>' + (nov ? 'Novo tankanje' : 'Uredi tankanje') + '</h4>' +
+      '<div class="ur-form">' +
+      '<div class="ur-grid ur-grid-3">' +
+      '<label class="ur-f"><span>Datum</span><input type="date" data-datum value="' + escape_(nov ? danes10() : rec.datum) + '"></label>' +
+      '<label class="ur-f"><span>Litri</span><input type="number" step="0.01" min="0" inputmode="decimal" data-litri value="' + (nov ? '' : rec.litri) + '"></label>' +
+      '<label class="ur-f"><span>Znesek (€)</span><input type="number" step="0.01" min="0" inputmode="decimal" data-znesek value="' + (nov ? '' : rec.znesek) + '"></label>' +
+      '</div>' +
+      '<div class="ur-grid ur-grid-3">' +
+      '<label class="ur-f"><span>Stanje števca (km)</span><input type="number" step="1" min="0" inputmode="numeric" data-km value="' + (nov || rec.km == null ? '' : rec.km) + '"></label>' +
+      '<label class="ur-f"><span>Tankal</span><input type="text" data-tankal maxlength="60" value="' + escape_(nov ? (JAZIME || '') : rec.tankal) + '"></label>' +
+      '<label class="ur-f"><span>Cena na liter</span><output class="ur-kg-auto" data-cenal>—</output></label>' +
+      '</div>' +
+      '<label class="ur-f"><span>Opomba (neobvezno)</span><input type="text" data-opomba maxlength="200" value="' + escape_(nov ? '' : rec.opomba) + '"></label>' +
+      '<label class="ur-f"><span>Račun (PDF ali slika, do ' + GOR_MAX_MB + ' MB)</span>' +
+      '<input type="file" data-rac accept="application/pdf,image/*"></label>' +
+      '<p class="u-sub gor-rac-stanje" data-racst></p>' +
+      '<p class="u-sub ur-msg" data-msg></p>' +
+      '</div>' +
+      '<div class="sc-modal-acts">' +
+      (nov ? '' : '<button type="button" class="sc-modal-btn danger" data-brisi>Izbriši</button>') +
+      '<button type="button" class="sc-modal-btn ghost" data-no>Prekliči</button>' +
+      '<button type="button" class="sc-modal-btn primary" data-yes>' + (nov ? 'Shrani' : 'Shrani spremembe') + '</button>' +
+      '</div></div>';
+    document.body.appendChild(back);
+    _modalA11y(back);
+
+    var q = function (s2) { return back.querySelector(s2); };
+    var msg = q('[data-msg]'), racst = q('[data-racst]');
+    function zapri() { back.remove(); _modalVrniFokus(); }
+
+    // Cena na liter se izračuna sama — vpisovati jo je odveč in bi se razhajala.
+    function osveziCeno() {
+      var l = parseFloat(q('[data-litri]').value), z = parseFloat(q('[data-znesek]').value);
+      q('[data-cenal]').textContent = (l > 0 && z >= 0 && !isNaN(z)) ? cenaFmt(z / l) + '/l' : '—';
+    }
+    q('[data-litri]').addEventListener('input', osveziCeno);
+    q('[data-znesek]').addEventListener('input', osveziCeno);
+    osveziCeno();
+
+    if (!nov && rec.storage_path) {
+      racst.innerHTML = 'Priložen je račun. Če izbereš novo datoteko, stara se zamenja. ' +
+        '<button type="button" class="gor-odstrani" data-odstrani>Odstrani račun</button>';
+      var _odstranjen = false;
+      racst.querySelector('[data-odstrani]').addEventListener('click', function () {
+        _odstranjen = true; racst.textContent = 'Račun bo odstranjen ob shranjevanju.';
+        back._odstraniRacun = true;
+      });
+    }
+
+    q('[data-no]').addEventListener('click', zapri);
+    back.addEventListener('click', function (e) { if (e.target === back) zapri(); });
+
+    var brisi = q('[data-brisi]');
+    if (brisi) brisi.addEventListener('click', async function () {
+      var ok = await potrdiModal({ naslov: 'Izbrišem tankanje?', nevarno: true,
+        sporocilo: datum(rec.datum) + ' · ' + gorLitriFmt(rec.litri) + ' · ' + cenaFmt(rec.znesek), potrdi: 'Izbriši' });
+      if (!ok) return;
+      msg.textContent = 'Brišem …';
+      var r = await sb.from('fuel_logs').update({ deleted_at: new Date().toISOString() }).eq('id', rec.id);
+      if (r.error) { msg.textContent = 'Napaka: ' + r.error.message; return; }
+      logDodaj('Gorivo', 'Izbrisano', 'Tankanje ' + datum(rec.datum) + ' · ' + gorLitriFmt(rec.litri));
+      GORIVO = (GORIVO || []).filter(function (x) { return x.id !== rec.id; });
+      zapri(); toast('Tankanje izbrisano.'); gorRisi();
+    });
+
+    q('[data-yes]').addEventListener('click', async function () {
+      var dat = q('[data-datum]').value;
+      var litri = parseFloat(q('[data-litri]').value);
+      var znesek = parseFloat(q('[data-znesek]').value);
+      var kmStr = q('[data-km]').value.trim();
+      var km = kmStr === '' ? null : parseInt(kmStr, 10);
+      var tankal = q('[data-tankal]').value.trim();
+      var opomba = q('[data-opomba]').value.trim();
+      var dat10 = danes10();
+
+      if (!dat) { msg.textContent = 'Vpiši datum.'; return; }
+      if (dat > dat10) { msg.textContent = 'Datum je v prihodnosti.'; return; }
+      if (!(litri > 0)) { msg.textContent = 'Vpiši litre.'; return; }
+      if (!(znesek >= 0) || isNaN(znesek)) { msg.textContent = 'Vpiši znesek.'; return; }
+      if (kmStr !== '' && (isNaN(km) || km < 0)) { msg.textContent = 'Stanje števca ni veljavno.'; return; }
+
+      // Števec ne sme nazaj: to bi pokvarilo izračun porabe, zato raje opozorimo.
+      if (km != null) {
+        var prej = (GORIVO || []).filter(function (x) { return x.id !== (rec && rec.id) && x.km != null && x.datum <= dat; })
+          .sort(function (a, b) { return a.datum < b.datum ? 1 : -1; })[0];
+        if (prej && km < prej.km) {
+          var vseeno = await potrdiModal({ naslov: 'Števec gre nazaj', potrdi: 'Vseeno shrani',
+            sporocilo: 'Zadnje zabeleženo stanje (' + datum(prej.datum) + ') je ' + stevilo(prej.km) + ' km, tu pa ' + stevilo(km) + ' km. Poraba za ta odsek se ne bo izračunala.' });
+          if (!vseeno) return;
+        }
+      }
+
+      var f = q('[data-rac]').files && q('[data-rac]').files[0];
+      if (f && f.size > GOR_MAX_MB * 1024 * 1024) { msg.textContent = 'Račun je večji od ' + GOR_MAX_MB + ' MB.'; return; }
+
+      msg.textContent = nov ? 'Shranjujem …' : 'Posodabljam …';
+      try {
+        var polja = { datum: dat, litri: litri, znesek: znesek, km: km, tankal: tankal || null, opomba: opomba || null };
+
+        var novaPot = null;
+        if (f) {
+          var konc = (f.name.match(/\.[A-Za-z0-9]+$/) || [''])[0].toLowerCase() || (f.type === 'application/pdf' ? '.pdf' : '');
+          novaPot = 'racuni/' + dat.slice(0, 4) + '/' + dat + '-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7) + konc;
+          var up = await sb.storage.from('gorivo').upload(novaPot, f, { contentType: f.type || 'application/octet-stream', cacheControl: '3600', upsert: false });
+          if (up.error) throw up.error;
+          polja.storage_path = novaPot; polja.mime = f.type || ''; polja.velikost = f.size;
+        } else if (back._odstraniRacun) {
+          polja.storage_path = null; polja.mime = null; polja.velikost = null;
+        }
+
+        var staraPot = rec && rec.storage_path;
+        var res;
+        if (nov) {
+          res = await sb.from('fuel_logs').insert(polja).select('id,datum,litri,znesek,km,tankal,opomba,storage_path,mime,velikost,popravil,popravljeno_at').single();
+        } else {
+          polja.popravil = JAZIME || 'osebje';
+          polja.popravljeno_at = new Date().toISOString();
+          res = await sb.from('fuel_logs').update(polja).eq('id', rec.id).select('id,datum,litri,znesek,km,tankal,opomba,storage_path,mime,velikost,popravil,popravljeno_at').single();
+        }
+        if (res.error) {
+          // Vrstica ni nastala — naložene datoteke ne puščamo za sabo.
+          if (novaPot) { try { await sb.storage.from('gorivo').remove([novaPot]); } catch (e2) {} }
+          throw res.error;
+        }
+        // Šele ko je zapis res shranjen, pospravimo staro datoteko.
+        if (staraPot && (novaPot || back._odstraniRacun)) { try { await sb.storage.from('gorivo').remove([staraPot]); } catch (e3) {} delete GOR_URL[staraPot]; }
+
+        var d2 = res.data;
+        var vrsta = { id: d2.id, datum: d2.datum, litri: parseFloat(d2.litri) || 0, znesek: parseFloat(d2.znesek) || 0,
+          km: (d2.km == null ? null : parseInt(d2.km, 10)), tankal: d2.tankal || '', opomba: d2.opomba || '',
+          storage_path: d2.storage_path || '', mime: d2.mime || '', velikost: d2.velikost || 0,
+          popravil: d2.popravil || '', popravljeno_at: d2.popravljeno_at || null };
+        GORIVO = GORIVO || [];
+        if (nov) GORIVO.push(vrsta);
+        else GORIVO = GORIVO.map(function (x) { return x.id === vrsta.id ? vrsta : x; });
+        GORIVO.sort(function (a, b) { return a.datum < b.datum ? 1 : (a.datum > b.datum ? -1 : 0); });
+
+        logDodaj('Gorivo', nov ? 'Dodano' : 'Urejeno', 'Tankanje ' + datum(dat) + ' · ' + gorLitriFmt(litri) + ' · ' + cenaFmt(znesek));
+        zapri();
+        toast(nov ? 'Tankanje shranjeno.' : 'Tankanje posodobljeno.');
+        gorRisi();
+      } catch (e) {
+        msg.textContent = 'Napaka: ' + ((e && e.message) || e);
+      }
+    });
+
+    setTimeout(function () { try { q('[data-litri]').focus(); } catch (e) {} }, 60);
   }
 
   /* ══════════ PRISOTNOST (registracija delovnega časa) ══════════ */
