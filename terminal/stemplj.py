@@ -62,6 +62,7 @@ LCD_ROWS = 2
 QUEUE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "stemplj_vrsta.jsonl")
 FLUSH_INTERVAL = 20        # s — kako pogosto v mirovanju praznimo vrsto
 PRIKAZ = 4.0               # s — kako dolgo ostane rezultat na zaslonu
+POCAKAJ = 60               # s — najmanjši razmik med žigoma iste kartice (= COOLDOWN_SEK v punch)
 # ───────────────────────────────────────────────────────────────────
 
 
@@ -219,9 +220,23 @@ SPOROCILA = {
 }
 
 
+def ze_vpisan(tip):
+    """Zgornja vrstica, ko je ista kartica prislonjena prehitro."""
+    if tip == "in":
+        return "Prihod že vpisan"
+    if tip == "out":
+        return "Odhod že vpisan"
+    return "Že zabeleženo"
+
+
 def prikazi_odgovor(lcd, o):
     if not isinstance(o, dict):
         lcd.dve("Napaka", "neznan odgovor")
+        return
+    # Druga kartica v isti minuti ni napaka — prvi žig je bil sprejet. Prej se
+    # je izpisalo »Ni uspelo | too_soon«, kar je zvenelo, kot da ni šlo skozi.
+    if o.get("error") == "too_soon":
+        lcd.dve(ze_vpisan(o.get("last_type")), o.get("employee_name", ""))
         return
     if o.get("ok"):
         vrsta = "PRIHOD" if o.get("type") == "in" else "ODHOD"
@@ -287,17 +302,41 @@ def main():
     zadnji_flush = time.time()
     zadnja_minuta = -1
 
+    # UID kartice, ki od zadnje obdelave še NI bila odmaknjena z bralnika.
+    # Kartica, ki obleži na terminalu, se je prej brala vsakih nekaj sekund:
+    # prvo minuto jo je strežnik zavračal, po minuti pa bi jo sprejel in
+    # zabeležil odhod — kdor bi kartico odložil na terminal, bi bil čez
+    # minuto samodejno odjavljen. Zdaj mora biti kartica odmaknjena, preden
+    # se jo sploh znova prebere.
+    na_bralniku = None
+
+    # žeton → (čas, tip, ime) zadnjega sprejetega žiga, samo v pomnilniku.
+    # Strežnik pravilo 60 s uveljavlja sam; tu ga ponovimo, da brez mreže
+    # dvojni prislon ne pristane v vrsti dvakrat in da oseba dobi odgovor takoj.
+    zadnji_zigi = {}
+
+    def mirovanje_opravila():
+        nonlocal zadnji_flush, zadnja_minuta
+        now = time.time()
+        if vrsta and (now - zadnji_flush) >= FLUSH_INTERVAL:
+            izprazni_vrsto(vrsta, secret)
+            zadnji_flush = now
+        if now >= prikaz_do and int(now) // 60 != zadnja_minuta:
+            lcd.mirovanje(len(vrsta))
+            zadnja_minuta = int(now) // 60
+
+    def pokazi(zgoraj, spodaj):
+        nonlocal prikaz_do, zadnja_minuta
+        lcd.dve(zgoraj, spodaj)
+        prikaz_do = time.time() + PRIKAZ
+        zadnja_minuta = -1
+
     while True:
         try:
             cs = CardRequest(timeout=1, cardType=AnyCardType()).waitforcard()
         except CardRequestTimeoutException:
-            now = time.time()
-            if vrsta and (now - zadnji_flush) >= FLUSH_INTERVAL:
-                izprazni_vrsto(vrsta, secret)
-                zadnji_flush = now
-            if now >= prikaz_do and int(now) // 60 != zadnja_minuta:
-                lcd.mirovanje(len(vrsta))
-                zadnja_minuta = int(now) // 60
+            na_bralniku = None         # bralnik je prazen — kartica je bila odmaknjena
+            mirovanje_opravila()
             continue
         except Exception:
             time.sleep(0.5)
@@ -306,19 +345,34 @@ def main():
         # ── kartica je na bralniku ──
         try:
             cs.connection.connect()
+            uid = sc.uid_iz_bralnika(cs.connection)
+        except Exception:
+            time.sleep(0.3)            # kartica je odšla med branjem — poskusi znova
+            continue
+
+        if uid == na_bralniku:         # ista kartica še leži na bralniku
+            mirovanje_opravila()
+            time.sleep(0.3)
+            continue
+        na_bralniku = uid
+
+        try:
             zeton = sc.preberi_zeton(cs.connection, kljuci)
         except sc.NapakaKartice as e:
-            lcd.dve("Kartica?", str(e))
-            prikaz_do = time.time() + PRIKAZ
-            zadnja_minuta = -1
+            pokazi("Kartica?", str(e))
             time.sleep(PRIKAZ)
             continue
         except NoCardException:
+            na_bralniku = None         # odmaknjena sredi branja — naj se prebere znova
             continue
         except Exception as e:
-            lcd.dve("Napaka kartice", type(e).__name__)
-            prikaz_do = time.time() + PRIKAZ
-            zadnja_minuta = -1
+            pokazi("Napaka kartice", type(e).__name__)
+            time.sleep(PRIKAZ)
+            continue
+
+        prej = zadnji_zigi.get(zeton)
+        if prej and time.monotonic() - prej[0] < POCAKAJ:
+            pokazi(ze_vpisan(prej[1]), prej[2] or "počakaj minuto")
             time.sleep(PRIKAZ)
             continue
 
@@ -332,15 +386,17 @@ def main():
         if odgovor is None:
             vrsta.append({"card_token": zeton, "ts": ts, "nonce": nonce})
             shrani_vrsto(vrsta)
-            lcd.dve("Shranjeno offln.", "poslem kasneje")
+            zadnji_zigi[zeton] = (time.monotonic(), None, None)
+            pokazi("Shranjeno offln.", "poslem kasneje")
         else:
             prikazi_odgovor(lcd, odgovor)
+            prikaz_do = time.time() + PRIKAZ
+            zadnja_minuta = -1
+            if isinstance(odgovor, dict) and odgovor.get("ok"):
+                zadnji_zigi[zeton] = (time.monotonic(), odgovor.get("type"), odgovor.get("employee_name"))
 
-        prikaz_do = time.time() + PRIKAZ
-        zadnja_minuta = -1
         zadnji_flush = time.time()
-        time.sleep(PRIKAZ)             # da en prislon ne šteje dvakrat
-
+        time.sleep(PRIKAZ)
 
 if __name__ == "__main__":
     try:

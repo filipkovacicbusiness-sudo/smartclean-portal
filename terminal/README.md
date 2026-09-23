@@ -229,7 +229,8 @@ zaprla. Smiselno je pobrisati še deset pravil `device_*`, ki se sklicujejo na
 | `Napacen podpis` | `terminal.json` se ne ujema z `att_terminals.secret` |
 | `Terminal ni vpisan` | `TERMINAL_SLUG` se ne ujema z `att_terminals.slug` |
 | `Kartica ni vpisana` | `employees.card_token` ni nastavljen na ta žeton |
-| `Ze zabelezeno` | ista oseba je tapnila pred manj kot 60 s |
+| `Prihod ze vpisan` / `Odhod ze vpisan` | ista kartica je bila prislonjena pred manj kot 60 s — prvi žig JE zabeležen |
+| kartica leži na bralniku, nič se ne zgodi | namenoma: kartico je treba odmakniti, preden se znova prebere |
 | LCD prazen | `i2cdetect -y 1`, `LCD_ADDR`, kontrast, 3,3 V |
 
 **Šumniki:** HD44780 nima č/š/ž — skripta jih pretvori v c/s/z (»Špela« → »Spela«).
