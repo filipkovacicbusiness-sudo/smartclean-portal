@@ -3084,16 +3084,18 @@
     }
   }
   // ── Glava lista pred postavkami ─────────────────────────────────────────
-  // Datum in številka sta se privzela (danes, naslednja prosta) in ju je bilo
-  // lahko spregledati. List, vpisan za nazaj ali pod napačno številko, je tiho
-  // pristal v napačnem obračunskem obdobju — pri fakturah se to pokaže šele,
-  // ko je račun že pri stranki. Zato sta postavki zaklenjeni, dokler obe polji
-  // nista potrjeni: sprememba vrednosti je potrditev sama po sebi, sicer je tu
-  // kljukica. Leto nima več svojega polja — je že v datumu, z njim se uskladi,
-  // vidno pa ostane v kljukici pri številki (»Št. 1627/2026«).
+  // Stranka, datum in številka so se privzeli (prva na seznamu oz. obstoječa,
+  // danes, naslednja prosta) in jih je bilo lahko spregledati. List, vpisan za
+  // nazaj, pod napačno številko ali na napačno stranko, je tiho pristal v
+  // napačnem obračunskem obdobju ali pri napačnem naročniku — pri fakturah se
+  // to pokaže šele, ko je račun že zunaj. Zato so postavke zaklenjene, dokler
+  // niso potrjena vsa tri polja: sprememba vrednosti je potrditev sama po sebi,
+  // sicer je tu kljukica. Leto nima več svojega polja — je že v datumu, z njim
+  // se uskladi, vidno pa ostane v kljukici pri številki (»Št. 1627/2026«).
   function vnosVrata(box) {
     const pBox = box.querySelector('[data-postavke]');
     if (!pBox) return;
+    const oIn = box.querySelector('[data-org]');
     const dIn = box.querySelector('[data-datum]');
     const sIn = box.querySelector('[data-seq]');
     const lIn = box.querySelector('[data-leto]');
@@ -3102,7 +3104,7 @@
 
     const vrata = document.createElement('div');
     vrata.className = 'ur-dv';
-    vrata.innerHTML = '<span class="ur-dv-txt">Najprej potrdi datum in številko lista — do takrat postavk ni mogoče vpisovati.</span>'
+    vrata.innerHTML = '<span class="ur-dv-txt">Najprej potrdi stranko, datum in številko lista — do takrat postavk ni mogoče vpisovati.</span>'
       + '<span class="ur-dv-polja"></span>';
     pBox.parentNode.insertBefore(vrata, pBox);
     const polja = vrata.querySelector('.ur-dv-polja');
@@ -3150,7 +3152,7 @@
       el.classList.add('dv-treba');
       gumb.addEventListener('click', function () { potrdi(k); });
       el.addEventListener('input', vsiOsvezi);
-      el.addEventListener('change', function () { potrdi(k); });
+      el.addEventListener('change', function () { potrdi(k); vsiOsvezi(); });
       kosi.push(k);
     };
 
@@ -3159,6 +3161,7 @@
     try { pBox.inert = true; } catch (_) {}
     if (dodaj) dodaj.disabled = true;
 
+    kos(oIn, 'Stranka', function () { const o = oIn.options[oIn.selectedIndex]; return o ? o.textContent : ''; });
     kos(dIn, 'Datum', function () { return dIn.value === dnes ? datum(dIn.value) + ' · danes' : datum(dIn.value); });
     kos(sIn, 'Št.', function () { return sIn.value + (lIn && lIn.value ? '/' + lIn.value : ''); });
     if (!kosi.length) { vrata.remove(); odkleni(); }
@@ -3269,7 +3272,7 @@
     if (!org_id) { msg.textContent = 'Izberi stranko.'; return; }
     if (!seq || !leto) { msg.textContent = 'Vpiši številko in leto.'; return; }
     if (!doc_date) { msg.textContent = 'Vpiši datum.'; return; }
-    if (box._glavaOk === false) { msg.textContent = 'Najprej potrdi datum in številko zgoraj.'; return; }
+    if (box._glavaOk === false) { msg.textContent = 'Najprej potrdi stranko, datum in številko zgoraj.'; return; }
     const postavke = zdruziPodvojene([...box.querySelectorAll('.ur-post')].map(r => {
       const sel = r.querySelector('[data-pn]');
       const opt = sel && sel.selectedOptions && sel.selectedOptions[0];
@@ -3533,7 +3536,7 @@
     if (!org_id) { msg.textContent = 'Izberi stranko.'; return; }
     if (!seq || !leto) { msg.textContent = 'Vpiši številko in leto.'; return; }
     if (!doc_date) { msg.textContent = 'Vpiši datum.'; return; }
-    if (box._glavaOk === false) { msg.textContent = 'Najprej potrdi datum in številko zgoraj.'; return; }
+    if (box._glavaOk === false) { msg.textContent = 'Najprej potrdi stranko, datum in številko zgoraj.'; return; }
     const postavke = zdruziPodvojene([...box.querySelectorAll('.ur-post')].map(r => {
       const sel = r.querySelector('[data-pn]');
       const opt = sel && sel.selectedOptions && sel.selectedOptions[0];

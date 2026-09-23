@@ -618,6 +618,9 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
 .ur-f[hidden]{display:none;}
 .ur-grid.ur-grid-3{grid-template-columns:repeat(3,1fr);}
 .ur-form input.dv-treba{border-color:var(--st-warn);box-shadow:0 0 0 1px var(--st-warn) inset;}
+/* Nativni select je pri olepšanih spustnih menijih skrit — obroček dobi vidni sprožilec. */
+.ur-form select.dv-treba{border-color:var(--st-warn);box-shadow:0 0 0 1px var(--st-warn) inset;}
+.ur-form select.dv-treba ~ .cs-trigger{border-color:var(--st-warn);box-shadow:0 0 0 1px var(--st-warn) inset;}
 .ur-save{background:var(--green);color:var(--btn-ink);border-color:var(--green)}
 .ur-save:hover{background:var(--green-l);border-color:var(--green-l);color:var(--btn-ink)}
 .ur-msg{margin-top:8px}
