@@ -7,7 +7,11 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-# Če uporabnik ni "pi", popravi obe poti.
+# Teče kot pi, ne kot root — ne potrebuje več: dostop do bralnika mu daje
+# polkit pravilo (99-pcscd-pi.rules), do LCD pa članstvo v skupini i2c.
+User=pi
+Group=pi
+# Če uporabnik ni "pi", popravi User/Group in obe poti.
 ExecStart=/home/pi/stemplj-venv/bin/python /home/pi/terminal/stemplj.py
 WorkingDirectory=/home/pi/terminal
 Restart=always
