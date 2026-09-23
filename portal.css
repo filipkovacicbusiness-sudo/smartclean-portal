@@ -602,15 +602,22 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
 .ur-add:hover{border-color:var(--mid);color:var(--ink)}
 /* Vrata pred postavkami: datum mora biti izbran ali potrjen, preden se vpisuje.
    Brez tega je list tiho dobil današnji datum in pristal v napačnem obdobju. */
-.ur-dv{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:2px 0 10px;
+.ur-dv{display:flex;align-items:center;gap:10px 14px;flex-wrap:wrap;margin:2px 0 10px;
   padding:10px 12px;border:1px solid var(--st-warn);border-radius:10px;background:var(--surface);}
-.ur-dv-txt{flex:1 1 220px;min-width:0;font-size:.8rem;color:var(--ink);}
-.ur-dv-ok{white-space:nowrap;font-size:.8rem;padding:7px 14px;border-radius:9px;
-  background:var(--green);color:var(--btn-ink);border:1px solid var(--green);}
-.ur-dv-ok:hover:not(:disabled){background:var(--green-l);border-color:var(--green-l);}
+.ur-dv-txt{flex:1 1 200px;min-width:0;font-size:.8rem;color:var(--ink);}
+.ur-dv-polja{display:flex;gap:8px;flex-wrap:wrap;}
+.ur-dv-ok{display:inline-flex;align-items:center;gap:7px;white-space:nowrap;font-size:.8rem;
+  padding:7px 13px;border-radius:9px;background:var(--surface);color:var(--ink);border:1px solid var(--line);}
+.ur-dv-ok:hover:not(:disabled){border-color:var(--mid);}
 .ur-dv-ok:disabled{opacity:.45;cursor:not-allowed;}
+.ur-dv-ok.on{background:var(--green);color:var(--btn-ink);border-color:var(--green);}
+.ur-dv-kljuk{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;
+  width:15px;height:15px;border-radius:4px;border:1.5px solid currentColor;font-size:.62rem;line-height:1;}
+.ur-dv-ok.on .ur-dv-kljuk{border-color:currentColor;}
 .ur-zaklep{pointer-events:none;opacity:.4;}
-.ur-form.dv-cakam input[type=date]{border-color:var(--st-warn);box-shadow:0 0 0 1px var(--st-warn) inset;}
+.ur-f[hidden]{display:none;}
+.ur-grid.ur-grid-3{grid-template-columns:repeat(3,1fr);}
+.ur-form input.dv-treba{border-color:var(--st-warn);box-shadow:0 0 0 1px var(--st-warn) inset;}
 .ur-save{background:var(--green);color:var(--btn-ink);border-color:var(--green)}
 .ur-save:hover{background:var(--green-l);border-color:var(--green-l);color:var(--btn-ink)}
 .ur-msg{margin-top:8px}
@@ -618,7 +625,7 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
   background:var(--ink);color:var(--bg);padding:11px 18px;border-radius:100px;font-size:.85rem;
   opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:100;box-shadow:0 6px 24px rgba(0,0,0,.18)}
 .sc-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-@media(max-width:560px){.ur-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:560px){.ur-grid,.ur-grid.ur-grid-3{grid-template-columns:1fr 1fr}}
 .ur-popravek{margin-top:12px;padding:8px 12px;border-radius:8px;background:#fdf3e8;color:#8a5a00;font-size:.8rem;font-weight:600}
 html[data-theme="dark"] .ur-popravek{background:#3a2e14;color:#e6b86b}
 #novListBox{display:none}

@@ -3083,50 +3083,85 @@
       try { console.warn('[artikli] seznama za stranko ni bilo mogoče naložiti:', e); } catch (_) {}
     }
   }
-  // ── Datum pred postavkami ───────────────────────────────────────────────
-  // Datum se je doslej privzel na danes in ga je bilo lahko spregledati. List,
-  // vpisan za nazaj, je zato tiho pristal v napačnem obračunskem obdobju — pri
-  // fakturah se to pokaže šele, ko je račun že pri stranki. Zdaj so postavke
-  // zaklenjene, dokler datum ni IZBRAN (sprememba v koledarju je sama po sebi
-  // odločitev) ali POTRJEN (gumb — kadar je datum že pravi in ga ni treba
-  // spreminjati).
-  function datumVrata(box) {
-    const dIn = box.querySelector('[data-datum]');
+  // ── Glava lista pred postavkami ─────────────────────────────────────────
+  // Datum in številka sta se privzela (danes, naslednja prosta) in ju je bilo
+  // lahko spregledati. List, vpisan za nazaj ali pod napačno številko, je tiho
+  // pristal v napačnem obračunskem obdobju — pri fakturah se to pokaže šele,
+  // ko je račun že pri stranki. Zato sta postavki zaklenjeni, dokler obe polji
+  // nista potrjeni: sprememba vrednosti je potrditev sama po sebi, sicer je tu
+  // kljukica. Leto nima več svojega polja — je že v datumu, z njim se uskladi,
+  // vidno pa ostane v kljukici pri številki (»Št. 1627/2026«).
+  function vnosVrata(box) {
     const pBox = box.querySelector('[data-postavke]');
-    if (!dIn || !pBox) return;
+    if (!pBox) return;
+    const dIn = box.querySelector('[data-datum]');
+    const sIn = box.querySelector('[data-seq]');
+    const lIn = box.querySelector('[data-leto]');
     const dodaj = box.querySelector('[data-dodaj]');
-    const form = box.querySelector('.ur-form');
+    const dnes = new Date().toISOString().slice(0, 10);
+
     const vrata = document.createElement('div');
     vrata.className = 'ur-dv';
-    vrata.innerHTML = '<span class="ur-dv-txt">Najprej določi datum spremnega lista — do takrat postavk ni mogoče vpisovati.</span>'
-      + '<button type="button" class="ur-dv-ok" data-datum-ok></button>';
+    vrata.innerHTML = '<span class="ur-dv-txt">Najprej potrdi datum in številko lista — do takrat postavk ni mogoče vpisovati.</span>'
+      + '<span class="ur-dv-polja"></span>';
     pBox.parentNode.insertBefore(vrata, pBox);
-    const gumb = vrata.querySelector('[data-datum-ok]');
-    const dnes = new Date().toISOString().slice(0, 10);
-    const osvezi = () => {
-      const v = dIn.value;
-      gumb.disabled = !v;
-      gumb.textContent = !v ? 'Izberi datum'
-        : (v === dnes ? 'Potrdi — danes, ' + datum(v) : 'Potrdi ' + datum(v));
+    const polja = vrata.querySelector('.ur-dv-polja');
+
+    // Leto je odslej odsev datuma; polje ostane v obrazcu, ker ga shranjevanje bere.
+    if (dIn && lIn) dIn.addEventListener('input', function () {
+      const l = (dIn.value || '').slice(0, 4);
+      if (/^\d{4}$/.test(l)) lIn.value = l;
+    });
+
+    const kosi = [];
+    const vsiOsvezi = function () { kosi.forEach(function (k) { k.osvezi(); }); };
+    const potrdi = function (k) {
+      if (!k.el.value || k.ok) return;
+      k.ok = true;
+      k.gumb.classList.add('on');
+      k.gumb.setAttribute('aria-pressed', 'true');
+      k.el.classList.remove('dv-treba');
+      vsiOsvezi();
+      if (kosi.every(function (x) { return x.ok; })) odkleni();
     };
-    const odkleni = () => {
-      if (!dIn.value || box._datumOk) return;
-      box._datumOk = true;
+    const odkleni = function () {
+      box._glavaOk = true;
       vrata.remove();
       pBox.classList.remove('ur-zaklep');
       try { pBox.inert = false; } catch (_) {}
       if (dodaj) dodaj.disabled = false;
-      if (form) form.classList.remove('dv-cakam');
+      kosi.forEach(function (k) { k.el.classList.remove('dv-treba'); });
     };
-    box._datumOk = false;
+    const kos = function (el, ime, besedilo) {
+      if (!el) return;
+      const gumb = document.createElement('button');
+      gumb.type = 'button';
+      gumb.className = 'ur-dv-ok';
+      gumb.setAttribute('aria-pressed', 'false');
+      polja.appendChild(gumb);
+      const k = { el: el, gumb: gumb, ok: false };
+      k.osvezi = function () {
+        gumb.disabled = !el.value;
+        gumb.innerHTML = '<span class="ur-dv-kljuk" aria-hidden="true">' + (k.ok ? '✓' : '') + '</span>'
+          + escape_(ime + ' ' + (el.value ? besedilo() : '—'));
+        gumb.title = k.ok ? 'potrjeno' : 'klikni za potrditev (ali popravi polje zgoraj)';
+      };
+      k.osvezi();
+      el.classList.add('dv-treba');
+      gumb.addEventListener('click', function () { potrdi(k); });
+      el.addEventListener('input', vsiOsvezi);
+      el.addEventListener('change', function () { potrdi(k); });
+      kosi.push(k);
+    };
+
+    box._glavaOk = false;
     pBox.classList.add('ur-zaklep');
     try { pBox.inert = true; } catch (_) {}
     if (dodaj) dodaj.disabled = true;
-    if (form) form.classList.add('dv-cakam');
-    osvezi();
-    dIn.addEventListener('input', osvezi);
-    dIn.addEventListener('change', odkleni);
-    gumb.addEventListener('click', odkleni);
+
+    kos(dIn, 'Datum', function () { return dIn.value === dnes ? datum(dIn.value) + ' · danes' : datum(dIn.value); });
+    kos(sIn, 'Št.', function () { return sIn.value + (lIn && lIn.value ? '/' + lIn.value : ''); });
+    if (!kosi.length) { vrata.remove(); odkleni(); }
   }
   async function urediList(box) {
     const n = box._note;
@@ -3135,9 +3170,9 @@
     const orgOpt = ORGSEZNAM.map(o => `<option value="${o.id}"${o.id === n.org_id ? ' selected' : ''}>${escape_(o.name)}</option>`).join('');
     box.innerHTML = `<div class="ur-form">
       <label class="ur-f"><span>Stranka</span><select data-org>${orgOpt}</select></label>
-      <div class="ur-grid">
+      <div class="ur-grid ur-grid-3">
         <label class="ur-f"><span>Št.</span><input type="number" data-seq value="${st.seq}"></label>
-        <label class="ur-f"><span>Leto</span><input type="number" data-leto value="${st.leto}"></label>
+        <label class="ur-f" hidden><span>Leto</span><input type="number" data-leto value="${st.leto}"></label>
         <label class="ur-f"><span>Datum</span><input type="date" data-datum value="${escape_(dnes)}"></label>
         <label class="ur-f"><span>Teža (samodejno)</span><output class="ur-kg-auto" data-teza-auto>—</output></label>
       </div>
@@ -3188,7 +3223,7 @@
     box.querySelector('[data-preklici]').addEventListener('click', () => risiListDetajl(box));
     box.querySelector('[data-shrani]').addEventListener('click', () => shraniList(box));
     wireSeg(box);
-    datumVrata(box);
+    vnosVrata(box);
     // Menjava stranke med urejanjem: VEDNO svež premade seznam izbrane stranke s praznimi
     // količinami (tudi ob preklopu nazaj na izvirno stranko) — stare postavke in številke ne ostanejo.
     { const _os = box.querySelector('[data-org]'); if (_os) _os.addEventListener('change', async () => {
@@ -3234,7 +3269,7 @@
     if (!org_id) { msg.textContent = 'Izberi stranko.'; return; }
     if (!seq || !leto) { msg.textContent = 'Vpiši številko in leto.'; return; }
     if (!doc_date) { msg.textContent = 'Vpiši datum.'; return; }
-    if (box._datumOk === false) { msg.textContent = 'Najprej potrdi datum zgoraj.'; return; }
+    if (box._glavaOk === false) { msg.textContent = 'Najprej potrdi datum in številko zgoraj.'; return; }
     const postavke = zdruziPodvojene([...box.querySelectorAll('.ur-post')].map(r => {
       const sel = r.querySelector('[data-pn]');
       const opt = sel && sel.selectedOptions && sel.selectedOptions[0];
@@ -3404,9 +3439,9 @@
     box.innerHTML = `<div class="ur-form">
       <h3 class="sec-h" style="margin-bottom:12px">Nov spremni list</h3>
       <label class="ur-f"><span>Stranka</span><select data-org>${orgOpt}</select></label>
-      <div class="ur-grid">
+      <div class="ur-grid ur-grid-3">
         <label class="ur-f"><span>Št.</span><input type="number" data-seq value="${maxSeq + 1}"></label>
-        <label class="ur-f"><span>Leto</span><input type="number" data-leto value="${letos}"></label>
+        <label class="ur-f" hidden><span>Leto</span><input type="number" data-leto value="${letos}"></label>
         <label class="ur-f"><span>Datum</span><input type="date" data-datum value="${dnes}"></label>
         <label class="ur-f"><span>Teža (samodejno)</span><output class="ur-kg-auto" data-teza-auto>—</output></label>
       </div>
@@ -3477,7 +3512,7 @@
     box.querySelector('[data-preklici]').addEventListener('click', () => { box.innerHTML = ''; box.classList.remove('show'); });
     box.querySelector('[data-shrani]').addEventListener('click', () => shraniNovList(box));
     wireSeg(box);
-    datumVrata(box);
+    vnosVrata(box);
     { const _os = box.querySelector('[data-org]'); if (_os) _os.addEventListener('change', async () => { await nalozArtSez(box); napolniPremade(); osveziKgPrikaz(box); }); }
     box.classList.add('show');
     box.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -3498,7 +3533,7 @@
     if (!org_id) { msg.textContent = 'Izberi stranko.'; return; }
     if (!seq || !leto) { msg.textContent = 'Vpiši številko in leto.'; return; }
     if (!doc_date) { msg.textContent = 'Vpiši datum.'; return; }
-    if (box._datumOk === false) { msg.textContent = 'Najprej potrdi datum zgoraj.'; return; }
+    if (box._glavaOk === false) { msg.textContent = 'Najprej potrdi datum in številko zgoraj.'; return; }
     const postavke = zdruziPodvojene([...box.querySelectorAll('.ur-post')].map(r => {
       const sel = r.querySelector('[data-pn]');
       const opt = sel && sel.selectedOptions && sel.selectedOptions[0];
