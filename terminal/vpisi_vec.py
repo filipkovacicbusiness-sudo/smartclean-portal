@@ -29,6 +29,7 @@ import csv
 import datetime
 import getpass
 import json
+import logging
 import os
 import sys
 import urllib.error
@@ -46,6 +47,11 @@ SUPABASE_KEY = "sb_publishable_LYMbUOYW2IFz4NxgvjXLOg_PJ2-qpS4"
 PRIVZETI_EMAIL = "filip@eflitte.si"
 
 DNEVNIK = os.path.join(os.path.dirname(os.path.abspath(__file__)), "vpisane_kartice.csv")
+
+# Knjižnica vsak odgovor kartice z napako izpiše na zaslon — tudi pričakovane,
+# npr. ST_AppNotFound, ko preverimo, ali je sveža kartica že naša. To je med
+# vpisom samo zavajalo. Prave napake javi skripta sama.
+logging.getLogger("desfire").setLevel(logging.CRITICAL)
 
 
 class NapakaPortala(Exception):
