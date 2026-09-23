@@ -3999,7 +3999,12 @@
           '<tr class="sk"><td>DDV (22 %)</td><td class="n"></td><td class="n"></td><td class="n">' + nd(cenaFmt(g.ddv)) + '</td></tr>' +
           '<tr class="sk bruto"><td>Za plačilo (z DDV)</td><td class="n"></td><td class="n"></td><td class="n">' + nd(cenaFmt(g.bruto)) + '</td></tr>'
         : '<tr class="sk"><td>Skupaj kosov</td><td class="n">' + stevilo(g.kosov) + '</td></tr><tr class="sk"><td>Teža perila (kg)</td><td class="n">' + nd(fakKg(g.kg)) + '</td></tr>';
-      listi += '<div class="sheet"><div class="tab">' + nd(ime) + '</div><div class="per">Obdobje: ' + nd(obd) + '</div><table>' + head + rows + tot + '</table></div>';
+      // Predogled mora pokazati ISTA opozorila kot shranjena datoteka — sicer
+      // uporabnik pregleda predogled, ne vidi težave, in vseeno izvozi prenizko vsoto.
+      var opoz = '';
+      if (g.neskladje) opoz += '<div class="per">Pozor: seštevek postavk je ' + stevilo(g.kosovPostavke) + ' kosov, spremni listi pa navajajo ' + stevilo(g.kosov) + '.</div>';
+      if (money && g.brezCene) opoz += '<div class="per">' + stevilo(g.brezCene) + ' artiklov brez cene (niso všteti) — poveži jih v Strankah.</div>';
+      listi += '<div class="sheet"><div class="tab">' + nd(ime) + '</div><div class="per">Obdobje: ' + nd(obd) + '</div><table>' + head + rows + tot + '</table>' + opoz + '</div>';
     });
     return '<!DOCTYPE html><html lang="sl"><head><meta charset="utf-8"><style>' +
       "*{box-sizing:border-box;font-family:-apple-system,'Segoe UI',Roboto,Arial,sans-serif;color:#16202b}" +
