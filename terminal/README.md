@@ -51,18 +51,39 @@ sicer brez monitorja in tipkovnice do naprave ni poti.
 ```bash
 ssh pi@raspberrypi.local
 sudo apt update
-sudo apt install -y pcscd pcsc-tools python3-pip python3-venv i2c-tools
+# libpcsclite-dev je obvezen — brez njega se pyscard ne prevede (manjka winscard.h)
+sudo apt install -y pcscd pcsc-tools libpcsclite-dev python3-pip python3-venv i2c-tools
 sudo systemctl enable --now pcscd
 
 python3 -m venv ~/stemplj-venv
 ~/stemplj-venv/bin/pip install pyscard python-desfire RPLCD smbus2
 ```
 
-Preveri bralnik — prisloni kartico, izpisati mora ATR:
+Prek SSH polkit dostop do bralnika zavrne (»SCardEstablishContext: Access
+denied«), ker seja SSH ni »lokalna aktivna«. Storitev `stemplj` teče kot root
+in tega ne potrebuje; za preizkušanje na daljavo dodaj pravilo:
 
 ```bash
-pcsc_scan
+sudo tee /etc/polkit-1/rules.d/99-pcscd-pi.rules >/dev/null <<'EOF'
+polkit.addRule(function(action, subject) {
+  if ((action.id == "org.debian.pcsc-lite.access_pcsc" ||
+       action.id == "org.debian.pcsc-lite.access_card") &&
+      subject.user == "pi") {
+    return polkit.Result.YES;
+  }
+});
+EOF
+sudo systemctl restart polkit
 ```
+
+Preveri bralnik in kartico — nič ne spremeni, ključev ne potrebuje:
+
+```bash
+~/stemplj-venv/bin/python preveri_karto.py
+```
+
+Izpisati mora proizvajalca, generacijo (EV1/EV2/EV3), pomnilnik in aplikacije
+na kartici. To je prvo, kar poženeš, kadar kaj ne dela.
 
 ---
 
