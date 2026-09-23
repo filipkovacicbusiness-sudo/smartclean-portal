@@ -225,10 +225,12 @@ def vpisi_karto(connection, kljuci: dict, ponovno: bool = False) -> str:
         )
 
     if ponovno:
-        try:
+        # Brišemo SAMO, če aplikacija obstaja. Pri DESFire vsak ukaz, ki vrne
+        # napako, razveljavi overitev — neuspel delete (ST_AppNotFound) bi
+        # pustil kartico neoverjeno in že naslednji ukaz bi padel s
+        # ST_AuthentError. GetApplicationIDs napake ne vrne.
+        if get_list(APP_ID) in [list(a) for a in d.get_application_ids()]:
             d.delete_application(APP_ID)
-        except Exception:
-            pass  # aplikacije še ni — to je v redu
 
     nic = _aes("00" * 16)
     d.change_default_key(nic, 0x00)
