@@ -43,7 +43,13 @@ i2cdetect -y 1             # naslov, običajno 0x27 ali 0x3F → v LCD_ADDR
 
 ## 2) Namestitev
 
+Pi naj bo postavljen z **Raspberry Pi OS Lite (64-bit)**, hostname **`pralnica`**
+(enako kot `TERMINAL_SLUG` in `att_terminals.slug`) in uporabnik **`pi`** —
+`stemplj.service` ima poti `/home/pi/…` zapisane trdo. SSH vklopi že v Imagerju,
+sicer brez monitorja in tipkovnice do naprave ni poti.
+
 ```bash
+ssh pi@pralnica.local
 sudo apt update
 sudo apt install -y pcscd pcsc-tools python3-pip python3-venv i2c-tools
 sudo systemctl enable --now pcscd
@@ -80,8 +86,8 @@ Na Pi prenesi `kljuci.json`, v katerem je **samo `read`**:
 
 ```bash
 python3 -c "import json;k=json.load(open('kljuci.json'));json.dump({'read':k['read']},open('kljuci-pi.json','w'),indent=2)"
-scp kljuci-pi.json pi@raspberrypi:~/terminal/kljuci.json
-ssh pi@raspberrypi 'chmod 600 ~/terminal/kljuci.json'
+scp kljuci-pi.json pi@pralnica.local:~/terminal/kljuci.json
+ssh pi@pralnica.local 'chmod 600 ~/terminal/kljuci.json'
 ```
 
 Tako tat Pi-ja kartic ne more prepisovati.
