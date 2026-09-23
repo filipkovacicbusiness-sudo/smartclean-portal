@@ -67,6 +67,8 @@ določenega razdelka ne odpre. **Kljukica = datoteka je v tej mapi.**
 | 50 | *(brez imena v kodi)* | `deleted_at` na `delivery_notes` in `documents` | ✗ |
 | 55 | `55_gorivo.sql` | `fuel_logs` + bucket `gorivo` (razdelek Gorivo) | **✓** |
 | 56 | `56_cene_goriva.sql` | `fuel_prices` (uradne cene z gov.si) + DDV na `fuel_logs` | **✓** |
+| 57 | `57_zapri_rpc_public.sql` | dokonča 52: `revoke … from anon` ne zadošča, ker anon pravico podeduje od `PUBLIC` | **✓** |
+| 58 | `58_zapri_rpc_public_2.sql` | isti vzrok: `odprte_izmene` je razkrivala, kdo je v službi | **✓** |
 
 Poleg tega sta v mapi dve enkratni opravili, ki nista del sheme:
 `cenik_pocisti_nepovezane.sql` in `id_kljuc_migracija.sql`.
