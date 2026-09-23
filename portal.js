@@ -1931,6 +1931,18 @@
     clearTimeout(_barsFitT);
     _barsFitT = setTimeout(function () { try { ucBarsFit(document); } catch (e) {} }, 150);
   });
+  // Napis je celica mreže in se razpotegne čez ves stolpec, zato scrollWidth vrne
+  // ŠIRINO STOLPCA, ne besedila — po njem je bil korak skoraj vedno 2, razmiki pa
+  // neenakomerni. Tule izmerimo besedilo samo.
+  function _barsTxtW(e) {
+    try {
+      var r = document.createRange();
+      r.selectNodeContents(e);
+      var w = r.getBoundingClientRect().width;
+      return w > 0 ? w : e.scrollWidth;
+    } catch (_) { return e.scrollWidth; }
+  }
+  var BARS_RAZMIK = 10;   // najmanjši vodoravni presledek med sosednjima napisoma (px)
   function ucBarsFit(scope) {
     var rows = (scope || document).querySelectorAll('.bars-row');
     [].forEach.call(rows, function (row) {
@@ -1942,10 +1954,18 @@
         if (!els.length) return;
         els.forEach(function (e) { e.style.visibility = ''; });
         var w = 1;
-        els.forEach(function (e) { if (e.textContent.trim() && e.scrollWidth > w) w = e.scrollWidth; });
-        var step = Math.max(1, Math.ceil((w + 6) / Math.max(colW, 1)));
+        els.forEach(function (e) { if (e.textContent.trim()) { var t = _barsTxtW(e); if (t > w) w = t; } });
+        var step = Math.max(1, Math.ceil((w + BARS_RAZMIK) / Math.max(colW, 1)));
         if (step === 1) return;
-        els.forEach(function (e, i) { if (i % step !== 0 && i !== els.length - 1) e.style.visibility = 'hidden'; });
+        // Zadnji stolpec je koristen (konec obdobja), a le če se ne zlepi s prejšnjim
+        // prikazanim — prav zaradi tega sta se prej dotikala »367« in »—«.
+        var zadnji = els.length - 1;
+        var zadnjiPoKoraku = Math.floor(zadnji / step) * step;
+        var kaziZadnjega = (zadnji - zadnjiPoKoraku) * colW >= w + BARS_RAZMIK;
+        els.forEach(function (e, i) {
+          var kaze = (i % step === 0) || (i === zadnji && kaziZadnjega);
+          if (!kaze) e.style.visibility = 'hidden';
+        });
       });
     });
   }
@@ -2313,11 +2333,11 @@
         '<b class="uc-lest-v">' + fmtStevilo1(o.kgh) + '<span> kg/uro</span></b></div>';
     }).join('') : '<p class="u-sub" style="padding:8px 2px">Ni dni z opranim perilom in odprtimi urami v tem mesecu.</p>';
     var cardLestvica = '<div class="uc-card uc-lest-card"><div class="uc-lest-h"><h3 class="sec-h">kg/uro po dnevih</h3>' +
-      '<button type="button" class="pris-tab uc-lest-toggle" data-uclest>' + (_ucLestSort === 'desc' ? 'Padajoče ↓' : 'Naraščajoče ↑') + '</button></div>' +
+      '<button type="button" class="pris-tab uc-lest-toggle" data-uclest>' + (_ucLestSort === 'desc' ? 'Padajoče' : 'Naraščajoče') + '</button></div>' +
       '<div class="uc-lest-list">' + lestVrst + '</div></div>';
     // Lestvica €/kg po strankah — DESNO od tortnega diagrama (na osnovi opranega perila).
     var cardLestEur = '<div class="uc-card uc-lest-card uc-lest-eur"><div class="uc-lest-h"><h3 class="sec-h">Promet po strankah</h3>' +
-      '<button type="button" class="pris-tab uc-lest-toggle" data-uclesteur>' + (_ucLestEurSort === 'desc' ? 'Padajoče ↓' : 'Naraščajoče ↑') + '</button></div>' +
+      '<button type="button" class="pris-tab uc-lest-toggle" data-uclesteur>' + (_ucLestEurSort === 'desc' ? 'Padajoče' : 'Naraščajoče') + '</button></div>' +
       '<div class="uc-lest-list uc-lest-eur-list">' + ucLestEurRows() + '</div>' +
       '<div class="uc-lest-foot uc-lest-eur-tot">' + ucLestEurTot() + '</div></div>';
     // Zgoraj: diagram LEVO + lestvica €/kg po strankah DESNO. Spodaj: kg 7 dni + učinkovitost.
@@ -2339,10 +2359,10 @@
       (rows || '<tr><td colspan="3" class="u-sub">Ni podatkov.</td></tr>') + '</tbody>' +
       (rows ? '<tfoot><tr><td>Skupaj</td><td class="pris-ure">' + fmtKg(d.kgSkup) + '</td><td class="pris-ure uc-eur uc-eur-tot">' + eurCela(d.eurTot) + '</td></tr></tfoot>' : '') + '</table>';
     var sortSel = '<select class="uc-sort" aria-label="Razvrsti">' +
-      '<option value="kg_desc"' + (_ucSort === 'kg_desc' ? ' selected' : '') + '>Kilaža ↓</option>' +
-      '<option value="kg_asc"' + (_ucSort === 'kg_asc' ? ' selected' : '') + '>Kilaža ↑</option>' +
-      '<option value="eur_desc"' + (_ucSort === 'eur_desc' ? ' selected' : '') + '>€/kg ↓</option>' +
-      '<option value="eur_asc"' + (_ucSort === 'eur_asc' ? ' selected' : '') + '>€/kg ↑</option></select>';
+      '<option value="kg_desc"' + (_ucSort === 'kg_desc' ? ' selected' : '') + '>Največ kilaže</option>' +
+      '<option value="kg_asc"' + (_ucSort === 'kg_asc' ? ' selected' : '') + '>Najmanj kilaže</option>' +
+      '<option value="eur_desc"' + (_ucSort === 'eur_desc' ? ' selected' : '') + '>Največ €/kg</option>' +
+      '<option value="eur_asc"' + (_ucSort === 'eur_asc' ? ' selected' : '') + '>Najmanj €/kg</option></select>';
     var datumCtrl = (_ucEvObd === 'vse')
       ? '<div class="pris-datum"><span class="uc-obd-lbl">Ves čas — vse stranke, skupaj</span></div>'
       : '<div class="pris-datum"><input type="' + (_ucEvObd === 'mesec' ? 'month' : 'date') + '" id="ucDatum" value="' + (_ucEvObd === 'mesec' ? _ucDan.slice(0, 7) : _ucDan) + '">' +
@@ -2365,7 +2385,7 @@
     _uc3dAnim = false;
     box.querySelectorAll('[data-ucrange]').forEach(function (b) { b.addEventListener('click', function () { if (_ucDonutRange === b.dataset.ucrange) return; _uc3dTweenFromSegs = ucDonutSegs(_ucDonutRange); _ucDonutRange = b.dataset.ucrange; _uc3dAnim = false; ucRender(); }); });
     { var _lt = box.querySelector('[data-uclest]'); if (_lt) _lt.addEventListener('click', function () { _ucLestSort = (_ucLestSort === 'desc' ? 'asc' : 'desc'); ucRender(); }); }
-    { var _le = box.querySelector('[data-uclesteur]'); if (_le) _le.addEventListener('click', function () { _ucLestEurSort = (_ucLestEurSort === 'desc' ? 'asc' : 'desc'); var l = box.querySelector('.uc-lest-eur-list'); if (l) l.innerHTML = ucLestEurRows(); this.textContent = (_ucLestEurSort === 'desc' ? 'Padajoče ↓' : 'Naraščajoče ↑'); }); }
+    { var _le = box.querySelector('[data-uclesteur]'); if (_le) _le.addEventListener('click', function () { _ucLestEurSort = (_ucLestEurSort === 'desc' ? 'asc' : 'desc'); var l = box.querySelector('.uc-lest-eur-list'); if (l) l.innerHTML = ucLestEurRows(); this.textContent = (_ucLestEurSort === 'desc' ? 'Padajoče' : 'Naraščajoče'); }); }
     var _dm = $('ucDonutMesec'); if (_dm) _dm.addEventListener('change', function () { if (!this.value) return; _uc3dTweenFromSegs = ucDonutSegs(_ucDonutRange); _ucDonutMonth = this.value; _uc3dAnim = false; ucRender(); });
     var dat = $('ucDatum'); if (dat) dat.addEventListener('change', function () { var v = this.value || danes10(); if (v.length === 7) v += '-01'; _ucDan = v; ucRender(); });
     { var _ud = $('ucDanes'); if (_ud) _ud.addEventListener('click', function () { _ucDan = danes10(); ucRender(); }); }
