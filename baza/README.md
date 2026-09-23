@@ -66,6 +66,7 @@ določenega razdelka ne odpre. **Kljukica = datoteka je v tej mapi.**
 | 49 | `49_terminal_offline.sql` | parameter `p_ts` — žigi brez povezave | ✗ |
 | 50 | *(brez imena v kodi)* | `deleted_at` na `delivery_notes` in `documents` | ✗ |
 | 55 | `55_gorivo.sql` | `fuel_logs` + bucket `gorivo` (razdelek Gorivo) | **✓** |
+| 56 | `56_cene_goriva.sql` | `fuel_prices` (uradne cene z gov.si) + DDV na `fuel_logs` | **✓** |
 
 Poleg tega sta v mapi dve enkratni opravili, ki nista del sheme:
 `cenik_pocisti_nepovezane.sql` in `id_kljuc_migracija.sql`.

@@ -9,7 +9,8 @@ function grab(name) {
   for (let k = j; k < src.length; k++) { if (src[k] === '{') d++; else if (src[k] === '}') { d--; if (!d) return src.slice(i, k + 1); } }
 }
 let GORIVO = [], _gorLeto = 'vse';
-eval(grab('gorPoraba') + grab('gorPovzetek') + grab('gorLeta') + grab('gorIzbrane'));
+const GOR_DDV = 22;
+eval(grab('gorNeto') + grab('gorPoraba') + grab('gorPovzetek') + grab('gorLeta') + grab('gorIzbrane'));
 
 let pass = 0, fail = 0;
 const t = (n, c, got) => { if (c) { pass++; console.log('  ok   ' + n); } else { fail++; console.log('  FAIL ' + n + (got !== undefined ? '  -> ' + JSON.stringify(got) : '')); } };
@@ -55,6 +56,19 @@ t('izmerjenih km = 1500', s.km === 1500, s.km);
 // Prvo tankanje (50 l, 75 €) NI v izmerjenem odseku in je izpuščeno iz porabe.
 t('povprečna poraba = 115 l / 1500 km', blizu(s.l100, 115 / 1500 * 100), s.l100);
 t('€/km iz izmerjenih tankanj', blizu(s.eurKm, (62 + 70.2 + 45) / 1500), s.eurKm);
+
+// ── DDV: znesek je bruto, neto je izpeljan ────────────────────────────────
+t('neto pri 22 %', blizu(gorNeto(122, 22), 100), gorNeto(122, 22));
+t('neto uporabi stopnjo zapisa, ne privzete', blizu(gorNeto(109.5, 9.5), 100), gorNeto(109.5, 9.5));
+t('skupni neto', blizu(s.neto, 252.2 / 1.22), s.neto);
+t('povprečna cena na liter brez DDV', blizu(s.cenaLneto, s.cenaL / 1.22), [s.cenaLneto, s.cenaL]);
+t('€/km brez DDV', blizu(s.eurKmNeto, s.eurKm / 1.22), [s.eurKmNeto, s.eurKm]);
+
+// Tankanje s svojo stopnjo DDV se ne popravi po privzeti.
+const mesano = [{ id: 'm1', datum: '2026-05-01', litri: 10, znesek: 122, km: 1000, ddv: 22 },
+                { id: 'm2', datum: '2026-05-10', litri: 10, znesek: 110, km: 1100, ddv: 10 }];
+const sm = gorPovzetek(mesano, gorPoraba(mesano));
+t('mešane stopnje DDV se seštejejo vsaka po svoje', blizu(sm.neto, 100 + 100), sm.neto);
 
 // Brez enega samega izmerjenega odseka poraba ni na voljo (ne 0).
 const samoEno = [V[0]];

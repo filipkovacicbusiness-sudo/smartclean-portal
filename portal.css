@@ -2065,6 +2065,11 @@ html[data-theme="dark"] .u-acts .u-pin.on{background:rgba(52,199,110,.16);color:
 #sec-gorivo .gor-tbl td:not(:first-child):not(:nth-child(7)){text-align:right;}
 #sec-gorivo .gor-tbl th.gor-c,#sec-gorivo .gor-tbl td.gor-c{text-align:center;}
 .gor-tbl th{white-space:nowrap;}
+/* Z DDV in brez: glavna vrednost je z DDV (tak je racun), neto pod njo. */
+.gor-tbl th small{display:block;font-size:.62rem;font-weight:500;text-transform:none;letter-spacing:0;color:var(--mid);opacity:.75;}
+.gor-neto{display:block;font-size:.72rem;font-weight:500;color:var(--mid);}
+.gor-uradna{margin:2px 0 10px;padding:8px 11px;border:1px solid var(--line);border-radius:9px;background:var(--surface);}
+.gor-uradna-op{color:var(--mid);}
 .gor-tbl .gor-rac{border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--mid);
   padding:4px 8px;display:inline-flex;align-items:center;cursor:pointer;}
 .gor-tbl .gor-rac:hover{border-color:var(--mid);color:var(--ink);}

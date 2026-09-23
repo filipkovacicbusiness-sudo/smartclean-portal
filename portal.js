@@ -842,7 +842,53 @@
      Računi so v svojem bucketu »gorivo« (glej baza/55_gorivo.sql), ne med
      Dokumenti — tam ima pravila vse osebje, Gorivo pa je samo za vodstvo. */
   var GORIVO = null, GOR_NAPAKA = null, GOR_URL = {}, _gorLeto = 'vse';
-  var GOR_MAX_MB = 10;
+  var GOR_CENE = null, GOR_CENE_NAPAKA = null, _gorCeneTecejo = false;
+  var GOR_MAX_MB = 10, GOR_DDV = 22;
+
+  // Znesek na računu je Z DDV; neto izpeljemo. Stopnja je shranjena pri zapisu,
+  // zato sprememba DDV ne premakne preteklih tankanj.
+  function gorNeto(znesek, ddv) { var d = (ddv == null ? GOR_DDV : Number(ddv)); return (Number(znesek) || 0) / (1 + d / 100); }
+  function gorEurPar(bruto, ddv) { return cenaFmt(bruto) + '<small class="gor-neto">' + cenaFmt(gorNeto(bruto, ddv)) + ' brez DDV</small>'; }
+  // Uradna cena je objavljena na tri decimalke (2,012 €/l) — zaokrožitev na dve
+  // bi jo popačila prav tam, kjer se primerja s plačano.
+  function gorCena3(v) { return (Number(v) || 0).toLocaleString('sl-SI', { minimumFractionDigits: 3, maximumFractionDigits: 3 }) + ' €'; }
+
+  // Uradna (najvišja dovoljena) maloprodajna cena dizla za ta dan — z gov.si.
+  // Ni nujno cena, ki si jo plačal: servis sme prodajati ceneje, avtocestni dražje.
+  function gorUradnaCena(dat) {
+    if (!dat) return null;
+    var c = (GOR_CENE || []).find(function (x) { return x.velja_od <= dat && dat <= x.velja_do; });
+    return c || null;
+  }
+
+  async function naloziCeneGoriva() {
+    try {
+      var r = await sb.from('fuel_prices').select('velja_od,velja_do,dizel,nmb95,ddv')
+        .order('velja_od', { ascending: false }).limit(500);
+      if (r.error) throw r.error;
+      GOR_CENE = r.data || []; GOR_CENE_NAPAKA = null;
+    } catch (e) {
+      GOR_CENE = []; GOR_CENE_NAPAKA = (e && e.message) || String(e);
+    }
+  }
+
+  // Osveži z gov.si, kadar je najnovejša cena starejša od dveh dni. Tako urnika
+  // ni treba nastavljati; klic je poceni, ker funkcija piše samo spremembe.
+  async function osveziCeneGoriva() {
+    if (_gorCeneTecejo) return false;
+    var zadnja = (GOR_CENE || [])[0];
+    var meja = new Date(Date.now() - 2 * 86400000).toISOString().slice(0, 10);
+    if (zadnja && zadnja.velja_do >= meja) return false;
+    _gorCeneTecejo = true;
+    try {
+      var r = await sb.functions.invoke('cene-goriva', { body: {} });
+      if (r && r.data && r.data.ok) { await naloziCeneGoriva(); return true; }
+      GOR_CENE_NAPAKA = (r && r.data && r.data.error) || 'cen ni bilo mogoče osvežiti';
+    } catch (e) {
+      GOR_CENE_NAPAKA = (e && e.message) || String(e);
+    } finally { _gorCeneTecejo = false; }
+    return false;
+  }
 
   function gorLitriFmt(l) { return (Number(l) || 0).toLocaleString('sl-SI', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' l'; }
   function gorKmFmt(km) { return km == null ? '—' : stevilo(km) + ' km'; }
@@ -850,11 +896,12 @@
   async function naloziGorivo() {
     try {
       var r = await sb.from('fuel_logs')
-        .select('id,datum,litri,znesek,km,tankal,opomba,storage_path,mime,velikost,created_at,popravil,popravljeno_at')
+        .select('id,datum,litri,znesek,ddv,km,tankal,opomba,storage_path,mime,velikost,created_at,popravil,popravljeno_at')
         .is('deleted_at', null).order('datum', { ascending: false }).order('created_at', { ascending: false });
       if (r.error) throw r.error;
       GORIVO = (r.data || []).map(function (x) {
         return { id: x.id, datum: x.datum, litri: parseFloat(x.litri) || 0, znesek: parseFloat(x.znesek) || 0,
+          ddv: (x.ddv == null ? GOR_DDV : parseFloat(x.ddv)),
           km: (x.km == null ? null : parseInt(x.km, 10)), tankal: x.tankal || '', opomba: x.opomba || '',
           storage_path: x.storage_path || '', mime: x.mime || '', velikost: x.velikost || 0,
           popravil: x.popravil || '', popravljeno_at: x.popravljeno_at || null };
@@ -894,17 +941,20 @@
   // prvo tankanje in tista brez stanja števca nimajo prevoženih km, zato bi
   // njihovi litri in evri spačili razmerje.
   function gorPovzetek(vrstice, poraba) {
-    var litri = 0, znesek = 0, kmSkup = 0, litriMer = 0, znesekMer = 0;
+    var litri = 0, znesek = 0, neto = 0, kmSkup = 0, litriMer = 0, znesekMer = 0, netoMer = 0;
     vrstice.forEach(function (x) {
-      litri += x.litri; znesek += x.znesek;
+      var n = gorNeto(x.znesek, x.ddv);
+      litri += x.litri; znesek += x.znesek; neto += n;
       var p = poraba[x.id];
-      if (p) { kmSkup += p.km; litriMer += x.litri; znesekMer += x.znesek; }
+      if (p) { kmSkup += p.km; litriMer += x.litri; znesekMer += x.znesek; netoMer += n; }
     });
     return {
-      litri: litri, znesek: znesek, km: kmSkup,
+      litri: litri, znesek: znesek, neto: neto, km: kmSkup,
       cenaL: litri > 0 ? znesek / litri : null,
+      cenaLneto: litri > 0 ? neto / litri : null,
       l100: kmSkup > 0 ? litriMer / kmSkup * 100 : null,
-      eurKm: kmSkup > 0 ? znesekMer / kmSkup : null
+      eurKm: kmSkup > 0 ? znesekMer / kmSkup : null,
+      eurKmNeto: kmSkup > 0 ? netoMer / kmSkup : null
     };
   }
 
@@ -925,7 +975,10 @@
       box.innerHTML = '<p class="u-sub" style="padding:8px 2px">Nalagam …</p>';
       await naloziGorivo();
     }
+    if (GOR_CENE === null) await naloziCeneGoriva();
     gorRisi();
+    // Uradne cene dopolnimo v ozadju — izris ne čaka na gov.si.
+    osveziCeneGoriva().then(function (novo) { if (novo) gorRisi(); });
   }
 
   function gorRisi() {
@@ -946,10 +999,11 @@
 
     var kart = '<div class="gor-stat">' +
       '<div class="gor-s"><span>Skupaj gorivo</span><b>' + gorLitriFmt(p.litri) + '</b></div>' +
-      '<div class="gor-s"><span>Skupaj strošek</span><b>' + cenaFmt(p.znesek) + '</b></div>' +
-      '<div class="gor-s"><span>Povprečna cena</span><b>' + (p.cenaL != null ? cenaFmt(p.cenaL) + '/l' : '—') + '</b></div>' +
+      '<div class="gor-s"><span>Skupaj strošek</span><b>' + cenaFmt(p.znesek) + '</b><small>' + cenaFmt(p.neto) + ' brez DDV</small></div>' +
+      '<div class="gor-s"><span>Povprečna cena</span><b>' + (p.cenaL != null ? cenaFmt(p.cenaL) + '/l' : '—') + '</b>' +
+      (p.cenaLneto != null ? '<small>' + cenaFmt(p.cenaLneto) + '/l brez DDV</small>' : '') + '</div>' +
       '<div class="gor-s"><span>Povprečna poraba</span><b>' + (p.l100 != null ? fmtStevilo1(p.l100) + ' l/100 km' : '—') + '</b>' +
-      (p.km > 0 ? '<small>' + stevilo(p.km) + ' km' + (p.eurKm != null ? ' · ' + cenaFmt(p.eurKm) + '/km' : '') + '</small>' : '') + '</div>' +
+      (p.km > 0 ? '<small>' + stevilo(p.km) + ' km' + (p.eurKm != null ? ' · ' + cenaFmt(p.eurKm) + '/km · ' + cenaFmt(p.eurKmNeto) + '/km brez DDV' : '') + '</small>' : '') + '</div>' +
       '</div>';
 
     var vrstice = vse.map(function (x) {
@@ -960,8 +1014,8 @@
       return '<tr' + (x.storage_path ? '' : ' class="gor-nerac"') + '>' +
         '<td>' + datum(x.datum) + '</td>' +
         '<td class="pris-ure">' + gorLitriFmt(x.litri) + '</td>' +
-        '<td class="pris-ure">' + cenaFmt(x.znesek) + '</td>' +
-        '<td class="pris-ure">' + (x.litri > 0 ? cenaFmt(x.znesek / x.litri) : '—') + '</td>' +
+        '<td class="pris-ure">' + gorEurPar(x.znesek, x.ddv) + '</td>' +
+        '<td class="pris-ure">' + (x.litri > 0 ? gorEurPar(x.znesek / x.litri, x.ddv) : '—') + '</td>' +
         '<td class="pris-ure">' + gorKmFmt(x.km) + '</td>' +
         '<td class="pris-ure">' + (po ? fmtStevilo1(po.l100) : '<span class="u-sub">—</span>') + '</td>' +
         '<td>' + escape_(x.tankal || '—') + '</td>' +
@@ -970,7 +1024,7 @@
         '</tr>';
     }).join('');
 
-    var glave = '<tr><th>Datum</th><th>Litri</th><th>Znesek</th><th>€/l</th><th>Števec</th><th>l/100&nbsp;km</th><th>Tankal</th><th class="gor-c">Račun</th>' +
+    var glave = '<tr><th>Datum</th><th>Litri</th><th>Znesek<small>z DDV / brez</small></th><th>€/l<small>z DDV / brez</small></th><th>Števec</th><th>l/100&nbsp;km</th><th>Tankal</th><th class="gor-c">Račun</th>' +
       (lahkoPise ? '<th></th>' : '') + '</tr>';
     var stolpcev = lahkoPise ? 9 : 8;
     var tbl = '<div class="gor-scroll"><table class="pris-tbl gor-tbl"><thead>' + glave + '</thead><tbody>' +
@@ -1015,13 +1069,15 @@
       '<div class="ur-grid ur-grid-3">' +
       '<label class="ur-f"><span>Datum</span><input type="date" data-datum value="' + escape_(nov ? danes10() : rec.datum) + '"></label>' +
       '<label class="ur-f"><span>Litri</span><input type="number" step="0.01" min="0" inputmode="decimal" data-litri value="' + (nov ? '' : rec.litri) + '"></label>' +
-      '<label class="ur-f"><span>Znesek (€)</span><input type="number" step="0.01" min="0" inputmode="decimal" data-znesek value="' + (nov ? '' : rec.znesek) + '"></label>' +
+      '<label class="ur-f"><span>Cena na liter (€ z DDV)</span><input type="number" step="0.001" min="0" inputmode="decimal" data-cenal></label>' +
       '</div>' +
       '<div class="ur-grid ur-grid-3">' +
+      '<label class="ur-f"><span>Znesek (€ z DDV)</span><input type="number" step="0.01" min="0" inputmode="decimal" data-znesek value="' + (nov ? '' : rec.znesek) + '"></label>' +
+      '<label class="ur-f"><span>Brez DDV (' + fmtStevilo1(GOR_DDV) + ' %)</span><output class="ur-kg-auto" data-neto>—</output></label>' +
       '<label class="ur-f"><span>Stanje števca (km)</span><input type="number" step="1" min="0" inputmode="numeric" data-km value="' + (nov || rec.km == null ? '' : rec.km) + '"></label>' +
-      '<label class="ur-f"><span>Tankal</span><input type="text" data-tankal maxlength="60" value="' + escape_(nov ? (JAZIME || '') : rec.tankal) + '"></label>' +
-      '<label class="ur-f"><span>Cena na liter</span><output class="ur-kg-auto" data-cenal>—</output></label>' +
       '</div>' +
+      '<p class="u-sub gor-uradna" data-uradna></p>' +
+      '<label class="ur-f"><span>Tankal</span><input type="text" data-tankal maxlength="60" value="' + escape_(nov ? (JAZIME || '') : rec.tankal) + '"></label>' +
       '<label class="ur-f"><span>Opomba (neobvezno)</span><input type="text" data-opomba maxlength="200" value="' + escape_(nov ? '' : rec.opomba) + '"></label>' +
       '<label class="ur-f"><span>Račun (PDF ali slika, do ' + GOR_MAX_MB + ' MB)</span>' +
       '<input type="file" data-rac accept="application/pdf,image/*"></label>' +
@@ -1040,14 +1096,53 @@
     var msg = q('[data-msg]'), racst = q('[data-racst]');
     function zapri() { back.remove(); _modalVrniFokus(); }
 
-    // Cena na liter se izračuna sama — vpisovati jo je odveč in bi se razhajala.
-    function osveziCeno() {
-      var l = parseFloat(q('[data-litri]').value), z = parseFloat(q('[data-znesek]').value);
-      q('[data-cenal]').textContent = (l > 0 && z >= 0 && !isNaN(z)) ? cenaFmt(z / l) + '/l' : '—';
+    // Cena se predizpolni z uradno za izbrani dan, znesek pa sledi litrom —
+    // dokler ju uporabnik ne vpiše sam. Ko vpiše, portal njegove vrednosti ne
+    // povozi več: na računu je merodajen znesek, uradna cena je le najvišja
+    // dovoljena in je servis lahko prodajal ceneje.
+    var cenaRocno = !nov, znesekRocno = !nov;
+
+    function osveziNeto() {
+      var z = parseFloat(q('[data-znesek]').value);
+      q('[data-neto]').textContent = (z >= 0 && !isNaN(z)) ? cenaFmt(gorNeto(z, GOR_DDV)) : '—';
     }
-    q('[data-litri]').addEventListener('input', osveziCeno);
-    q('[data-znesek]').addEventListener('input', osveziCeno);
-    osveziCeno();
+    function osveziUradno() {
+      var c = gorUradnaCena(q('[data-datum]').value);
+      var el = q('[data-uradna]');
+      if (c) {
+        el.innerHTML = 'Uradna cena dizla za ta dan: <b>' + gorCena3(c.dizel) + '/l</b> z DDV · ' +
+          gorCena3(gorNeto(c.dizel, c.ddv)) + '/l brez · velja ' + datum(c.velja_od) + '–' + datum(c.velja_do) +
+          ' <span class="gor-uradna-op">(najvišja dovoljena zunaj avtocest)</span>';
+      } else if (GOR_CENE_NAPAKA) {
+        el.textContent = 'Uradnih cen ni bilo mogoče naložiti: ' + GOR_CENE_NAPAKA;
+      } else {
+        el.textContent = 'Za ta dan uradne cene ni.';
+      }
+      return c;
+    }
+    function izracunajZnesek() {
+      if (znesekRocno) return;
+      var l = parseFloat(q('[data-litri]').value), c = parseFloat(q('[data-cenal]').value);
+      if (l > 0 && c > 0) { q('[data-znesek]').value = (Math.round(l * c * 100) / 100).toFixed(2); osveziNeto(); }
+    }
+    function nastaviUradnoCeno() {
+      var c = osveziUradno();
+      if (!cenaRocno) { q('[data-cenal]').value = c ? c.dizel : ''; izracunajZnesek(); }
+    }
+
+    if (!nov) q('[data-cenal]').value = rec.litri > 0 ? (Math.round(rec.znesek / rec.litri * 1000) / 1000) : '';
+    nastaviUradnoCeno();
+    osveziNeto();
+
+    q('[data-datum]').addEventListener('change', nastaviUradnoCeno);
+    q('[data-litri]').addEventListener('input', izracunajZnesek);
+    q('[data-cenal]').addEventListener('input', function () { cenaRocno = true; izracunajZnesek(); });
+    q('[data-znesek]').addEventListener('input', function () {
+      znesekRocno = true; cenaRocno = true;
+      var l = parseFloat(q('[data-litri]').value), z = parseFloat(q('[data-znesek]').value);
+      if (l > 0 && z >= 0 && !isNaN(z)) q('[data-cenal]').value = Math.round(z / l * 1000) / 1000;
+      osveziNeto();
+    });
 
     if (!nov && rec.storage_path) {
       racst.innerHTML = 'Priložen je račun. Če izbereš novo datoteko, stara se zamenja. ' +
@@ -1107,7 +1202,7 @@
 
       msg.textContent = nov ? 'Shranjujem …' : 'Posodabljam …';
       try {
-        var polja = { datum: dat, litri: litri, znesek: znesek, km: km, tankal: tankal || null, opomba: opomba || null };
+        var polja = { datum: dat, litri: litri, znesek: znesek, ddv: (nov ? GOR_DDV : (rec.ddv != null ? rec.ddv : GOR_DDV)), km: km, tankal: tankal || null, opomba: opomba || null };
 
         var novaPot = null;
         if (f) {
@@ -1123,11 +1218,11 @@
         var staraPot = rec && rec.storage_path;
         var res;
         if (nov) {
-          res = await sb.from('fuel_logs').insert(polja).select('id,datum,litri,znesek,km,tankal,opomba,storage_path,mime,velikost,popravil,popravljeno_at').single();
+          res = await sb.from('fuel_logs').insert(polja).select('id,datum,litri,znesek,ddv,km,tankal,opomba,storage_path,mime,velikost,popravil,popravljeno_at').single();
         } else {
           polja.popravil = JAZIME || 'osebje';
           polja.popravljeno_at = new Date().toISOString();
-          res = await sb.from('fuel_logs').update(polja).eq('id', rec.id).select('id,datum,litri,znesek,km,tankal,opomba,storage_path,mime,velikost,popravil,popravljeno_at').single();
+          res = await sb.from('fuel_logs').update(polja).eq('id', rec.id).select('id,datum,litri,znesek,ddv,km,tankal,opomba,storage_path,mime,velikost,popravil,popravljeno_at').single();
         }
         if (res.error) {
           // Vrstica ni nastala — naložene datoteke ne puščamo za sabo.
@@ -1139,6 +1234,7 @@
 
         var d2 = res.data;
         var vrsta = { id: d2.id, datum: d2.datum, litri: parseFloat(d2.litri) || 0, znesek: parseFloat(d2.znesek) || 0,
+          ddv: (d2.ddv == null ? GOR_DDV : parseFloat(d2.ddv)),
           km: (d2.km == null ? null : parseInt(d2.km, 10)), tankal: d2.tankal || '', opomba: d2.opomba || '',
           storage_path: d2.storage_path || '', mime: d2.mime || '', velikost: d2.velikost || 0,
           popravil: d2.popravil || '', popravljeno_at: d2.popravljeno_at || null };
