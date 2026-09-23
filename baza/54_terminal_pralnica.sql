@@ -7,6 +7,9 @@
 --  od kogarkoli drugega — zato je NE daj nikamor razen v terminal.json na
 --  Raspberry Pi (chmod 600).
 --
+--  Slug je 'pralnica-vhod' in se mora ujemati s TERMINAL_SLUG v stemplj.py.
+--  Če ju spremeniš, spremeni OBA — sicer punch terminala ne najde.
+--
 --  Zaženi po korakih in preberi izpise. Varno za ponoven zagon.
 -- ════════════════════════════════════════════════════════════════════════
 
@@ -24,11 +27,11 @@ order by zaposlenih desc;
 insert into public.att_terminals (org_id, slug, location, secret, active)
 select
   (select org_id from public.employees group by org_id order by count(*) desc limit 1),
-  'pralnica',
+  'pralnica-vhod',
   'Pralnica — vhod',
   encode(gen_random_bytes(32), 'hex'),
   true
-where not exists (select 1 from public.att_terminals where slug = 'pralnica');
+where not exists (select 1 from public.att_terminals where slug = 'pralnica-vhod');
 
 
 -- ── 3. Preberi skrivnost in jo prenesi na Raspberry Pi ──────────────────
@@ -37,7 +40,7 @@ where not exists (select 1 from public.att_terminals where slug = 'pralnica');
 -- in nato:  chmod 600 terminal/terminal.json
 select slug, location, active, secret
 from public.att_terminals
-where slug = 'pralnica';
+where slug = 'pralnica-vhod';
 
 
 -- ── 4. Po vpisu kartice poveži žeton z zaposlenim ───────────────────────
@@ -56,4 +59,4 @@ where slug = 'pralnica';
 -- stare kartice ostanejo veljavne, ponarejene zahteve pa takoj odpovejo:
 --   update public.att_terminals
 --      set secret = encode(gen_random_bytes(32), 'hex')
---    where slug = 'pralnica';
+--    where slug = 'pralnica-vhod';

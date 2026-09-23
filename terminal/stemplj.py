@@ -49,7 +49,7 @@ import sc_kartica as sc
 # ─────────────────────────── NASTAVITVE ───────────────────────────
 SUPABASE_URL = "https://anrhtgbckxrccnafcmsz.supabase.co"
 SUPABASE_KEY = "sb_publishable_LYMbUOYW2IFz4NxgvjXLOg_PJ2-qpS4"   # javni ključ — sme biti tu
-TERMINAL_SLUG = "pralnica"        # mora se ujemati z att_terminals.slug
+TERMINAL_SLUG = "pralnica-vhod"   # mora se ujemati z att_terminals.slug
 
 # Skrivnost terminala (att_terminals.secret) NE sodi v to datoteko.
 # terminal.json poleg skripte:  {"secret": "<64 hex znakov>"}
