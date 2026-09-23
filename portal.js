@@ -842,7 +842,7 @@
      Računi so v svojem bucketu »gorivo« (glej baza/55_gorivo.sql), ne med
      Dokumenti — tam ima pravila vse osebje, Gorivo pa je samo za vodstvo. */
   var GORIVO = null, GOR_NAPAKA = null, GOR_URL = {}, _gorLeto = 'vse';
-  var GOR_CENE = null, GOR_CENE_NAPAKA = null, _gorCeneTecejo = false;
+  var GOR_CENE = null, GOR_CENE_NAPAKA = null, _gorCeneTecejo = false, _gorCeneZadnjiPoskus = 0;
   var GOR_MAX_MB = 10, GOR_DDV = 22;
 
   // Znesek na računu je Z DDV; neto izpeljemo. Stopnja je shranjena pri zapisu,
@@ -872,13 +872,27 @@
     }
   }
 
-  // Osveži z gov.si, kadar je najnovejša cena starejša od dveh dni. Tako urnika
-  // ni treba nastavljati; klic je poceni, ker funkcija piše samo spremembe.
+  // Sveže cene rabimo takrat, ko za DANES nimamo nobene — torej v trenutku, ko
+  // se izteče zadnje objavljeno obdobje.
+  //
+  // Prej je bil pogoj »najnovejša je starejša od dveh dni«. Ker vlada objavlja
+  // po tednih, je to pomenilo do dva dni brez cene: staro obdobje se je izteklo,
+  // novega pa še nismo pobrali, ker »še ni dovolj staro«. Prvi dnevi vsakega
+  // novega tedna bi bili brez predloga v obrazcu.
+  function gorRabiSveze(zadnjaVeljaDo, danes) {
+    if (!zadnjaVeljaDo) return true;
+    return zadnjaVeljaDo < danes;
+  }
+
+  // Osveži z gov.si. Urnika ni treba nastavljati — preverimo ob vsakem odprtju
+  // razdelka, klic pa je poceni, ker funkcija piše samo spremembe.
   async function osveziCeneGoriva() {
     if (_gorCeneTecejo) return false;
     var zadnja = (GOR_CENE || [])[0];
-    var meja = new Date(Date.now() - 2 * 86400000).toISOString().slice(0, 10);
-    if (zadnja && zadnja.velja_do >= meja) return false;
+    if (!gorRabiSveze(zadnja && zadnja.velja_do, danes10())) return false;
+    // Kadar vlada novega obdobja še ni objavila, ne trkamo ob vsakem odprtju.
+    if (Date.now() - _gorCeneZadnjiPoskus < 30 * 60 * 1000) return false;
+    _gorCeneZadnjiPoskus = Date.now();
     _gorCeneTecejo = true;
     try {
       var r = await sb.functions.invoke('cene-goriva', { body: {} });

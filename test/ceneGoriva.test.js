@@ -62,5 +62,25 @@ t('stran brez tabele vrže napako', vrglo === true);
 t('tabela brez ustreznih vrstic da prazen seznam',
   razclenimoCene('<table><tr><th>Datum veljavnosti</th><th>a</th><th>b</th></tr></table>').length === 0);
 
+// ── kdaj portal sploh poseže po novih cenah ────────────────────────────────
+// Izluščimo odločitveno funkcijo iz portal.js (ista datoteka, drug modul).
+const portal = fs.readFileSync(path.join(__dirname, '..', 'portal.js'), 'utf8');
+const gi = portal.indexOf('  function gorRabiSveze(');
+if (gi < 0) throw new Error('gorRabiSveze ni več v portal.js');
+let gd = 0, gj = portal.indexOf('{', portal.indexOf(')', gi)), gk = -1;
+for (let k = gj; k < portal.length; k++) { if (portal[k] === '{') gd++; else if (portal[k] === '}') { gd--; if (!gd) { gk = k + 1; break; } } }
+const gorRabiSveze = eval('(' + portal.slice(gi, gk).replace(/^  function /, 'function ') + ')');
+
+// Zadnje objavljeno obdobje je 22.–28. 9.
+t('sredi obdobja ne poseže', gorRabiSveze('2026-09-28', '2026-09-25') === false);
+t('zadnji dan obdobja ne poseže', gorRabiSveze('2026-09-28', '2026-09-28') === false);
+// Tu je prej nastala luknja: staro obdobje se je izteklo, prag »dva dni« pa
+// novega pobiranja še ni sprožil.
+t('prvi dan novega tedna poseže', gorRabiSveze('2026-09-28', '2026-09-29') === true);
+t('drugi dan novega tedna poseže', gorRabiSveze('2026-09-28', '2026-09-30') === true);
+t('teden pozneje poseže', gorRabiSveze('2026-09-28', '2026-10-06') === true);
+t('prazna tabela poseže', gorRabiSveze(null, '2026-09-25') === true);
+t('nedefinirano poseže', gorRabiSveze(undefined, '2026-09-25') === true);
+
 console.log('\n  ' + pass + ' ok, ' + fail + ' fail');
 process.exit(fail ? 1 : 0);
