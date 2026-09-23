@@ -3015,6 +3015,8 @@
     const os = box.querySelector('[data-org]');
     const org_id = os ? os.value : '';
     box._arts = [];
+    box._artsOrg = org_id;        // za katero stranko je ta seznam
+    box._artsNapaka = null;
     if (!org_id) return;
     await nalozicenik();
     try {
@@ -3044,7 +3046,13 @@
         box._imaUporabo = box._arts.some(function (a) { return a._u > 0; });
         box._arts.sort(function (x2, y2) { return x2._i0 - y2._i0; });   // vrstni red kot v ceniku
       } catch (e2) { box._imaUporabo = false; }
-    } catch (e) { box._arts = []; }
+    } catch (e) {
+      // Prej se je napaka požrla in seznam je ostal prazen — videti je bilo, kot da
+      // stranka nima artiklov. Zdaj razlog zabeležimo in ga tudi pokažemo.
+      box._arts = [];
+      box._artsNapaka = (e && e.message) || String(e);
+      try { console.warn('[artikli] seznama za stranko ni bilo mogoče naložiti:', e); } catch (_) {}
+    }
   }
   async function urediList(box) {
     const n = box._note;
@@ -3109,8 +3117,22 @@
     // Menjava stranke med urejanjem: VEDNO svež premade seznam izbrane stranke s praznimi
     // količinami (tudi ob preklopu nazaj na izvirno stranko) — stare postavke in številke ne ostanejo.
     { const _os = box.querySelector('[data-org]'); if (_os) _os.addEventListener('change', async () => {
+        // Nalaganje artiklov so tri omrežne poizvedbe. Ob hitri dvojni menjavi stranke
+        // sta se dve nalaganji prekrivali in kasnejši odgovor je povozil prejšnjega —
+        // seznam je pripadal napačni stranki ali pa je ostal prazen. Zato si zapomnimo,
+        // katero stranko smo hoteli, in zastarel odgovor zavržemo.
+        const _zelena = _os.value;
+        box._artsSeq = (box._artsSeq || 0) + 1;
+        const _mojaSeq = box._artsSeq;
+        pBox.innerHTML = '<p class="u-sub" style="padding:6px 2px">Nalagam artikle …</p>';
         await nalozArtSez(box);
+        if (_mojaSeq !== box._artsSeq || _os.value !== _zelena) return;   // vmes spet zamenjana
         pBox.innerHTML = '';
+        if (box._artsNapaka) {
+          pBox.innerHTML = '<p class="msg bad show" style="margin:6px 0">Artiklov ni bilo mogoče naložiti: ' + escape_(box._artsNapaka) + '</p>';
+          dodajVrstico(); osveziKg();
+          return;
+        }
         const arts = box._arts || [];
         let izbor = box._imaUporabo ? arts.filter(a => a._u > 0) : arts;
         if (!izbor.length) izbor = arts;
