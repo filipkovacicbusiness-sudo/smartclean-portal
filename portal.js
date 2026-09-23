@@ -3712,6 +3712,7 @@
           <tr><td colspan="3">DDV (22 %)</td><td class="q">${cenaFmt(g.ddv)}</td></tr>
           <tr class="bruto"><td colspan="3">Za plačilo (z DDV)</td><td class="q">${cenaFmt(g.bruto)}</td></tr>`
         : `<tr><td>Skupaj kosov</td><td class="q">${stevilo(g.kosov)}</td></tr><tr><td>Skupaj teža perila</td><td class="q">${fakKg(g.kg)}</td></tr>`}</tfoot></table>
+      ${g.neskladje ? `<div class="sign">Pozor: seštevek postavk je ${stevilo(g.kosovPostavke)} kosov, spremni listi pa navajajo ${stevilo(g.kosov)}.</div>` : ''}
       ${money && g.brezCene ? `<div class="sign">Opomba: ${stevilo(g.brezCene)} artiklov še nima cene (poveži jih v razdelku Stranke). Ti niso vključeni v znesek.</div>` : ''}
     </div>`;
   }
@@ -3859,10 +3860,13 @@
         vrsticaSk('DDV (22 %)', cenaFmt(g.ddv), true);
         y += 4; doc.line(M, y, right, y, { width: 1.4, color: _PDF.GREEN }); y += 15;
         vrsticaSk('Za plačilo (z DDV)', cenaFmt(g.bruto), true, true);
-        if (g.brezCene) doc.text(M, y + 6, stevilo(g.brezCene) + ' artiklov brez cene (niso všteti) — poveži jih v Strankah.', { size: 8.5, color: _PDF.GREY });
+        var _oy = y + 6;
+        if (g.neskladje) { doc.text(M, _oy, 'Pozor: seštevek postavk je ' + stevilo(g.kosovPostavke) + ' kosov, spremni listi pa navajajo ' + stevilo(g.kosov) + '.', { size: 8.5, color: _PDF.GREY }); _oy += 11; }
+        if (g.brezCene) doc.text(M, _oy, stevilo(g.brezCene) + ' artiklov brez cene (niso všteti) — poveži jih v Strankah.', { size: 8.5, color: _PDF.GREY });
       } else {
         vrsticaSk('Skupaj kosov', stevilo(g.kosov), true);
         vrsticaSk('Teža perila', fakKg(g.kg), true);
+        if (g.neskladje) doc.text(M, y + 6, 'Pozor: seštevek postavk je ' + stevilo(g.kosovPostavke) + ' kosov, spremni listi pa navajajo ' + stevilo(g.kosov) + '.', { size: 8.5, color: _PDF.GREY });
       }
     });
     doc.save('fakture_' + od + '_' + doo + '.pdf');
@@ -4012,6 +4016,14 @@
       'tr.bruto td{border-top:2px solid #1a6644}' +
       '</style></head><body>' + listi + '</body></html>';
   }
+  // Povzetek opozoril za eno stranko — v listu »Povzetek« se takoj vidi, pri
+  // kateri stranki je z vsoto kaj narobe, brez odpiranja njenega lista.
+  function _fakOpoz(g) {
+    var o = [];
+    if (g.brezCene) o.push(stevilo(g.brezCene) + ' brez cene (niso všteti)');
+    if (g.neskladje) o.push('postavke ' + stevilo(g.kosovPostavke) + ' ≠ listi ' + stevilo(g.kosov));
+    return o.join(' · ');
+  }
   function fakIzvozXlsx(od, doo, skupine) {
     const B = t => ({ v: t, bold: true });          // glava
     const T = t => ({ v: t, s: 2 });                 // krepko besedilo
@@ -4027,16 +4039,16 @@
     // 1) Povzetek — vse stranke skupaj
     let pov = [[{ v: 'Fakture — povzetek', s: 2 }], ['Obdobje:', obd], []];
     pov.push(anyMoney
-      ? [B('Stranka'), B('Spr. listov'), B('Kosov'), B('Teža (kg)'), B('Neto'), B('DDV'), B('Za plačilo z DDV')]
-      : [B('Stranka'), B('Spr. listov'), B('Kosov'), B('Teža (kg)')]);
+      ? [B('Stranka'), B('Spr. listov'), B('Kosov'), B('Teža (kg)'), B('Neto'), B('DDV'), B('Za plačilo z DDV'), B('Opozorila')]
+      : [B('Stranka'), B('Spr. listov'), B('Kosov'), B('Teža (kg)'), B('Opozorila')]);
     let sL = 0, sK = 0, sKg = 0, sN = 0, sD = 0, sB = 0;
     skupine.forEach(g => {
       const ime = ORGIME[g.org_id] || 'Brez stranke';
       sL += g.listov; sK += g.kosov; sKg += g.kg;
       if (anyMoney) {
         sN += g.neto || 0; sD += g.ddv || 0; sB += g.bruto || 0;
-        pov.push([ime, INT(g.listov), INT(g.kosov), KG(g.kg), g.cenikOn ? EUR(g.neto) : '—', g.cenikOn ? EUR(g.ddv) : '—', g.cenikOn ? EUR(g.bruto) : '—']);
-      } else pov.push([ime, INT(g.listov), INT(g.kosov), KG(g.kg)]);
+        pov.push([ime, INT(g.listov), INT(g.kosov), KG(g.kg), g.cenikOn ? EUR(g.neto) : '—', g.cenikOn ? EUR(g.ddv) : '—', g.cenikOn ? EUR(g.bruto) : '—', _fakOpoz(g)]);
+      } else pov.push([ime, INT(g.listov), INT(g.kosov), KG(g.kg), _fakOpoz(g)]);
     });
     pov.push([]);
     pov.push(anyMoney
@@ -4064,10 +4076,12 @@
         rows.push([T('Neto skupaj'), '', '', EURb(g.neto)]);
         rows.push([T('DDV (22 %)'), '', '', EURb(g.ddv)]);
         rows.push([T('Za plačilo (z DDV)'), '', '', EURb(g.bruto)]);
+        if (g.neskladje) rows.push([{ v: 'Pozor: seštevek postavk je ' + stevilo(g.kosovPostavke) + ' kosov, spremni listi pa navajajo ' + stevilo(g.kosov), s: 0 }]);
         if (g.brezCene) rows.push([{ v: stevilo(g.brezCene) + ' artiklov brez cene (niso všteti) — poveži jih v Strankah', s: 0 }]);
       } else {
         rows.push([T('Skupaj kosov'), INTb(g.kosov)]);
         rows.push([T('Teža perila (kg)'), KGb(g.kg)]);
+        if (g.neskladje) rows.push([{ v: 'Pozor: seštevek postavk je ' + stevilo(g.kosovPostavke) + ' kosov, spremni listi pa navajajo ' + stevilo(g.kosov), s: 0 }]);
       }
       sheets.push({ name: ime, rows: rows });
     });
