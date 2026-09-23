@@ -3083,15 +3083,31 @@
       try { console.warn('[artikli] seznama za stranko ni bilo mogoče naložiti:', e); } catch (_) {}
     }
   }
-  // ── Glava lista pred postavkami ─────────────────────────────────────────
-  // Stranka, datum in številka so se privzeli (prva na seznamu oz. obstoječa,
-  // danes, naslednja prosta) in jih je bilo lahko spregledati. List, vpisan za
-  // nazaj, pod napačno številko ali na napačno stranko, je tiho pristal v
-  // napačnem obračunskem obdobju ali pri napačnem naročniku — pri fakturah se
-  // to pokaže šele, ko je račun že zunaj. Zato so postavke zaklenjene, dokler
-  // niso potrjena vsa tri polja: sprememba vrednosti je potrditev sama po sebi,
-  // sicer je tu kljukica. Leto nima več svojega polja — je že v datumu, z njim
-  // se uskladi, vidno pa ostane v kljukici pri številki (»Št. 1627/2026«).
+  // Polje »Leto« je skrito — letnica je že v datumu — shranjevanje pa ga bere,
+  // zato sledi datumu. Velja za nov list in za urejanje obstoječega.
+  function letoIzDatuma(box) {
+    const dIn = box.querySelector('[data-datum]');
+    const lIn = box.querySelector('[data-leto]');
+    if (!dIn || !lIn) return;
+    const uskladi = function () {
+      const l = (dIn.value || '').slice(0, 4);
+      if (/^\d{4}$/.test(l)) lIn.value = l;
+    };
+    dIn.addEventListener('input', uskladi);
+    dIn.addEventListener('change', uskladi);
+  }
+
+  // ── Glava lista pred postavkami (samo NOV list) ─────────────────────────
+  // Pri NOVEM listu se stranka, datum in številka privzamejo (prazna, danes,
+  // naslednja prosta) in jih je lahko spregledati. List, vpisan za nazaj, pod
+  // napačno številko ali na napačno stranko, tiho pristane v napačnem
+  // obračunskem obdobju ali pri napačnem naročniku — pri fakturah se to pokaže
+  // šele, ko je račun že zunaj. Zato so postavke zaklenjene, dokler niso
+  // potrjena vsa tri polja: sprememba vrednosti je potrditev sama po sebi,
+  // sicer je tu kljukica. Letnica ostane vidna v kljukici pri številki.
+  //
+  // Pri UREJANJU teh vrat ni: vsa tri polja so bila zahtevana že ob nastanku
+  // lista, zato bi bila ponovna potrditev ob vsakem popravku le napoto.
   function vnosVrata(box) {
     const pBox = box.querySelector('[data-postavke]');
     if (!pBox) return;
@@ -3109,11 +3125,7 @@
     pBox.parentNode.insertBefore(vrata, pBox);
     const polja = vrata.querySelector('.ur-dv-polja');
 
-    // Leto je odslej odsev datuma; polje ostane v obrazcu, ker ga shranjevanje bere.
-    if (dIn && lIn) dIn.addEventListener('input', function () {
-      const l = (dIn.value || '').slice(0, 4);
-      if (/^\d{4}$/.test(l)) lIn.value = l;
-    });
+    letoIzDatuma(box);
 
     const kosi = [];
     const vsiOsvezi = function () { kosi.forEach(function (k) { k.osvezi(); }); };
@@ -3226,7 +3238,7 @@
     box.querySelector('[data-preklici]').addEventListener('click', () => risiListDetajl(box));
     box.querySelector('[data-shrani]').addEventListener('click', () => shraniList(box));
     wireSeg(box);
-    vnosVrata(box);
+    letoIzDatuma(box);   // vrat s kljukicami tu ni — polja so bila zahtevana že ob nastanku lista
     // Menjava stranke med urejanjem: VEDNO svež premade seznam izbrane stranke s praznimi
     // količinami (tudi ob preklopu nazaj na izvirno stranko) — stare postavke in številke ne ostanejo.
     { const _os = box.querySelector('[data-org]'); if (_os) _os.addEventListener('change', async () => {
@@ -3272,7 +3284,6 @@
     if (!org_id) { msg.textContent = 'Izberi stranko.'; return; }
     if (!seq || !leto) { msg.textContent = 'Vpiši številko in leto.'; return; }
     if (!doc_date) { msg.textContent = 'Vpiši datum.'; return; }
-    if (box._glavaOk === false) { msg.textContent = 'Najprej potrdi stranko, datum in številko zgoraj.'; return; }
     const postavke = zdruziPodvojene([...box.querySelectorAll('.ur-post')].map(r => {
       const sel = r.querySelector('[data-pn]');
       const opt = sel && sel.selectedOptions && sel.selectedOptions[0];
