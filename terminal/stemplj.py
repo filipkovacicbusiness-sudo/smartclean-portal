@@ -100,10 +100,14 @@ class Lcd:
             pass
 
     def mirovanje(self, cakajocih=0):
-        spodaj = time.strftime("  %H:%M   %d.%m.", time.localtime())
+        # Obe vrstici imata natanko 16 znakov in sta poravnani levo.
+        # Za »Prisloni kartico...« ni prostora — pike bi se odrezale.
+        # Sekunde prav tako ne gredo: »21:09:45 23.09.2026« je 19 znakov.
+        spodaj = time.strftime("%H:%M %d.%m.%Y", time.localtime())
         if cakajocih:
-            spodaj = ("v vrsti: %d" % cakajocih).ljust(LCD_COLS)
-        self.dve("Prisloni karto", spodaj, v_dnevnik=False)
+            # Brez mreže je vrsta pomembnejša od ure — pove, da se žigi še niso poslali.
+            spodaj = "v vrsti: %d" % cakajocih
+        self.dve("Prisloni kartico", spodaj, v_dnevnik=False)
 
 
 # ════════════════ VRSTA BREZ MREŽE (atomaren zapis) ════════════════
@@ -273,7 +277,7 @@ def main():
         return
 
     secret = nalozi_secret()
-    lcd.dve("SmartClean", "  zagon...")
+    lcd.dve("SmartClean", "zagon...")
     vrsta = nalozi_vrsto()
     if vrsta:
         izprazni_vrsto(vrsta, secret)

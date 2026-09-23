@@ -1,0 +1,12 @@
+/* Uporabniku »pi« dovoli dostop do bralnika prek pcscd tudi v seji SSH.
+   Privzeto polkit dovoli le »lokalnim aktivnim« sejam, SSH pa to ni, zato
+   pcsc_scan javi »SCardEstablishContext: Access denied«.
+   Storitev stemplj teče kot root in tega pravila ne potrebuje — rabimo ga
+   za preizkušanje in odpravljanje napak na daljavo. */
+polkit.addRule(function(action, subject) {
+  if ((action.id == "org.debian.pcsc-lite.access_pcsc" ||
+       action.id == "org.debian.pcsc-lite.access_card") &&
+      subject.user == "pi") {
+    return polkit.Result.YES;
+  }
+});

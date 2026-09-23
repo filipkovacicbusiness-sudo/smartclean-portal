@@ -1,0 +1,12 @@
+/* Uporabnik »pi« sme storitev stemplj zagnati, ustaviti in znova zagnati
+   brez gesla. To ne da nobene nove moči: pi je lastnik kode, ki jo storitev
+   poganja (~/terminal/stemplj.py), in jo lahko spremeni kadarkoli. Brez tega
+   pravila pa vsak popravek terminala zahteva geslo za sudo. */
+polkit.addRule(function(action, subject) {
+  if (action.id == "org.freedesktop.systemd1.manage-units" &&
+      action.lookup("unit") == "stemplj.service" &&
+      subject.user == "pi") {
+    var v = action.lookup("verb");
+    if (v == "start" || v == "stop" || v == "restart") return polkit.Result.YES;
+  }
+});
