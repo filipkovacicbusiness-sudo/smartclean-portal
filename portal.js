@@ -3576,6 +3576,7 @@
       g.kosov += n.total_pieces || 0;
       (n.delivery_note_items || []).forEach(it => {
         const ime = (it.article_name || '—').trim() || '—';
+        g.kosovPostavke = (g.kosovPostavke || 0) + (it.pieces || 0);
         g.artikli[ime] = (g.artikli[ime] || 0) + (it.pieces || 0);
         if (it.article_id && !g.artAid[ime]) g.artAid[ime] = it.article_id;
       });
@@ -3602,6 +3603,11 @@
       g.brezCene = g.postavke.filter(p => p.cena == null).length;
       g.ddv = Math.round(g.neto * DDV_STOPNJA * 100) / 100;
       g.bruto = Math.round((g.neto + g.ddv) * 100) / 100;
+      // »Skupaj kosov« bere delivery_notes.total_pieces, postavke pa so seštevek
+      // delivery_note_items.pieces. Če se razideta, je račun notranje neskladen
+      // (star ali nepopoln zapis). Doslej se to nikjer ni videlo — zdaj povemo.
+      g.kosovPostavke = g.kosovPostavke || 0;
+      g.neskladje = (g.kosov || 0) - g.kosovPostavke;
     });
     return { skupine: skupine };
   }
@@ -3659,7 +3665,7 @@
             <div class="fak-tot-r"><span>Neto skupaj</span><b>${cenaFmt(g.neto)}</b></div>
             <div class="fak-tot-r"><span>DDV (22 %)</span><b>${cenaFmt(g.ddv)}</b></div>
             <div class="fak-tot-r fak-tot-bruto"><span>Za plačilo (z DDV)</span><b>${cenaFmt(g.bruto)}</b></div>
-            ${g.brezCene ? `<div class="fak-tot-r"><span class="fak-warn">${stevilo(g.brezCene)} artiklov brez cene — poveži jih v Strankah</span><b></b></div>` : ''}` : '';
+            ${g.brezCene ? `<div class="fak-tot-r"><span class="fak-warn">${stevilo(g.brezCene)} artiklov brez cene — NISO všteti v znesek; poveži jih v Strankah</span><b></b></div>` : ''}` : '';
     const povzetek = money && g.neto ? ` · <b>${cenaFmt(g.bruto)}</b> z DDV` : '';
     return `<div class="fak-card">
       <div class="fak-card-h" data-faktoggle="${gi}">
@@ -3671,6 +3677,7 @@
           ${head}
           <div class="fak-lines${money ? ' fak-lines-m' : ' fak-lines-nm'}">${rows}</div>
           <div class="fak-tot">
+            ${g.neskladje ? `<div class="fak-tot-r"><span class="fak-warn">Pozor: seštevek postavk je ${stevilo(g.kosovPostavke)} kosov, spremni listi pa navajajo ${stevilo(g.kosov)}</span><b></b></div>` : ''}
             <div class="fak-tot-r"><span>Skupaj kosov</span><b>${stevilo(g.kosov)}</b></div>
             <div class="fak-tot-r"><span>Skupaj teža perila</span><b>${fakKg(g.kg)}</b></div>
             ${prevoz}
