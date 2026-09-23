@@ -560,6 +560,10 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
 /* Utrip obstoječe vrstice ob poskusu dvojnika. */
 @keyframes postFlash{0%{box-shadow:0 0 0 0 rgba(207,107,92,0)}18%{box-shadow:0 0 0 3px var(--st-bad)}100%{box-shadow:0 0 0 0 rgba(207,107,92,0)}}
 .ur-post.post-flash{animation:postFlash 1.3s ease-in-out 1;border-radius:10px;}
+/* Kratek utrip na shranjenem spremnem listu, da ga po ponovnem izrisu arhiva
+   takoj najdeš z očmi. */
+@keyframes arhFlash{0%{box-shadow:0 0 0 0 rgba(0,0,0,0)}18%{box-shadow:0 0 0 3px var(--green-l)}70%{box-shadow:0 0 0 3px var(--green-l)}100%{box-shadow:0 0 0 0 rgba(0,0,0,0)}}
+.a-row.arh-flash{animation:arhFlash 1.7s ease-in-out 1;}
 /* Po meri izdelan izbirnik artikla (ID v okvirčku levo, kot katalog) */
 .ur-post .ur-pn[hidden]{display:none!important;}
 .ur-artpick select[data-pn]{display:none!important;}   /* surova izbira je le vir podatkov — nikoli vidna (prepreči »2× izberi artikel«) */
@@ -596,6 +600,17 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
 .ur-add{margin-top:2px;font-size:.8rem;padding:6px 12px;border:1px dashed var(--line);
   border-radius:8px;background:none;color:var(--mid);cursor:pointer}
 .ur-add:hover{border-color:var(--mid);color:var(--ink)}
+/* Vrata pred postavkami: datum mora biti izbran ali potrjen, preden se vpisuje.
+   Brez tega je list tiho dobil današnji datum in pristal v napačnem obdobju. */
+.ur-dv{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:2px 0 10px;
+  padding:10px 12px;border:1px solid var(--st-warn);border-radius:10px;background:var(--surface);}
+.ur-dv-txt{flex:1 1 220px;min-width:0;font-size:.8rem;color:var(--ink);}
+.ur-dv-ok{white-space:nowrap;font-size:.8rem;padding:7px 14px;border-radius:9px;
+  background:var(--green);color:var(--btn-ink);border:1px solid var(--green);}
+.ur-dv-ok:hover:not(:disabled){background:var(--green-l);border-color:var(--green-l);}
+.ur-dv-ok:disabled{opacity:.45;cursor:not-allowed;}
+.ur-zaklep{pointer-events:none;opacity:.4;}
+.ur-form.dv-cakam input[type=date]{border-color:var(--st-warn);box-shadow:0 0 0 1px var(--st-warn) inset;}
 .ur-save{background:var(--green);color:var(--btn-ink);border-color:var(--green)}
 .ur-save:hover{background:var(--green-l);border-color:var(--green-l);color:var(--btn-ink)}
 .ur-msg{margin-top:8px}

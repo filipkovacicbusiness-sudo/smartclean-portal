@@ -2903,6 +2903,35 @@
     } catch (e) { box.innerHTML = '<div class="a-det-in"><div class="a-det-pad"><p class="u-sub">Napaka pri nalaganju.</p></div></div>'; odpri(); }
   }
 
+  // Po shranjevanju se arhiv izriše na novo in razprta kartica se ob tem zapre.
+  // Stran je doslej obstala na isti točkovni višini, kjer je bila po ponovnem
+  // izrisu že povsem druga vsebina — videti je bilo, kot da nas je vrglo nekam
+  // nižje. Zato shranjeni list poiščemo, ga razpremo in pripeljemo nazaj predse.
+  async function pokaziList(id) {
+    if (!id) return;
+    const row = document.querySelector('#arhivList .a-row[data-id="' + String(id).replace(/"/g, '\\"') + '"]');
+    if (!row) {
+      // Po spremembi datuma ali stranke je list lahko padel iz trenutnega filtra.
+      const l = $('arhivList'); if (l) try { l.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) {}
+      return;
+    }
+    if (row.getAttribute('aria-expanded') !== 'true') { try { await odpriList(row); } catch (e) {} }
+    // Merimo in poudarimo VRSTICO, ne ovojnice .lcell — ta je v seznamskem pogledu
+    // display:contents in nima okvirja, zato bi bile njene mere same ničle.
+    try {
+      const det = (row.nextElementSibling && row.nextElementSibling.classList.contains('a-det')) ? row.nextElementSibling : null;
+      const tb = document.querySelector('.topbar');
+      const odmik = (tb ? tb.offsetHeight : 0) + 14;          // lepljiva glava (na telefonu) ne sme prekriti vrstice
+      const visina = row.offsetHeight + ((det && det.classList.contains('show')) ? det.offsetHeight : 0);
+      const prostor = window.innerHeight - odmik;
+      let vrh = row.getBoundingClientRect().top + window.pageYOffset - odmik;
+      if (visina > 0 && visina < prostor) vrh -= (prostor - visina) / 2;   // če je razprta kartica krajša od zaslona, naj stoji na sredini
+      window.scrollTo({ top: Math.max(0, vrh), behavior: 'smooth' });
+    } catch (e) { try { row.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e2) {} }
+    row.classList.add('arh-flash');
+    setTimeout(function () { row.classList.remove('arh-flash'); }, 1700);
+  }
+
   /* prikaz postavk + (samo osebje) gumbi Uredi / Izbriši */
   function risiListDetajl(box) {
     const items = box._items || [];
@@ -3054,6 +3083,51 @@
       try { console.warn('[artikli] seznama za stranko ni bilo mogoče naložiti:', e); } catch (_) {}
     }
   }
+  // ── Datum pred postavkami ───────────────────────────────────────────────
+  // Datum se je doslej privzel na danes in ga je bilo lahko spregledati. List,
+  // vpisan za nazaj, je zato tiho pristal v napačnem obračunskem obdobju — pri
+  // fakturah se to pokaže šele, ko je račun že pri stranki. Zdaj so postavke
+  // zaklenjene, dokler datum ni IZBRAN (sprememba v koledarju je sama po sebi
+  // odločitev) ali POTRJEN (gumb — kadar je datum že pravi in ga ni treba
+  // spreminjati).
+  function datumVrata(box) {
+    const dIn = box.querySelector('[data-datum]');
+    const pBox = box.querySelector('[data-postavke]');
+    if (!dIn || !pBox) return;
+    const dodaj = box.querySelector('[data-dodaj]');
+    const form = box.querySelector('.ur-form');
+    const vrata = document.createElement('div');
+    vrata.className = 'ur-dv';
+    vrata.innerHTML = '<span class="ur-dv-txt">Najprej določi datum spremnega lista — do takrat postavk ni mogoče vpisovati.</span>'
+      + '<button type="button" class="ur-dv-ok" data-datum-ok></button>';
+    pBox.parentNode.insertBefore(vrata, pBox);
+    const gumb = vrata.querySelector('[data-datum-ok]');
+    const dnes = new Date().toISOString().slice(0, 10);
+    const osvezi = () => {
+      const v = dIn.value;
+      gumb.disabled = !v;
+      gumb.textContent = !v ? 'Izberi datum'
+        : (v === dnes ? 'Potrdi — danes, ' + datum(v) : 'Potrdi ' + datum(v));
+    };
+    const odkleni = () => {
+      if (!dIn.value || box._datumOk) return;
+      box._datumOk = true;
+      vrata.remove();
+      pBox.classList.remove('ur-zaklep');
+      try { pBox.inert = false; } catch (_) {}
+      if (dodaj) dodaj.disabled = false;
+      if (form) form.classList.remove('dv-cakam');
+    };
+    box._datumOk = false;
+    pBox.classList.add('ur-zaklep');
+    try { pBox.inert = true; } catch (_) {}
+    if (dodaj) dodaj.disabled = true;
+    if (form) form.classList.add('dv-cakam');
+    osvezi();
+    dIn.addEventListener('input', osvezi);
+    dIn.addEventListener('change', odkleni);
+    gumb.addEventListener('click', odkleni);
+  }
   async function urediList(box) {
     const n = box._note;
     const st = razcleniStevilko(n.number);
@@ -3114,6 +3188,7 @@
     box.querySelector('[data-preklici]').addEventListener('click', () => risiListDetajl(box));
     box.querySelector('[data-shrani]').addEventListener('click', () => shraniList(box));
     wireSeg(box);
+    datumVrata(box);
     // Menjava stranke med urejanjem: VEDNO svež premade seznam izbrane stranke s praznimi
     // količinami (tudi ob preklopu nazaj na izvirno stranko) — stare postavke in številke ne ostanejo.
     { const _os = box.querySelector('[data-org]'); if (_os) _os.addEventListener('change', async () => {
@@ -3159,6 +3234,7 @@
     if (!org_id) { msg.textContent = 'Izberi stranko.'; return; }
     if (!seq || !leto) { msg.textContent = 'Vpiši številko in leto.'; return; }
     if (!doc_date) { msg.textContent = 'Vpiši datum.'; return; }
+    if (box._datumOk === false) { msg.textContent = 'Najprej potrdi datum zgoraj.'; return; }
     const postavke = zdruziPodvojene([...box.querySelectorAll('.ur-post')].map(r => {
       const sel = r.querySelector('[data-pn]');
       const opt = sel && sel.selectedOptions && sel.selectedOptions[0];
@@ -3205,8 +3281,10 @@
       pozabiPostavke(box._id);
       logDodaj('Arhiv', 'Urejeno', 'Spremni list ' + ((box._note && box._note.number) || ''));
       toast('Spremni list shranjen');
+      const _vrniSe = box._id;
       await naloziListe();
       risiArhiv();
+      pokaziList(_vrniSe);
     } catch (e) {
       msg.textContent = 'Napaka: ' + (e.message || e);
     }
@@ -3399,6 +3477,7 @@
     box.querySelector('[data-preklici]').addEventListener('click', () => { box.innerHTML = ''; box.classList.remove('show'); });
     box.querySelector('[data-shrani]').addEventListener('click', () => shraniNovList(box));
     wireSeg(box);
+    datumVrata(box);
     { const _os = box.querySelector('[data-org]'); if (_os) _os.addEventListener('change', async () => { await nalozArtSez(box); napolniPremade(); osveziKgPrikaz(box); }); }
     box.classList.add('show');
     box.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -3419,6 +3498,7 @@
     if (!org_id) { msg.textContent = 'Izberi stranko.'; return; }
     if (!seq || !leto) { msg.textContent = 'Vpiši številko in leto.'; return; }
     if (!doc_date) { msg.textContent = 'Vpiši datum.'; return; }
+    if (box._datumOk === false) { msg.textContent = 'Najprej potrdi datum zgoraj.'; return; }
     const postavke = zdruziPodvojene([...box.querySelectorAll('.ur-post')].map(r => {
       const sel = r.querySelector('[data-pn]');
       const opt = sel && sel.selectedOptions && sel.selectedOptions[0];
@@ -3462,6 +3542,7 @@
       box.innerHTML = ''; box.classList.remove('show');
       await naloziListe();
       risiArhiv();
+      pokaziList(nova && nova.id);
     } catch (e) {
       msg.textContent = 'Napaka: ' + (/duplicate|unique/i.test(e.message || '') ? 'številka ' + seq + '/' + leto + ' je že zasedena' : (e.message || e));
     }
