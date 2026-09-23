@@ -135,7 +135,20 @@ Na svojem računalniku, z bralnikom priklopljenim nanj:
 python3 vpisi_karto.py --ime "Brigita Kaker"
 ```
 
-Izpiše žeton in SQL, ki ga prilepiš v Supabase. Ostalo:
+Za **več kartic zapored** je udobneje:
+
+```bash
+~/sc-kartice-venv/bin/python vpisi_vec.py
+```
+
+Vpišeš ime z nalepke, prisloniš kartico, žeton gre v odložišče (nikjer se ne
+izpiše), ti pa ga v portalu prilepiš pri tej osebi: **Prisotnost → Dodeli
+kartico → ⌘V → Shrani**. Skripta po prvi kartici čaka samo na novo prisloljeno
+kartico in vpraša, preden prepiše že vpisano — tako ne moreš po nesreči
+razveljaviti kartice, ki že dela. Ime, UID in čas zapiše v `vpisane_kartice.csv`
+(ni v repozitoriju), da pozneje veš, čigava je katera fizična kartica.
+
+Posamezna kartica: `vpisi_karto.py` izpiše žeton in SQL. Ostalo:
 
 ```bash
 python3 vpisi_karto.py --preberi     # kaj je na tej kartici?
