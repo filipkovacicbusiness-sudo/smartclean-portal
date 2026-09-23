@@ -14,6 +14,8 @@ Group=pi
 # Če uporabnik ni "pi", popravi User/Group in obe poti.
 ExecStart=/home/pi/stemplj-venv/bin/python /home/pi/terminal/stemplj.py
 WorkingDirectory=/home/pi/terminal
+# Brez tega Python izpis pod systemd zadrži v medpomnilniku in dnevnik je prazen.
+Environment=PYTHONUNBUFFERED=1
 Restart=always
 RestartSec=3
 # Brez povezave se žigi shranijo v vrsto; storitev naj se ne ustavi.

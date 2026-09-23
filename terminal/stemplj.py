@@ -82,11 +82,15 @@ class Lcd:
         except Exception as e:
             print("LCD ni na voljo (%s) — nadaljujem z izpisom na zaslon." % e)
 
-    def dve(self, a, b=""):
+    def dve(self, a, b="", v_dnevnik=True):
         a = transliteriraj(str(a))[:LCD_COLS].ljust(LCD_COLS)
         b = transliteriraj(str(b))[:LCD_COLS].ljust(LCD_COLS)
+        # Vsako sporočilo tudi v dnevnik (journalctl -u stemplj). Brez tega
+        # v pralnici ni mogoče ugotoviti, zakaj nekomu kartica ni delala.
+        # Minutni mirovalni zaslon ne gre v dnevnik — bil bi šum.
+        if v_dnevnik or self.lcd is None:
+            print("[LCD] %s | %s" % (a.strip(), b.strip()), flush=True)
         if self.lcd is None:
-            print("[LCD] %s | %s" % (a.strip(), b.strip()))
             return
         try:
             self.lcd.cursor_pos = (0, 0); self.lcd.write_string(a)
@@ -99,7 +103,7 @@ class Lcd:
         spodaj = time.strftime("  %H:%M   %d.%m.", time.localtime())
         if cakajocih:
             spodaj = ("v vrsti: %d" % cakajocih).ljust(LCD_COLS)
-        self.dve("Prisloni karto", spodaj)
+        self.dve("Prisloni karto", spodaj, v_dnevnik=False)
 
 
 # ════════════════ VRSTA BREZ MREŽE (atomaren zapis) ════════════════
