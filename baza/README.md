@@ -71,6 +71,21 @@ določenega razdelka ne odpre. **Kljukica = datoteka je v tej mapi.**
 Poleg tega sta v mapi dve enkratni opravili, ki nista del sheme:
 `cenik_pocisti_nepovezane.sql` in `id_kljuc_migracija.sql`.
 
+### Migracije 55 in 56 se dajo pognati z ukazom
+
+Odslej sta ti dve tudi v `supabase/migrations/` — isti SQL brez kontrolnih
+poizvedb na koncu (njihovega izpisa prek CLI ni videti). CLI je prijavljen in
+projekt povezan, zato zadošča:
+
+```bash
+supabase db push --dry-run    # pokaže, kaj bi pognal
+supabase db push              # požene
+```
+
+Prvi `push` v tem projektu ustvari zgodovino migracij (`supabase_migrations`).
+Starejših petnajst migracij s tem ne postane sledljivih — bile so pognane ročno
+in jih večinoma ni v repozitoriju. Od tu naprej pa je pot ena sama.
+
 ---
 
 ## 3. Kaj portal uporablja
