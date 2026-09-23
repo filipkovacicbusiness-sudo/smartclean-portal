@@ -1552,7 +1552,7 @@ html[data-view="grid"] #cenikList .sc-isolate .cgrp:not(.open){max-width:var(--t
 .pris-badge.in{background:rgba(47,143,111,.16);color:var(--wm-green,#3f9f6f);}
 .pris-badge.out{background:var(--green-m);color:var(--mid);}
 .pris-hbtns{display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;}
-@media(max-width:560px){.pris-h{flex-direction:column;align-items:stretch;gap:10px;}.pris-hbtns{justify-content:flex-start;}.pris-h .uc-sort{width:100%;}}
+@media(max-width:560px){.pris-h{flex-direction:column;align-items:stretch;gap:10px;}.pris-hbtns{justify-content:flex-start;}}
 .pris-tabs{display:inline-flex;gap:4px;background:var(--green-m);border-radius:100px;padding:3px;}
 .pris-tab{border:none;background:none;color:var(--mid);font-size:.82rem;font-weight:600;padding:5px 14px;border-radius:100px;cursor:pointer;}
 .pris-tab.on{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12);}
@@ -1593,9 +1593,21 @@ html[data-theme="dark"] .pris-chip-x:hover{background:rgba(255,138,122,.16);colo
 .pris-ure{font-family:var(--mono);font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap;}
 #sec-statistika .pris-tbl th:nth-child(2),#sec-statistika .pris-tbl th:nth-child(3),#sec-statistika .pris-tbl td:nth-child(2),#sec-statistika .pris-tbl td:nth-child(3){text-align:right;}
 .uc-eur{color:var(--mid);}
-.uc-sort{height:32px;padding:0 30px 0 12px;border:1px solid var(--line);border-radius:100px;background:var(--surface);color:var(--ink);font:inherit;font-size:.8rem;font-weight:600;cursor:pointer;
-  -webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 11px center;}
-.uc-sort:hover{border-color:var(--mid);}
+/* Evidenca kg — razvrščanje s klikom na naslov stolpca. Puščica je ista ikona
+   kot pri spustnih menijih; obrne se pri naraščajočem vrstnem redu. */
+.uc-ev-tbl th{padding:0;}
+.uc-th{display:inline-flex;align-items:center;gap:5px;width:100%;padding:6px 8px;border:none;background:none;
+  font:inherit;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:var(--mid);font-weight:600;
+  cursor:pointer;border-radius:7px;}
+.uc-th:hover{color:var(--ink);background:var(--green-m);}
+.uc-th.on{color:var(--ink);}
+.uc-th-p{flex:0 0 auto;opacity:0;transition:opacity .15s ease,transform .18s ease;}
+.uc-th:hover .uc-th-p{opacity:.35;}
+.uc-th.on .uc-th-p{opacity:1;}
+.uc-th.on.gor .uc-th-p{transform:rotate(180deg);}
+#sec-statistika .uc-ev-tbl th:nth-child(2) .uc-th,
+#sec-statistika .uc-ev-tbl th:nth-child(3) .uc-th{justify-content:flex-end;}
+.uc-obd-lbl{margin:2px 0 0;font-size:.74rem;color:var(--mid);}
 .pris-act{text-align:right;white-space:nowrap;}
 .pris-emp{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--line);}
 .pris-emp:last-of-type{border-bottom:none;}
