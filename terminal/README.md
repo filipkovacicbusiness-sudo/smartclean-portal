@@ -180,6 +180,32 @@ journalctl -u stemplj -f
 
 ---
 
+## Lučka in pisk
+
+Rdeča lučka v mirovanju; ob zabeleženem žigu zelena in en daljši pisk — znak, da
+lahko kartico umakneš. Ob »že vpisan« ali napaki ostane rdeča, brez piska.
+
+To so ukazi bralniku (escape), ki jih gonilnik CCID privzeto blokira. Enkrat:
+
+```bash
+sudo cp -n /etc/libccid_Info.plist /etc/libccid_Info.plist.izvirnik
+sudo sed -i "/ifdDriverOptions/{n;s/0x0000/0x0001/}" /etc/libccid_Info.plist
+sudo systemctl restart pcscd
+```
+
+Terminal ob zagonu izklopi samodejne signale bralnika (privzeto ob vsaki
+kartici sam zapiska — z našim bi bila dva) in to preverja vsako minuto, ker se
+bralnik lahko pojavi šele po storitvi ali ga kdo prevtakne. Če ukazi ne
+delajo, štemplanje teče naprej brez lučke in piska.
+
+## Ura
+
+Pi 5 brez baterije za RTC ob izklopu izgubi čas in ob vklopu nadaljuje od
+zadnjega shranjenega, dokler ga NTP ne popravi. Zato terminal z mrežo svojega
+časa ne pošilja — velja strežnikov. Brez mreže in z neusklajeno uro si zapomni
+monotoni čas prislona in pravi čas izračuna, ko se ura uskladi. Z baterijo za
+RTC (uradna, ~5 €) je ura prava že ob vklopu.
+
 ## Brez povezave
 
 Žig se shrani v `stemplj_vrsta.jsonl` **s časom prislona** in se pošlje, ko je

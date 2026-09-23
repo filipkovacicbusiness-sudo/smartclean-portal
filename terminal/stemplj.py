@@ -111,6 +111,132 @@ class Lcd:
         self.dve("Prisloni kartico", spodaj, v_dnevnik=False)
 
 
+# ════════════════ LUČKA IN PISK NA BRALNIKU (ACR1252U) ════════════════
+# To so ukazi BRALNIKU (escape), ne kartici. Gonilnik CCID jih prepusti samo, če
+# je v /etc/libccid_Info.plist  ifdDriverOptions = 0x0001  (glej README).
+# Preverjeno na ACR1252U_V117.0: 0x01 rdeča, 0x02 zelena — lučka je ena,
+# dvobarvna, zato obeh hkrati ni.
+#
+# Vse napake se tiho pogoltnejo: lučka in pisk sta okras in terminala nikoli ne
+# smeta ustaviti. Brez njiju štemplanje dela naprej.
+LUC_RDECA = 0x01
+LUC_ZELENA = 0x02
+PISK_MS = 400              # en daljši pisk = žig je zabeležen, kartico lahko umakneš
+_IOCTL_ESCAPE = None
+
+
+class Indikator:
+    def __init__(self):
+        self.javljeno = False
+
+    def _ukaz(self, ukaz, con=None):
+        global _IOCTL_ESCAPE
+        try:
+            from smartcard.scard import (SCardControl, SCardEstablishContext, SCardListReaders,
+                                         SCardConnect, SCardDisconnect, SCardReleaseContext,
+                                         SCARD_SCOPE_USER, SCARD_SHARE_DIRECT, SCARD_LEAVE_CARD,
+                                         SCARD_CTL_CODE)
+            if _IOCTL_ESCAPE is None:
+                _IOCTL_ESCAPE = SCARD_CTL_CODE(1)
+            # Kartica je povezana → ukaz gre po isti povezavi.
+            hcard = getattr(getattr(con, "component", None), "hcard", None) if con is not None else None
+            if hcard:
+                hr, odg = SCardControl(hcard, _IOCTL_ESCAPE, ukaz)
+                if hr == 0:
+                    return list(odg)
+            # Brez kartice → neposredna povezava z bralnikom, samo za ta ukaz.
+            hr, ctx = SCardEstablishContext(SCARD_SCOPE_USER)
+            try:
+                hr, bralniki = SCardListReaders(ctx, [])
+                picc = [r for r in (bralniki or []) if "PICC" in r]
+                if not picc:
+                    return None
+                hr, h, _ = SCardConnect(ctx, picc[0], SCARD_SHARE_DIRECT, 0)
+                if hr:
+                    return None
+                try:
+                    hr, odg = SCardControl(h, _IOCTL_ESCAPE, ukaz)
+                    return list(odg) if hr == 0 else None
+                finally:
+                    SCardDisconnect(h, SCARD_LEAVE_CARD)
+            finally:
+                SCardReleaseContext(ctx)
+        except Exception as e:
+            if not self.javljeno:        # v dnevnik samo enkrat, ne ob vsakem prislonu
+                print("Lučka/pisk ne delata (%s) — štemplanje teče naprej." % e, flush=True)
+                self.javljeno = True
+            return None
+
+    def priprava(self):
+        """
+        Izklopi samodejne signale bralnika in prižge rdečo. Vrne True ob uspehu.
+
+        Bralnik ima privzeto vklopljene samodejne signale (0x7F): ob vsaki zaznavi
+        kartice sam zapiska in pomežikne — z našim piskom bi bila dva.
+
+        Kliče se ob zagonu in nato vsako minuto v mirovanju, ker se bralnik lahko
+        pojavi šele po storitvi ali ga kdo prevtakne. Nastavitev signalov se
+        najprej PREBERE in zapiše samo, če se razlikuje: najbrž gre v trajni
+        pomnilnik bralnika, ki bi ga pisanje vsako minuto obrabilo.
+        """
+        odg = self._ukaz([0xE0, 0x00, 0x00, 0x21, 0x00])
+        if not odg:
+            return False
+        if odg[-1] != 0x00:
+            if self._ukaz([0xE0, 0x00, 0x00, 0x21, 0x01, 0x00]) is None:
+                return False
+        return self._ukaz([0xE0, 0x00, 0x00, 0x29, 0x01, LUC_RDECA]) is not None
+
+    def rdeca(self, con=None):
+        self._ukaz([0xE0, 0x00, 0x00, 0x29, 0x01, LUC_RDECA], con)
+
+    def zabelezeno(self, con=None):
+        self._ukaz([0xE0, 0x00, 0x00, 0x29, 0x01, LUC_ZELENA], con)
+        self._ukaz([0xE0, 0x00, 0x00, 0x28, 0x01, PISK_MS // 10], con)
+
+
+# ════════════════ URA ════════════════
+# Pi 5 brez baterije za RTC ob izklopu izgubi čas; ob vklopu nadaljuje od
+# zadnjega shranjenega (/var/lib/systemd/timesync/clock), dokler ga NTP ne
+# popravi. Žig, poslan s tako uro, bi strežnik sprejel (do 14 dni nazaj) in
+# prihod ob 7:00 bi bil tiho zabeležen kot »sinoči ob 21:30«.
+#
+# Zato: z mrežo časa NE pošiljamo — velja strežnikov. Brez mreže in z
+# neusklajeno uro pa si zapomnimo MONOTONI čas prislona (ta ob uskladitvi ure
+# ne skoči) in pravi čas izračunamo, ko se ura uskladi.
+
+def ura_usklajena():
+    return os.path.exists("/run/systemd/timesync/synchronized")
+
+
+def boot_id():
+    try:
+        with open("/proc/sys/kernel/random/boot_id") as f:
+            return f.read().strip()
+    except Exception:
+        return ""
+
+
+def _iso(t):
+    return datetime.fromtimestamp(t, timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def cas_za_poslati(o, ura_ok_zdaj, boot_zdaj, mono_zdaj, zdaj):
+    """
+    Čas žiga iz vrste, pripravljen za pošiljanje: (ts, pripravljen).
+    pripravljen=False pomeni »še počakaj« — ura še ni usklajena.
+    """
+    if o.get("ura_ok", True):               # ura je bila ob prislonu prava (ali star zapis)
+        return o["ts"], True
+    if o.get("boot") == boot_zdaj:
+        if not ura_ok_zdaj:
+            return None, False
+        return _iso(zdaj - (mono_zdaj - o["mono"])), True
+    # Vmes je bil ponoven zagon, monotoni čas se je ponastavil — boljšega ni.
+    print("Žig iz vrste s časom pred uskladitvijo ure in ponovnim zagonom — pošiljam, kar imam.", flush=True)
+    return o["ts"], True
+
+
 # ════════════════ VRSTA BREZ MREŽE (atomaren zapis) ════════════════
 def nalozi_vrsto():
     out = []
@@ -163,7 +289,10 @@ def izprazni_vrsto(vrsta, secret):
     """
     while vrsta:
         o = vrsta[0]
-        odgovor = posli(o["card_token"], secret, ts=o["ts"], nonce=o["nonce"])
+        ts, pripravljen = cas_za_poslati(o, ura_usklajena(), boot_id(), time.monotonic(), time.time())
+        if not pripravljen:
+            break                      # ura še ni usklajena — pošljemo, ko bo
+        odgovor = posli(o["card_token"], secret, ts=ts, nonce=o["nonce"])
         if odgovor is None:
             break                      # še vedno brez mreže
         vrsta.pop(0)                   # strežnik je odgovoril (tudi z napako) → ne ponavljamo
@@ -293,6 +422,8 @@ def main():
 
     secret = nalozi_secret()
     lcd.dve("SmartClean", "zagon...")
+    ind = Indikator()
+    ind_ok = ind.priprava()
     vrsta = nalozi_vrsto()
     if vrsta:
         izprazni_vrsto(vrsta, secret)
@@ -315,15 +446,20 @@ def main():
     # dvojni prislon ne pristane v vrsti dvakrat in da oseba dobi odgovor takoj.
     zadnji_zigi = {}
 
-    def mirovanje_opravila():
-        nonlocal zadnji_flush, zadnja_minuta
+    def mirovanje_opravila(prazen=True):
+        nonlocal zadnji_flush, zadnja_minuta, ind_ok
         now = time.time()
         if vrsta and (now - zadnji_flush) >= FLUSH_INTERVAL:
             izprazni_vrsto(vrsta, secret)
             zadnji_flush = now
-        if now >= prikaz_do and int(now) // 60 != zadnja_minuta:
+        nova_minuta = now >= prikaz_do and int(now) // 60 != zadnja_minuta
+        if nova_minuta:
             lcd.mirovanje(len(vrsta))
             zadnja_minuta = int(now) // 60
+        # Lučko samo pri praznem bralniku — neposredna povezava bi se sicer
+        # skregala s povezavo do kartice. Dokler ne uspe, vsakič; potem na minuto.
+        if prazen and (not ind_ok or nova_minuta):
+            ind_ok = ind.priprava()
 
     def pokazi(zgoraj, spodaj):
         nonlocal prikaz_do, zadnja_minuta
@@ -351,7 +487,7 @@ def main():
             continue
 
         if uid == na_bralniku:         # ista kartica še leži na bralniku
-            mirovanje_opravila()
+            mirovanje_opravila(prazen=False)
             time.sleep(0.3)
             continue
         na_bralniku = uid
@@ -382,21 +518,33 @@ def main():
         if vrsta:                      # star zaostanek najprej, da ostane zaporedje pravilno
             izprazni_vrsto(vrsta, secret)
 
-        odgovor = posli(zeton, secret, ts=ts, nonce=nonce)
+        # Z mrežo brez našega časa — strežnikov je vedno pravi (glej URA).
+        odgovor = posli(zeton, secret, nonce=nonce)
+        zabelezeno = False
         if odgovor is None:
-            vrsta.append({"card_token": zeton, "ts": ts, "nonce": nonce})
+            vrsta.append({"card_token": zeton, "ts": ts, "nonce": nonce,
+                          "ura_ok": ura_usklajena(), "mono": time.monotonic(), "boot": boot_id()})
             shrani_vrsto(vrsta)
             zadnji_zigi[zeton] = (time.monotonic(), None, None)
             pokazi("Shranjeno offln.", "poslem kasneje")
+            zabelezeno = True          # varno shranjeno na disku, poslalo se bo samo
         else:
             prikazi_odgovor(lcd, odgovor)
             prikaz_do = time.time() + PRIKAZ
             zadnja_minuta = -1
             if isinstance(odgovor, dict) and odgovor.get("ok"):
                 zadnji_zigi[zeton] = (time.monotonic(), odgovor.get("type"), odgovor.get("employee_name"))
+                zabelezeno = True
+
+        # Zelena in en daljši pisk SAMO, ko je žig res zabeležen — to je znak, da
+        # lahko kartico umakneš. Ob »že vpisan« ali napaki ostane rdeča, brez piska.
+        if zabelezeno:
+            ind.zabelezeno(cs.connection)
 
         zadnji_flush = time.time()
         time.sleep(PRIKAZ)
+        if zabelezeno:
+            ind.rdeca(cs.connection)
 
 if __name__ == "__main__":
     try:
