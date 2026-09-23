@@ -3496,8 +3496,23 @@
     if (!risiFakture._wired) {
       $('fakBtn').addEventListener('click', () => { nalozifakture(); _fakObdToggle(); });
       var _fox = $('fakObdX'); if (_fox) _fox.addEventListener('click', function () { var d = _fakDefault(); if ($('fakOd')) $('fakOd').value = d.od; if ($('fakDo')) $('fakDo').value = d.doo; nalozifakture(); _fakObdToggle(); });
-      if ($('fakOd')) $('fakOd').addEventListener('change', _fakObdToggle);
-      if ($('fakDo')) $('fakDo').addEventListener('change', _fakObdToggle);
+      // Sprememba obdobja (ali stranke) mora TAKOJ osvežiti rezultate.
+      // Prej se je osvežilo šele na »Prikaži«: na zaslonu so ostale kartice
+      // prejšnjega obdobja, FAK_ZADNJI pa je držal staro obdobje — gumb
+      // »Natisni osnovo za račun« je zato tiskal številke prejšnjega obdobja,
+      // čeprav sta polji kazali novo. Dve različni obdobji sta dali isto vsoto.
+      var _fakT = null;
+      function _fakOsveziKmalu() {
+        _fakObdToggle();
+        clearTimeout(_fakT);
+        _fakT = setTimeout(function () {
+          var o = $('fakOd'), d = $('fakDo');
+          if (o && d && fakDatumOK(o.value, d.value)) nalozifakture();
+        }, 250);
+      }
+      if ($('fakOd')) $('fakOd').addEventListener('change', _fakOsveziKmalu);
+      if ($('fakDo')) $('fakDo').addEventListener('change', _fakOsveziKmalu);
+      if ($('fakOrg')) $('fakOrg').addEventListener('change', _fakOsveziKmalu);
       var _fx = $('fakXlsxBtn'); if (_fx) _fx.addEventListener('click', () => fakIzvozModal('xlsx'));
       var _fp = $('fakPdfBtn'); if (_fp) _fp.addEventListener('click', () => fakIzvozModal('pdf'));
       risiFakture._wired = true;
@@ -3593,11 +3608,17 @@
   async function nalozifakture() {
     const list = $('fakList');
     const od = $('fakOd').value, doo = $('fakDo').value, orgFilter = $('fakOrg').value;
-    if (!fakDatumOK(od, doo)) { list.innerHTML = '<div class="panel"><p class="u-sub">Izberi veljavno obdobje (od ≤ do).</p></div>'; return; }
+    if (!fakDatumOK(od, doo)) { list.innerHTML = '<div class="panel"><p class="u-sub">Izberi veljavno obdobje (od ≤ do).</p></div>'; FAK_ZADNJI = null; return; }
+    // FAK_ZADNJI takoj razveljavimo: dokler se novo obdobje ne naloži, ne sme
+    // nihče natisniti podatkov prejšnjega.
+    FAK_ZADNJI = null;
     pokaziNalaganje(list);
+    list.style.opacity = '.45';
     const res = await fakZberi(od, doo, orgFilter ? [orgFilter] : null);
+    list.style.opacity = '';
     if (res.error) { list.innerHTML = '<div class="panel"><p class="u-sub">Napaka: ' + escape_(res.error.message) + '</p></div>'; return; }
     const skupine = res.skupine;
+    list.style.opacity = '';
     FAK_ZADNJI = { od, doo, skupine };
     $('fakPod').textContent = skupine.length ? '' : 'V izbranem obdobju ni spremnih listov';
     if (!skupine.length) { list.innerHTML = '<div class="panel"><p class="u-sub">V izbranem obdobju ni spremnih listov.</p></div>'; return; }
