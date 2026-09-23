@@ -1762,20 +1762,43 @@
     if (del.error) { toast('Napaka: ' + del.error.message); return; }
     toast('Zaposleni izbrisan.'); await risiPrisotnost();
   }
+  // Žeton s kartice DESFire je natanko 32 šestnajstiških znakov (16 bajtov).
+  // Izpiše ga  vpisi_karto.py  na računalniku z bralnikom; portal bralnika nima.
+  var ZETON_VZOREC = /^[0-9A-F]{32}$/;
+
   async function prisDodeliKarto(empId) {
     var z = (ZAPOSLENI || []).find(function (x) { return x.id === empId; }); if (!z) return;
-    var stev = await vnesiModal({
+    var zeton = await vnesiModal({
       naslov: (z.card_token ? 'Nova kartica — ' + z.ime : 'Dodeli kartico — ' + z.ime),
-      sporocilo: 'Prisloni kartico k bralniku (številka se vpiše sama) ali jo vpiši ročno.' + (z.card_token ? '\nStara kartica bo prenehala delovati.' : ''),
-      placeholder: 'Številka kartice',
+      sporocilo: 'Prilepi žeton, ki ga je izpisal vpisi_karto.py — 32 šestnajstiških znakov.'
+        + (z.card_token ? '\nStara kartica bo prenehala delovati.' : ''),
+      placeholder: 'npr. A1B2C3D4E5F60718293A4B5C6D7E8F90',
       potrdi: 'Shrani'
     });
-    if (stev === null) return;
-    stev = (stev || '').trim();
-    if (!stev) { toast('Prazna številka — preklicano.'); return; }
-    var up = await sb.from('employees').update({ card_token: stev }).eq('id', empId);
-    if (up.error) { toast('Napaka: ' + (up.error.message.indexOf('duplicate') >= 0 ? 'ta kartica je že dodeljena drugemu zaposlenemu.' : up.error.message)); return; }
-    toast('Kartica shranjena.');
+    if (zeton === null) return;
+    // Presledki in male črke so pri lepljenju običajni — popravimo jih sami.
+    zeton = (zeton || '').replace(/\s+/g, '').toUpperCase();
+    if (!zeton) { toast('Prazen žeton — preklicano.'); return; }
+    if (!ZETON_VZOREC.test(zeton)) {
+      toast('Žeton mora biti 32 šestnajstiških znakov (vpisanih ' + zeton.length + ').');
+      return;
+    }
+    // Enoličnost lovi tudi baza, a tu povemo IME, kar je edino uporabno.
+    var drugi = (ZAPOSLENI || []).find(function (x) { return x.id !== empId && x.card_token === zeton; });
+    if (drugi) { toast('Ta žeton že ima ' + drugi.ime + '.'); return; }
+
+    // .select() je bistven: brez njega update ne pove, ali je zadel kakšno vrstico.
+    // Pravila RLS vrstice SKRIJEJO — zavrnjen popravek ne javi napake, le popravi nič.
+    var up = await sb.from('employees').update({ card_token: zeton }).eq('id', empId).select('id,ime,card_token');
+    if (up.error) {
+      var m = up.error.message || '';
+      toast('Napaka: ' + (m.indexOf('duplicate') >= 0 || m.indexOf('employees_card_token_key') >= 0
+        ? 'ta žeton je že dodeljen drugemu zaposlenemu.' : m));
+      return;
+    }
+    if (!up.data || !up.data.length) { toast('Ni bilo mogoče shraniti — za to vlogo ni pravic.'); return; }
+    z.card_token = up.data[0].card_token;
+    toast('Kartica shranjena za ' + up.data[0].ime + '.');
     await risiPrisotnost();
   }
   // Potrdi/prekliči uro (par prihod–odhod). Označi obe (prihod + odhod).
