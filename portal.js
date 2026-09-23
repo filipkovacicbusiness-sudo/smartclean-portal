@@ -1943,11 +1943,21 @@
     } catch (_) { return e.scrollWidth; }
   }
   var BARS_RAZMIK = 10;   // najmanjši vodoravni presledek med sosednjima napisoma (px)
+  var _barsFitCakaPisave = false;
   function ucBarsFit(scope) {
     var rows = (scope || document).querySelectorAll('.bars-row');
+    // Archivo se naloži šele po prvem izrisu. Dokler teče nadomestna pisava, so
+    // črke drugače široke in meritev besedila zgreši — pri grafu po tednih je
+    // ostal en sam napis od štirinajstih. Zato po naloženih pisavah izmerimo še
+    // enkrat; takrat je status 'loaded' in se to ne ponovi.
+    if (!_barsFitCakaPisave && document.fonts && document.fonts.status !== 'loaded') {
+      _barsFitCakaPisave = true;
+      try { document.fonts.ready.then(function () { try { ucBarsFit(document); } catch (e) {} }); } catch (e) {}
+    }
     [].forEach.call(rows, function (row) {
       var cols = [].slice.call(row.querySelectorAll('.bars-col'));
-      if (!cols.length) return;
+      // Brez širine (skrit razdelek) bi bila meritev napačna in bi poskrili vse.
+      if (!cols.length || !row.clientWidth) return;
       var colW = row.clientWidth / cols.length;
       ['.bars-lab', '.bars-val'].forEach(function (sel) {
         var els = cols.map(function (c) { return c.querySelector(sel); }).filter(Boolean);
