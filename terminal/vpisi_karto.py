@@ -30,6 +30,13 @@ import sc_kartica as sc
 
 
 def cakaj_na_karto(sekund: int = 30):
+    """
+    Počaka na kartico in vrne CardService — NE gole povezave.
+
+    CardService ima __del__, ki povezavo prekine. Če bi vrnili samo
+    cs.connection, bi cs ob vrnitvi iz funkcije šel v smeti in že prvi naslednji
+    ukaz bi padel s »Card not connected«. Klicatelj naj cs drži do konca.
+    """
     print("Prisloni kartico na bralnik …")
     try:
         cs = CardRequest(timeout=sekund, cardType=AnyCardType()).waitforcard()
@@ -37,7 +44,7 @@ def cakaj_na_karto(sekund: int = 30):
         print("Kartice ni bilo. Konec.")
         sys.exit(1)
     cs.connection.connect()
-    return cs.connection
+    return cs
 
 
 def main() -> None:
@@ -72,7 +79,8 @@ def main() -> None:
         print("Napaka: %s" % e)
         sys.exit(1)
 
-    con = cakaj_na_karto()
+    cs = cakaj_na_karto()
+    con = cs.connection   # cs mora ostati živ do konca — glej cakaj_na_karto
     try:
         if a.pocisti:
             sc.pocisti_karto(con)

@@ -125,9 +125,47 @@ def izpeljan_kljuc(osnovni_hex: str, uid: list[int]) -> list[int]:
     return diversify_key(get_list(osnovni_hex), podatki, pad_to_32=False)
 
 
+class OvitBralnik(PCSCDevice):
+    """
+    PC/SC naprava, ki ukaze ovije v ISO 7816-4.
+
+    Knjižnica pošilja SUROVE DESFire ukaze (npr. [0x45]) in računa, da jih
+    naprava posreduje takšne, kakršni so. ACR1252 — in PC/SC na macOS sploh —
+    to zavrne z »Invalid parameter given«, ker enobajtni okvir ni veljaven APDU.
+    Kartice, ki dela brez ovoja, na tem bralniku ni.
+
+    Preslikava je določena:
+        brez podatkov  [CMD]            →  90 CMD 00 00 00
+        s podatki      [CMD, podatki…]  →  90 CMD 00 00 Lc <podatki> 00
+        odgovor        <podatki…> 91 ST →  [ST, podatki…]
+
+    Pri ukazu brez podatkov se Lc NE pošlje — zadnji bajt je Le. Če pošlješ
+    »90 45 00 00 00 00«, bralnik odgovori s »Transaction failed«.
+
+    Drugo obliko knjižnica pričakuje v _communicate(): resp[0] je status,
+    ostalo so podatki, in 0xAF pomeni »še sledi«.
+    """
+
+    def transceive(self, bytes: list[int]) -> list[int]:
+        ukaz = list(bytes)
+        cmd, podatki = ukaz[0], ukaz[1:]
+        if len(podatki) > 255:
+            raise NapakaKartice("Ukaz je predolg za en okvir APDU (%d bajtov)." % len(podatki))
+        if podatki:
+            apdu = [0x90, cmd, 0x00, 0x00, len(podatki)] + podatki + [0x00]
+        else:
+            apdu = [0x90, cmd, 0x00, 0x00, 0x00]
+        odgovor = super().transceive(apdu)
+        if len(odgovor) < 2 or odgovor[-2] != 0x91:
+            raise NapakaKartice(
+                "Bralnik je vrnil nepričakovan odgovor: %s" % to_hex_string(list(odgovor))
+            )
+        return [odgovor[-1]] + list(odgovor[:-2])
+
+
 def poveži(connection) -> DESFire:
-    """Ovije PC/SC povezavo v objekt DESFire."""
-    return DESFire(PCSCDevice(connection.component))
+    """Ovije PC/SC povezavo v objekt DESFire (z ovojem ISO 7816)."""
+    return DESFire(OvitBralnik(connection.component))
 
 
 # ══════════════════════════ BRANJE (terminal) ══════════════════════════
@@ -200,6 +238,12 @@ def vpisi_karto(connection, kljuci: dict, ponovno: bool = False) -> str:
         KeySettings(
             settings=[
                 DESFireKeySettings.KS_ALLOW_CHANGE_MK,
+                # Brez te zastavice GetFileSettings in GetFileIDs zahtevata ključ 0
+                # (app master). Terminal ima samo bralni ključ, zato bi branje
+                # žetona odpovedalo ob vsakem prislonu s »ST_AuthentError«.
+                # Metapodatki (velikost, način šifriranja) niso skrivnost —
+                # vsebina datoteke ostane zaščitena z bralnim ključem in šifrirana.
+                DESFireKeySettings.KS_LISTING_WITHOUT_MK,
                 DESFireKeySettings.KS_CONFIGURATION_CHANGEABLE,
             ],
             key_type=DESFireKeyType.DF_KEY_AES,
