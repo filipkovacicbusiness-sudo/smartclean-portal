@@ -2616,6 +2616,7 @@
         await sb.from('delivery_note_items').delete().eq('note_id', k.note_id);
         var items = (Array.isArray(k.postavke) ? k.postavke : []).filter(function (p) { return p && p.naziv; }).map(function (p, i) { return { note_id: k.note_id, article_name: String(p.naziv), pieces: Number(p.kosov) || 0, sort_order: i }; });
         if (items.length) { var e2 = (await sb.from('delivery_note_items').insert(items)).error; if (e2) throw e2; }
+        delete _POST_CACHE[k.note_id];   // osveži predpomnjene postavke tega lista
         logDodaj('Arhiv', 'Urejeno', 'Prekrivanje rešeno (tablica) · ' + (k.number || ''));
       } else {
         logDodaj('Arhiv', 'Urejeno', 'Prekrivanje rešeno (portal) · ' + (k.number || ''));
@@ -2718,6 +2719,7 @@
     try {
       var r1 = await sb.from('delivery_note_items').delete().eq('note_id', id); if (r1.error) throw r1.error;
       var r2 = await sb.from('delivery_notes').delete().eq('id', id); if (r2.error) throw r2.error;
+      delete _POST_CACHE[id];
       logDodaj('Arhiv', 'Izbrisano dokončno', 'Spremni list dokončno izbrisan iz koša');
       toast('Dokončno izbrisano'); arhivKos();
     } catch (e) { toast('Napaka: ' + (e && e.message ? e.message : e)); }
@@ -2730,10 +2732,10 @@
     try {
       // Stranično (brez meje 1000): pri 80 listih bi vsota postavk lahko presegla privzeto mejo in bi kateri list dobil nepopolne postavke.
       var r = await vseVrstice(function (a, b) {
-        return sb.from('delivery_note_items').select('note_id,article_name,pieces,sort_order').in('note_id', ids).order('note_id', { ascending: true }).order('sort_order', { ascending: true }).range(a, b);
+        return sb.from('delivery_note_items').select('note_id,article_name,article_id,pieces,sort_order').in('note_id', ids).order('note_id', { ascending: true }).order('sort_order', { ascending: true }).range(a, b);
       });
       if (r && !r.error) {
-        var by = {}; (r.data || []).forEach(function (it) { (by[it.note_id] = by[it.note_id] || []).push({ naziv: it.article_name, kosov: it.pieces }); });
+        var by = {}; (r.data || []).forEach(function (it) { (by[it.note_id] = by[it.note_id] || []).push({ naziv: it.article_name, kosov: it.pieces, artId: it.article_id }); });
         ids.forEach(function (id) { _POST_CACHE[id] = by[id] || []; });
       }
     } catch (e) {}
@@ -2765,11 +2767,11 @@
     }
     // Prvič brez predpomnilnika: naloži PRED razpiranjem, da se odpre naravnost v pravo višino (brez skoka).
     try {
-      const { data, error } = await sb.from('delivery_note_items').select('article_name,pieces,sort_order').eq('note_id', btn.dataset.id).order('sort_order');
+      const { data, error } = await sb.from('delivery_note_items').select('article_name,article_id,pieces,sort_order').eq('note_id', btn.dataset.id).order('sort_order');
       if (error) { box.innerHTML = '<div class="a-det-in"><div class="a-det-pad"><p class="u-sub">Napaka: ' + escape_(error.message) + '</p></div></div>'; odpri(); return; }
       box._id = btn.dataset.id;
       box._note = LISTI.find(l => l.id === btn.dataset.id) || {};
-      box._items = (data || []).map(p => ({ naziv: p.article_name, kosov: p.pieces }));
+      box._items = (data || []).map(p => ({ naziv: p.article_name, kosov: p.pieces, artId: p.article_id }));
       _POST_CACHE[btn.dataset.id] = box._items;
       risiListDetajl(box);
       box.dataset.loaded = '1';
@@ -2941,24 +2943,28 @@
       <p class="u-sub ur-msg" data-msg></p></div>`;
     const pBox = box.querySelector('[data-postavke]');
     await nalozArtSez(box);
-    function napolniPn(sel, curName) {
+    function napolniPn(sel, curName, curId) {
       var arts = box._arts || [];
-      var matched = arts.some(function (a) { return a.name === curName; });
+      // Najprej poveži po ID artikla — preimenovan artikel se prepozna in dobi novo ime (brez »star zapis«).
+      var poId = null;
+      if (curId != null && curId !== '') { for (var _i = 0; _i < arts.length; _i++) { if (arts[_i].id != null && String(arts[_i].id) === String(curId)) { poId = arts[_i]; break; } } }
+      var matched = !!poId || arts.some(function (a) { return a.name === curName; });
       var opts = '';
       if (curName && !matched) opts += '<option value="' + escape_(curName) + '" data-aid="" selected>' + escape_(curName) + ' — star zapis</option>';
       opts += '<option value="">— izberi artikel —</option>';
       arts.forEach(function (a) {
         var lab = a.name;
-        opts += '<option value="' + escape_(a.name) + '" data-aid="' + escape_(String(a.id || '')) + '" data-sifra="' + escape_(String(a.sifra != null ? a.sifra : '')) + '" data-teza="' + escape_(String(a.teza != null ? a.teza : '')) + '" data-koda="' + escape_(a.koda || '') + '"' + (a.name === curName ? ' selected' : '') + '>' + escape_(lab) + '</option>';
+        var izb = poId ? (a === poId) : (a.name === curName);
+        opts += '<option value="' + escape_(a.name) + '" data-aid="' + escape_(String(a.id || '')) + '" data-sifra="' + escape_(String(a.sifra != null ? a.sifra : '')) + '" data-teza="' + escape_(String(a.teza != null ? a.teza : '')) + '" data-koda="' + escape_(a.koda || '') + '"' + (izb ? ' selected' : '') + '>' + escape_(lab) + '</option>';
       });
       sel.innerHTML = opts;
     }
     const osveziKg = () => osveziKgPrikaz(box);
-    const dodajVrstico = (naziv = '', kosov = '') => {
+    const dodajVrstico = (naziv = '', kosov = '', artId = '') => {
       const row = document.createElement('div');
       row.className = 'ur-post';
       row.innerHTML = `<button type="button" class="ur-grip dnd-handle" title="povleci za razvrščanje" aria-label="razvrsti">${DND_ICON}</button><span class="ur-pid" data-pid aria-hidden="true"></span><select data-pn class="ur-pn" aria-label="Artikel"></select><input type="number" inputmode="numeric" min="0" step="1" aria-label="Količina (kosov)" data-pk placeholder="kos" value="${kosov}"><button type="button" class="ur-del" data-del title="odstrani">×</button>`;
-      napolniPn(row.querySelector('[data-pn]'), naziv);
+      napolniPn(row.querySelector('[data-pn]'), naziv, artId);
       _osveziPid(row);
       row.querySelector('[data-del]').addEventListener('click', () => { row.remove(); osveziKg(); });
       row.querySelector('[data-pn]').addEventListener('change', () => { if (_dvojnikArtikla(row)) { var s = row.querySelector('[data-pn]'); if (s) s.value = ''; toast('Ta artikel je že na seznamu.'); } osveziKg(); _ocenaPostavke(row); _osveziPid(row); });
@@ -2968,34 +2974,28 @@
       _ocenaPostavke(row);
       dndSort(pBox, '.ur-post', '.ur-grip', osveziKg);   // povleci za vrstni red
     };
-    (box._items || []).forEach(p => dodajVrstico(p.naziv, p.kosov));
+    (box._items || []).forEach(p => dodajVrstico(p.naziv, p.kosov, p.artId));
     if (!(box._items || []).length) dodajVrstico();
     osveziKg();
     box.querySelector('[data-dodaj]').addEventListener('click', () => dodajVrstico());
     box.querySelector('[data-preklici]').addEventListener('click', () => risiListDetajl(box));
     box.querySelector('[data-shrani]').addEventListener('click', () => shraniList(box));
     wireSeg(box);
-    // Menjava stranke med urejanjem: postavke in količine prejšnje stranke NE ostanejo.
-    // Druga stranka → svež seznam njenih artiklov s praznimi količinami; nazaj na izvirno → povrni izvirne postavke.
+    // Menjava stranke med urejanjem: VEDNO svež premade seznam izbrane stranke s praznimi
+    // količinami (tudi ob preklopu nazaj na izvirno stranko) — stare postavke in številke ne ostanejo.
     { const _os = box.querySelector('[data-org]'); if (_os) _os.addEventListener('change', async () => {
         await nalozArtSez(box);
         pBox.innerHTML = '';
-        if (String(_os.value) === String(n.org_id || '')) {
-          (box._items || []).forEach(p => dodajVrstico(p.naziv, p.kosov));
-          if (!(box._items || []).length) dodajVrstico();
-        } else {
-          // premade seznam NOVE stranke (kot pri novem listu): najpogosteje uporabljeni, sicer cel katalog
-          const arts = box._arts || [];
-          let izbor = box._imaUporabo ? arts.filter(a => a._u > 0) : arts;
-          if (!izbor.length) izbor = arts;
-          const vid = {};
-          izbor.forEach(a => {
-            if (!a.name) return;
-            const k = (a.sifra != null && !isNaN(a.sifra)) ? ('s' + a.sifra) : (a.id ? ('a' + a.id) : ('n' + a.name.trim().toLowerCase()));
-            if (vid[k]) return; vid[k] = 1; dodajVrstico(a.name, '');
-          });
-          if (!pBox.children.length) dodajVrstico();
-        }
+        const arts = box._arts || [];
+        let izbor = box._imaUporabo ? arts.filter(a => a._u > 0) : arts;
+        if (!izbor.length) izbor = arts;
+        const vid = {};
+        izbor.forEach(a => {
+          if (!a.name) return;
+          const k = (a.sifra != null && !isNaN(a.sifra)) ? ('s' + a.sifra) : (a.id ? ('a' + a.id) : ('n' + a.name.trim().toLowerCase()));
+          if (vid[k]) return; vid[k] = 1; dodajVrstico(a.name, '');
+        });
+        if (!pBox.children.length) dodajVrstico();
         osveziKg();
       }); }
   }
@@ -3054,6 +3054,7 @@
         r = await sb.from('delivery_note_items').insert(rows);
         if (r.error) throw r.error;
       }
+      delete _POST_CACHE[box._id];   // KLJUČNO: sicer ponovni prikaz/urejanje pokaže stare postavke in jih ob shranjevanju zapiše nazaj
       logDodaj('Arhiv', 'Urejeno', 'Spremni list ' + ((box._note && box._note.number) || ''));
       toast('Spremni list shranjen');
       await naloziListe();
