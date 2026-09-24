@@ -3210,9 +3210,28 @@
       { transform: 'translate(0px,0px)', clipPath: 'inset(0px 0px 0px 0px round ' + r1 + 'px)' }
     ];
   }
+  // Natančna kopija kartice na vrhu okna med animacijo: prvi okvir odpiranja in zadnji
+  // okvir zapiranja sta videti kot kartica sama — kartica se poveča v okno (in skrči nazaj),
+  // namesto da bi nad njo zrasla kopija, ona pa izginila šele na koncu.
+  function oknoDuh(o) {
+    var k = o.kartica, r = k.getBoundingClientRect(), cel = k.closest('.lcell');
+    var ovoj = document.createElement('div');
+    ovoj.className = (cel ? [].filter.call(cel.classList, function (c) { return c !== 'open'; }).join(' ') + ' ' : '') + 'okno-duh';
+    ovoj.style.width = r.width + 'px'; ovoj.style.height = r.height + 'px';
+    ovoj.setAttribute('aria-hidden', 'true');
+    var kop = k.cloneNode(true);
+    kop.classList.remove('okno-vir', 'arh-flash');
+    ['id', 'data-id', 'data-i', 'aria-expanded', 'style'].forEach(function (a) { kop.removeAttribute(a); });
+    kop.querySelectorAll('[style],[data-pot],[tabindex]').forEach(function (el) { el.removeAttribute('style'); el.removeAttribute('data-pot'); el.removeAttribute('tabindex'); });
+    kop.setAttribute('tabindex', '-1');
+    ovoj.appendChild(kop);
+    o.panel.appendChild(ovoj);
+    return ovoj;
+  }
   function oknoOdpri(kartica, vsebina, najdi) {
     if (_okno) oknoZapri(true);
     var back = document.createElement('div'); back.className = 'okno-back';
+    var zatemni = document.createElement('div'); zatemni.className = 'okno-zatemni'; back.appendChild(zatemni);
     var panel = document.createElement('div'); panel.className = 'okno';
     panel.setAttribute('role', 'dialog'); panel.setAttribute('aria-modal', 'true');
     var notr = document.createElement('div'); notr.className = 'okno-notr';
@@ -3248,18 +3267,19 @@
       });
       o.ro.observe(vsebina);
     }
-    requestAnimationFrame(function () { back.classList.add('show'); });
-    if (oknoMirno() || !panel.animate) { kartica.classList.add('okno-vir'); oknoFokus(o); return; }
-    // Kartica ostane vidna pod oknom, dokler ga ne prekrije — prehod je pretapljanje, ne skok.
+    void back.offsetWidth; back.classList.add('show');   // zatemnitev začne takoj (brez čakanja na naslednji okvir)
+    if (oknoMirno() || !panel.animate) { kartica.classList.add('okno-vir'); panel.classList.add('stoji'); oknoFokus(o); return; }
     o.morf = true;
     var m = oknoMorf(o);
-    panel.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 110, easing: 'linear' });
-    glava.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 180, delay: 40, easing: 'ease', fill: 'backwards' });
-    telo.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 240, delay: 110, easing: 'ease', fill: 'backwards' });
-    panel.animate(m, { duration: 360, easing: OKNO_KRIVULJA }).finished.then(function () {
-      o.morf = false; o.visina = panel.offsetHeight;
-      if (_okno === o && !o.zapiram) o.kartica.classList.add('okno-vir');   // o.kartica: med rastjo je lahko seznam že izrisan na novo
-    }, function () { o.morf = false; });
+    var duh = oknoDuh(o);
+    kartica.classList.add('okno-vir');   // kartica se spremeni v okno: njeno mesto se izprazni takoj
+    duh.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 170, delay: 60, easing: 'ease', fill: 'forwards' });
+    notr.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 230, delay: 120, easing: 'ease', fill: 'backwards' });
+    var konecRasti = function () {
+      duh.remove(); o.morf = false; o.visina = panel.offsetHeight;
+      if (_okno === o && !o.zapiram) panel.classList.add('stoji');   // senca šele, ko okno stoji (clip-path bi jo med rastjo odrezal)
+    };
+    panel.animate(m, { duration: 380, easing: OKNO_KRIVULJA }).finished.then(konecRasti, konecRasti);
     oknoFokus(o);
   }
   function oknoFokus(o) { try { o.x.focus({ preventScroll: true }); } catch (e) {} }
@@ -3296,15 +3316,16 @@
       return;
     }
     o.kartica = k;
+    k.classList.add('okno-vir');   // med krčenjem je mesto še prazno; kartica se vrne, ko je okno spet ona
     // Kartica mora biti na zaslonu, sicer bi se okno skrčilo nekam izven pogleda.
     var r = k.getBoundingClientRect(), tb = document.querySelector('.topbar'), vrh = tb ? tb.offsetHeight : 0;
     if (r.bottom < vrh || r.top > window.innerHeight) { try { k.scrollIntoView({ block: 'center' }); } catch (e) {} }
-    k.classList.remove('okno-vir');   // pod oknom, ki se krči; na koncu se pretopi vanjo
+    o.panel.classList.remove('stoji');
     var m = oknoMorf(o);
-    // Vsebina izgine takoj, glava (barva, številka) pa ostane, dokler se okno ne pretopi v kartico.
-    o.telo.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 140, easing: 'ease', fill: 'forwards' });
-    o.panel.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 110, delay: 190, easing: 'linear', fill: 'forwards' });
-    o.panel.animate([m[1], m[0]], { duration: 300, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'forwards' }).finished.then(konec, konec);
+    var duh = oknoDuh(o);
+    o.notr.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 150, easing: 'ease', fill: 'forwards' });
+    duh.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 170, delay: 120, easing: 'ease', fill: 'both' });
+    o.panel.animate([m[1], m[0]], { duration: 320, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'forwards' }).finished.then(konec, konec);
   }
   // Seznam pod oknom je bil izrisan na novo (shranjevanje, brisanje, osvežitev):
   // poveži okno z novo kartico ali ga zapri, če kartice ni več.
