@@ -1647,7 +1647,10 @@ html[data-theme="dark"] .pris-chip-x:hover{background:rgba(255,138,122,.16);colo
   #sec-prisotnost .pris-tbl th{font-size:.64rem;padding:6px 6px;white-space:nowrap;}
   #sec-prisotnost .pris-tbl td{padding:8px 6px;font-size:.82rem;}
   #sec-prisotnost .pris-tbl td:first-child,#sec-prisotnost .pris-tbl th:first-child{white-space:nowrap;max-width:34vw;overflow:hidden;text-overflow:ellipsis;}
-  #sec-prisotnost .pris-pairs{white-space:nowrap;}
+  /* Več intervalov na dan se zloži v stolpcu drug pod drugega. Z nowrap so pri stalni
+     širini stolpca (table-layout:fixed) prekrili »Ur« in »+ ročno«. Posamezen interval
+     se ne prelomi (.pris-chip ima svoj nowrap). */
+  #sec-prisotnost .pris-pairs{white-space:normal;}
 }
 
 /* Mobilno: skrij vrstico z davčno št. in naslovom v okvirčku stranke */
