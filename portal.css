@@ -2123,14 +2123,11 @@ html[data-theme="dark"] .u-acts .u-pin.on{background:rgba(110,211,161,.16);color
 .okno{position:relative;width:min(880px,100%);display:flex;flex-direction:column;overflow:hidden;
   max-height:calc(100vh - 48px);max-height:calc(100dvh - 48px);
   background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:18px;
-  box-shadow:0 24px 70px rgba(0,0,0,.28);}   /* stalna — okno se pojavi s prosojnostjo, senca z njim (prehod sence bi silil v ponovni izris) */
-/* Površina, ki med animacijo zraste iz kartice v okno (samo transform — brez ponovnega izrisa). */
-.okno-povrsina{position:fixed;background:var(--surface);border:1px solid var(--line);border-radius:18px;
-  transform-origin:0 0;will-change:transform;pointer-events:none;box-sizing:border-box;}
+  box-shadow:0 24px 70px rgba(0,0,0,.28);transform-origin:0 0;}   /* senca raste z oknom (del iste plasti) */
 /* Kopija kartice med animacijo (oknoDuh): natanko na mestu in v velikosti kartice. */
 .okno-duh{position:fixed;pointer-events:none;display:block!important;margin:0;}
 .okno-duh > *{width:100%;height:100%!important;margin:0!important;transform:none!important;}
-.okno-notr{display:flex;flex-direction:column;min-height:0;flex:1 1 auto;}
+.okno-notr{display:flex;flex-direction:column;min-height:0;flex:1 1 auto;transform-origin:0 0;}   /* nasprotni razteg med rastjo okna */
 .okno-glava{position:relative;flex:0 0 auto;}
 .okno-telo{flex:1 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain;}
 .okno-x{position:absolute;top:16px;right:16px;z-index:2;}

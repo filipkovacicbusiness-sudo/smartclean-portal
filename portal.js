@@ -3275,26 +3275,34 @@
     o.panel.setAttribute('aria-label', nasl ? nasl.textContent.trim() : 'Podrobnosti');
   }
   // Kartica na mestu, kjer je okno nastalo: od tam okno zraste in tja se vrne.
-  // Raste PRAZNA površina (plošča v barvi okna), in to samo s transform: to izvaja
-  // grafična kartica brez ponovnega izrisa. Prej je raslo celo okno s clip-path in
-  // brskalnik je v vsakem okvirju znova izrisal vso vsebino (dolg obrazec, seznam) —
-  // animacija je bila včasih zatikajoča. Zaobljenost kotov je med raztegom izravnana
-  // (r/sx, r/sy), da koti ostanejo okrogli.
-  function oknoMorf(o) {
-    var c = o.kartica.getBoundingClientRect(), p = o.panel.getBoundingClientRect();
-    var r0 = parseFloat(getComputedStyle(o.kartica).borderTopLeftRadius) || 14;
-    var r1 = parseFloat(getComputedStyle(o.panel).borderTopLeftRadius) || 18;
-    var sx = Math.max(0.02, c.width / p.width), sy = Math.max(0.02, c.height / p.height);
-    return { p: p, kljuci: [
-      { transform: 'translate(' + (c.left - p.left) + 'px,' + (c.top - p.top) + 'px) scale(' + sx + ',' + sy + ')', borderRadius: (r0 / sx) + 'px / ' + (r0 / sy) + 'px' },
-      { transform: 'translate(0px,0px) scale(1,1)', borderRadius: r1 + 'px / ' + r1 + 'px' }
-    ] };
+  // Raste OKNO SAMO (z vsebino in senco), a le s transform: okno se razteguje, njegova
+  // vsebina pa z NASPROTNIM raztegom ostane v pravi velikosti in se razkriva z robom okna.
+  // Vse to izvaja grafična kartica — brez ponovnega izrisa vsebine (clip-path ga je zahteval)
+  // in brez ločene površine, za katero je senca okna zamujala.
+  // Nasprotni razteg je pravilen le, če je v vsakem trenutku točno 1/s, zato ključe
+  // izračunamo v 24 korakih z isto krivuljo (linearno med koraki).
+  function oknoKrivulja(x1, y1, x2, y2) {
+    function b(t, a1, a2) { var u = 1 - t; return 3 * u * u * t * a1 + 3 * u * t * t * a2 + t * t * t; }
+    return function (x) {
+      if (x <= 0) return 0; if (x >= 1) return 1;
+      var lo = 0, hi = 1, t = x;
+      for (var i = 0; i < 28; i++) { var bx = b(t, x1, x2); if (Math.abs(bx - x) < 1e-5) break; if (bx < x) lo = t; else hi = t; t = (lo + hi) / 2; }
+      return b(t, y1, y2);
+    };
   }
-  function oknoPovrsina(o, p) {
-    var pov = document.createElement('div'); pov.className = 'okno-povrsina';
-    pov.style.left = p.left + 'px'; pov.style.top = p.top + 'px'; pov.style.width = p.width + 'px'; pov.style.height = p.height + 'px';
-    o.back.insertBefore(pov, o.panel);
-    return pov;
+  var OKNO_ODPRI = oknoKrivulja(.22, .61, .36, 1), OKNO_ZAPRI = oknoKrivulja(.4, 0, .2, 1);
+  function oknoKljuci(o, krivulja, zapri) {
+    var c = o.kartica.getBoundingClientRect(), p = o.panel.getBoundingClientRect();
+    var sx0 = Math.max(0.02, c.width / p.width), sy0 = Math.max(0.02, c.height / p.height);
+    var dx = c.left - p.left, dy = c.top - p.top, N = 24, okno = [], notr = [];
+    for (var i = 0; i <= N; i++) {
+      var t = i / N, e = krivulja(t);
+      var f = zapri ? e : 1 - e;   // delež »kartice«: 1 = kartica, 0 = okno
+      var sx = 1 + (sx0 - 1) * f, sy = 1 + (sy0 - 1) * f;
+      okno.push({ offset: t, transform: 'translate(' + (dx * f) + 'px,' + (dy * f) + 'px) scale(' + sx + ',' + sy + ')' });
+      notr.push({ offset: t, transform: 'scale(' + (1 / sx) + ',' + (1 / sy) + ')' });
+    }
+    return { okno: okno, notr: notr };
   }
   // Natančna kopija kartice na njenem mestu med animacijo: prvi okvir odpiranja in zadnji
   // okvir zapiranja sta videti kot kartica sama — kartica se poveča v okno (in skrči nazaj),
@@ -3314,7 +3322,7 @@
     kop.querySelectorAll('[style],[data-pot],[tabindex]').forEach(function (el) { el.removeAttribute('style'); el.removeAttribute('data-pot'); el.removeAttribute('tabindex'); });
     kop.setAttribute('tabindex', '-1');
     ovoj.appendChild(kop);
-    o.back.insertBefore(ovoj, o.panel);   // nad površino, pod oknom
+    o.back.appendChild(ovoj);   // nad oknom: prvi okvir odpiranja / zadnji zapiranja je kartica
     return ovoj;
   }
   // moznosti.glava: funkcija(kartica), ki vrne element glave (sicer kopija kartice);
@@ -3365,16 +3373,16 @@
     void back.offsetWidth; back.classList.add('show');   // zatemnitev začne takoj (brez čakanja na naslednji okvir)
     if (oknoMirno() || !panel.animate) { kartica.classList.add('okno-vir'); oknoFokus(o); return; }
     o.morf = true;
-    var m = oknoMorf(o);
-    var pov = oknoPovrsina(o, m.p);
+    var kl = oknoKljuci(o, OKNO_ODPRI, false);
     var duh = oknoDuh(o);
     kartica.classList.add('okno-vir');   // kartica se spremeni v okno: njeno mesto se izprazni takoj
-    // Kopija kartice izgine, površina zraste do okna, vsebina okna se pretopi na končnem mestu.
-    // Vse tri so le opacity/transform (brez ponovnega izrisa vsebine).
-    duh.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 160, delay: 50, easing: 'ease', fill: 'forwards' });
-    panel.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 190, delay: 170, easing: 'ease', fill: 'backwards' });
-    var konecRasti = function () { pov.remove(); duh.remove(); o.morf = false; o.visina = panel.offsetHeight; };
-    pov.animate(m.kljuci, { duration: 380, easing: OKNO_KRIVULJA }).finished.then(konecRasti, konecRasti);
+    // Okno (s senco) raste iz kartice; kopija kartice nad njim izgine; vsebina se pretopi.
+    panel.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 90, easing: 'linear' });
+    duh.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 170, delay: 60, easing: 'ease', fill: 'forwards' });
+    notr.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, delay: 90, easing: 'ease', fill: 'backwards' });
+    notr.animate(kl.notr, { duration: 380, easing: 'linear' });
+    var konecRasti = function () { duh.remove(); o.morf = false; o.visina = panel.offsetHeight; };
+    panel.animate(kl.okno, { duration: 380, easing: 'linear' }).finished.then(konecRasti, konecRasti);
     oknoFokus(o);
   }
   function oknoFokus(o) { try { o.x.focus({ preventScroll: true }); } catch (e) {} }
@@ -3416,12 +3424,16 @@
     // Kartica mora biti na zaslonu, sicer bi se okno skrčilo nekam izven pogleda.
     var r = k.getBoundingClientRect(), tb = document.querySelector('.topbar'), vrh = tb ? tb.offsetHeight : 0;
     if (r.bottom < vrh || r.top > window.innerHeight) { try { k.scrollIntoView({ block: 'center' }); } catch (e) {} }
-    var m = oknoMorf(o);
-    var pov = oknoPovrsina(o, m.p);   // pod oknom, enaka ploskev — ko okno izgine, se skrči v kartico
+    // Morebitna še tekoča rast ali sprememba višine: izhodišče mora biti mirujoče okno.
+    o.panel.getAnimations().forEach(function (a) { a.cancel(); });
+    o.notr.getAnimations().forEach(function (a) { a.cancel(); });
+    var kl = oknoKljuci(o, OKNO_ZAPRI, true);
     var duh = oknoDuh(o);
-    o.panel.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 130, easing: 'ease', fill: 'forwards' });
+    o.notr.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 140, easing: 'ease', fill: 'forwards' });
+    o.notr.animate(kl.notr, { duration: 320, easing: 'linear', fill: 'forwards' });
     duh.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 160, delay: 150, easing: 'ease', fill: 'both' });
-    pov.animate([m.kljuci[1], m.kljuci[0]], { duration: 320, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'forwards' }).finished.then(konec, konec);
+    o.panel.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 90, delay: 230, easing: 'linear', fill: 'forwards' });   // senca okna ugasne, ko je okno že kartica
+    o.panel.animate(kl.okno, { duration: 320, easing: 'linear', fill: 'forwards' }).finished.then(konec, konec);
   }
   // Seznam pod oknom je bil izrisan na novo (shranjevanje, brisanje, osvežitev):
   // poveži okno z novo kartico ali ga zapri, če kartice ni več.
