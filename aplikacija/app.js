@@ -1263,7 +1263,10 @@ async function osveziKatalog(tiho){
   if(katalogTecev) return;
   katalogTecev = true;
   try{
-    var orgs = await apiVse("orgs?select=id,name,legal_name,address,vat_id,legacy_id&order=name");
+    /* kot v portalu: izbrisane stranke (koš, deleted_at) se ne prikažejo — prej jih je aplikacija kazala */
+    var orgs;
+    try{ orgs = await apiVse("orgs?select=id,name,legal_name,address,vat_id,legacy_id&deleted_at=is.null&order=name"); }
+    catch(_e){ if(/ni povezave|seja je potekla|ni prijavljena/i.test((_e && _e.message) || "")) throw _e; orgs = await apiVse("orgs?select=id,name,legal_name,address,vat_id,legacy_id&order=name"); }
     var arts;
     try{ arts = await apiVse("articles?select=id,org_id,name,legacy_id,sort_order,teza,viden_app&order=sort_order,id"); }
     catch(_e){ arts = await apiVse("articles?select=id,org_id,name,legacy_id,sort_order,teza&order=sort_order,id"); }
@@ -1287,6 +1290,8 @@ async function osveziKatalog(tiho){
          portalu ni); ostane le stranka, na katero še čaka neposlan list (da ga lahko urediš) */
       var cakajo = {}; entries.forEach(function(e){ if(!e.syncedAt) cakajo[e.strankaId] = true; });
       CLIENTS = CLIENTS.filter(function(c){ return !!(pk["l:" + c.id] || (c.orgUuid && pk["u:" + c.orgUuid]) || pk["n:" + (c.naziv || "").toLowerCase()]) || cakajo[c.id]; });
+      /* izbrana stranka je bila medtem v portalu izbrisana */
+      if(selectedId && !editingId && !clientById(selectedId)){ selectedId = null; draftQty = {}; toast("Izbrana stranka je bila v portalu izbrisana — izberi drugo."); if(session){ renderSummary(); } }
     }
     await saveClients();
     if(session){ setClientLabel(); renderEntry(); if($("oknoStranke").classList.contains("odprto")) fillClientGrid(); }
@@ -1300,7 +1305,7 @@ async function osveziStrankinArtikle(cid){
   try{
     var orgId = c.orgUuid;
     if(!orgId){
-      var orgs = await apiVse("orgs?select=id,name,legacy_id&order=name");
+      var orgs = await apiVse("orgs?select=id,name,legacy_id&deleted_at=is.null&order=name");
       var org = orgs.find(function(o){ return (o.legacy_id && o.legacy_id === c.id) || (o.name || "").trim().toLowerCase() === (c.naziv || "").trim().toLowerCase(); });
       if(!org) return false;
       orgId = c.orgUuid = org.id;
@@ -1371,6 +1376,12 @@ async function potegniIzPortala(){
       if(!pr){ spremenjeno = true; return; }   // izbrisan v portalu
       obdrzi.push(e);
       if(e.portalId !== pr.id){ e.portalId = pr.id; spremenjeno = true; }
+      /* ime in podatki stranke kot v portalu (preimenovanje v portalu velja tudi za stare liste) */
+      if(pr.orgs){
+        var o = pr.orgs;
+        if(o.name && o.name !== e.strankaNaziv){ e.strankaNaziv = o.name; spremenjeno = true; }
+        if((o.legal_name || "") !== (e.strankaPodjetje || "") && o.legal_name){ e.strankaPodjetje = o.legal_name; spremenjeno = true; }
+      }
       var potrjen = pr.potrjeno === true;
       if(!!e.potrjeno !== potrjen || !!e.zaklenjen !== potrjen){ e.potrjeno = potrjen; e.zaklenjen = potrjen; spremenjeno = true; }
       var prPop = pr.popravljeno_at || null;
