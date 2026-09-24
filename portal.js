@@ -308,7 +308,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.25 · BETA';
+  var APP_VERZIJA = '4.26 · BETA';
   var NALAGANJE = '<div class="sc-load" aria-hidden="true"><span class="sc-load-line"></span></div>';
   // Stale-while-revalidate: ob ponovnem obisku razdelka NE pobriši vsebine v nalagalnik —
   // obdrži prejšnjo (takojšen prikaz) in jo osveži v ozadju. Trak le ob prvem nalaganju.
@@ -6873,7 +6873,7 @@
       await naloziListe();
       const {
         data: sveze
-      } = await vseVrstice(function (a, b) { return sb.from('orgs').select('id,name,legal_name,address,vat_id').order('name').range(a, b); });
+      } = await vseVrstice(function (a, b) { return sb.from('orgs').select('id,name,legal_name,address,vat_id,sort_order').is('deleted_at', null).order('name').range(a, b); });   // brez strank iz koša (kot ob zagonu)
       ORGSEZNAM = sveze || ORGSEZNAM;
       ORGIME = {};
       ORGSEZNAM.forEach(o => {
