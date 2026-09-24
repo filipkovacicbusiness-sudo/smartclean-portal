@@ -621,6 +621,7 @@
       profil = _pr && _pr.data ? _pr.data : null;
       if (_pr && _pr.error) { const _pr2 = await sb.from('profiles').select('full_name,is_staff').eq('id', user.id).maybeSingle(); profil = _pr2 && _pr2.data ? _pr2.data : null; } }
     MOJPROFIL = profil || {};
+    prednaloziAvatar(MOJPROFIL.avatar_url);   // Moj račun: slika je ob odprtju že naložena in dekodirana
     // uveljavi sinhronizirane nastavitve (tema, pogled, vrstni red menija, razvrstitve)
     if (profil && profil.nastavitve) { uporabiNastavitve(profil.nastavitve); uporabiTemo(); oznaciTemo(); uporabiPogled(); osveziPogledSege(); }
     OSEBJE = !!(profil !== null && profil !== void 0 && profil.is_staff);
@@ -2820,8 +2821,28 @@
     }
     _uc3dRAF = requestAnimationFrame(frame);
   }
+  // Odtis podatkov Statistike: ali se je po osvežitvi v ozadju kaj spremenilo.
+  function ucOdtis() {
+    var kg = 0; (UCEN_LISTI || []).forEach(function (l) { kg += parseFloat(l.weight_kg) || 0; });
+    var vse = 0; if (_kgVseMap) Object.keys(_kgVseMap).forEach(function (k) { vse += _kgVseMap[k] || 0; });
+    var dog = UCEN_DOG || [];
+    return [(UCEN_LISTI || []).length, Math.round(kg * 100), dog.length, dog.length ? dog[dog.length - 1].id : '', Math.round(vse * 100)].join('|');
+  }
   async function risiUcinek(prefetch) {
     var box = $('ucList'); if (!box) return;
+    // Podatki so že naloženi (prednalaganje ob prijavi ali prejšnji obisk): diagram nariši in
+    // animiraj TAKOJ, sveže podatke naloži v ozadju. Prej se je ob vsakem odprtju čakalo na
+    // bazo in diagrama za trenutek sploh ni bilo.
+    if (!prefetch && box.dataset.loaded) {
+      if (!_ucDan) _ucDan = danes10();
+      _uc3dAnim = true; ucRender();
+      try {
+        var prej = ucOdtis();
+        await naloziUcinek();
+        if (ucOdtis() !== prej) { _uc3dAnim = false; ucRender(); }   // spremembe pokaži brez ponovne animacije
+      } catch (e) {}
+      return;
+    }
     // Prepreči »najprej final, nato animacija«: ob ODPRTJU sinhrono zbriši morebitni že
     // prednaloženi (končni) diagram, da se med čakanjem na podatke ne izriše in nato reset.
     if (!prefetch) { var _pre = box.querySelector('.uc3d-svg'); if (_pre) _pre.innerHTML = ''; }
@@ -3254,17 +3275,28 @@
     o.panel.setAttribute('aria-label', nasl ? nasl.textContent.trim() : 'Podrobnosti');
   }
   // Kartica na mestu, kjer je okno nastalo: od tam okno zraste in tja se vrne.
+  // Raste PRAZNA površina (plošča v barvi okna), in to samo s transform: to izvaja
+  // grafična kartica brez ponovnega izrisa. Prej je raslo celo okno s clip-path in
+  // brskalnik je v vsakem okvirju znova izrisal vso vsebino (dolg obrazec, seznam) —
+  // animacija je bila včasih zatikajoča. Zaobljenost kotov je med raztegom izravnana
+  // (r/sx, r/sy), da koti ostanejo okrogli.
   function oknoMorf(o) {
     var c = o.kartica.getBoundingClientRect(), p = o.panel.getBoundingClientRect();
     var r0 = parseFloat(getComputedStyle(o.kartica).borderTopLeftRadius) || 14;
     var r1 = parseFloat(getComputedStyle(o.panel).borderTopLeftRadius) || 18;
-    return [
-      { transform: 'translate(' + (c.left - p.left) + 'px,' + (c.top - p.top) + 'px)',
-        clipPath: 'inset(0px ' + Math.max(0, p.width - c.width) + 'px ' + Math.max(0, p.height - c.height) + 'px 0px round ' + r0 + 'px)' },
-      { transform: 'translate(0px,0px)', clipPath: 'inset(0px 0px 0px 0px round ' + r1 + 'px)' }
-    ];
+    var sx = Math.max(0.02, c.width / p.width), sy = Math.max(0.02, c.height / p.height);
+    return { p: p, kljuci: [
+      { transform: 'translate(' + (c.left - p.left) + 'px,' + (c.top - p.top) + 'px) scale(' + sx + ',' + sy + ')', borderRadius: (r0 / sx) + 'px / ' + (r0 / sy) + 'px' },
+      { transform: 'translate(0px,0px) scale(1,1)', borderRadius: r1 + 'px / ' + r1 + 'px' }
+    ] };
   }
-  // Natančna kopija kartice na vrhu okna med animacijo: prvi okvir odpiranja in zadnji
+  function oknoPovrsina(o, p) {
+    var pov = document.createElement('div'); pov.className = 'okno-povrsina';
+    pov.style.left = p.left + 'px'; pov.style.top = p.top + 'px'; pov.style.width = p.width + 'px'; pov.style.height = p.height + 'px';
+    o.back.insertBefore(pov, o.panel);
+    return pov;
+  }
+  // Natančna kopija kartice na njenem mestu med animacijo: prvi okvir odpiranja in zadnji
   // okvir zapiranja sta videti kot kartica sama — kartica se poveča v okno (in skrči nazaj),
   // namesto da bi nad njo zrasla kopija, ona pa izginila šele na koncu.
   function oknoDuh(o) {
@@ -3273,6 +3305,7 @@
     var k = o.kartica, r = k.getBoundingClientRect(), star = k.parentElement;
     var ovoj = document.createElement('div');
     ovoj.className = (star ? [].filter.call(star.classList, function (c) { return c !== 'open' && c !== 'hidden'; }).join(' ') + ' ' : '') + 'okno-duh';
+    ovoj.style.left = r.left + 'px'; ovoj.style.top = r.top + 'px';
     ovoj.style.width = r.width + 'px'; ovoj.style.height = r.height + 'px';
     ovoj.setAttribute('aria-hidden', 'true');
     var kop = k.cloneNode(true);
@@ -3281,7 +3314,7 @@
     kop.querySelectorAll('[style],[data-pot],[tabindex]').forEach(function (el) { el.removeAttribute('style'); el.removeAttribute('data-pot'); el.removeAttribute('tabindex'); });
     kop.setAttribute('tabindex', '-1');
     ovoj.appendChild(kop);
-    o.panel.appendChild(ovoj);
+    o.back.insertBefore(ovoj, o.panel);   // nad površino, pod oknom
     return ovoj;
   }
   // moznosti.glava: funkcija(kartica), ki vrne element glave (sicer kopija kartice);
@@ -3330,18 +3363,18 @@
       o.ro.observe(vsebina);
     }
     void back.offsetWidth; back.classList.add('show');   // zatemnitev začne takoj (brez čakanja na naslednji okvir)
-    if (oknoMirno() || !panel.animate) { kartica.classList.add('okno-vir'); panel.classList.add('stoji'); oknoFokus(o); return; }
+    if (oknoMirno() || !panel.animate) { kartica.classList.add('okno-vir'); oknoFokus(o); return; }
     o.morf = true;
     var m = oknoMorf(o);
+    var pov = oknoPovrsina(o, m.p);
     var duh = oknoDuh(o);
     kartica.classList.add('okno-vir');   // kartica se spremeni v okno: njeno mesto se izprazni takoj
-    duh.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 170, delay: 60, easing: 'ease', fill: 'forwards' });
-    notr.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 230, delay: 120, easing: 'ease', fill: 'backwards' });
-    var konecRasti = function () {
-      duh.remove(); o.morf = false; o.visina = panel.offsetHeight;
-      if (_okno === o && !o.zapiram) panel.classList.add('stoji');   // senca šele, ko okno stoji (clip-path bi jo med rastjo odrezal)
-    };
-    panel.animate(m, { duration: 380, easing: OKNO_KRIVULJA }).finished.then(konecRasti, konecRasti);
+    // Kopija kartice izgine, površina zraste do okna, vsebina okna se pretopi na končnem mestu.
+    // Vse tri so le opacity/transform (brez ponovnega izrisa vsebine).
+    duh.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 160, delay: 50, easing: 'ease', fill: 'forwards' });
+    panel.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 190, delay: 170, easing: 'ease', fill: 'backwards' });
+    var konecRasti = function () { pov.remove(); duh.remove(); o.morf = false; o.visina = panel.offsetHeight; };
+    pov.animate(m.kljuci, { duration: 380, easing: OKNO_KRIVULJA }).finished.then(konecRasti, konecRasti);
     oknoFokus(o);
   }
   function oknoFokus(o) { try { o.x.focus({ preventScroll: true }); } catch (e) {} }
@@ -3383,12 +3416,12 @@
     // Kartica mora biti na zaslonu, sicer bi se okno skrčilo nekam izven pogleda.
     var r = k.getBoundingClientRect(), tb = document.querySelector('.topbar'), vrh = tb ? tb.offsetHeight : 0;
     if (r.bottom < vrh || r.top > window.innerHeight) { try { k.scrollIntoView({ block: 'center' }); } catch (e) {} }
-    o.panel.classList.remove('stoji');
     var m = oknoMorf(o);
+    var pov = oknoPovrsina(o, m.p);   // pod oknom, enaka ploskev — ko okno izgine, se skrči v kartico
     var duh = oknoDuh(o);
-    o.notr.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 150, easing: 'ease', fill: 'forwards' });
-    duh.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 170, delay: 120, easing: 'ease', fill: 'both' });
-    o.panel.animate([m[1], m[0]], { duration: 320, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'forwards' }).finished.then(konec, konec);
+    o.panel.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 130, easing: 'ease', fill: 'forwards' });
+    duh.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 160, delay: 150, easing: 'ease', fill: 'both' });
+    pov.animate([m.kljuci[1], m.kljuci[0]], { duration: 320, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'forwards' }).finished.then(konec, konec);
   }
   // Seznam pod oknom je bil izrisan na novo (shranjevanje, brisanje, osvežitev):
   // poveži okno z novo kartico ali ga zapri, če kartice ni več.
@@ -4517,8 +4550,11 @@
     // nihče natisniti podatkov prejšnjega.
     FAK_ZADNJI = null;
     pokaziNalaganje(list);
-    list.style.opacity = '.45';
+    // Stare kartice zatemni le, če nalaganje traja opazno dlje. Prej so bile ob vsakem
+    // odprtju zavihka za trenutek na 45 % — videti zamegljene, tudi ko je bilo nalaganje hipno.
+    const _zatemni = setTimeout(function () { list.style.opacity = '.45'; }, 350);
     const res = await fakZberi(od, doo, orgFilter ? [orgFilter] : null);
+    clearTimeout(_zatemni);
     list.style.opacity = '';
     if (res.error) { list.innerHTML = '<div class="panel"><p class="u-sub">Napaka: ' + escape_(res.error.message) + '</p></div>'; return; }
     const skupine = res.skupine;
@@ -7391,6 +7427,14 @@
 
   /* ══════════ MOJ RAČUN ══════════ */
   /* ── Moj profil: prikaz avatarja + polj ── */
+  // Slika je ozadje kroga; brskalnik je začel nalagati šele, ko se je Moj račun prikazal
+  // (skritih ozadij ne nalaga) — krog je bil za trenutek prazen. Zato jo naložimo in
+  // dekodiramo že ob prijavi; referenca ostane, da je brskalnik ne zavrže.
+  var _avatarSlika = null;
+  function prednaloziAvatar(url) {
+    if (!url) return;
+    try { var im = new Image(); im.decoding = 'async'; im.src = url; if (im.decode) im.decode().catch(function () {}); _avatarSlika = im; } catch (e) {}
+  }
   function narisiProfAvatar() {
     var box = $('profAvatar'), del = $('profAvDel');
     if (!box) return;
@@ -7455,6 +7499,7 @@
       var upd = await sb.from('profiles').update({ avatar_url: url }).eq('id', JAZ);
       if (upd.error) throw upd.error;
       MOJPROFIL.avatar_url = url;
+      prednaloziAvatar(url);
       narisiProfAvatar();
       zapomniProfil({ email: JAZMAIL, name: JAZIME, avatar: url, uid: JAZ });
       m.className = 'msg show'; m.textContent = 'Slika shranjena.';
