@@ -5656,6 +5656,15 @@
   }
   // ── Enotni spustni meniji (custom select) po standardu portala ──────────
   // Nativni <select> ostane (skrit) — vsa obstoječa logika (value/change) dela naprej.
+  // Končni ↓/↑ v besedilu možnosti nariše kot SVG: znak iz pisave sedi na osnovni črti
+  // in je videti zamaknjen navzdol. Nativni <option> obdrži znak (rezerva brez JS).
+  var CS_SMER = { '↓': '<line x1="12" y1="5" x2="12" y2="19"/><polyline points="6 13 12 19 18 13"/>',
+                  '↑': '<line x1="12" y1="19" x2="12" y2="5"/><polyline points="6 11 12 5 18 11"/>' };
+  function csNapis(el, besedilo) {
+    var m = /^(.*\S)\s*([↓↑])$/.exec(besedilo || '');
+    el.textContent = m ? m[1] : (besedilo || '');
+    if (m) el.insertAdjacentHTML('beforeend', '<svg class="cs-smer" role="img" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-label="' + (m[2] === '↓' ? 'padajoče' : 'naraščajoče') + '">' + CS_SMER[m[2]] + '</svg>');
+  }
   function olepsajSelect(sel) {
     try {
       if (!sel || sel._cs || sel.multiple || sel.dataset.noCs === '1') return;
@@ -5666,7 +5675,7 @@
       wrap.appendChild(trig);
       sel._cs = true; sel.classList.add('cs-native');
       var valEl = trig.querySelector('.cs-val');
-      function syncVal() { var o = sel.options[sel.selectedIndex]; valEl.textContent = o ? o.textContent : ''; }
+      function syncVal() { var o = sel.options[sel.selectedIndex]; csNapis(valEl, o ? o.textContent : ''); }
       syncVal();
       var panel = null;
       function zapri() { if (panel) { panel.remove(); panel = null; } wrap.classList.remove('cs-open'); document.removeEventListener('mousedown', ven, true); document.removeEventListener('keydown', tipka, true); }
@@ -5678,7 +5687,7 @@
         for (var i = 0; i < sel.options.length; i++) {
           var o = sel.options[i];
           var it = document.createElement('div'); it.className = 'cs-opt' + (i === sel.selectedIndex ? ' sel' : '') + (o.disabled ? ' dis' : '');
-          it.textContent = o.textContent; it.dataset.i = i; panel.appendChild(it);
+          csNapis(it, o.textContent); it.dataset.i = i; panel.appendChild(it);
         }
         panel.addEventListener('mousedown', function (e) { e.preventDefault(); var it = e.target.closest('.cs-opt'); if (!it || it.classList.contains('dis')) return; sel.selectedIndex = parseInt(it.dataset.i, 10); syncVal(); sel.dispatchEvent(new Event('change', { bubbles: true })); zapri(); });
         wrap.appendChild(panel); wrap.classList.add('cs-open');
