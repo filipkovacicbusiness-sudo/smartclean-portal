@@ -5,11 +5,8 @@
    Različico vstavi zgradi.py; kar je odvisno od naprave (tiskanje, PDF v
    Datoteke, izklop), se ugotovi med tekom (Capacitor na tablici).
 
-   Vmesnik = portal: portal.css, isti vzorci kot v Arhivu portala (kartice
-   .a-row, okno, ki zraste iz kartice, obrazec »Nov spremni list«, potrditve
-   .sc-modal, predogled dokumenta). Okno je prenos oknoOdpri iz portal.js.
-
-   Podatki ostanejo v istih ključih kot v prejšnjih različicah (pralnica:*).
+   Podatki ostanejo v istih ključih kot v prejšnjih različicah (pralnica:*),
+   zato posodobitev ne izgubi ničesar.
    ══════════════════════════════════════════════════════════════════════ */
 var VARIANTA = "{{VARIANTA}}", APP_VERZIJA = "{{VERZIJA}}";
 var LASTNIK = "filip@eflitte.si";
@@ -80,11 +77,11 @@ async function writeBackup(){
 
 /* ══════════ STANJE ══════════ */
 var CLIENTS = [], entries = [], settings = {}, savedProfs = [], session = null, idleTimer = null;
-var osnutek = null;               // nov spremni list v pripravi (ostane, če okno zapreš s ×)
-var urejanje = null;              // {id, …} urejanje obstoječega lista v oknu
-var iskanje = "", filterStranka = "", filterDatum = "", prikazano = 60;
+var selectedId = null, draftQty = {}, draftPrevoz = "redni", editingId = null, showHidden = false;
+var draftOpombaStranka = "", draftOpombaEvidenca = "";
+var searchMode = "", searchQuery = "", searchDate = "", searchClientId = "", clientPickerMode = "entry";
+var previewId = null, reviewEntryId = null, kpArt = null, kpBuf = "", kpMode = "entry";
 var pdfPermOK = false, askedPerm = false;
-var DOTIK = (function(){ try{ return matchMedia("(pointer: coarse)").matches; }catch(e){ return false; } })();   // tablica/telefon → številčnica
 
 async function loadEntries(){ entries = await dbJson(STORE_KEY, []); if(!Array.isArray(entries)) entries = []; }
 async function saveEntries(){ try{ await dbWrite(STORE_KEY, JSON.stringify(entries)); }catch(e){} }
@@ -112,8 +109,9 @@ function tezaFmt(kg){   // enako kot v portalu: max 2 decimalki, vejica, nad 100
   return v.toFixed(2).replace(/0+$/, "").replace(/\.$/, "").replace(".", ",") + u;
 }
 function sklon(n, e1, e2, e34, e5){ var m = Math.abs(n) % 100; return m === 1 ? e1 : m === 2 ? e2 : (m === 3 || m === 4) ? e34 : e5; }
-function sklonListov(n){ return stevilo(n) + " " + sklon(n, "spremni list", "spremna lista", "spremni listi", "spremnih listov"); }
+function normaliziraj(s){ return String(s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""); }
 function clientById(id){ return CLIENTS.find(function(c){ return c.id === id; }); }
+function artById(id){ var c = clientById(selectedId); return c ? c.artikli.find(function(a){ return a.id === id; }) : null; }
 function entryById(id){ return entries.find(function(x){ return x.id === id; }); }
 function strankeUrejene(){ return CLIENTS.slice().sort(function(a, b){ return String(a.naziv || "").localeCompare(String(b.naziv || ""), "sl"); }); }
 function stKljuc(e){ var p = String(e.stevilka || "").split("/"); return (parseInt(p[1], 10) || 0) * 100000 + (parseInt(p[0], 10) || 0); }
@@ -124,279 +122,52 @@ function nextNumber(){
   return String(max + 1).padStart(4, "0") + "/" + y;
 }
 function jeZaklenjen(e){ return !!(e && (e.potrjeno || e.zaklenjen)); }
-function lahkoBrise(e){ return !(e.syncedAt || e.prenesenIzPortala || e.potrjeno); }
 
-/* ══════════ OBVESTILO (portal: .sc-toast) ══════════ */
+/* ══════════ OBVESTILO + OKNA ══════════ */
 function toast(msg){ var t = $("toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(t._h); t._h = setTimeout(function(){ t.classList.remove("show"); }, 2600); }
 
-/* ══════════ POTRDITEV (portal: potrdiModal, .sc-modal) ══════════ */
-var _modalFokus = null;
-function potrdiModal(opts){
-  opts = opts || {};
-  return new Promise(function(resolve){
-    _modalFokus = document.activeElement;
-    var back = document.createElement("div"); back.className = "sc-modal-back";
-    back.innerHTML = '<div class="sc-modal" role="dialog" aria-modal="true"><h4></h4><p></p><div class="sc-modal-acts"><button type="button" class="sc-modal-btn ghost" data-no></button><button type="button" class="sc-modal-btn ' + (opts.nevarno ? "danger" : "primary") + '" data-yes></button></div></div>';
-    back.querySelector("h4").textContent = opts.naslov || "Potrditev";
-    back.querySelector("p").textContent = opts.sporocilo || "";
-    back.querySelector("[data-no]").textContent = opts.preklici || "Prekliči";
-    back.querySelector("[data-yes]").textContent = opts.potrdi || "Potrdi";
-    document.body.appendChild(back);
-    requestAnimationFrame(function(){ back.classList.add("show"); });
-    var done = false;
-    function zapri(val){ if(done) return; done = true; back.classList.remove("show"); document.removeEventListener("keydown", onKey, true);
-      setTimeout(function(){ if(back.parentNode) back.parentNode.removeChild(back); }, 180);
-      try{ if(_modalFokus && _modalFokus.focus) _modalFokus.focus({ preventScroll: true }); }catch(_){}
-      resolve(val); }
-    function onKey(e){ if(e.key === "Escape"){ e.stopPropagation(); zapri(false); } else if(e.key === "Enter"){ e.preventDefault(); zapri(true); } }
-    back._zapri = function(){ zapri(false); };
-    back.querySelector("[data-no]").addEventListener("click", function(e){ e.stopPropagation(); zapri(false); });
-    back.querySelector("[data-yes]").addEventListener("click", function(e){ e.stopPropagation(); zapri(true); });
-    back.addEventListener("click", function(e){ if(e.target === back) zapri(false); });
-    document.addEventListener("keydown", onKey, true);
-    var yb = back.querySelector("[data-yes]"); if(yb) yb.focus();
-  });
-}
-function vrhnjiModal(){ var m = document.querySelectorAll(".sc-modal-back"); return m.length ? m[m.length - 1] : null; }
-
-/* ══════════ ŠTEVILČNICA (tablica/telefon: velike tipke namesto tipkovnice) ══════════ */
-function stevilcnica(opts){
-  opts = opts || {};
-  return new Promise(function(resolve){
-    _modalFokus = document.activeElement;
-    var buf = opts.vrednost ? String(opts.vrednost) : "", prvi = true;
-    var back = document.createElement("div"); back.className = "sc-modal-back";
-    back.innerHTML = '<div class="sc-modal ap-kp" role="dialog" aria-modal="true"><h4></h4><p></p><div class="ap-kp-disp"></div><div class="ap-keys">' +
-      ["1","2","3","4","5","6","7","8","9","C","0","del"].map(function(k){
-        if(k === "C") return '<button type="button" class="ap-key util" data-k="C" aria-label="Počisti">C</button>';
-        if(k === "del") return '<button type="button" class="ap-key util" data-k="del" aria-label="Briši">⌫</button>';
-        return '<button type="button" class="ap-key" data-k="' + k + '">' + k + '</button>';
-      }).join("") + '</div><div class="sc-modal-acts"><button type="button" class="sc-modal-btn ghost" data-no>Prekliči</button><button type="button" class="sc-modal-btn primary" data-yes>Potrdi</button></div></div>';
-    back.querySelector("h4").textContent = opts.naslov || "Količina";
-    back.querySelector("p").textContent = opts.sporocilo || "";
-    var disp = back.querySelector(".ap-kp-disp");
-    function risi(){ disp.classList.toggle("prazen", buf === ""); disp.innerHTML = esc(buf === "" ? "0" : buf) + '<small>kos</small>'; }
-    function tipka(k){
-      if(k === "C") buf = "";
-      else if(k === "del") buf = buf.slice(0, -1);
-      else { if(prvi) buf = ""; if(buf === "0") buf = ""; if(buf.length < 4) buf += k; }
-      prvi = false; risi();
+var odprtaOkna = [], obZaprtju = {};
+/* Okno zraste iz elementa, ki ga je odprl (transform-origin = izvor) — samo transform + opacity. */
+function odpriOkno(id, izvor){
+  var back = $(id), okno = back.querySelector(".okno");
+  back.classList.remove("zapira");
+  okno.style.transformOrigin = "";
+  if(izvor && izvor.getBoundingClientRect && window.innerWidth > 560){
+    var r = izvor.getBoundingClientRect();
+    if(r.width || r.height){
+      var ox = r.left + r.width / 2 - okno.offsetLeft, oy = r.top + r.height / 2 - okno.offsetTop;
+      okno.style.transformOrigin = Math.round(ox) + "px " + Math.round(oy) + "px";
     }
-    risi();
-    document.body.appendChild(back);
-    requestAnimationFrame(function(){ back.classList.add("show"); });
-    var done = false;
-    function zapri(val){ if(done) return; done = true; back.classList.remove("show"); document.removeEventListener("keydown", onKey, true);
-      setTimeout(function(){ if(back.parentNode) back.parentNode.removeChild(back); }, 180);
-      try{ if(_modalFokus && _modalFokus.focus) _modalFokus.focus({ preventScroll: true }); }catch(_){}
-      resolve(val); }
-    function onKey(e){
-      if(/^[0-9]$/.test(e.key)){ tipka(e.key); e.preventDefault(); }
-      else if(e.key === "Backspace"){ tipka("del"); e.preventDefault(); }
-      else if(e.key === "Escape"){ e.stopPropagation(); zapri(null); }
-      else if(e.key === "Enter"){ e.preventDefault(); zapri(buf === "" ? 0 : parseInt(buf, 10) || 0); }
-    }
-    back._zapri = function(){ zapri(null); };
-    back.querySelectorAll("[data-k]").forEach(function(b){ b.addEventListener("click", function(e){ e.stopPropagation(); tipka(b.getAttribute("data-k")); }); });
-    back.querySelector("[data-no]").addEventListener("click", function(e){ e.stopPropagation(); zapri(null); });
-    back.querySelector("[data-yes]").addEventListener("click", function(e){ e.stopPropagation(); zapri(buf === "" ? 0 : parseInt(buf, 10) || 0); });
-    back.addEventListener("click", function(e){ if(e.target === back) zapri(null); });
-    document.addEventListener("keydown", onKey, true);
-  });
+  }
+  void okno.offsetWidth;
+  back.classList.add("odprto");
+  odprtaOkna = odprtaOkna.filter(function(x){ return x !== id; }); odprtaOkna.push(id);
 }
+function zapriOkno(id){
+  var back = $(id); if(!back || !back.classList.contains("odprto")) return;
+  back.classList.add("zapira"); back.classList.remove("odprto");
+  odprtaOkna = odprtaOkna.filter(function(x){ return x !== id; });
+  setTimeout(function(){ if(!back.classList.contains("odprto")) back.classList.remove("zapira"); }, 260);
+  var f = obZaprtju[id]; if(f){ try{ f(); }catch(e){} }
+}
+function zapriVsaOkna(){ odprtaOkna.slice().forEach(zapriOkno); }
+document.querySelectorAll(".okno-back").forEach(function(back){
+  back.addEventListener("click", function(ev){ if(ev.target === back && back.id !== "oknoPotrdi") zapriOkno(back.id); });
+  back.querySelectorAll("[data-zapri]").forEach(function(b){ b.addEventListener("click", function(){ zapriOkno(back.id); }); });
+});
 
-/* ══════════ OKNO: kartica se razpre v okno (prenos oknoOdpri iz portal.js) ══════════
-   Raste OKNO SAMO (z vsebino in senco), a le s transform; vsebina ima nasprotni razteg
-   (točno 1/s v vsakem koraku, zato 24 izračunanih ključev), kopija kartice (duh) je
-   prvi okvir odpiranja in zadnji zapiranja. Samo transform + opacity. */
-var _okno = null;
-var OKNO_KRIVULJA = "cubic-bezier(.22,.61,.36,1)";
-function oknoMirno(){ try{ return matchMedia("(prefers-reduced-motion: reduce)").matches; }catch(e){ return false; } }
-function oknoGlava(){
-  var o = _okno; if(!o) return;
-  if(o.glavaFn){   // okno brez kartice (nov spremni list iz gumba): naslov + ×
-    o.glava.className = "okno-glava okno-glava-naslov";
-    var n = o.glavaFn(o.kartica);
-    o.glava.innerHTML = ""; o.glava.appendChild(n); o.glava.appendChild(o.x);
-    o.panel.setAttribute("aria-label", n.textContent.trim());
-    return;
-  }
-  var k = o.kartica, cel = k.closest(".lcell");
-  o.glava.className = "okno-glava" + (cel ? " " + [].filter.call(cel.classList, function(c){ return c !== "lcell" && c !== "open"; }).join(" ") : "");
-  var kop = document.createElement("div");
-  kop.className = [].filter.call(k.classList, function(c){ return c !== "okno-vir" && c !== "arh-flash"; }).join(" ") + " okno-kartica";
-  kop.innerHTML = k.innerHTML;
-  kop.querySelectorAll("[style]").forEach(function(el){ el.removeAttribute("style"); });
-  o.glava.innerHTML = ""; o.glava.appendChild(kop); o.glava.appendChild(o.x);
-  var nasl = k.querySelector(".a-num");
-  o.panel.setAttribute("aria-label", nasl ? nasl.textContent.trim() : "Podrobnosti");
+var _ptDa = null;
+function askConfirm(naslov, sporocilo, gumbDa, onYes, nevarno, gumbNe, izvor){
+  $("ptT").textContent = naslov; $("ptSp").textContent = sporocilo;
+  $("ptDa").textContent = gumbDa || "Potrdi"; $("ptNe").textContent = gumbNe || "Prekliči";
+  $("ptDa").className = "btn" + (nevarno ? " rdeca" : "");
+  _ptDa = onYes;
+  odpriOkno("oknoPotrdi", izvor);
 }
-function oknoKrivulja(x1, y1, x2, y2){
-  function b(t, a1, a2){ var u = 1 - t; return 3 * u * u * t * a1 + 3 * u * t * t * a2 + t * t * t; }
-  return function(x){
-    if(x <= 0) return 0; if(x >= 1) return 1;
-    var lo = 0, hi = 1, t = x;
-    for(var i = 0; i < 28; i++){ var bx = b(t, x1, x2); if(Math.abs(bx - x) < 1e-5) break; if(bx < x) lo = t; else hi = t; t = (lo + hi) / 2; }
-    return b(t, y1, y2);
-  };
-}
-var OKNO_ODPRI = oknoKrivulja(.22, .61, .36, 1), OKNO_ZAPRI = oknoKrivulja(.4, 0, .2, 1);
-function oknoKljuci(o, krivulja, zapri){
-  var c = o.kartica.getBoundingClientRect(), p = o.panel.getBoundingClientRect();
-  var sx0 = Math.max(0.02, c.width / p.width), sy0 = Math.max(0.02, c.height / p.height);
-  var dx = c.left - p.left, dy = c.top - p.top, N = 24, okno = [], notr = [];
-  for(var i = 0; i <= N; i++){
-    var t = i / N, e = krivulja(t);
-    var f = zapri ? e : 1 - e;   // delež »kartice«: 1 = kartica, 0 = okno
-    var sx = 1 + (sx0 - 1) * f, sy = 1 + (sy0 - 1) * f;
-    okno.push({ offset: t, transform: "translate(" + (dx * f) + "px," + (dy * f) + "px) scale(" + sx + "," + sy + ")" });
-    notr.push({ offset: t, transform: "scale(" + (1 / sx) + "," + (1 / sy) + ")" });
-  }
-  return { okno: okno, notr: notr };
-}
-function oknoDuh(o){
-  var k = o.kartica, r = k.getBoundingClientRect(), star = k.parentElement;
-  var ovoj = document.createElement("div");
-  ovoj.className = (star ? [].filter.call(star.classList, function(c){ return c !== "open" && c !== "hidden"; }).join(" ") + " " : "") + "okno-duh";
-  ovoj.style.left = r.left + "px"; ovoj.style.top = r.top + "px"; ovoj.style.width = r.width + "px"; ovoj.style.height = r.height + "px";
-  ovoj.setAttribute("aria-hidden", "true");
-  var cs = getComputedStyle(k);
-  var kop = k.cloneNode(true);
-  kop.classList.remove("okno-vir", "arh-flash");
-  ["id", "data-id", "aria-expanded", "style"].forEach(function(a){ kop.removeAttribute(a); });
-  kop.querySelectorAll("[style],[tabindex]").forEach(function(el){ el.removeAttribute("style"); el.removeAttribute("tabindex"); });
-  kop.setAttribute("tabindex", "-1");
-  kop.style.backgroundColor = cs.backgroundColor; kop.style.backgroundImage = cs.backgroundImage;
-  kop.style.borderColor = cs.borderTopColor + " " + cs.borderRightColor + " " + cs.borderBottomColor + " " + cs.borderLeftColor;
-  kop.style.boxShadow = cs.boxShadow; kop.style.transition = "none";
-  ovoj.appendChild(kop);
-  o.back.appendChild(ovoj);
-  return ovoj;
-}
-/* moznosti.glava: funkcija, ki vrne element glave (sicer kopija kartice);
-   moznosti.obZaprtju: klic, ko je okno zaprto. */
-function oknoOdpri(kartica, vsebina, najdi, moznosti){
-  moznosti = moznosti || {};
-  if(_okno) oknoZapri(true);
-  var back = document.createElement("div"); back.className = "okno-back";
-  var zatemni = document.createElement("div"); zatemni.className = "okno-zatemni"; back.appendChild(zatemni);
-  var panel = document.createElement("div"); panel.className = "okno";
-  panel.setAttribute("role", "dialog"); panel.setAttribute("aria-modal", "true");
-  var notr = document.createElement("div"); notr.className = "okno-notr";
-  var glava = document.createElement("div");
-  var telo = document.createElement("div"); telo.className = "okno-telo";
-  var x = document.createElement("button"); x.type = "button"; x.className = "doc-x okno-x"; x.setAttribute("aria-label", "Zapri"); x.textContent = "×";
-  notr.appendChild(glava); notr.appendChild(telo); panel.appendChild(notr); back.appendChild(panel);
-  var o = _okno = { back: back, panel: panel, notr: notr, glava: glava, telo: telo, x: x, kartica: kartica, vsebina: vsebina, najdi: najdi,
-    id: kartica.dataset.id, glavaFn: moznosti.glava || null, obZaprtju: moznosti.obZaprtju || null };
-  oknoGlava();
-  telo.appendChild(vsebina);
-  var drsnik = window.innerWidth - document.documentElement.clientWidth;
-  document.documentElement.classList.add("okno-zaklep");
-  if(drsnik > 0) document.documentElement.style.paddingRight = drsnik + "px";
-  document.body.appendChild(back);
-  x.addEventListener("click", function(){ oknoZapri(); });
-  back.addEventListener("mousedown", function(e){ o.zunaj = e.target === back; });
-  back.addEventListener("touchstart", function(e){ o.zunaj = e.target === back; }, { passive: true });
-  back.addEventListener("click", function(e){ if(e.target === back && o.zunaj) oknoZapri(); o.zunaj = false; });
-  document.addEventListener("keydown", oknoTipka, true);
-  o.visina = panel.offsetHeight;
-  /* menjava vsebine (podrobnosti ↔ urejanje) naj višino okna spremeni gladko */
-  if(window.ResizeObserver && !oknoMirno()){
-    o.ro = new ResizeObserver(function(){
-      var h = panel.offsetHeight;
-      if(!o.morf && !o.zapiram && Math.abs(h - o.visina) > 2 && panel.animate){
-        panel.animate([{ height: o.visina + "px" }, { height: h + "px" }], { duration: 240, easing: OKNO_KRIVULJA });
-      }
-      o.visina = h;
-    });
-    o.ro.observe(vsebina);
-  }
-  void back.offsetWidth; back.classList.add("show");
-  if(oknoMirno() || !panel.animate){ kartica.classList.add("okno-vir"); oknoFokus(o); return; }
-  o.morf = true;
-  var kl = oknoKljuci(o, OKNO_ODPRI, false);
-  var duh = oknoDuh(o);
-  kartica.classList.add("okno-vir");
-  panel.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 90, easing: "linear" });
-  duh.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 170, delay: 60, easing: "ease", fill: "forwards" });
-  notr.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, delay: 90, easing: "ease", fill: "backwards" });
-  notr.animate(kl.notr, { duration: 380, easing: "linear" });
-  var konecRasti = function(){ if(!o.morf) return; duh.remove(); o.morf = false; o.visina = panel.offsetHeight; };
-  setTimeout(konecRasti, 800);
-  panel.animate(kl.okno, { duration: 380, easing: "linear" }).finished.then(konecRasti, konecRasti);
-  oknoFokus(o);
-}
-function oknoFokus(o){ try{ o.x.focus({ preventScroll: true }); }catch(e){} }
-function oknoTipka(e){
-  if(e.key !== "Escape" || !_okno) return;
-  if(vrhnjiModal()) return;   // najprej se zapre, kar je odprto NAD oknom
-  e.preventDefault(); oknoZapri();
-}
-function oknoZapri(takoj){
-  var o = _okno; if(!o || o.zapiram) return;
-  o.zapiram = true;
-  document.removeEventListener("keydown", oknoTipka, true);
-  if(o.ro) o.ro.disconnect();
-  var k = (o.najdi && o.najdi()) || null;   // po ponovnem izrisu je kartica nov element
-  var koncano = false;
-  var konec = function(){
-    if(koncano) return; koncano = true;   // varovalo: animacija se lahko ne konča (zaslon v ozadju) — glej setTimeout spodaj
-    o.back.remove();
-    document.querySelectorAll(".okno-vir").forEach(function(el){ el.classList.remove("okno-vir"); });
-    document.documentElement.classList.remove("okno-zaklep");
-    document.documentElement.style.paddingRight = "";
-    if(_okno === o) _okno = null;
-    if(k && !takoj){ try{ k.focus({ preventScroll: true }); }catch(e){} }
-    if(o.obZaprtju){ try{ o.obZaprtju(k); }catch(e){} }
-  };
-  if(takoj || oknoMirno() || !o.panel.animate){ konec(); return; }
-  setTimeout(konec, 800);
-  o.back.classList.remove("show");
-  if(!k){   // kartice ni več (izbrisana, izpadla iz filtra) → okno samo izgine
-    o.panel.animate([{ opacity: 1, transform: "none" }, { opacity: 0, transform: "translateY(8px) scale(.98)" }], { duration: 200, easing: "ease", fill: "forwards" }).finished.then(konec, konec);
-    return;
-  }
-  if(o.kartica !== k) o.kartica.classList.remove("okno-vir");
-  o.kartica = k;
-  k.classList.add("okno-vir");
-  var r = k.getBoundingClientRect(), tb = document.querySelector(".topbar"), vrh = tb ? tb.offsetHeight : 0;
-  if(r.bottom < vrh || r.top > window.innerHeight){ try{ k.scrollIntoView({ block: "center" }); }catch(e){} }
-  o.panel.getAnimations().forEach(function(a){ a.cancel(); });
-  o.notr.getAnimations().forEach(function(a){ a.cancel(); });
-  var kl = oknoKljuci(o, OKNO_ZAPRI, true);
-  var duh = oknoDuh(o);
-  o.notr.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 140, easing: "ease", fill: "forwards" });
-  o.notr.animate(kl.notr, { duration: 320, easing: "linear", fill: "forwards" });
-  duh.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 160, delay: 150, easing: "ease", fill: "both" });
-  o.panel.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 90, delay: 230, easing: "linear", fill: "forwards" });
-  o.panel.animate(kl.okno, { duration: 320, easing: "linear", fill: "forwards" }).finished.then(konec, konec);
-}
-/* seznam je izrisan na novo: poveži okno z novo kartico ali ga zapri, če kartice ni več */
-function oknoPoIzrisu(){
-  var o = _okno; if(!o || o.zapiram || o.glavaFn) return;
-  var k = o.najdi && o.najdi();
-  if(!k){ oknoZapri(); return; }
-  if(k !== o.kartica){ o.kartica = k; if(!o.morf) k.classList.add("okno-vir"); }
-  oknoGlava();
-}
-function oknoZamenjajVsebino(nova){
-  var o = _okno; if(!o) return;
-  if(o.ro) o.ro.unobserve(o.vsebina);
-  o.vsebina.remove();
-  o.telo.appendChild(nova); o.vsebina = nova;
-  if(o.ro) o.ro.observe(nova);
-}
-/* okno novega lista → kartica shranjenega lista (glava postane kartica, ob zaprtju se okno vrne vanjo) */
-function oknoPreusmeri(k, najdi){
-  var o = _okno; if(!o) return;
-  if(o.kartica && o.kartica !== k) o.kartica.classList.remove("okno-vir");
-  o.kartica = k; o.najdi = najdi; o.glavaFn = null; o.id = k.dataset.id;
-  k.classList.add("okno-vir");
-  oknoGlava();
-}
+$("ptDa").onclick = function(){ var f = _ptDa; _ptDa = null; zapriOkno("oknoPotrdi"); if(f) f(); };
+$("ptNe").onclick = function(){ _ptDa = null; zapriOkno("oknoPotrdi"); };
 
-/* ══════════ TEMA IN POGLED ══════════ */
+/* ══════════ TEMA ══════════ */
 function autoDark(){ var h = new Date().getHours(); return !(h >= 7 && h < 19); }
 function applyTheme(){
   var pref = settings.theme || "dark";
@@ -407,287 +178,240 @@ function applyTheme(){
 }
 async function toggleTheme(){ settings.theme = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark"; applyTheme(); await saveSettings(); }
 document.querySelectorAll("[data-tema]").forEach(function(b){ b.onclick = toggleTheme; });
-/* Seznam / Mreža (isti ključ »sc-view« kot portal) */
-function pogled(){ return document.documentElement.dataset.view === "grid" ? "grid" : "list"; }
-function nastaviPogled(v){
-  v = v === "grid" ? "grid" : "list";
-  try{ localStorage.setItem("sc-view", v); }catch(e){}
-  document.documentElement.dataset.view = v;
-  document.querySelectorAll(".pogled-seg .seg-b").forEach(function(b){ b.classList.toggle("on", b.dataset.view === v); });
-}
-document.querySelectorAll(".pogled-seg .seg-b").forEach(function(b){ b.addEventListener("click", function(){ nastaviPogled(b.dataset.view); }); });
 
-/* ══════════ SEZNAM SPREMNIH LISTOV (kartice kot v Arhivu portala) ══════════ */
-function filtrirani(){
-  var q = iskanje.replace(/[^0-9]/g, "");
-  return entries.filter(function(e){
-    /* samo po zaporedni številki (pred »/«) — sicer bi se 1452 ujel s 1145/2026 */
-    if(q && String(e.stevilka || "").split("/")[0].replace(/[^0-9]/g, "").indexOf(q) < 0) return false;
-    if(filterStranka && e.strankaId !== filterStranka) return false;
-    if(filterDatum && e.datum !== filterDatum) return false;
-    return true;
-  }).sort(function(a, b){ return stKljuc(b) - stKljuc(a); });
+/* ══════════ VNOS SPREMNEGA LISTA ══════════ */
+function draftLines(){ var c = clientById(selectedId); if(!c) return [];
+  return c.artikli.filter(function(a){ return (draftQty[a.id] || 0) > 0; }).map(function(a){ return { id: a.id, naziv: a.naziv, kosov: draftQty[a.id] }; }); }
+function draftPieces(){ return draftLines().reduce(function(s, l){ return s + l.kosov; }, 0); }
+/* samodejna teža: Σ(teža na kos × kosov); teža je na artiklu stranke (portal) */
+function draftKgAuto(){ var c = clientById(selectedId); if(!c) return { kg: 0, ima: false };
+  var kg = 0, ima = false;
+  c.artikli.forEach(function(a){ var q = draftQty[a.id] || 0; if(q > 0 && a.teza != null && !isNaN(a.teza)){ kg += a.teza * q; ima = true; } });
+  return { kg: Math.round(kg * 1000) / 1000, ima: ima }; }
+function draftStOpomb(){ return ((draftOpombaStranka || "").trim() ? 1 : 0) + ((draftOpombaEvidenca || "").trim() ? 1 : 0); }
+function praznOsnutek(){ selectedId = null; draftQty = {}; draftPrevoz = "redni"; draftOpombaStranka = ""; draftOpombaEvidenca = ""; showHidden = false; editingId = null; }
+
+function setClientLabel(){
+  var c = clientById(selectedId), btn = $("strankaBtn");
+  $("strankaIme").textContent = c ? c.naziv : "Izberi stranko";
+  btn.classList.toggle("prazen", !c);
+  btn.disabled = !!editingId;
 }
-function karticaHtml(e){
-  var prazno = !(Number(e.skupajKosov) > 0), pot = jeZaklenjen(e);
-  var stat = prazno ? "red" : (pot ? "green" : "yellow");
-  var chk = '<span class="arh-chk' + (pot ? " on" : "") + '" title="' + (pot ? "Potrjeno v portalu" : "Še ni potrjeno v portalu") + '">' + (pot ? "✓" : "") + '</span>';
-  var oznake = (e.prevoz === "izredni" ? '<span class="a-izr" title="Izredni prevoz">Izredni</span>' : "") +
-    (!e.syncedAt ? (e.stevilkaZasedena ? '<span class="a-zas" title="Številka je v portalu že zasedena">Št. zasedena</span>' : '<span class="a-caka" title="Še ni poslan v portal">Ni v portalu</span>') : "") +
-    (e.vSporu ? '<span class="a-zas" title="Prekrivanje z urejanjem v portalu">V sporu</span>' : "");
-  var pop = (e.portalPopravljenoAt || e.popravljeno_at) ? '<span class="a-pop" title="Popravljeno' + (e.popravil ? " · " + esc(e.popravil) : "") + '">✎</span>' : "";
-  return '<div class="lcell arh-' + stat + '"><button class="a-row" type="button" data-id="' + esc(e.id) + '" aria-expanded="false">' + chk +
-    '<span class="a-num">' + esc(e.stevilka || "—") + pop + '</span>' +
-    '<span class="a-cli">' + esc(e.strankaNaziv || "—") + oznake + '</span>' +
-    '<span class="a-foot"><span class="num a-date">' + fmtDateHuman(e.datum) + '</span>' + (e.izdal ? '<span class="a-izdal" title="Izdal spremni list">' + esc(e.izdal) + '</span>' : "") +
-    '<span class="num a-qty">' + stevilo(e.skupajKosov) + ' kos</span></span>' +
-    '<span class="chev" aria-hidden="true">›</span></button></div>';
-}
-function najdiKartico(id){ return function(){ try{ return document.querySelector('#listi .a-row[data-id="' + CSS.escape(id) + '"]'); }catch(e){ return null; } }; }
-function renderList(){
-  var box = $("listi"); if(!box) return;
-  var vsi = filtrirani(), filtri = !!(iskanje || filterStranka || filterDatum);
-  var t = vsi.slice(0, prikazano);
-  if(!vsi.length){
-    box.innerHTML = '<div class="empty"><h3>' + (filtri ? "Ni zadetkov" : "Še ni spremnih listov") + '</h3><p>' +
-      (filtri ? "Za izbrani filter ni spremnega lista." : "Prvega ustvariš z gumbom »+ Nov spremni list«.") + '</p></div>';
-  }else{
-    box.innerHTML = '<div class="rows">' + t.map(karticaHtml).join("") + '</div>';
+function renderEntry(){
+  var body = $("vnosTelo"), c = clientById(selectedId);
+  if(!c){ body.innerHTML = '<div class="vnos-namig"><b>Izberi stranko</b>Nato vpiši število kosov za vsak artikel.</div>'; return; }
+  if(!c.artikli.length){ body.innerHTML = '<div class="vnos-namig"><b>Stranka še nima artiklov</b>Artikle doda osebje v portalu (Cenik in artikli).</div>'; return; }
+  /* privzeto samo artikli, ki jih stranka ima (viden_app) ali so že vpisani */
+  function jeViden(a){ return (a.vid !== false) || (draftQty[a.id] || 0) > 0; }
+  var vidni = c.artikli.filter(jeViden), skriti = c.artikli.filter(function(a){ return !jeViden(a); });
+  function vrsta(a){ var k = draftQty[a.id] || 0;
+    return '<button type="button" class="art' + (k > 0 ? ' polno' : '') + '" data-art="' + esc(a.id) + '"><span class="an">' + esc(a.naziv) + '</span>' +
+      '<span class="kos" data-kos="' + esc(a.id) + '">' + k + '</span><span class="chev">›</span></button>'; }
+  /* v portalu pri stranki ni obkljukan noben artikel (oznaka »app«) — namesto praznega prostora razlaga */
+  var html = vidni.length ? '<div class="artikli">' + vidni.map(vrsta).join("") + '</div>'
+    : '<div class="vnos-namig"><b>Ni artiklov, označenih za aplikacijo</b>V portalu jih označiš pri stranki (oznaka »app«). Ostale izbereš spodaj.</div>';
+  if(skriti.length){
+    html += showHidden
+      ? '<p class="drugi-h">Ostali artikli</p><div class="artikli">' + skriti.map(vrsta).join("") + '</div><button type="button" class="drugi-btn" id="drugiSkrij">Skrij ostale artikle</button>'
+      : '<button type="button" class="drugi-btn" id="drugiPokazi">Izberi drug artikel <span class="pill">' + skriti.length + '</span></button>';
   }
-  $("listiVec").innerHTML = vsi.length > t.length ? '<button type="button" class="btn ghost btn-narrow" id="vecBtn">Prikaži več (' + stevilo(vsi.length - t.length) + ')</button>' : "";
-  var vb = $("vecBtn"); if(vb) vb.onclick = function(){ prikazano += 60; renderList(); };
-  var danes = entries.filter(function(e){ return e.datum === todayISO(); }).length;
-  $("listiPod").textContent = filtri ? ("Zadetkov: " + stevilo(vsi.length) + " od " + stevilo(entries.length))
-    : (entries.length ? (sklonListov(entries.length) + " na napravi · danes " + stevilo(danes)) : "Vnos in tiskanje spremnih listov");
-  $("noga").textContent = "Različica " + APP_VERZIJA + " · " + (VARIANTA === "tablica" ? "tablica" : "splet");
-  risiStanje();
-  oknoPoIzrisu();
+  body.innerHTML = html;
+  body.querySelectorAll("[data-art]").forEach(function(b){ b.onclick = function(){ openKeypad(b.getAttribute("data-art"), b); }; });
+  var p = $("drugiPokazi"); if(p) p.onclick = function(){ showHidden = true; renderEntry(); };
+  var s = $("drugiSkrij"); if(s) s.onclick = function(){ showHidden = false; renderEntry(); };
 }
-$("listi").addEventListener("click", function(ev){
-  var b = ev.target.closest(".a-row"); if(!b) return;
-  var e = entryById(b.dataset.id); if(!e) return;
-  if(_okno) return;
-  oknoOdpri(b, detajl(e), najdiKartico(e.id));
+function updatePill(id){
+  var k = draftQty[id] || 0;
+  var pill = document.querySelector('[data-kos="' + CSS.escape(id) + '"]'); if(pill) pill.textContent = k;
+  var row = document.querySelector('[data-art="' + CSS.escape(id) + '"]'); if(row) row.classList.toggle("polno", k > 0);
+}
+function renderSummary(){
+  var lines = draftLines(), aktiven = !!(selectedId || editingId);
+  var e = editingId ? entryById(editingId) : null;
+  var st = e ? e.stevilka : nextNumber();
+  var ka = draftKgAuto(), nOp = draftStOpomb();
+  $("povzetek").innerHTML =
+    '<div class="pv-st"><span class="k">' + (e ? "Urejaš spremni list" : "Spremni list št.") + '</span><span class="v">' + esc(st) + '</span></div>' +
+    (lines.length ? '<ul class="pv-list">' + lines.map(function(l){ return '<li><span>' + esc(l.naziv) + '</span><b>' + stevilo(l.kosov) + '</b></li>'; }).join("") + '</ul>' : '') +
+    '<div class="pv-vrsta"><span class="k">Skupaj kosov</span><span class="v">' + stevilo(draftPieces()) + '</span></div>' +
+    '<div class="pv-vrsta"><span class="k">Teža perila</span><span class="v">' + (ka.ima ? tezaFmt(ka.kg) : "—") + '</span></div>' +
+    '<div class="pv-vrsta"><span class="k">Prevoz</span><div class="seg" id="prevozSeg">' +
+      '<button type="button" class="seg-b' + (draftPrevoz !== "izredni" ? " on" : "") + '" data-pv="redni">Redni</button>' +
+      '<button type="button" class="seg-b' + (draftPrevoz === "izredni" ? " on" : "") + '" data-pv="izredni">Izredni</button></div></div>' +
+    '<div class="pv-vrsta"><span class="k">Opombe</span><button type="button" class="pill-btn' + (nOp ? " on" : "") + '" id="opombeBtn"' + (aktiven ? "" : " disabled") + '>' + (nOp ? "Uredi opombe (" + nOp + ")" : "Dodaj opombo") + '</button></div>' +
+    '<button type="button" class="btn lg" id="zakljuciBtn"' + (draftPieces() > 0 ? "" : " disabled") + '>' + (e ? "Shrani spremembe" : "Zaključi") + '</button>';
+  $("prevozSeg").querySelectorAll(".seg-b").forEach(function(b){ b.onclick = function(){
+    draftPrevoz = b.getAttribute("data-pv") === "izredni" ? "izredni" : "redni";
+    $("prevozSeg").querySelectorAll(".seg-b").forEach(function(x){ x.classList.toggle("on", x === b); });
+  }; });
+  $("opombeBtn").onclick = function(){ openNote(this); };
+  $("zakljuciBtn").onclick = function(){ if(editingId) saveEdit(); else openReview(this); };
+}
+function updatePanelMode(){
+  var e = editingId ? entryById(editingId) : null;
+  $("vnosNaslov").textContent = e ? ("Urejanje " + e.stevilka) : "Nov spremni list";
+  $("pocistiBtn").textContent = e ? "Prekliči urejanje" : "Počisti";
+}
+function osveziVse(){ setClientLabel(); updatePanelMode(); renderEntry(); renderSummary(); renderList(); }
+
+/* izbira stranke */
+function fillClientGrid(){
+  var q = normaliziraj($("stIsci").value), izbran = clientPickerMode === "search" ? searchClientId : selectedId;
+  var seznam = strankeUrejene().filter(function(c){ return !q || normaliziraj(c.naziv).indexOf(q) >= 0 || normaliziraj(c.podjetje).indexOf(q) >= 0; });
+  $("stGrid").innerHTML = seznam.length
+    ? seznam.map(function(c){ return '<button type="button" class="st-tile' + (c.id === izbran ? " sel" : "") + '" data-c="' + esc(c.id) + '">' + esc(c.naziv) + '</button>'; }).join("")
+    : '<div class="st-prazno">' + (CLIENTS.length ? "Ni zadetkov." : (pullTecev || katalogTecev ? "Nalagam stranke iz portala …" : "Seznam strank je prazen — potrebna je povezava s portalom.")) + '</div>';
+  $("stGrid").querySelectorAll("[data-c]").forEach(function(b){ b.onclick = function(){ pickClient(b.getAttribute("data-c")); }; });
+}
+function openClientPicker(mode, izvor){
+  clientPickerMode = mode || "entry";
+  $("stT").textContent = clientPickerMode === "search" ? "Išči po stranki" : "Izberi stranko";
+  $("stIsci").value = ""; fillClientGrid();
+  odpriOkno("oknoStranke", izvor);
+  if(window.matchMedia && matchMedia("(pointer:fine)").matches) setTimeout(function(){ $("stIsci").focus(); }, 60);
+}
+$("stIsci").oninput = fillClientGrid;
+function pickClient(id){
+  zapriOkno("oknoStranke");
+  if(clientPickerMode === "search"){ clientPickerMode = "entry"; searchMode = "client"; searchClientId = id; updateSearchChip(); renderList(); return; }
+  if(selectedId !== id){ selectedId = id; draftQty = {}; showHidden = false; }
+  setClientLabel(); renderEntry(); renderSummary();
+  if(portalAuth) osveziStrankinArtikle(id);   // artikli TE stranke naravnost iz portala
+}
+
+/* številčnica */
+function buildKeypad(){
+  var keys = ["1","2","3","4","5","6","7","8","9","C","0","back"];
+  $("kpGrid").innerHTML = keys.map(function(k){
+    if(k === "back") return '<button type="button" class="kp-key util" data-k="back" aria-label="Briši">⌫</button>';
+    if(k === "C") return '<button type="button" class="kp-key util" data-k="C">C</button>';
+    return '<button type="button" class="kp-key" data-k="' + k + '">' + k + '</button>';
+  }).join("") + '<button type="button" class="btn" data-k="enter" id="kpEnter">Potrdi</button>';
+  $("kpGrid").querySelectorAll("[data-k]").forEach(function(b){ b.onclick = function(){ kpPress(b.getAttribute("data-k")); }; });
+}
+function openKeypad(artId, izvor){
+  kpMode = "entry"; kpArt = artId; kpBuf = "";
+  var a = artById(artId), cur = draftQty[artId] || 0;
+  $("kpT").textContent = "Vnos kosov";
+  $("kpIme").textContent = a ? a.naziv : "—";
+  $("kpZdaj").textContent = cur ? ("Zdaj: " + cur + " kos") : "Še ni vpisano";
+  $("kpEnter").textContent = "Potrdi";
+  kpRenderDisp(); odpriOkno("oknoKp", izvor);
+}
+function openSearchKeypad(izvor){
+  kpMode = "search"; kpBuf = searchMode === "id" ? searchQuery.replace(/[^0-9]/g, "") : "";
+  $("kpT").textContent = "Išči po številki";
+  $("kpIme").textContent = "Številka spremnega lista";
+  $("kpZdaj").textContent = "Rezultati se osvežujejo sproti";
+  $("kpEnter").textContent = "Zapri";
+  kpRenderDisp(); odpriOkno("oknoKp", izvor);
+}
+obZaprtju.oknoKp = function(){ kpArt = null; kpBuf = ""; kpMode = "entry"; };
+function kpRenderDisp(){
+  var d = $("kpDisp");
+  d.classList.toggle("prazen", kpBuf === "");
+  d.innerHTML = (kpBuf === "" ? "0" : esc(kpBuf)) + (kpMode === "entry" ? '<span class="e">kos</span>' : "");
+}
+function kpPress(k){
+  if(k === "enter"){
+    if(kpMode === "entry" && kpBuf !== "" && kpArt){ var id = kpArt; draftQty[id] = parseInt(kpBuf, 10) || 0; updatePill(id); renderSummary(); }
+    zapriOkno("oknoKp"); return;
+  }
+  if(k === "C"){ kpBuf = ""; }
+  else if(k === "back"){ kpBuf = kpBuf.slice(0, -1); }
+  else{ if(kpBuf === "0") kpBuf = ""; if(kpBuf.length < (kpMode === "search" ? 8 : 4)) kpBuf += k; }
+  if(kpMode === "search"){ searchMode = kpBuf ? "id" : ""; searchQuery = kpBuf; updateSearchChip(); renderList(); }
+  kpRenderDisp();
+}
+document.addEventListener("keydown", function(ev){
+  var top = odprtaOkna[odprtaOkna.length - 1];
+  if(ev.key === "Escape"){ if($("pinOkno")){ $("pinPreklic").click(); return; } if(top && top !== "oknoPotrdi") zapriOkno(top); else if(top) $("ptNe").click(); return; }
+  if(top !== "oknoKp") return;
+  if(/^[0-9]$/.test(ev.key)){ kpPress(ev.key); ev.preventDefault(); }
+  else if(ev.key === "Backspace"){ kpPress("back"); ev.preventDefault(); }
+  else if(ev.key === "Enter"){ kpPress("enter"); ev.preventDefault(); }
 });
-/* filtri v glavi (kot v Arhivu portala) */
-var _isciT = null;
-$("isci").addEventListener("input", function(){ clearTimeout(_isciT); var v = this.value; _isciT = setTimeout(function(){ iskanje = v.trim(); prikazano = 60; renderList(); }, 120); });
-$("filterStranka").addEventListener("change", function(){ filterStranka = this.value; prikazano = 60; renderList(); });
-$("filterDatum").addEventListener("change", function(){ filterDatum = this.value || ""; $("filterDatumX").classList.toggle("hidden", !filterDatum); prikazano = 60; renderList(); });
-$("filterDatumX").onclick = function(){ $("filterDatum").value = ""; filterDatum = ""; this.classList.add("hidden"); renderList(); };
-function napolniFilterStrank(){
-  var sel = $("filterStranka"), v = filterStranka;
-  sel.innerHTML = '<option value="">Vse stranke</option>' + strankeUrejene().map(function(c){ return '<option value="' + esc(c.id) + '">' + esc(c.naziv) + '</option>'; }).join("");
-  sel.value = clientById(v) ? v : ""; if(sel.value !== v){ filterStranka = ""; }
-}
-/* stanje prenosa nad seznamom (portal: .preg-status) */
-function risiStanje(){
-  var box = $("listiStanje"); if(!box) return;
-  var caka = entries.filter(function(e){ return !e.syncedAt; }), zas = caka.filter(function(e){ return e.stevilkaZasedena; }).length;
-  if(!caka.length || !portalAuth){ box.innerHTML = ""; return; }
-  var brez = navigator.onLine === false || syncZadnje === "ni povezave" || syncZadnje === "ni omrežja";
-  var t = "Na prenos v portal " + sklon(caka.length, "čaka", "čakata", "čakajo", "čaka") + " <b>" + sklonListov(caka.length) + "</b>" +
-    (zas ? " · " + zas + " z zasedeno številko (odpri list → Nova številka)" : (brez ? " · ni povezave, poslani bodo samodejno" : (syncZadnje ? " · " + esc(syncZadnje) : "")));
-  box.innerHTML = '<div class="preg-status ps-warn"><span class="ps-ik">' + (zas ? "!" : "●") + '</span><span>' + t + '.</span></div>';
-}
 
-/* ══════════ PODROBNOSTI LISTA V OKNU (kot risiListDetajl v portalu) ══════════ */
-function detajl(e, sporocilo){
-  var el = document.createElement("div"); el.className = "a-det show";
-  var post = e.postavke || [];
-  var seznam = post.length ? '<ul>' + post.map(function(p){ return '<li><span title="' + esc(p.naziv) + '">' + esc(p.naziv) + '</span><b>' + stevilo(p.kosov) + '</b></li>'; }).join("") + '</ul>'
-    : '<p class="u-sub">Ta spremni list nima postavk.</p>';
-  var prevozV = '<span class="prevoz-znak ' + (e.prevoz === "izredni" ? "izr" : "red") + '">' + (e.prevoz === "izredni" ? "Izredni prevoz" : "Redni prevoz") + '</span>';
-  var kg = (e.kg !== "" && e.kg != null && Number(e.kg) > 0) ? " · Teža: " + tezaFmt(e.kg) : "";
-  var info = '<p class="u-sub" style="margin-top:8px">' + prevozV + (e.izdal ? " · Izdal: " + esc(e.izdal) : "") + kg + '</p>';
-  var stanje = "";
-  if(sporocilo) stanje += '<p class="ur-ustvarjeno">' + esc(sporocilo) + '</p>';
-  if(!e.syncedAt){
-    stanje += e.stevilkaZasedena
-      ? '<div class="ur-popravek">Številka ' + esc(e.stevilka) + ' je v portalu že zasedena z drugim listom. Dodeli novo številko in list natisni znova.</div>'
-      : '<p class="u-sub" style="margin-top:12px">● Še ni v portalu — pošlje se samodejno, ko je povezava' + (e.syncNapaka && e.syncNapaka !== "ni povezave" ? " (" + esc(e.syncNapaka) + ")" : "") + '.</p>';
-  }else if(e.vSporu){
-    stanje += '<div class="ur-popravek">Hkrati urejeno v portalu in na napravi — razliko reši osebje v portalu (Arhiv).</div>';
-  }else if(jeZaklenjen(e)){
-    stanje += '<p class="ur-ustvarjeno">✓ Potrjeno v portalu — spremeniš ga lahko samo v portalu.</p>';
-  }
-  var popAt = e.portalPopravljenoAt || e.popravljeno_at;
-  var popravek = popAt ? '<div class="ur-popravek">✎ Popravljeno · ' + esc(e.popravil || "osebje") + ' · ' + fmtDateHuman(String(popAt).slice(0, 10)) + '</div>' : "";
-  var opombe = (e.opombaStranka ? '<div class="opomba-blok"><div class="opomba-h">Opomba za stranko (na natisu)</div><div class="opomba-prikaz"><div class="opomba-besedilo">' + esc(e.opombaStranka) + '</div></div></div>' : "") +
-    (e.opombaEvidenca ? '<div class="opomba-blok"><div class="opomba-h">Opomba za evidenco (interno — se ne natisne)</div><div class="opomba-prikaz"><div class="opomba-besedilo">' + esc(e.opombaEvidenca) + '</div></div></div>' : "");
-  var gumbi = '<div class="u-acts" style="margin-top:12px"><button type="button" class="ur-save" data-natisni>Natisni</button>' +
-    (e.stevilkaZasedena && !e.syncedAt ? '<button type="button" data-nova-st>Nova številka</button>' : "") +
-    (jeZaklenjen(e) ? "" : '<button type="button" data-uredi>Uredi</button>') +
-    (lahkoBrise(e) ? '<button type="button" class="danger" data-izbrisi>Izbriši</button>' : "") + '</div>';
-  el.innerHTML = '<div class="a-det-in"><div class="a-det-pad">' + seznam + info + stanje + popravek + opombe + gumbi + '</div></div>';
-  el.querySelector("[data-natisni]").onclick = function(){ predogled(e); };
-  var u = el.querySelector("[data-uredi]"); if(u) u.onclick = function(){ zacniUrejanje(e); };
-  var d = el.querySelector("[data-izbrisi]"); if(d) d.onclick = function(){ izbrisiList(e); };
-  var n = el.querySelector("[data-nova-st]"); if(n) n.onclick = function(){ novaStevilka(e.id); };
-  return el;
+/* opombe */
+function openNote(izvor){
+  $("opStranka").value = draftOpombaStranka || ""; $("opEvidenca").value = draftOpombaEvidenca || "";
+  odpriOkno("oknoOpombe", izvor);
 }
-function osveziDetajl(e, sporocilo){ if(_okno && _okno.id === e.id && !urejanje) oknoZamenjajVsebino(detajl(e, sporocilo || _okno.sporocilo)); }
+$("opShrani").onclick = function(){
+  draftOpombaStranka = ($("opStranka").value || "").trim();
+  draftOpombaEvidenca = ($("opEvidenca").value || "").trim();
+  zapriOkno("oknoOpombe"); renderSummary(); toast("Opombe shranjene");
+};
 
-/* ══════════ OBRAZEC: NOV / UREJANJE (kot »Nov spremni list« v portalu) ══════════ */
-function novOsnutek(){ return { stranka: "", kos: {}, prevoz: "redni", opS: "", opE: "", vsi: false }; }
-function kgOsnutka(d){
-  var c = clientById(d.stranka), kg = 0, ima = false; if(!c) return { kg: 0, ima: false };
-  c.artikli.forEach(function(a){ var q = d.kos[a.id] || 0; if(q > 0 && a.teza != null && !isNaN(a.teza)){ kg += a.teza * q; ima = true; } });
-  return { kg: Math.round(kg * 1000) / 1000, ima: ima };
-}
-function postavkeOsnutka(d){
-  var c = clientById(d.stranka); if(!c) return [];
-  return c.artikli.filter(function(a){ return (d.kos[a.id] || 0) > 0; }).map(function(a){ return { id: a.id, naziv: a.naziv, kosov: d.kos[a.id] }; });
-}
-function obrazec(d, nacin){
-  var e = nacin === "uredi" ? entryById(d.id) : null;
-  var box = document.createElement("div"); box.className = "nov-list show";
-  var opts = '<option value="">— izberi stranko —</option>' + strankeUrejene().map(function(c){ return '<option value="' + esc(c.id) + '">' + esc(c.naziv) + '</option>'; }).join("");
-  box.innerHTML = '<div class="ur-form">' +
-    '<label class="ur-f"><span>Stranka</span><select data-org' + (e ? " disabled" : "") + '>' + opts + '</select></label>' +
-    '<div class="ur-grid ur-grid-3">' +
-      '<div class="ur-f"><span>Št.</span><output class="ur-kg-auto" data-st>' + esc(e ? e.stevilka : nextNumber()) + '</output></div>' +
-      '<div class="ur-f"><span>Datum</span><output class="ur-kg-auto">' + fmtDateHuman(e ? e.datum : todayISO()) + '</output></div>' +
-      '<div class="ur-f"><span>Teža (samodejno)</span><output class="ur-kg-auto" data-teza>—</output></div>' +
-    '</div>' +
-    '<label class="ur-f"><span>Izdal (samodejno — prijavljeni uporabnik)</span><input type="text" value="' + esc(e ? (e.izdal || "") : (session ? session.user : "")) + '" readonly tabindex="-1" style="opacity:.6;cursor:not-allowed"></label>' +
-    '<div class="ur-f"><span>Vrsta prevoza</span><div class="seg" data-transport>' +
-      '<button type="button" class="seg-b" data-tv="redni">Redni</button><button type="button" class="seg-b" data-tv="izredni">Izredni prevoz</button></div></div>' +
-    '<p class="u-sub" style="margin:10px 0 4px">Postavke — vpiši samo količine; prazne se ne shranijo. <span data-skupaj></span></p>' +
-    '<div data-postavke></div>' +
-    '<button type="button" class="ur-add" data-dodaj></button>' +
-    '<p class="u-sub" style="margin:12px 0 4px">Opombi (neobvezno)</p>' +
-    '<div class="ur-opomba">' +
-      '<label class="ur-f"><span>Za stranko — natisne se na spremni list</span><textarea class="ur-opomba-txt" data-op-s rows="2" maxlength="600" placeholder="Vidno stranki, natisne se …"></textarea></label>' +
-      '<label class="ur-f"><span>Interno — samo osebje, se NE natisne</span><textarea class="ur-opomba-txt" data-op-e rows="2" maxlength="600" placeholder="Vidno samo osebju …"></textarea></label>' +
-    '</div>' +
-    '<div class="u-acts" style="margin-top:14px"><button type="button" class="ur-save" data-shrani>' + (e ? "Shrani" : "Ustvari") + '</button><button type="button" data-preklici>Prekliči</button></div>' +
-    '<p class="u-sub ur-msg" data-msg></p></div>';
-  var q = function(s){ return box.querySelector(s); };
-  q("[data-org]").value = d.stranka || "";
-  q("[data-op-s]").value = d.opS || ""; q("[data-op-e]").value = d.opE || "";
-  box.querySelectorAll("[data-transport] .seg-b").forEach(function(b){
-    b.classList.toggle("on", b.dataset.tv === (d.prevoz === "izredni" ? "izredni" : "redni"));
-    b.onclick = function(){ d.prevoz = b.dataset.tv; box.querySelectorAll("[data-transport] .seg-b").forEach(function(x){ x.classList.toggle("on", x === b); }); };
-  });
-  q("[data-op-s]").oninput = function(){ d.opS = this.value; };
-  q("[data-op-e]").oninput = function(){ d.opE = this.value; };
-  q("[data-org]").onchange = function(){
-    d.stranka = this.value; d.kos = {}; d.vsi = false; risiPostavke(box, d);
-    if(d.stranka && portalAuth) osveziStrankinArtikle(d.stranka);   // artikli TE stranke naravnost iz portala
-  };
-  q("[data-dodaj]").onclick = function(){ d.vsi = !d.vsi; risiPostavke(box, d); };
-  q("[data-preklici]").onclick = function(){ preklici(d, nacin); };
-  q("[data-shrani]").onclick = function(){ if(nacin === "uredi") shraniUrejanje(box, d); else ustvari(box, d); };
-  box._d = d; box._nacin = nacin;
-  risiPostavke(box, d);
-  return box;
-}
-function risiPostavke(box, d){
-  var pBox = box.querySelector("[data-postavke]"), add = box.querySelector("[data-dodaj]"), c = clientById(d.stranka);
-  if(!c){ pBox.innerHTML = '<div class="ap-prazno-art u-sub">Izberi stranko — njeni artikli se prikažejo samodejno.</div>'; add.classList.add("hidden"); osveziSkupaj(box, d); return; }
-  if(!c.artikli.length){ pBox.innerHTML = '<div class="ap-prazno-art u-sub">Stranka še nima artiklov. Doda jih osebje v portalu (Cenik &amp; Artikli).</div>'; add.classList.add("hidden"); osveziSkupaj(box, d); return; }
-  /* premade: artikli, ki jih stranka ima (viden_app) ali so že vpisani; ostali na »+ Dodaj postavko« */
-  function vSeznamu(a){ return a.vid !== false || (d.kos[a.id] || 0) > 0; }
-  var izven = c.artikli.filter(function(a){ return !vSeznamu(a); });
-  var vidni = d.vsi ? c.artikli : c.artikli.filter(vSeznamu);
-  pBox.innerHTML = vidni.map(function(a){
-    var k = d.kos[a.id] || 0;
-    return '<div class="ur-post ap-post' + (k > 0 ? " polno" : "") + '" data-aid="' + esc(a.id) + '"><div class="ap-pn"><span title="' + esc(a.naziv) + '">' + esc(a.naziv) + '</span></div>' +
-      '<input type="text" inputmode="numeric" pattern="[0-9]*" data-pk placeholder="kos" value="' + (k > 0 ? k : "") + '" aria-label="Količina (kosov) — ' + esc(a.naziv) + '"' + (DOTIK ? " readonly" : "") + '></div>';
-  }).join("");
-  if(!vidni.length) pBox.innerHTML = '<div class="ap-prazno-art u-sub">Za to stranko ni artiklov, označenih za aplikacijo (portal → Stranke → oznaka »app«). Artikel dodaš s »+ Dodaj postavko«.</div>';
-  add.classList.toggle("hidden", !izven.length);
-  add.textContent = d.vsi ? "Skrij artikle izven seznama" : "+ Dodaj postavko (izven seznama) · " + izven.length;
-  pBox.querySelectorAll(".ap-post").forEach(function(row){
-    var id = row.dataset.aid, inp = row.querySelector("[data-pk]"), a = c.artikli.find(function(x){ return x.id === id; });
-    function nastavi(n){ n = Math.max(0, Math.min(9999, parseInt(n, 10) || 0)); if(n > 0) d.kos[id] = n; else delete d.kos[id];
-      inp.value = n > 0 ? n : ""; row.classList.toggle("polno", n > 0); osveziSkupaj(box, d); }
-    if(DOTIK){
-      inp.addEventListener("click", function(){
-        stevilcnica({ naslov: a ? a.naziv : "Količina", sporocilo: (d.kos[id] ? "Zdaj: " + d.kos[id] + " kos" : "Še ni vpisano"), vrednost: d.kos[id] || "" })
-          .then(function(n){ if(n != null) nastavi(n); });
-      });
-    }else{
-      inp.addEventListener("input", function(){ var v = inp.value.replace(/[^0-9]/g, "").slice(0, 4); if(v !== inp.value) inp.value = v; nastavi(v); });
-      inp.addEventListener("keydown", function(ev){   // Enter → naslednja postavka (kot v portalu)
-        if(ev.key !== "Enter") return; ev.preventDefault();
-        var vse = [].slice.call(pBox.querySelectorAll("[data-pk]")), i = vse.indexOf(inp);
-        if(vse[i + 1]) vse[i + 1].focus(); else box.querySelector("[data-shrani]").focus();
-      });
-    }
-  });
-  osveziSkupaj(box, d);
-}
-function osveziSkupaj(box, d){
-  var ka = kgOsnutka(d), n = postavkeOsnutka(d).reduce(function(s, l){ return s + l.kosov; }, 0);
-  box.querySelector("[data-teza]").textContent = ka.ima ? tezaFmt(ka.kg) : "—";
-  box.querySelector("[data-skupaj]").textContent = n ? ("Skupaj " + stevilo(n) + " kos.") : "";
-}
-/* okno za nov spremni list (iz gumba v glavi; osnutek ostane, če okno zapreš s ×) */
-function odpriNov(){
-  if(_okno) return;
-  if(!osnutek) osnutek = novOsnutek();
-  var d = osnutek;
-  oknoOdpri($("novBtn"), obrazec(d, "nov"), function(){ return $("novBtn"); }, {
-    glava: function(){ var h = document.createElement("h3"); h.className = "sec-h"; h.textContent = "Nov spremni list"; return h; }
-  });
-  if(d.stranka && portalAuth) osveziStrankinArtikle(d.stranka);
-}
-$("novBtn").onclick = odpriNov;
-async function preklici(d, nacin){
-  if(nacin === "uredi"){ var e = entryById(d.id); urejanje = null; if(e && _okno) oknoZamenjajVsebino(detajl(e)); else oknoZapri(); return; }
-  if(postavkeOsnutka(d).length){
-    var ok = await potrdiModal({ naslov: "Zavržem vnos?", sporocilo: "Vpisane količine za ta spremni list bodo izbrisane.", potrdi: "Zavrzi", nevarno: true });
-    if(!ok) return;
-  }
-  osnutek = null; oknoZapri();
-}
-function novZapis(c, d, lines){
+/* pregled → shrani → natisni */
+function novZapis(c, lines){
   return { id: Date.now() + "-" + Math.random().toString(36).slice(2, 7),
     stevilka: nextNumber(), datum: todayISO(), ustvarjeno: new Date().toISOString(),
     strankaId: c.id, strankaNaziv: c.naziv, strankaPodjetje: c.podjetje, strankaNaslov: c.naslov, strankaDavcna: c.davcna,
     izdal: (session ? session.user : ""), postavke: lines, skupajKosov: lines.reduce(function(a, l){ return a + l.kosov; }, 0),
-    kg: kgOsnutka(d).kg, prevoz: d.prevoz === "izredni" ? "izredni" : "redni", opombaStranka: (d.opS || "").trim(), opombaEvidenca: (d.opE || "").trim(),
+    kg: draftKgAuto().kg, prevoz: draftPrevoz, opombaStranka: draftOpombaStranka || "", opombaEvidenca: draftOpombaEvidenca || "",
     saved: true, syncedAt: null, syncNapaka: null };
 }
+function openReview(izvor){
+  var c = clientById(selectedId); if(!c) return;
+  var lines = draftLines(); if(!lines.length){ toast("Vpiši vsaj en artikel."); return; }
+  var ka = draftKgAuto();
+  $("rvTelo").innerHTML =
+    '<div class="rv-glava"><div class="rv-stranka">' + esc(c.naziv) + '</div><div class="rv-st">Spremni list št. ' + esc(nextNumber()) + ' · ' + fmtDateHuman(todayISO()) + '</div></div>' +
+    '<ul class="rv-list">' + lines.map(function(l){ return '<li><span>' + esc(l.naziv) + '</span><b>' + stevilo(l.kosov) + '</b></li>'; }).join("") + '</ul>' +
+    '<div class="rv-tot"><span>Skupaj kosov</span><b>' + stevilo(draftPieces()) + '</b></div>' +
+    '<div class="rv-tot"><span>Teža perila</span><b>' + (ka.ima ? tezaFmt(ka.kg) : "—") + '</b></div>' +
+    '<div class="rv-tot"><span>Prevoz</span><b>' + (draftPrevoz === "izredni" ? "Izredni" : "Redni") + '</b></div>' +
+    (draftOpombaStranka ? '<div class="rv-tot"><span>Opomba za stranko</span><b style="text-align:right;font-weight:500">' + esc(draftOpombaStranka) + '</b></div>' : '');
+  $("rvT").textContent = "Pregled pred shranjevanjem";
+  $("rvPotrdiAkc").hidden = false; $("rvTiskAkc").hidden = true;
+  odpriOkno("oknoPregled", izvor);
+}
+obZaprtju.oknoPregled = function(){ reviewEntryId = null; };
 var _shranjujem = false;
-async function ustvari(box, d){
-  var msg = box.querySelector("[data-msg]"), c = clientById(d.stranka), lines = postavkeOsnutka(d);
-  if(!c){ msg.textContent = "Izberi stranko."; return; }
-  if(!lines.length){ msg.textContent = "Vpiši količino vsaj pri enem artiklu."; return; }
-  if(_shranjujem) return; _shranjujem = true;
+async function confirmReview(){
+  if(_shranjujem) return;
+  var c = clientById(selectedId), lines = draftLines(); if(!c || !lines.length) return;
+  _shranjujem = true;
   try{
-    msg.textContent = "Shranjujem …";
-    var ent = novZapis(c, d, lines);
-    entries.push(ent);
+    var ent = novZapis(c, lines);
+    entries.push(ent); reviewEntryId = ent.id;
     await saveEntries(); writeBackup();
-    /* artikel, ki je bil izven seznama, a je zdaj na listu, postane viden (enako naredi baza) */
+    /* artikel, ki je bil skrit, a je zdaj na listu, postane viden (enako naredi baza ob prenosu) */
     var razkril = false;
     lines.forEach(function(l){ var a = c.artikli.find(function(x){ return x.id === l.id; }); if(a && a.vid === false){ a.vid = true; razkril = true; } });
     if(razkril) saveClients();
-    osnutek = null;
-    /* seznam brez filtrov, da je nova kartica vidna; okno se preusmeri vanjo (kot v portalu) */
-    iskanje = ""; filterStranka = ""; filterDatum = ""; $("isci").value = ""; $("filterStranka").value = ""; $("filterDatum").value = ""; $("filterDatumX").classList.add("hidden");
-    renderList();
-    var k = najdiKartico(ent.id)();
-    if(k && _okno){ oknoPreusmeri(k, najdiKartico(ent.id)); _okno.sporocilo = "✓ Spremni list je shranjen. Natisni ga za stranko."; oknoZamenjajVsebino(detajl(ent, _okno.sporocilo)); }
-    else oknoZapri();
+    praznOsnutek(); osveziVse();
+    $("rvT").textContent = "Spremni list " + ent.stevilka + " je shranjen";
+    $("rvTelo").insertAdjacentHTML("beforeend", '<div class="rv-ok"><span class="dot ok"></span>Shranjen na napravi' + (portalAuth ? " in se pošilja v portal." : ".") + '</div>');
+    $("rvPotrdiAkc").hidden = true; $("rvTiskAkc").hidden = false;
     savePdfs(ent);
-    try{ syncPush(true); }catch(_){}
+    try{ syncPush(true); }catch(e){}
   }finally{ _shranjujem = false; }
 }
-function zacniUrejanje(e){
+$("rvPotrdi").onclick = confirmReview;
+$("rvUredi").onclick = function(){ zapriOkno("oknoPregled"); };
+$("rvZavrzi").onclick = function(){ zapriOkno("oknoPregled"); askConfirm("Zavrzi vnos?", "Vpisani kosi za to stranko bodo izbrisani.", "Zavrzi", function(){ praznOsnutek(); osveziVse(); }, true); };
+$("rvPreskoci").onclick = function(){ zapriOkno("oknoPregled"); };
+$("rvTisk1").onclick = function(){ var e = entryById(reviewEntryId); zapriOkno("oknoPregled"); if(e) printLists([e], true); };
+$("rvTisk2").onclick = function(){ var e = entryById(reviewEntryId); zapriOkno("oknoPregled"); if(e) printLists([e], false); };
+
+/* urejanje */
+function startEdit(id){
+  var e = entryById(id); if(!e) return;
   if(jeZaklenjen(e)){ toast("List " + e.stevilka + " je v portalu potrjen — spremeniš ga lahko samo v portalu."); return; }
   var c = clientById(e.strankaId); if(!c){ toast("Stranke ni več v seznamu — urejanje ni mogoče."); return; }
-  var d = { id: e.id, stranka: e.strankaId, kos: {}, prevoz: e.prevoz === "izredni" ? "izredni" : "redni", opS: e.opombaStranka || "", opE: e.opombaEvidenca || "", vsi: false };
+  editingId = id; selectedId = e.strankaId; draftQty = {}; showHidden = false;
+  draftPrevoz = e.prevoz === "izredni" ? "izredni" : "redni";
+  draftOpombaStranka = e.opombaStranka || ""; draftOpombaEvidenca = e.opombaEvidenca || "";
   (e.postavke || []).forEach(function(p){
-    var a = (p.id && c.artikli.find(function(x){ return x.id === p.id; })) || c.artikli.find(function(x){ return x.naziv === p.naziv; });
-    if(a) d.kos[a.id] = (d.kos[a.id] || 0) + p.kosov;
+    var art = (p.id && c.artikli.find(function(a){ return a.id === p.id; })) || c.artikli.find(function(a){ return a.naziv === p.naziv; });
+    if(art) draftQty[art.id] = (draftQty[art.id] || 0) + p.kosov;
   });
-  urejanje = d;
-  oknoZamenjajVsebino(obrazec(d, "uredi"));
+  osveziVse();
+  try{ window.scrollTo({ top: 0, behavior: "smooth" }); }catch(_){}
 }
+function cancelEdit(){ praznOsnutek(); osveziVse(); }
 function opisiSpremembe(stare, nova, sKg, nKg, sPre, nPre){
   var mapS = {}, mapN = {}, imena = {};
   (stare || []).forEach(function(p){ mapS[p.naziv] = (mapS[p.naziv] || 0) + (p.kosov || 0); imena[p.naziv] = 1; });
@@ -699,50 +423,57 @@ function opisiSpremembe(stare, nova, sKg, nKg, sPre, nPre){
   if((sPre || "redni") !== (nPre || "redni")) deli.push("prevoz " + (sPre === "izredni" ? "izredni" : "redni") + "→" + (nPre === "izredni" ? "izredni" : "redni"));
   return deli.length ? deli.join(", ") : "brez vsebinskih sprememb";
 }
-async function shraniUrejanje(box, d){
-  var msg = box.querySelector("[data-msg]"), e = entryById(d.id); if(!e){ oknoZapri(); return; }
-  if(jeZaklenjen(e)){ urejanje = null; toast("List " + e.stevilka + " je medtem v portalu potrjen — spremembe niso shranjene."); oknoZamenjajVsebino(detajl(e)); return; }
-  var lines = postavkeOsnutka(d); if(!lines.length){ msg.textContent = "Vpiši količino vsaj pri enem artiklu."; return; }
-  var novaKg = kgOsnutka(d).kg, kdo = (session ? session.user : "") || "osebje", zdaj = new Date().toISOString();
-  var opS = (d.opS || "").trim(), opE = (d.opE || "").trim();
-  var opis = opisiSpremembe(e.postavke, lines, e.kg, novaKg, e.prevoz, d.prevoz);
-  if(((e.opombaStranka || "") !== opS) || ((e.opombaEvidenca || "") !== opE)) opis += " · opomba posodobljena";
+async function saveEdit(){
+  var e = entryById(editingId); if(!e) return;
+  if(jeZaklenjen(e)){ toast("List " + e.stevilka + " je medtem v portalu potrjen — spremembe niso shranjene."); cancelEdit(); return; }
+  var lines = draftLines(); if(!lines.length){ toast("Vpiši vsaj en artikel."); return; }
+  var novaKg = draftKgAuto().kg, kdo = (session ? session.user : "") || "osebje", zdaj = new Date().toISOString();
+  var opis = opisiSpremembe(e.postavke, lines, e.kg, novaKg, e.prevoz, draftPrevoz);
+  if(((e.opombaStranka || "") !== (draftOpombaStranka || "")) || ((e.opombaEvidenca || "") !== (draftOpombaEvidenca || ""))) opis += " · opomba posodobljena";
   e.popravil = kdo; e.popravljeno_at = zdaj;
   e.popravki = (e.popravki ? e.popravki + "\n" : "") + fmtDateHuman(zdaj.slice(0, 10)) + " · " + kdo + ": " + opis;
   e.postavke = lines; e.skupajKosov = lines.reduce(function(a, l){ return a + l.kosov; }, 0);
-  e.kg = novaKg; e.prevoz = d.prevoz === "izredni" ? "izredni" : "redni"; e.opombaStranka = opS; e.opombaEvidenca = opE;
+  e.kg = novaKg; e.prevoz = draftPrevoz; e.opombaStranka = draftOpombaStranka; e.opombaEvidenca = draftOpombaEvidenca;
   e.syncedAt = null; e.syncNapaka = null;
   await saveEntries(); writeBackup();
   if(e.saved) savePdfs(e);
-  urejanje = null;
-  renderList();
-  if(_okno) _okno.sporocilo = "✓ Spremembe so shranjene. Natisni list znova za stranko.";
-  oknoZamenjajVsebino(detajl(e, _okno && _okno.sporocilo));
+  var st = e.stevilka;
+  praznOsnutek(); osveziVse();
+  toast("Spremni list " + st + " posodobljen");
   try{ syncPush(true); }catch(_){}
 }
+$("pocistiBtn").onclick = function(){
+  if(editingId){ cancelEdit(); return; }
+  if(!selectedId && !draftPieces()){ return; }
+  if(draftPieces() > 0) askConfirm("Počisti vnos?", "Vpisani kosi bodo izbrisani.", "Počisti", function(){ praznOsnutek(); osveziVse(); }, true, "Prekliči", this);
+  else { praznOsnutek(); osveziVse(); }
+};
+$("strankaBtn").onclick = function(){ openClientPicker("entry", this); };
+
 /* brisanje: samo lokalni osnutki, ki še niso v portalu (portal je vir resnice) */
-async function izbrisiList(e){
-  if(!lahkoBrise(e)){ toast("Spremni list, ki je že v portalu, izbrišeš v portalu."); return; }
-  var ok = await potrdiModal({ naslov: "Izbrišem spremni list?", sporocilo: e.stevilka + " (" + e.strankaNaziv + ") še ni v portalu in bo izbrisan samo s te naprave.", potrdi: "Izbriši", nevarno: true });
-  if(!ok) return;
-  await deleteSyncPdf(e);
-  entries = entries.filter(function(x){ return x.id !== e.id; });
-  await saveEntries(); renderList(); risiSyncGumb();
+function delEntry(id, izvor){
+  var e = entryById(id); if(!e) return;
+  if(e.syncedAt || e.prenesenIzPortala || e.potrjeno){ toast("Spremni list, ki je že v portalu, izbrišeš v portalu."); return; }
+  askConfirm("Izbriši spremni list?", e.stevilka + " (" + e.strankaNaziv + ") še ni v portalu in bo izbrisan samo s te naprave.", "Izbriši", async function(){
+    await deleteSyncPdf(e);
+    entries = entries.filter(function(x){ return x.id !== id; });
+    if(id === editingId) cancelEdit();
+    await saveEntries(); renderList(); renderSummary(); risiSyncGumb();
+  }, true, "Prekliči", izvor);
 }
 /* številka je v portalu zasedena z drugim listom → predlagaj prosto (portal + naprava) */
-async function novaStevilka(id){
+async function novaStevilka(id, izvor){
   var e = entryById(id); if(!e) return;
   var leto = String(e.stevilka).split("/")[1] || String(new Date().getFullYear());
   var izPortala = 0;
   try{ var r = await api("rpc/app_prosta_stevilka", { method: "POST", body: { p_leto: parseInt(leto, 10) } }); if(typeof r === "number") izPortala = r; }catch(_){}
   var maxLok = 0; entries.forEach(function(x){ var p = String(x.stevilka || "").split("/"); if(p[1] === leto){ var s = parseInt(p[0], 10); if(!isNaN(s) && s > maxLok) maxLok = s; } });
   var nova = String(Math.max(izPortala, maxLok + 1)).padStart(4, "0") + "/" + leto;
-  var ok = await potrdiModal({ naslov: "Nova številka lista?", sporocilo: "Številka " + e.stevilka + " je v portalu že zasedena z drugim spremnim listom. Ta list dobi številko " + nova + ". Na natisnjenem listu popravi številko ali ga natisni znova.", potrdi: "Spremeni v " + nova });
-  if(!ok) return;
-  await renameEntryNumber(id, nova);
-  e.stevilkaZasedena = false; e.syncNapaka = null; await saveEntries();
-  renderList(); osveziDetajl(e);
-  try{ syncPush(false); }catch(_){}
+  askConfirm("Nova številka lista?", "Številka " + e.stevilka + " je v portalu že zasedena z drugim spremnim listom. Ta list dobi številko " + nova + ". Na natisnjenem listu popravi številko ali ga natisni znova.", "Spremeni v " + nova, async function(){
+    await renameEntryNumber(id, nova);
+    e.stevilkaZasedena = false; e.syncNapaka = null; await saveEntries(); renderList();
+    try{ syncPush(false); }catch(_){}
+  }, false, "Prekliči", izvor);
 }
 async function renameEntryNumber(id, nn){
   var e = entryById(id); if(!e || nn === e.stevilka) return;
@@ -753,20 +484,74 @@ async function renameEntryNumber(id, nn){
   if(e.saved) await savePdfs(e);
   toast("Številka spremenjena v " + nn);
 }
-/* po osvežitvi kataloga / artiklov iz portala: odprt obrazec in filter naj pokažeta sveže */
-function poKatalogu(){
-  napolniFilterStrank();
-  var v = _okno && _okno.vsebina;
-  if(v && v._d){
-    var sel = v.querySelector("[data-org]"), izbrana = v._d.stranka;
-    if(sel && !sel.disabled){
-      sel.innerHTML = '<option value="">— izberi stranko —</option>' + strankeUrejene().map(function(c){ return '<option value="' + esc(c.id) + '">' + esc(c.naziv) + '</option>'; }).join("");
-      sel.value = clientById(izbrana) ? izbrana : "";
-    }
-    risiPostavke(v, v._d);
-  }
+
+/* ══════════ SEZNAM IN ISKANJE ══════════ */
+function currentListEntries(){
+  var arr = null;
+  if(searchMode === "id" && searchQuery){
+    /* samo po zaporedni številki (pred »/«) — sicer bi se 1452 ujel s 1145/2026 */
+    var q = String(searchQuery).replace(/[^0-9]/g, "");
+    arr = entries.filter(function(e){ var seq = String(e.stevilka || "").split("/")[0].replace(/[^0-9]/g, ""); return q && seq.indexOf(q) >= 0; });
+  }else if(searchMode === "date" && searchDate){ arr = entries.filter(function(e){ return e.datum === searchDate; }); }
+  else if(searchMode === "client" && searchClientId){ arr = entries.filter(function(e){ return e.strankaId === searchClientId; }); }
+  var vsi = (arr || entries).slice().sort(function(a, b){ return stKljuc(b) - stKljuc(a); });
+  return arr ? vsi.slice(0, 200) : vsi.slice(0, 40);
 }
-function poArtiklih(cid){ var v = _okno && _okno.vsebina; if(v && v._d && v._d.stranka === cid) risiPostavke(v, v._d); }
+var IKO_OKO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>';
+var IKO_UREDI = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>';
+var IKO_KOS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 10v6M14 10v6"/></svg>';
+function renderList(){
+  var el = $("seznam"), t = currentListEntries();
+  $("seznamNaslov").textContent = searchMode ? ("Rezultati iskanja (" + t.length + ")") : "Zadnji spremni listi";
+  if(!t.length){
+    el.innerHTML = searchMode ? '<div class="prazno"><b>Ni zadetkov</b>Za to iskanje ni spremnega lista.</div>'
+                              : '<div class="prazno"><b>Še ni spremnih listov</b>Prvega ustvariš zgoraj.</div>';
+  }else{
+    el.innerHTML = '<ul class="listi">' + t.map(function(e){
+      var n = (e.postavke || []).length, stanje = [];
+      if(!e.syncedAt){
+        if(e.stevilkaZasedena) stanje.push('<span class="t-bad">Številka je v portalu zasedena</span>');
+        else stanje.push('<span class="dot warn"></span><span class="t-warn">Čaka na prenos' + (e.syncNapaka ? " · " + esc(e.syncNapaka) : "") + '</span>');
+      }
+      if(e.vSporu) stanje.push('<span class="pill bad">V sporu · reši v portalu</span>');
+      if(jeZaklenjen(e)) stanje.push('<span class="pill ok">Potrjeno</span>');
+      var lahkoBrise = !(e.syncedAt || e.prenesenIzPortala || e.potrjeno);
+      return '<li class="list' + (e.id === editingId ? " ureja" : "") + '">' +
+        '<div class="l-info"><div class="l-ime">' + esc(e.strankaNaziv) + '</div>' +
+        '<div class="l-sub">' + esc(e.stevilka) + ' · ' + fmtDateHuman(e.datum) + ' · ' + n + ' ' + sklon(n, "artikel", "artikla", "artikli", "artiklov") + '</div>' +
+        (stanje.length ? '<div class="l-stanje">' + stanje.join("") + '</div>' : '') + '</div>' +
+        '<div class="l-kos">' + stevilo(e.skupajKosov) + '<small>kos</small></div>' +
+        '<div class="l-akc">' +
+          (e.stevilkaZasedena && !e.syncedAt ? '<button type="button" class="pill-btn novast" data-renum="' + esc(e.id) + '">Nova št.</button>' : '') +
+          '<button type="button" class="icon-btn" data-view="' + esc(e.id) + '" aria-label="Predogled in tiskanje">' + IKO_OKO + '</button>' +
+          (jeZaklenjen(e) ? '' : '<button type="button" class="icon-btn" data-edit="' + esc(e.id) + '" aria-label="Uredi">' + IKO_UREDI + '</button>') +
+          (lahkoBrise ? '<button type="button" class="icon-btn del" data-del="' + esc(e.id) + '" aria-label="Izbriši">' + IKO_KOS + '</button>' : '') +
+        '</div></li>';
+    }).join("") + '</ul>';
+    el.querySelectorAll("[data-view]").forEach(function(b){ b.onclick = function(){ openSheet(b.getAttribute("data-view"), b); }; });
+    el.querySelectorAll("[data-edit]").forEach(function(b){ b.onclick = function(){ startEdit(b.getAttribute("data-edit")); }; });
+    el.querySelectorAll("[data-del]").forEach(function(b){ b.onclick = function(){ delEntry(b.getAttribute("data-del"), b); }; });
+    el.querySelectorAll("[data-renum]").forEach(function(b){ b.onclick = function(){ novaStevilka(b.getAttribute("data-renum"), b); }; });
+  }
+  var skupaj = entries.length;
+  $("noga").textContent = skupaj ? ("Na napravi " + stevilo(skupaj) + " " + sklon(skupaj, "spremni list", "spremna lista", "spremni listi", "spremnih listov") + " · različica " + APP_VERZIJA) : ("Različica " + APP_VERZIJA);
+}
+function updateSearchChip(){
+  var txt = "";
+  if(searchMode === "id" && searchQuery) txt = "Številka vsebuje " + searchQuery;
+  else if(searchMode === "date" && searchDate) txt = "Datum " + fmtDateHuman(searchDate);
+  else if(searchMode === "client" && searchClientId){ var c = clientById(searchClientId); txt = "Stranka " + (c ? c.naziv : "?"); }
+  $("isciChip").hidden = !txt; $("isciChipT").textContent = txt;
+  $("isciSt").classList.toggle("on", searchMode === "id" && !!txt);
+  $("isciDat").classList.toggle("on", searchMode === "date" && !!txt);
+  $("isciStr").classList.toggle("on", searchMode === "client" && !!txt);
+}
+function clearSearch(){ searchMode = ""; searchQuery = ""; searchDate = ""; searchClientId = ""; updateSearchChip(); renderList(); }
+$("isciSt").onclick = function(){ openSearchKeypad(this); };
+$("isciStr").onclick = function(){ openClientPicker("search", this); };
+$("isciPocisti").onclick = clearSearch;
+$("isciDatum").onclick = function(){ try{ if(this.showPicker) this.showPicker(); }catch(_){} };
+$("isciDatum").onchange = function(){ if(this.value){ searchMode = "date"; searchDate = this.value; updateSearchChip(); renderList(); } };
 
 /* ══════════ DOKUMENT (enak kot v portalu) ══════════
    Natisnjen / shranjen spremni list je oblikovno enak tistemu iz portala:
@@ -829,235 +614,29 @@ function dokZaListe(arr, izvodov){
   return dokHtml(arr.length === 1 ? "Spremni list " + arr[0].stevilka : "Spremni listi", t);
 }
 
-/* predogled pred tiskanjem = portalov predogled dokumenta (.doc-modal); prikazan je točno dokument, ki se natisne */
-function predogled(e){
-  var back = document.createElement("div"); back.className = "sc-modal-back";
-  back.innerHTML = '<div class="sc-modal doc-modal" role="dialog" aria-modal="true">' +
-    '<div class="doc-head"><h4></h4><button type="button" class="doc-x" aria-label="Zapri">×</button></div>' +
-    '<div class="doc-stage"><div class="doc-scaler"><iframe class="doc-frame" title="Predogled"></iframe></div></div>' +
-    '<div class="sc-modal-acts doc-acts"><button type="button" class="sc-modal-btn ghost" data-ena>Natisni 1 izvod</button><button type="button" class="sc-modal-btn primary" data-dva>Natisni 2 izvoda</button></div></div>';
-  back.querySelector("h4").textContent = "Spremni list " + e.stevilka;
-  document.body.appendChild(back);
-  var fr = back.querySelector(".doc-frame"), scaler = back.querySelector(".doc-scaler"), stage = back.querySelector(".doc-stage"), A4W = 794;
-  function prilagodiA4(){
-    try{
-      var doc = fr.contentDocument; if(!doc || !doc.body) return;
-      var ch = Math.max(doc.body.scrollHeight, 1123);
-      fr.style.width = A4W + "px"; fr.style.height = ch + "px"; fr.style.transformOrigin = "top left";
-      var cs = getComputedStyle(stage);
-      var sw = stage.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
-      var k = sw / A4W; if(!isFinite(k) || k <= 0) k = 1; if(k > 1.8) k = 1.8;
-      fr.style.transform = "scale(" + k + ")";
-      scaler.style.width = (A4W * k) + "px"; scaler.style.height = (ch * k) + "px";
-    }catch(err){}
+/* predogled = točno dokument, ki se natisne (iframe) */
+function openSheet(id, izvor){
+  var e = entryById(id); if(!e) return;
+  previewId = id; $("pdEna").checked = false;
+  $("pdT").textContent = "Spremni list " + e.stevilka;
+  var okvir = $("pdOkvir");
+  okvir.innerHTML = "";
+  var ifr = document.createElement("iframe");
+  ifr.setAttribute("title", "Predogled spremnega lista"); ifr.setAttribute("tabindex", "-1");
+  ifr.style.width = "794px"; ifr.style.height = "1123px";
+  okvir.appendChild(ifr);
+  function prilagodi(){
+    var w = okvir.clientWidth || 360, s = w / 794;
+    var h = 1123; try{ h = Math.max(1123, ifr.contentDocument.documentElement.scrollHeight); }catch(_){}
+    ifr.style.height = h + "px"; ifr.style.transform = "scale(" + s + ")"; okvir.style.height = Math.ceil(h * s) + "px";
   }
-  fr.addEventListener("load", function(){ prilagodiA4(); setTimeout(prilagodiA4, 60); try{ fr.contentDocument.fonts.ready.then(prilagodiA4); }catch(_){} });
-  window.addEventListener("resize", prilagodiA4);
-  fr.srcdoc = dokZaListe([e], 1);
-  requestAnimationFrame(function(){ back.classList.add("show"); setTimeout(prilagodiA4, 40); });
-  var done = false;
-  function zapri(){ if(done) return; done = true; window.removeEventListener("resize", prilagodiA4); back.classList.remove("show"); document.removeEventListener("keydown", onKey, true); setTimeout(function(){ if(back.parentNode) back.parentNode.removeChild(back); }, 180); }
-  function onKey(ev){ if(ev.key === "Escape"){ ev.stopPropagation(); zapri(); } }
-  back._zapri = zapri;
-  back.querySelector(".doc-x").addEventListener("click", zapri);
-  back.addEventListener("click", function(ev){ if(ev.target === back) zapri(); });
-  document.addEventListener("keydown", onKey, true);
-  back.querySelector("[data-ena]").addEventListener("click", function(){ printLists([e], true); zapri(); });
-  back.querySelector("[data-dva]").addEventListener("click", function(){ printLists([e], false); zapri(); });
+  ifr.onload = function(){ prilagodi(); try{ ifr.contentDocument.fonts.ready.then(prilagodi); }catch(_){} };
+  ifr.srcdoc = dokZaListe([e], 1);
+  odpriOkno("oknoPredogled", izvor);
+  requestAnimationFrame(prilagodi);
 }
-
-/* ══════════ PRIJAVA (oznake in vzorec kot v portalu) ══════════
-   Profili: 1× prijava z geslom, nato en dotik (+ PIN, če ga ima račun nastavljenega
-   v portalu). Dostop imajo računi, ki jih baza spusti do spremnih listov (sme_app:
-   osebje, super admin, lastnik) in naprave. */
-var aktivniEmail = "";
-function msg(el, besedilo, slabo){ el.textContent = besedilo || ""; el.classList.toggle("show", !!besedilo); el.classList.toggle("bad", !!(besedilo && slabo)); }
-function pokaziPrijavo(){
-  zapriVse();
-  $("app").classList.remove("show"); $("auth").classList.remove("hidden");
-  var pin = $("apPin"); if(pin) pin.remove();
-  $("auth").classList.remove("ap-pin-on");
-}
-function zapriVse(){
-  if(_okno) oknoZapri(true);
-  document.querySelectorAll(".sc-modal-back").forEach(function(b){ if(b._zapri) b._zapri(); else b.remove(); });
-}
-function showAccountLogin(besedilo, email){
-  session = null; clearTimeout(idleTimer); pokaziPrijavo();
-  $("profilePicker").classList.add("hidden"); $("authBox").classList.remove("hidden");
-  msg($("acctErr"), besedilo, true); $("acctPass").value = "";
-  if(email) $("acctEmail").value = email;
-  $("acctBack").classList.toggle("hidden", !savedProfs.length);
-}
-function avatarHtml(p){
-  if(p && p.avatar && /^https:\/\//.test(p.avatar)) return '<span class="pp-av" style="background-image:url(\'' + encodeURI(p.avatar).replace(/'/g, "%27") + '\')"></span>';
-  return '<span class="pp-av av-sc"><span class="sc-s">S</span><span class="sc-c">C</span></span>';
-}
-function prikaziProfile(besedilo){
-  if(!savedProfs.length){ showAccountLogin(besedilo || ""); return; }
-  session = null; clearTimeout(idleTimer); pokaziPrijavo();
-  $("authBox").classList.add("hidden"); $("profilePicker").classList.remove("hidden");
-  msg($("ppMsg"), besedilo, true);
-  var urejeni = savedProfs.slice().sort(function(a, b){ return String(a.name || a.email).localeCompare(String(b.name || b.email), "sl"); });
-  $("ppGrid").innerHTML = urejeni.map(function(p){
-    return '<div class="pp-tile-wrap"><button type="button" class="pp-tile" data-em="' + esc(p.email) + '">' + avatarHtml(p) + '<span class="pp-nm">' + esc(p.name || p.email) + '</span></button>' +
-      '<button type="button" class="pp-tile-x" data-pozabi="' + esc(p.email) + '" aria-label="Odstrani profil" title="Odstrani profil">×</button></div>';
-  }).join("") + '<button type="button" class="pp-tile pp-add" id="ppDodaj"><span class="pp-av">+</span><span class="pp-nm">Dodaj</span></button>';
-  $("ppGrid").querySelectorAll("[data-em]").forEach(function(b){ b.onclick = function(){ izberiProfil(b.getAttribute("data-em"), b); }; });
-  $("ppGrid").querySelectorAll("[data-pozabi]").forEach(function(b){ b.onclick = function(ev){ ev.stopPropagation(); pozabiProfil(b.getAttribute("data-pozabi")); }; });
-  $("ppDodaj").onclick = function(){ showAccountLogin(""); setTimeout(function(){ $("acctEmail").focus(); }, 50); };
-}
-async function pozabiProfil(em){
-  var p = savedProfs.find(function(x){ return x.email === em; }); if(!p) return;
-  var ok = await potrdiModal({ naslov: "Odstranim profil?", sporocilo: "Profil " + (p.name || p.email) + " bo odstranjen s te naprave. Za ponoven vstop bo potrebna prijava z geslom.", potrdi: "Odstrani", nevarno: true });
-  if(!ok) return;
-  savedProfs = savedProfs.filter(function(x){ return x.email !== em; }); await saveProfs(); prikaziProfile();
-}
-/* Po vsaki osvežitvi žetona ga zapiši tudi v profil — sicer bi profil hranil že porabljen
-   žeton in bi ga Supabase ob naslednjem vstopu zavrnil (prijava z geslom znova). */
-function posodobiProfilZeton(){
-  if(!aktivniEmail || !portalAuth || !portalAuth.refresh_token) return;
-  var p = savedProfs.find(function(x){ return x.email === aktivniEmail; });
-  if(p && p.refresh_token !== portalAuth.refresh_token){ p.refresh_token = portalAuth.refresh_token; saveProfs(); }
-}
-async function portalProfil(){
-  var ur;
-  try{ ur = await fetch(settings.portalUrl + "/auth/v1/user", { headers: { apikey: settings.portalKey, Authorization: "Bearer " + portalAuth.access_token } }); }
-  catch(e){ throw new Error("ni povezave"); }
-  var u = await ur.json().catch(function(){ return {}; });
-  if(!ur.ok) throw new Error("seja ni veljavna");
-  var out = { id: u.id, email: u.email || "", full_name: "", avatar_url: "", app_pin: "", dostop: false };
-  try{
-    var rows = await api("profiles?select=full_name,avatar_url,app_pin,is_staff,super_admin,is_device,web_dostop&id=eq." + u.id);
-    var r = Array.isArray(rows) ? rows[0] : null;
-    if(r){
-      out.full_name = r.full_name || ""; out.avatar_url = r.avatar_url || "";
-      out.app_pin = (r.app_pin != null && r.app_pin !== "") ? String(r.app_pin) : "";
-      out.dostop = r.web_dostop !== false && !!(r.is_staff || r.super_admin || r.is_device);
-    }
-  }catch(e){ if(/ni povezave/i.test((e && e.message) || "")) throw e; }
-  if((out.email || "").trim().toLowerCase() === LASTNIK) out.dostop = true;
-  return out;
-}
-var NI_DOSTOPA = "Ta račun nima dostopa do spremnih listov. Dostop dodeli skrbnik v portalu (Uporabniki → vloga Osebje).";
-async function acctSubmit(){
-  var em = ($("acctEmail").value || "").trim(), pw = $("acctPass").value || "", btn = $("acctBtn"), er = $("acctErr");
-  if(!em || !pw){ msg(er, "Vpiši e-poštni naslov in geslo.", true); return; }
-  btn.disabled = true; btn.textContent = "Prijavljam …"; msg(er, "");
-  try{
-    aktivniEmail = "";
-    await portalLogin(em, pw);
-    var prof = await portalProfil();
-    if(!prof.dostop){ portalAuth = null; await savePortalAuth(); msg(er, NI_DOSTOPA, true); return; }
-    var email = prof.email || em;
-    savedProfs = savedProfs.filter(function(p){ return p.email !== email; });
-    var np = { email: email, name: prof.full_name || email, uid: prof.id || null, refresh_token: portalAuth.refresh_token, avatar: prof.avatar_url || "", pin: prof.app_pin || "", dostop: true };
-    savedProfs.push(np); await saveProfs();
-    $("acctPass").value = "";
-    vstopi(np);   // pravkar se je prijavil z geslom → brez PIN-a
-  }catch(e){
-    var m = (e && e.message) || "";
-    msg(er, /invalid login|invalid_grant|credentials/i.test(m) ? "Napačen e-poštni naslov ali geslo." : (/ni povezave|fetch/i.test(m) ? "Ni povezave z internetom." : (m || "Prijava ni uspela.")), true);
-  }finally{ btn.disabled = false; btn.textContent = "Prijavi se"; }
-}
-$("acctForm").addEventListener("submit", function(e){ e.preventDefault(); acctSubmit(); });
-$("acctBack").onclick = function(){ prikaziProfile(); };
-
-async function izberiProfil(em, tile){
-  var p = savedProfs.find(function(x){ return x.email === em; }); if(!p) return;
-  msg($("ppMsg"), "");
-  var nm = tile && tile.querySelector(".pp-nm"); if(nm) nm.textContent = "Prijavljam …";
-  $("ppGrid").style.pointerEvents = "none";
-  try{
-    aktivniEmail = p.email;
-    portalAuth = { refresh_token: p.refresh_token, access_token: null, expires_at: 0 };
-    await portalRefresh();
-    var prof = await portalProfil();
-    p.name = prof.full_name || p.name; p.avatar = prof.avatar_url || ""; p.pin = prof.app_pin || ""; p.dostop = prof.dostop; p.uid = prof.id || p.uid;
-    await saveProfs();
-    if(!prof.dostop){ portalAuth = null; await savePortalAuth(); prikaziProfile(NI_DOSTOPA); return; }
-    vstopiSPinom(p);
-  }catch(e){
-    var m = (e && e.message) || "";
-    /* brez omrežja: naprava je že prijavljena → vstop z zadnjimi znanimi podatki, sinhronizacija dohiti */
-    if(/ni povezave/i.test(m) && p.refresh_token){
-      if(p.dostop === false){ prikaziProfile(NI_DOSTOPA); return; }
-      vstopiSPinom(p); return;
-    }
-    showAccountLogin("Prijava je potekla — vpiši geslo za " + (p.name || p.email) + ".", p.email);
-  }finally{ $("ppGrid").style.pointerEvents = ""; if(nm && nm.isConnected) nm.textContent = p.name || p.email; }
-}
-function vstopiSPinom(p){ if(p.pin) zahtevajPin(p, function(){ vstopi(p); }); else vstopi(p); }
-function vstopi(p){
-  aktivniEmail = p.email;
-  doLogin({ name: p.name || p.email });
-  try{ zaziviRealtime(); }catch(e){}
-  polnaSinh();
-}
-/* PIN (nastavi se v portalu, Moj račun) — prikazan v prostoru prijave, kot izbira profila */
-function zahtevajPin(p, onOk){
-  var star = $("apPin"); if(star) star.remove();
-  $("profilePicker").classList.add("hidden"); $("authBox").classList.add("hidden");
-  var buf = "";
-  var el = document.createElement("div"); el.className = "ap-pin"; el.id = "apPin";
-  el.innerHTML = avatarHtml(p) + '<h1>' + esc(p.name || p.email) + '</h1><p class="sub">Vpiši svojo 4-mestno kodo</p>' +
-    '<div class="ap-pin-dots">' + [0, 1, 2, 3].map(function(){ return '<span class="ap-pin-dot"></span>'; }).join("") + '</div>' +
-    '<div class="ap-keys">' + ["1","2","3","4","5","6","7","8","9"].map(function(n){ return '<button type="button" class="ap-key" data-k="' + n + '">' + n + '</button>'; }).join("") +
-    '<button type="button" class="ap-key prazna" tabindex="-1" aria-hidden="true"></button><button type="button" class="ap-key" data-k="0">0</button><button type="button" class="ap-key util" data-k="del" aria-label="Briši">⌫</button></div>' +
-    '<div class="msg bad" id="pinErr" role="status" aria-live="polite"></div><p class="under"><button type="button" class="link-btn" id="pinPreklic">‹ Nazaj na profile</button></p>';
-  document.querySelector("#auth .auth-slot").appendChild(el);
-  $("auth").classList.add("ap-pin-on");
-  function upd(){ el.querySelectorAll(".ap-pin-dot").forEach(function(d, i){ d.classList.toggle("on", i < buf.length); }); }
-  function tipka(k){
-    if(k === "del") buf = buf.slice(0, -1);
-    else if(buf.length < 4){ buf += k; msg($("pinErr"), ""); }
-    upd();
-    if(buf.length === 4) setTimeout(function(){
-      if(buf === String(p.pin)){ konec(); onOk(); }
-      else{ buf = ""; upd(); msg($("pinErr"), "Napačna koda", true); el.classList.remove("tresi"); void el.offsetWidth; el.classList.add("tresi"); }
-    }, 120);
-  }
-  function tipke(ev){ if(!el.isConnected){ document.removeEventListener("keydown", tipke); return; } if(/^[0-9]$/.test(ev.key)) tipka(ev.key); else if(ev.key === "Backspace") tipka("del"); else if(ev.key === "Escape") preklic(); }
-  function konec(){ document.removeEventListener("keydown", tipke); el.remove(); $("auth").classList.remove("ap-pin-on"); }
-  function preklic(){ konec(); prikaziProfile(); }
-  el._preklic = preklic;
-  document.addEventListener("keydown", tipke);
-  el.querySelectorAll("[data-k]").forEach(function(b){ b.onclick = function(){ tipka(b.getAttribute("data-k")); }; });
-  $("pinPreklic").onclick = preklic;
-}
-function doLogin(u){
-  session = { user: u.name, start: new Date().toISOString() };
-  $("auth").classList.add("hidden"); $("app").classList.add("show");
-  $("tbIme").textContent = u.name || "";
-  iskanje = ""; filterStranka = ""; filterDatum = ""; prikazano = 60; urejanje = null;
-  $("isci").value = ""; $("filterDatum").value = ""; $("filterDatumX").classList.add("hidden");
-  napolniFilterStrank(); nastaviPogled(pogled()); renderList(); risiSyncGumb();
-  resetIdle();
-  if(pdfPlugin() && !pdfPermOK && !askedPerm){
-    askedPerm = true;
-    potrdiModal({ naslov: "Dovoljenje za datoteke", sporocilo: "Za samodejno shranjevanje spremnih listov kot PDF v mapo Dokumenti omogoči »Dostop do vseh datotek«.", potrdi: "Odpri nastavitve", preklici: "Pozneje" })
-      .then(function(ok){ if(ok){ try{ pdfPlugin().requestPermission(); }catch(e){} } });
-  }
-}
-function logout(){ session = null; clearTimeout(idleTimer); prikaziProfile(); }
-function resetIdle(){ if(!session) return; clearTimeout(idleTimer); idleTimer = setTimeout(logout, (settings.idleMin || 15) * 60000); }
-["click", "touchstart", "keydown"].forEach(function(ev){ document.addEventListener(ev, resetIdle, true); });
-$("zamenjajBtn").onclick = logout;
-$("izklopBtn").onclick = async function(){
-  var ok = await potrdiModal({ naslov: "Izklopim aplikacijo?", sporocilo: "Neposlani spremni listi ostanejo shranjeni na napravi in se pošljejo ob naslednjem zagonu.", potrdi: "Izklopi" });
-  if(ok){ try{ Capacitor.Plugins.App.exitApp(); }catch(e){} }
-};
-
-/* razkrij geslo (očesce, kot v portalu) */
-var _OKO = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>';
-var _OKO_OFF = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9.9 4.24A9.1 9.1 0 0 1 12 4c7 0 10 8 10 8a13.2 13.2 0 0 1-1.67 2.68"/><path d="M6.1 6.1A13.3 13.3 0 0 0 2 12s3 8 10 8a9.3 9.3 0 0 0 5.9-2.1"/><path d="M14.12 14.12A3 3 0 1 1 9.88 9.88"/><path d="m3 3 18 18"/></svg>';
-document.querySelectorAll('input[type="password"]').forEach(function(inp){
-  var wrap = document.createElement("span"); wrap.className = "pw-wrap";
-  inp.parentNode.insertBefore(wrap, inp); wrap.appendChild(inp);
-  var b = document.createElement("button"); b.type = "button"; b.className = "pw-eye"; b.tabIndex = -1; b.setAttribute("aria-label", "Pokaži geslo"); b.title = "Pokaži geslo"; b.innerHTML = _OKO;
-  wrap.appendChild(b);
-  b.onclick = function(e){ e.preventDefault(); var pokazi = inp.type === "password"; inp.type = pokazi ? "text" : "password"; b.innerHTML = pokazi ? _OKO_OFF : _OKO; b.setAttribute("aria-label", pokazi ? "Skrij geslo" : "Pokaži geslo"); b.title = pokazi ? "Skrij geslo" : "Pokaži geslo"; };
-});
+obZaprtju.oknoPredogled = function(){ setTimeout(function(){ if(!$("oknoPredogled").classList.contains("odprto")) $("pdOkvir").innerHTML = ""; }, 280); };
+$("pdTisk").onclick = function(){ var e = entryById(previewId); if(e) printLists([e], $("pdEna").checked); };
 
 function pdfPlugin(){ try{ if(window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.PralnicaPrint) return Capacitor.Plugins.PralnicaPrint; }catch(e){} return null; }
 function printLists(arr, enIzvod){
@@ -1104,6 +683,181 @@ async function savePdfs(e){
 }
 async function deleteSyncPdf(e){ var P = pdfPlugin(); if(!P || !e.pdfSaved) return; try{ await P.deleteFile({ relPath: SINHRO + pdfName(e) }); }catch(err){} }
 
+/* ══════════ PRIJAVA ══════════
+   Profili (kot v portalu): 1× prijava z geslom, nato en dotik (+ PIN, če ga ima
+   račun nastavljenega v portalu). Dostop imajo računi, ki jih baza spusti do
+   spremnih listov (sme_app: osebje, super admin, lastnik) in naprave. */
+var aktivniEmail = "";
+function pokaziPrijavo(){ $("app").hidden = true; $("prijava").hidden = false; }
+function showAccountLogin(msg, email){
+  session = null; clearTimeout(idleTimer); zapriVsaOkna(); pokaziPrijavo();
+  $("profili").hidden = true; $("prijavaObr").hidden = false;
+  $("acctErr").textContent = msg || ""; $("acctPass").value = "";
+  if(email) $("acctEmail").value = email;
+  $("acctBack").hidden = !savedProfs.length;
+}
+function avatarHtml(p){
+  if(p && p.avatar && /^https:\/\//.test(p.avatar)) return '<span class="pp-av" style="background-image:url(\'' + encodeURI(p.avatar).replace(/'/g, "%27") + '\')"></span>';
+  return '<span class="pp-av av-sc"><span class="sc-s">S</span><span class="sc-c">C</span></span>';
+}
+function prikaziProfile(msg){
+  if(!savedProfs.length){ showAccountLogin(msg || ""); return; }
+  session = null; clearTimeout(idleTimer); zapriVsaOkna(); pokaziPrijavo();
+  $("prijavaObr").hidden = true; $("profili").hidden = false;
+  $("ppMsg").textContent = msg || "";
+  var urejeni = savedProfs.slice().sort(function(a, b){ return String(a.name || a.email).localeCompare(String(b.name || b.email), "sl"); });
+  $("ppGrid").innerHTML = urejeni.map(function(p){
+    return '<div class="pp-wrap"><button type="button" class="pp-tile" data-em="' + esc(p.email) + '">' + avatarHtml(p) + '<span class="pp-nm">' + esc(p.name || p.email) + '</span></button>' +
+      '<button type="button" class="pp-x" data-pozabi="' + esc(p.email) + '" aria-label="Odstrani profil">×</button></div>';
+  }).join("") + '<div class="pp-wrap"><button type="button" class="pp-tile pp-add" id="ppDodaj"><span class="pp-av">+</span><span class="pp-nm">Dodaj</span></button></div>';
+  $("ppGrid").querySelectorAll("[data-em]").forEach(function(b){ b.onclick = function(){ izberiProfil(b.getAttribute("data-em"), b); }; });
+  $("ppGrid").querySelectorAll("[data-pozabi]").forEach(function(b){ b.onclick = function(ev){ ev.stopPropagation(); pozabiProfil(b.getAttribute("data-pozabi"), b); }; });
+  $("ppDodaj").onclick = function(){ showAccountLogin(""); setTimeout(function(){ $("acctEmail").focus(); }, 50); };
+}
+function pozabiProfil(em, izvor){
+  var p = savedProfs.find(function(x){ return x.email === em; }); if(!p) return;
+  askConfirm("Odstrani profil?", "Profil " + (p.name || p.email) + " bo odstranjen s te naprave. Za ponoven vstop bo potrebna prijava z geslom.", "Odstrani", async function(){
+    savedProfs = savedProfs.filter(function(x){ return x.email !== em; }); await saveProfs(); prikaziProfile();
+  }, true, "Prekliči", izvor);
+}
+/* Po vsaki osvežitvi žetona ga zapiši tudi v profil — sicer bi profil hranil že porabljen
+   žeton in bi ga Supabase ob naslednjem vstopu zavrnil (prijava z geslom znova). */
+function posodobiProfilZeton(){
+  if(!aktivniEmail || !portalAuth || !portalAuth.refresh_token) return;
+  var p = savedProfs.find(function(x){ return x.email === aktivniEmail; });
+  if(p && p.refresh_token !== portalAuth.refresh_token){ p.refresh_token = portalAuth.refresh_token; saveProfs(); }
+}
+async function portalProfil(){
+  var ur;
+  try{ ur = await fetch(settings.portalUrl + "/auth/v1/user", { headers: { apikey: settings.portalKey, Authorization: "Bearer " + portalAuth.access_token } }); }
+  catch(e){ throw new Error("ni povezave"); }
+  var u = await ur.json().catch(function(){ return {}; });
+  if(!ur.ok) throw new Error("seja ni veljavna");
+  var out = { id: u.id, email: u.email || "", full_name: "", avatar_url: "", app_pin: "", dostop: false };
+  try{
+    var rows = await api("profiles?select=full_name,avatar_url,app_pin,is_staff,super_admin,is_device,web_dostop&id=eq." + u.id);
+    var r = Array.isArray(rows) ? rows[0] : null;
+    if(r){
+      out.full_name = r.full_name || ""; out.avatar_url = r.avatar_url || "";
+      out.app_pin = (r.app_pin != null && r.app_pin !== "") ? String(r.app_pin) : "";
+      out.dostop = r.web_dostop !== false && !!(r.is_staff || r.super_admin || r.is_device);
+    }
+  }catch(e){ if(/ni povezave/i.test((e && e.message) || "")) throw e; }
+  if((out.email || "").trim().toLowerCase() === LASTNIK) out.dostop = true;
+  return out;
+}
+var NI_DOSTOPA = "Ta račun nima dostopa do spremnih listov. Dostop dodeli skrbnik v portalu (Uporabniki → vloga Osebje).";
+async function acctSubmit(){
+  var em = ($("acctEmail").value || "").trim(), pw = $("acctPass").value || "", btn = $("acctBtn"), er = $("acctErr");
+  if(!em || !pw){ er.textContent = "Vpiši e-poštni naslov in geslo."; return; }
+  btn.disabled = true; btn.textContent = "Prijavljam …"; er.textContent = "";
+  try{
+    aktivniEmail = "";
+    await portalLogin(em, pw);
+    var prof = await portalProfil();
+    if(!prof.dostop){ portalAuth = null; await savePortalAuth(); er.textContent = NI_DOSTOPA; return; }
+    var email = prof.email || em;
+    savedProfs = savedProfs.filter(function(p){ return p.email !== email; });
+    var np = { email: email, name: prof.full_name || email, uid: prof.id || null, refresh_token: portalAuth.refresh_token, avatar: prof.avatar_url || "", pin: prof.app_pin || "", dostop: true };
+    savedProfs.push(np); await saveProfs();
+    $("acctPass").value = "";
+    vstopi(np);   // pravkar se je prijavil z geslom → brez PIN-a
+  }catch(e){
+    var m = (e && e.message) || "";
+    er.textContent = /invalid login|invalid_grant|credentials/i.test(m) ? "Napačen e-poštni naslov ali geslo." : (/ni povezave|fetch/i.test(m) ? "Ni povezave z internetom." : (m || "Prijava ni uspela."));
+  }finally{ btn.disabled = false; btn.textContent = "Prijavi se"; }
+}
+$("acctForm").addEventListener("submit", function(e){ e.preventDefault(); acctSubmit(); });
+$("acctBack").onclick = function(){ prikaziProfile(); };
+
+async function izberiProfil(em, tile){
+  var p = savedProfs.find(function(x){ return x.email === em; }); if(!p) return;
+  $("ppMsg").textContent = "";
+  var nm = tile && tile.querySelector(".pp-nm"); if(nm) nm.textContent = "Prijavljam …";
+  $("ppGrid").style.pointerEvents = "none";
+  try{
+    aktivniEmail = p.email;
+    portalAuth = { refresh_token: p.refresh_token, access_token: null, expires_at: 0 };
+    await portalRefresh();
+    var prof = await portalProfil();
+    p.name = prof.full_name || p.name; p.avatar = prof.avatar_url || ""; p.pin = prof.app_pin || ""; p.dostop = prof.dostop; p.uid = prof.id || p.uid;
+    await saveProfs();
+    if(!prof.dostop){ portalAuth = null; await savePortalAuth(); prikaziProfile(NI_DOSTOPA); return; }
+    vstopiSPinom(p);
+  }catch(e){
+    var m = (e && e.message) || "";
+    /* brez omrežja: naprava je že prijavljena → vstop z zadnjimi znanimi podatki, sinhronizacija dohiti */
+    if(/ni povezave/i.test(m) && p.refresh_token){
+      if(p.dostop === false){ prikaziProfile(NI_DOSTOPA); return; }
+      vstopiSPinom(p); return;
+    }
+    showAccountLogin("Prijava je potekla — vpiši geslo za " + (p.name || p.email) + ".", p.email);
+  }finally{ $("ppGrid").style.pointerEvents = ""; if(nm && nm.isConnected) nm.textContent = p.name || p.email; }
+}
+function vstopiSPinom(p){ if(p.pin) zahtevajPin(p, function(){ vstopi(p); }); else vstopi(p); }
+function vstopi(p){
+  aktivniEmail = p.email;
+  doLogin({ name: p.name || p.email });
+  try{ zaziviRealtime(); }catch(e){}
+  polnaSinh();
+}
+/* PIN (nastavi se v portalu, Moj račun) */
+function zahtevajPin(p, onOk){
+  var star = $("pinOkno"); if(star) star.remove();
+  var buf = "";
+  var el = document.createElement("div"); el.className = "pin"; el.id = "pinOkno";
+  el.innerHTML = '<div class="pin-in">' + avatarHtml(p) + '<div class="pin-ime">' + esc(p.name || p.email) + '</div><div class="pin-sub">Vpiši svojo 4-mestno kodo</div>' +
+    '<div class="pin-dots">' + [0, 1, 2, 3].map(function(){ return '<span class="pin-dot"></span>'; }).join("") + '</div>' +
+    '<div class="pin-pad">' + ["1","2","3","4","5","6","7","8","9"].map(function(n){ return '<button type="button" class="pin-key" data-k="' + n + '">' + n + '</button>'; }).join("") +
+    '<button type="button" class="pin-key prazna" tabindex="-1"></button><button type="button" class="pin-key" data-k="0">0</button><button type="button" class="pin-key" data-k="del" aria-label="Briši">⌫</button></div>' +
+    '<div class="pin-err" id="pinErr"></div><button type="button" class="link-btn" id="pinPreklic">Prekliči</button></div>';
+  document.body.appendChild(el);
+  function upd(){ el.querySelectorAll(".pin-dot").forEach(function(d, i){ d.classList.toggle("on", i < buf.length); }); }
+  function tipka(k){
+    if(k === "del") buf = buf.slice(0, -1);
+    else if(buf.length < 4){ buf += k; $("pinErr").textContent = ""; }
+    upd();
+    if(buf.length === 4) setTimeout(function(){
+      if(buf === String(p.pin)){ document.removeEventListener("keydown", tipke); el.remove(); onOk(); }
+      else{ buf = ""; upd(); $("pinErr").textContent = "Napačna koda"; el.classList.remove("tresi"); void el.offsetWidth; el.classList.add("tresi"); }
+    }, 120);
+  }
+  function tipke(ev){ if(/^[0-9]$/.test(ev.key)) tipka(ev.key); else if(ev.key === "Backspace") tipka("del"); }
+  document.addEventListener("keydown", tipke);
+  el.querySelectorAll("[data-k]").forEach(function(b){ b.onclick = function(){ tipka(b.getAttribute("data-k")); }; });
+  $("pinPreklic").onclick = function(){ document.removeEventListener("keydown", tipke); el.remove(); prikaziProfile(); };
+}
+function doLogin(u){
+  session = { user: u.name, start: new Date().toISOString() };
+  $("prijava").hidden = true; $("app").hidden = false;
+  $("tbIme").textContent = u.name || "";
+  praznOsnutek(); searchMode = ""; searchQuery = ""; searchDate = ""; searchClientId = "";
+  updateSearchChip(); osveziVse(); risiSyncGumb();
+  resetIdle();
+  if(pdfPlugin() && !pdfPermOK && !askedPerm){
+    askedPerm = true;
+    askConfirm("Dovoljenje za datoteke", "Za samodejno shranjevanje spremnih listov kot PDF v mapo Dokumenti omogoči »Dostop do vseh datotek«.", "Odpri nastavitve",
+      function(){ try{ pdfPlugin().requestPermission(); }catch(e){} }, false, "Pozneje");
+  }
+}
+function logout(){ zapriVsaOkna(); session = null; clearTimeout(idleTimer); prikaziProfile(); }
+function resetIdle(){ if(!session) return; clearTimeout(idleTimer); idleTimer = setTimeout(logout, (settings.idleMin || 15) * 60000); }
+["click", "touchstart", "keydown"].forEach(function(ev){ document.addEventListener(ev, resetIdle, true); });
+$("zamenjajBtn").onclick = logout;
+$("izklopBtn").onclick = function(){ askConfirm("Izklopim aplikacijo?", "Neposlani spremni listi ostanejo shranjeni na napravi in se pošljejo ob naslednjem zagonu.", "Izklopi", function(){
+  try{ Capacitor.Plugins.App.exitApp(); }catch(e){}
+}, false, "Prekliči", this); };
+
+/* razkrij geslo (očesce, kot v portalu) */
+var _OKO = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>';
+var _OKO_OFF = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9.9 4.24A9.1 9.1 0 0 1 12 4c7 0 10 8 10 8a13.2 13.2 0 0 1-1.67 2.68"/><path d="M6.1 6.1A13.3 13.3 0 0 0 2 12s3 8 10 8a9.3 9.3 0 0 0 5.9-2.1"/><path d="M14.12 14.12A3 3 0 1 1 9.88 9.88"/><path d="m3 3 18 18"/></svg>';
+document.querySelectorAll('input[type="password"]').forEach(function(inp){
+  var wrap = document.createElement("span"); wrap.className = "pw-wrap";
+  inp.parentNode.insertBefore(wrap, inp); wrap.appendChild(inp);
+  var b = document.createElement("button"); b.type = "button"; b.className = "pw-eye"; b.tabIndex = -1; b.setAttribute("aria-label", "Pokaži geslo"); b.innerHTML = _OKO;
+  wrap.appendChild(b);
+  b.onclick = function(e){ e.preventDefault(); var pokazi = inp.type === "password"; inp.type = pokazi ? "text" : "password"; b.innerHTML = pokazi ? _OKO_OFF : _OKO; b.setAttribute("aria-label", pokazi ? "Skrij geslo" : "Pokaži geslo"); };
+});
 
 /* ══════════ SINHRONIZACIJA S PORTALOM ══════════
    Načelo: shrani najprej lokalno, pošlji, ko je omrežje. Tablica je na WiFi
@@ -1318,7 +1072,6 @@ async function syncPush(tiho){
   syncZadnje = spodletelo ? zadnjaNapaka : "";
   _zadnjiNeuspeh = spodletelo ? Date.now() : 0;
   risiSyncGumb(); renderList();
-  if(_okno && !urejanje){ var oe = entryById(_okno.id); if(oe) osveziDetajl(oe); }
   if(_zavrnjenoPotrjeno.length){
     toast("List " + _zavrnjenoPotrjeno.join(", ") + " je v portalu že potrjen — sprememba ni bila prenesena.");
     _zavrnjenoPotrjeno = [];
@@ -1329,24 +1082,25 @@ async function syncPush(tiho){
   }
 }
 
-/* ── stanje sinhronizacije: ikona v orodni vrstici (pika kot pri obvestilih v portalu) ── */
-var rocnoTece = false;
+/* ── stanje sinhronizacije v orodni vrstici ── */
+var IKO_SYNC = '<svg class="vrti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>';
 function risiSyncGumb(){
-  var b = $("syncBtn"), dot = $("syncDot"); if(!b) return;
+  var b = $("syncChip"); if(!b) return;
   if(!portalNastavljen() || (!portalAuth && !session)){ b.hidden = true; return; }
   b.hidden = false;
+  if(!portalAuth){ b.innerHTML = '<span class="dot bad"></span><span class="sc-txt">Prijava potekla</span>'; b.title = "Seja v portalu je potekla. Tapni za ponovno prijavo."; return; }
   var caka = entries.filter(function(e){ return !e.syncedAt; }).length;
-  var brez = navigator.onLine === false || syncZadnje === "ni povezave" || syncZadnje === "ni omrežja";
-  b.classList.toggle("vrti", !!(syncTecev || rocnoTece));
-  var st, t;
-  if(!portalAuth){ st = "bad"; t = "Seja v portalu je potekla — tapni za ponovno prijavo."; }
-  else if(syncTecev || rocnoTece){ st = "warn"; t = "Prenos v teku …"; }
-  else if(caka){ st = brez ? "bad" : "warn"; t = "Na prenos " + sklon(caka, "čaka", "čakata", "čakajo", "čaka") + " " + sklonListov(caka) + (brez ? " — ni povezave" : (syncZadnje ? " — " + syncZadnje : "")) + ". Tapni za prenos zdaj."; }
-  else { st = "ok"; t = "Vse je v portalu. Tapni za osvežitev."; }
-  dot.className = "notif-dot " + st; b.title = t; b.setAttribute("aria-label", t);
-  risiStanje();
+  if(syncTecev || rocnoTece){ b.innerHTML = IKO_SYNC + '<span class="sc-txt">Pošiljam …</span>'; b.title = "Prenos v teku"; return; }
+  if(caka){
+    var brez = navigator.onLine === false || syncZadnje === "ni povezave" || syncZadnje === "ni omrežja";
+    b.innerHTML = '<span class="dot ' + (brez ? "bad" : "warn") + '"></span><span class="sc-txt">' + (brez ? "Brez povezave · " : "Čaka ") + caka + '</span>';
+    b.title = "Na prenos čaka " + caka + (syncZadnje ? " — " + syncZadnje : "") + ". Tapni za prenos zdaj."; return;
+  }
+  b.innerHTML = '<span class="dot ok"></span><span class="sc-txt">V portalu</span>';
+  b.title = "Vse je v portalu. Tapni za osvežitev.";
 }
-$("syncBtn").onclick = async function(){
+var rocnoTece = false;
+$("syncChip").onclick = async function(){
   if(rocnoTece) return;
   if(!portalAuth){ var p = savedProfs.find(function(x){ return x.email === aktivniEmail; }); showAccountLogin("Seja je potekla — vpiši geslo.", p ? p.email : ""); return; }
   rocnoTece = true; risiSyncGumb();
@@ -1393,7 +1147,7 @@ async function osveziKatalog(tiho){
       CLIENTS = CLIENTS.filter(function(c){ return !!(pk["l:" + c.id] || (c.orgUuid && pk["u:" + c.orgUuid]) || pk["n:" + (c.naziv || "").toLowerCase()]) || cakajo[c.id]; });
     }
     await saveClients();
-    if(session) poKatalogu();
+    if(session){ setClientLabel(); renderEntry(); if($("oknoStranke").classList.contains("odprto")) fillClientGrid(); }
     if(!tiho) toast("Stranke in artikli osveženi.");
   }catch(err){ if(!tiho) toast("Katalog ni šel: " + (err.message || err)); }
   finally{ katalogTecev = false; }
@@ -1414,7 +1168,7 @@ async function osveziStrankinArtikle(cid){
     catch(_e){ arts = await apiVse("articles?select=id,name,legacy_id,sort_order,teza&org_id=eq." + orgId + "&order=sort_order,id"); }
     c.artikli = (arts || []).map(vArtikel);
     await saveClients();
-    poArtiklih(cid);
+    if(selectedId === cid){ renderEntry(); renderSummary(); }
     return true;
   }catch(e){ return false; }
 }
@@ -1519,8 +1273,8 @@ async function potegniIzPortala(){
     zadnjiPoteg = Date.now();
     if(spremenjeno){
       await saveEntries();
-      if(urejanje && !entryById(urejanje.id)){ urejanje = null; toast("List, ki si ga urejal, je bil v portalu izbrisan."); }
-      if(session){ renderList(); if(_okno && !urejanje){ var oe = entryById(_okno.id); if(oe) osveziDetajl(oe); } }
+      if(editingId && !entryById(editingId)){ praznOsnutek(); toast("List, ki si ga urejal, je bil v portalu izbrisan."); }
+      if(session) osveziVse();
     }
     risiSyncGumb();
   }catch(err){ /* omrežje/napaka: pusti pri miru, poskusi ob naslednjem ciklu */ }
@@ -1556,15 +1310,16 @@ document.addEventListener("visibilitychange", function(){
 /* ══════════ TABLICA (Capacitor) ══════════ */
 function nativnaPriprava(){
   if(!jeNativno()) return;
-  $("izklopBtn").classList.remove("hidden");
+  $("izklopBtn").hidden = false;
   try{
     var App = Capacitor.Plugins.App;
-    /* sistemski gumb »nazaj«: zapre, kar je odprto na vrhu, namesto izhoda iz aplikacije */
+    /* sistemski gumb »nazaj«: zapre odprto okno namesto izhoda iz aplikacije */
     App.addListener("backButton", function(){
-      var m = vrhnjiModal(); if(m){ if(m._zapri) m._zapri(); return; }
-      if(_okno){ if(urejanje){ var e = entryById(urejanje.id); urejanje = null; if(e){ oknoZamenjajVsebino(detajl(e)); return; } } oknoZapri(); return; }
-      var pin = $("apPin"); if(pin && pin._preklic){ pin._preklic(); return; }
-      if(!$("authBox").classList.contains("hidden") && savedProfs.length){ prikaziProfile(); }
+      var pin = $("pinOkno"); if(pin){ $("pinPreklic").click(); return; }
+      var top = odprtaOkna[odprtaOkna.length - 1];
+      if(top){ if(top === "oknoPotrdi") $("ptNe").click(); else zapriOkno(top); return; }
+      if(editingId){ cancelEdit(); return; }
+      if(!$("prijavaObr").hidden && savedProfs.length){ prikaziProfile(); }
     });
     App.addListener("resume", function(){ if(shrambaZaklenjena) location.reload(); });
   }catch(e){}
@@ -1573,12 +1328,12 @@ function nativnaPriprava(){
 /* Tablica brez dovoljenja za datoteke (npr. po ponovni namestitvi): stari podatki so
    v mapi Dokumenti, a jih aplikacija ne vidi. Ne nadaljuj (ne prepiši jih s praznimi). */
 function pokaziZaklepShrambe(){
-  $("app").classList.remove("show"); $("auth").classList.remove("hidden");
-  $("profilePicker").classList.add("hidden"); $("authBox").classList.add("hidden");
-  var el = document.createElement("div"); el.className = "auth-box";
-  el.innerHTML = '<h1>Dovoli dostop do datotek</h1><p class="sub">Spremni listi so shranjeni v mapi Dokumenti na tej tablici. Za SmartClean omogoči »Dostop do vseh datotek«, nato se vrni v aplikacijo.</p>' +
-    '<button type="button" class="btn" id="zsOdpri">Odpri nastavitve</button>';
-  document.querySelector("#auth .auth-slot").appendChild(el);
+  var el = document.createElement("div"); el.className = "pin"; el.id = "zaklepShrambe";
+  el.innerHTML = '<div class="pin-in" style="max-width:420px"><div class="wordmark" style="font-size:2rem;margin-bottom:22px">Smart<span>Clean</span></div>' +
+    '<div class="pin-ime">Aplikacija potrebuje dostop do datotek</div>' +
+    '<p class="pin-sub" style="line-height:1.55">Spremni listi so shranjeni v mapi Dokumenti na tej tablici. Omogoči »Dostop do vseh datotek« za SmartClean, nato se vrni v aplikacijo.</p>' +
+    '<button type="button" class="btn lg" id="zsOdpri">Odpri nastavitve</button></div>';
+  document.body.appendChild(el);
   $("zsOdpri").onclick = function(){ try{ pdfPlugin().requestPermission(); }catch(e){} };
 }
 
@@ -1586,9 +1341,10 @@ function pokaziZaklepShrambe(){
 (async function init(){
   try{
     nativnaPriprava();
-    await loadSettings(); applyTheme(); nastaviPogled(pogled());
+    await loadSettings(); applyTheme();
     await loadProfs(); await loadClients(); await loadEntries(); await loadPortalAuth();
     await ensurePdfPerm();
+    buildKeypad(); updateSearchChip();
     if(shrambaZaklenjena){ pokaziZaklepShrambe(); return; }
     try{ realtimeKlient(); }catch(e){}
     prikaziProfile();
@@ -1599,5 +1355,5 @@ function pokaziZaklepShrambe(){
 
 /* za preizkuse (samo branje stanja) */
 window.__pralnica = { verzija: APP_VERZIJA, varianta: VARIANTA, stanje: function(){
-  return { entries: entries, CLIENTS: CLIENTS, profili: savedProfs.map(function(p){ return p.name; }), session: session, portal: !!portalAuth, rtZivo: rtZivo, okno: !!_okno }; } };
+  return { entries: entries, CLIENTS: CLIENTS, profili: savedProfs.map(function(p){ return p.name; }), session: session, portal: !!portalAuth, rtZivo: rtZivo }; } };
 })();
