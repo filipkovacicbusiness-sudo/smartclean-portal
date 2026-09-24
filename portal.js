@@ -1555,16 +1555,46 @@
     // Zaposleni vidi SAMO svoje ure (oseben pregled, brez ostalih).
     if (JE_ZAPOSLENI()) { prisRenderMoje(box, _sy); return; }
     var aktivni = (ZAPOSLENI || []).filter(function (z) { return z.active; });
-    // ── Blok 1: trenutno stanje ──
+    // ── Blok 1: zaposleni (trenutno stanje + upravljanje) ──
+    // Ena kartica namesto »Trenutno prisotni« + »Zaposleni«: vsak zaposleni je okvirček
+    // (Seznam ali Mreža po nastavitvi Pogled), klik odpre okno s stanjem in dejanji.
+    var danesD = danes10();
+    var zapUrejeni = (ZAPOSLENI || []).slice().sort(function (a, b) { return (b.active ? 1 : 0) - (a.active ? 1 : 0); });   // aktivni najprej; sicer vrstni red ostane
     var prisotnihN = 0;
-    var stanjeVrst = aktivni.map(function (z) {
-      var l = prisZadnji(z.id); var notri = !!(l && l.type === 'in');
+    var zapKartice = zapUrejeni.map(function (z, i) {
+      var l = prisZadnji(z.id); var notri = !!(z.active && l && l.type === 'in');
       if (notri) prisotnihN++;
-      return '<div class="pris-row"><span class="pris-nm">' + escape_(z.ime) + '</span>' +
-        (notri ? '<span class="pris-badge in">prisoten · od ' + uraMin(l.ts) + '</span><button type="button" class="cgrp-btn ghost pris-odjavi" data-odjavi="' + z.id + '">Odjavi</button>' : '<span class="pris-badge out">odsoten</span>') + '</div>';
-    }).join('') || '<p class="u-sub" style="padding:10px 2px">Ni aktivnih zaposlenih. Dodaj jih spodaj.</p>';
-    var blok1 = '<div class="pris-card"><div class="pris-h"><h3 class="sec-h">Trenutno prisotni</h3>' +
-      '<span class="pris-count">' + prisotnihN + ' / ' + aktivni.length + '</span></div>' + stanjeVrst + '</div>';
+      var upo = z.profile_id ? PRIS_UPO_MAP[z.profile_id] : null;
+      var upoLbl = upo ? (upo.email || upo.full_name || 'povezan') : '';
+      var dan = prisPari(z.id, danesD);
+      var danUre = dan.sek ? trajanjeH(dan.sek) : '';
+      var intervali = dan.pari.map(function (p) { return uraMin(p[0].ts) + '–' + uraMin(p[1].ts); });
+      if (dan.odprt) intervali.push(uraMin(dan.odprt.ts) + ' → v teku');
+      var znak = !z.active ? '<span class="pris-badge out">neaktiven</span>' : (notri ? '<span class="pris-badge in">prisoten · od ' + uraMin(l.ts) + '</span>' : '<span class="pris-badge out">odsoten</span>');
+      var pod = upoLbl || (z.card_token ? 'kartica dodeljena' : 'brez kartice');
+      var det = '<dl class="pris-zap-dl">' +
+          '<dt>Stanje</dt><dd>' + znak + (notri ? ' <button type="button" class="cgrp-btn ghost pris-odjavi" data-odjavi="' + z.id + '">Odjavi</button>' : '') + '</dd>' +
+          '<dt>Danes</dt><dd>' + (intervali.length ? escape_(intervali.join(', ')) + (danUre ? ' · <b>' + danUre + '</b>' : '') : '<span class="u-sub">ni vpisov</span>') + '</dd>' +
+          '<dt>Uporabnik</dt><dd>' + (upoLbl ? escape_(upoLbl) : '<span class="u-sub">ni povezan</span>') + '</dd>' +
+          '<dt>Kartica</dt><dd>' + (z.card_token ? 'dodeljena' : '<span class="u-sub">ni dodeljena</span>') + '</dd>' +
+        '</dl>' +
+        '<div class="pris-emp-act pris-zap-act">' +
+          '<button type="button" class="cgrp-btn ghost" data-uredi="' + z.id + '">Uredi</button>' +
+          '<button type="button" class="cgrp-btn ghost' + (z.profile_id ? ' on' : '') + '" data-uporabnik="' + z.id + '">' + (z.profile_id ? 'Uporabnik ✓' : 'Poveži uporabnika') + '</button>' +
+          '<button type="button" class="cgrp-btn ghost" data-karta="' + z.id + '">' + (z.card_token ? 'Nova kartica' : 'Dodeli kartico') + '</button>' +
+          '<button type="button" class="cgrp-btn ghost" data-aktiv="' + z.id + '" data-v="' + (z.active ? '0' : '1') + '">' + (z.active ? 'Deaktiviraj' : 'Aktiviraj') + '</button>' +
+          '<button type="button" class="cgrp-btn danger" data-izbrisi="' + z.id + '">Izbriši</button>' +
+        '</div>';
+      return '<div class="lcell' + (z.active ? '' : ' pris-neakt') + '"><button class="row has-tag" type="button" data-zid="' + z.id + '" aria-haspopup="dialog">' +
+        '<span><span class="row-name"><span class="row-nm">' + escape_(z.ime) + '</span></span><br><span class="row-legal">' + escape_(pod) + '</span>' + znak + '</span>' +
+        '<span class="row-pct"></span><span class="num pris-zap-ure" title="Danes">' + (danUre || '—') + '</span><span class="chev" aria-hidden="true">›</span></button>' +
+        '<div class="arts pris-zap-det">' + det + '</div></div>';
+    }).join('');
+    var aktivnihN = aktivni.length;
+    var blok1 = '<div class="pris-card pris-zap-card"><div class="pris-h"><h3 class="sec-h">Zaposleni</h3>' +
+      '<span class="pris-count" title="prisotni / aktivni">' + prisotnihN + ' / ' + aktivnihN + ' prisotnih</span></div>' +
+      (zapKartice ? '<div class="rows pris-zap">' + zapKartice + '</div>' : '<p class="u-sub" style="padding:10px 2px">Še ni zaposlenih.</p>') +
+      '<div class="pris-add"><input type="text" class="pris-new" placeholder="Ime in priimek novega zaposlenega"><button type="button" class="cgrp-btn pris-add-btn">+ Dodaj</button></div></div>';
 
     // ── Blok 2: evidenca (dan/mesec/oseba) ──
     var mesecni = (_prisView === 'mesec' || _prisView === 'oseba');
@@ -1634,24 +1664,7 @@
       '</div>' +
       telo + '</div>';
 
-    // ── Blok 3: zaposleni ──
-    var zapVrst = (ZAPOSLENI || []).map(function (z) {
-      var upo = z.profile_id ? PRIS_UPO_MAP[z.profile_id] : null;
-      var upoLbl = upo ? (upo.email || upo.full_name || '') : '';
-      return '<div class="pris-emp"><span class="pris-nm">' + escape_(z.ime) + (z.active ? '' : ' <span class="u-sub">(neaktiven)</span>') +
-        (z.profile_id ? ' <span class="pris-upo-tag" title="Povezan uporabnik">' + escape_(upoLbl || 'povezan') + '</span>' : '') + '</span>' +
-        '<span class="pris-emp-act">' +
-        '<button type="button" class="cgrp-btn ghost" data-uredi="' + z.id + '">Uredi</button>' +
-        '<button type="button" class="cgrp-btn ghost' + (z.profile_id ? ' on' : '') + '" data-uporabnik="' + z.id + '">' + (z.profile_id ? 'Uporabnik ✓' : 'Poveži uporabnika') + '</button>' +
-        '<button type="button" class="cgrp-btn ghost" data-karta="' + z.id + '">' + (z.card_token ? 'Nova kartica' : 'Dodeli kartico') + '</button>' +
-        '<button type="button" class="cgrp-btn ghost" data-aktiv="' + z.id + '" data-v="' + (z.active ? '0' : '1') + '">' + (z.active ? 'Deaktiviraj' : 'Aktiviraj') + '</button>' +
-        '<button type="button" class="cgrp-btn danger" data-izbrisi="' + z.id + '">Izbriši</button>' +
-        '</span></div>';
-    }).join('') || '<p class="u-sub" style="padding:10px 2px">Še ni zaposlenih.</p>';
-    var blok3 = '<div class="pris-card"><h3 class="sec-h">Zaposleni</h3>' + zapVrst +
-      '<div class="pris-add"><input type="text" class="pris-new" placeholder="Ime in priimek novega zaposlenega"><button type="button" class="cgrp-btn pris-add-btn">+ Dodaj</button></div></div>';
-
-    box.innerHTML = blok1 + blok2 + blok3;
+    box.innerHTML = blok1 + blok2;
 
     var dat = $('prisDatum'); if (dat) dat.addEventListener('change', function () { var v = this.value || danes10(); if (v.length === 7) v += '-01'; _prisDan = v; prisObdobje(); });
     { var pdn = $('prisDanes'); if (pdn) pdn.addEventListener('click', function () { _prisDan = danes10(); prisObdobje(); }); }
@@ -1672,7 +1685,17 @@
     box.querySelectorAll('[data-izbrisi]').forEach(function (b) { b.addEventListener('click', function () { prisIzbrisi(b.dataset.izbrisi); }); });
     var nb = box.querySelector('.pris-add-btn'), ni = box.querySelector('.pris-new');
     if (nb && ni) { nb.addEventListener('click', function () { prisDodajZap(ni.value); }); ni.addEventListener('keydown', function (e) { if (e.key === 'Enter') prisDodajZap(ni.value); }); }
+    box.querySelectorAll('.pris-zap .row[data-zid]').forEach(function (b) { b.addEventListener('click', function () { prisOdpriZap(b); }); });
     requestAnimationFrame(function () { window.scrollTo(0, _sy); });
+    oknoPoIzrisu();   // samodejna osvežitev (vsakih 12 s) in dejanja: okno dobi sveže stanje ali se zapre
+  }
+  function prisNajdiZap(id) { return document.querySelector('#prisList .pris-zap .row[data-zid="' + String(id).replace(/"/g, '\\"') + '"]'); }
+  function prisOdpriZap(btn) {
+    if (_okno) return;
+    var id = btn.dataset.zid;
+    oknoOdpri(btn, btn.nextElementSibling, function () { return prisNajdiZap(id); }, {
+      osvezi: function (k) { return k.nextElementSibling; }
+    });
   }
   // Oseben pregled ur za vlogo »Zaposleni«.
   function prisRenderMoje(box, _sy) {
@@ -4506,19 +4529,26 @@
     list.innerHTML = '<div class="fak-grid">' + skupine.map((g, gi) => fakKartica(g, gi)).join('') + '</div>';
     list.dataset.loaded = '1';
     list.querySelectorAll('[data-fakprint]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); natisniFakturo(parseInt(b.dataset.fakprint, 10)); }));
-    list.querySelectorAll('[data-faktoggle]').forEach(h => h.addEventListener('click', () => {
-      const gi = h.dataset.faktoggle, body = document.getElementById('fakbody' + gi);
-      const willOpen = !h.classList.contains('open');
-      list.querySelectorAll('[data-faktoggle].open').forEach(o => {
-        o.classList.remove('open');
-        const oc = o.closest('.fak-card'); if (oc) oc.classList.remove('open');
-        const b = document.getElementById('fakbody' + o.dataset.faktoggle);
-        if (b) b.classList.remove('show');
-      });
-      h.classList.toggle('open', willOpen);
-      const card = h.closest('.fak-card'); if (card) card.classList.toggle('open', willOpen);
-      if (body) body.classList.toggle('show', willOpen);
-    }));
+    list.querySelectorAll('[data-faktoggle]').forEach(h => h.addEventListener('click', () => fakOdpri(h.closest('.fak-card'))));
+    oknoPoIzrisu();
+  }
+  // Osnova za račun se odpre v OKNU (prej se je kartica razprla v mreži).
+  // Kartico iščemo po stranki: po novem izrisu ima ista zaporedna številka lahko drugo stranko.
+  function fakNajdi(org) { return document.querySelector('#fakList .fak-card[data-org="' + String(org).replace(/"/g, '\\"') + '"]'); }
+  function fakGlavaOkna(k) {
+    var d = document.createElement('div');
+    var h = k && k.querySelector('.fak-card-info h3'), p = k && k.querySelector('.fak-card-info .u-sub');
+    d.innerHTML = '<h3 class="sec-h">' + escape_(h ? h.textContent : '') + '</h3><div class="okno-glava-sub">' + (p ? p.innerHTML : '') + '</div>';   // p: naša oznaka (escape_ že uporabljen)
+    return d;
+  }
+  function fakOdpri(card) {
+    if (_okno || !card) return;
+    var body = card.querySelector('.fak-body'); if (!body) return;
+    var org = card.dataset.org;
+    oknoOdpri(card, body, function () { return fakNajdi(org); }, {
+      glava: fakGlavaOkna,
+      osvezi: function (k) { return k.querySelector('.fak-body'); }
+    });
   }
   function fakKg(kg) { return kg ? tezaFmt(kg) : '—'; }
   function fakKartica(g, gi) {
@@ -4542,7 +4572,7 @@
             <div class="fak-tot-r fak-tot-bruto"><span>Za plačilo (z DDV)</span><b>${cenaFmt(g.bruto)}</b></div>
             ${g.brezCene ? `<div class="fak-tot-r"><span class="fak-warn">${stevilo(g.brezCene)} artiklov brez cene — NISO všteti v znesek; poveži jih v Strankah</span><b></b></div>` : ''}` : '';
     const povzetek = money && g.neto ? ` · <b>${cenaFmt(g.bruto)}</b> z DDV` : '';
-    return `<div class="fak-card">
+    return `<div class="fak-card" data-org="${escape_(String(g.org_id || ''))}">
       <div class="fak-card-h" data-faktoggle="${gi}">
         <div class="fak-card-info"><h3>${escape_(ime)}</h3><p class="u-sub">${stevilo(g.listov)} spremnih listov · ${stevilo(g.kosov)} kosov · ${fakKg(g.kg)}${g.izredni ? ' · ' + stevilo(g.izredni) + '× izredni prevoz' : ''}${povzetek}</p></div>
         <span class="fak-chev" aria-hidden="true">›</span>
