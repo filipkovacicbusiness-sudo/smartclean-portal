@@ -308,7 +308,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.23 · BETA';
+  var APP_VERZIJA = '4.24 · BETA';
   var NALAGANJE = '<div class="sc-load" aria-hidden="true"><span class="sc-load-line"></span></div>';
   // Stale-while-revalidate: ob ponovnem obisku razdelka NE pobriši vsebine v nalagalnik —
   // obdrži prejšnjo (takojšen prikaz) in jo osveži v ozadju. Trak le ob prvem nalaganju.
@@ -6892,7 +6892,7 @@
      Namestitveni paket leži poleg spletne različice, ne v kodi portala.
      Če ga še ni, to tu tudi piše — namesto strani 404. */
   // ?v= ob vsaki novi različici aplikacije (aplikacija/zgradi.py): brskalnik in predpomnilnik vzameta nov paket.
-  var APK_POT = 'tablica/Pralnica-sync.apk?v=9.3';
+  var APK_POT = 'tablica/Pralnica-sync.apk?v=9.4';
 
   function wirePwa(scope) {
     var pb = (scope || document).querySelector('#pwaInstall');
@@ -6925,7 +6925,7 @@
 
     p.innerHTML = '<div class="prog-grid">' +
       _progCard(IKO_WEB, 'Spletni pogled', 'Deluje v vsakem brskalniku, brez namestitve — telefon, tablica ali računalnik.', _odpri) +
-      _progCard(IKO_DL, 'Tablica (Android)', 'Namestitveni paket za vnos in tiskanje spremnih listov na tablici (različica 9.3). Pred prvo namestitvijo te različice odstrani staro aplikacijo — shranjeni listi ostanejo.', '<a class="btn prog-act apk-dl" href="' + escape_(url) + '" download>' + IKO_DL + 'Prenesi<span class="apk-mb"></span></a>', 'apkTablet') +
+      _progCard(IKO_DL, 'Tablica (Android)', 'Namestitveni paket za vnos in tiskanje spremnih listov na tablici (različica 9.4). Pred prvo namestitvijo te različice odstrani staro aplikacijo — shranjeni listi ostanejo.', '<a class="btn prog-act apk-dl" href="' + escape_(url) + '" download>' + IKO_DL + 'Prenesi<span class="apk-mb"></span></a>', 'apkTablet') +
       _progCard(IKO_TEL, 'Telefon', 'Odpre se v brskalniku; dodaj na začetni zaslon za občutek prave aplikacije.', _odpri) +
       '</div>';
 

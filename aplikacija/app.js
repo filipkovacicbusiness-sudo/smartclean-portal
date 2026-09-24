@@ -126,57 +126,200 @@ function jeZaklenjen(e){ return !!(e && (e.potrjeno || e.zaklenjen)); }
 /* ══════════ OBVESTILO + OKNA ══════════ */
 function toast(msg){ var t = $("toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(t._h); t._h = setTimeout(function(){ t.classList.remove("show"); }, 2600); }
 
-var odprtaOkna = [], obZaprtju = {};
-/* Okno zraste iz elementa, ki ga je odprl (transform-origin = izvor) — samo transform + opacity. */
-function odpriOkno(id, izvor){
-  var back = $(id), okno = back.querySelector(".okno");
-  back.classList.remove("zapira");
-  okno.style.transformOrigin = "";
-  if(izvor && izvor.getBoundingClientRect && window.innerWidth > 560){
-    var r = izvor.getBoundingClientRect();
-    if(r.width || r.height){
-      var ox = r.left + r.width / 2 - okno.offsetLeft, oy = r.top + r.height / 2 - okno.offsetTop;
-      okno.style.transformOrigin = Math.round(ox) + "px " + Math.round(oy) + "px";
-    }
+var odprtaOkna = [], obZaprtju = {}, _okna = {};
+/* ── OKNO: ista animacija kot v portalu (oknoOdpri v portal.js) ──
+   Raste OKNO SAMO (z vsebino in senco), a le s transform: okno se razteguje, vsebina pa z
+   nasprotnim raztegom ostane v pravi velikosti (24 izračunanih ključev z isto krivuljo).
+   Kopija elementa, ki je okno odprl (»duh«), je prvi okvir odpiranja in zadnji zapiranja —
+   element se poveča v okno in skrči nazaj. Samo transform + opacity. */
+function oknoMirno(){ try{ return matchMedia("(prefers-reduced-motion: reduce)").matches; }catch(e){ return false; } }
+function oknoKrivulja(x1, y1, x2, y2){
+  function b(t, a1, a2){ var u = 1 - t; return 3 * u * u * t * a1 + 3 * u * t * t * a2 + t * t * t; }
+  return function(x){
+    if(x <= 0) return 0; if(x >= 1) return 1;
+    var lo = 0, hi = 1, t = x;
+    for(var i = 0; i < 28; i++){ var bx = b(t, x1, x2); if(Math.abs(bx - x) < 1e-5) break; if(bx < x) lo = t; else hi = t; t = (lo + hi) / 2; }
+    return b(t, y1, y2);
+  };
+}
+var OKNO_ODPRI = oknoKrivulja(.22, .61, .36, 1), OKNO_ZAPRI = oknoKrivulja(.4, 0, .2, 1);
+function oknoKljuci(o, krivulja, zapri){
+  var c = o.kartica.getBoundingClientRect(), p = o.panel.getBoundingClientRect();
+  var sx0 = Math.max(0.02, c.width / p.width), sy0 = Math.max(0.02, c.height / p.height);
+  var dx = c.left - p.left, dy = c.top - p.top, N = 24, okno = [], notr = [];
+  for(var i = 0; i <= N; i++){
+    var t = i / N, e = krivulja(t);
+    var f = zapri ? e : 1 - e;   // delež »kartice«: 1 = element, 0 = okno
+    var sx = 1 + (sx0 - 1) * f, sy = 1 + (sy0 - 1) * f;
+    okno.push({ offset: t, transform: "translate(" + (dx * f) + "px," + (dy * f) + "px) scale(" + sx + "," + sy + ")" });
+    /* nasprotni razteg omejen na 2× (kot v portalu): takrat je vsebina še prosojna */
+    notr.push({ offset: t, transform: "scale(" + (1 / Math.max(sx, 0.5)) + "," + (1 / Math.max(sy, 0.5)) + ")" });
   }
-  void okno.offsetWidth;
-  back.classList.add("odprto");
+  return { okno: okno, notr: notr };
+}
+function oknoDuh(o){
+  var k = o.kartica, r = k.getBoundingClientRect(), star = k.parentElement;
+  var ovoj = document.createElement("div");
+  ovoj.className = (star ? [].filter.call(star.classList, function(c){ return c !== "open" && c !== "hidden"; }).join(" ") + " " : "") + "okno-duh";
+  ovoj.style.left = r.left + "px"; ovoj.style.top = r.top + "px"; ovoj.style.width = r.width + "px"; ovoj.style.height = r.height + "px";
+  ovoj.setAttribute("aria-hidden", "true");
+  var cs = getComputedStyle(k), kop = k.cloneNode(true);
+  kop.classList.remove("okno-vir");
+  ["id", "style", "tabindex"].forEach(function(a){ kop.removeAttribute(a); });
+  kop.querySelectorAll("[id],[style]").forEach(function(el){ el.removeAttribute("id"); el.removeAttribute("style"); });
+  kop.style.backgroundColor = cs.backgroundColor; kop.style.backgroundImage = cs.backgroundImage;
+  kop.style.borderColor = cs.borderTopColor + " " + cs.borderRightColor + " " + cs.borderBottomColor + " " + cs.borderLeftColor;
+  kop.style.boxShadow = cs.boxShadow; kop.style.color = cs.color; kop.style.transition = "none";
+  ovoj.appendChild(kop);
+  o.back.appendChild(ovoj);
+  return ovoj;
+}
+/* izvor po ponovnem izrisu (npr. vrstica artikla ali gumb »Zaključi«) je lahko nov element */
+function najdiIzvor(el){
+  if(!el) return function(){ return null; };
+  if(el.id){ var id = el.id; return function(){ return $(id); }; }
+  var atr = ["data-art", "data-view", "data-edit", "data-del", "data-renum", "data-c", "data-em", "data-pozabi"].find(function(a){ return el.hasAttribute(a); });
+  if(atr){ var v = el.getAttribute(atr); return function(){ try{ return document.querySelector("[" + atr + '="' + CSS.escape(v) + '"]'); }catch(e){ return null; } }; }
+  return function(){ return el.isConnected ? el : null; };
+}
+function jeViden(k){
+  if(!k || !k.isConnected) return false;
+  var r = k.getBoundingClientRect();
+  return r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < window.innerHeight;
+}
+function oknoZaklep(){
+  if(document.documentElement.classList.contains("okno-zaklep")) return;
+  var drsnik = window.innerWidth - document.documentElement.clientWidth;
+  document.documentElement.classList.add("okno-zaklep");
+  if(drsnik > 0) document.documentElement.style.paddingRight = drsnik + "px";
+}
+function oknoOdklep(){
+  if(Object.keys(_okna).length) return;
+  document.documentElement.classList.remove("okno-zaklep"); document.documentElement.style.paddingRight = "";
+}
+function oknoPospravi(o){
+  o.panel.getAnimations().forEach(function(a){ a.cancel(); });
+  o.notr.getAnimations().forEach(function(a){ a.cancel(); });
+  o.back.querySelectorAll(".okno-duh").forEach(function(d){ d.remove(); });
+  o.back.classList.remove("odprto", "show");
+  [o.kartica, o.cilj].forEach(function(k){ if(k) k.classList.remove("okno-vir"); });
+  if(_okna[o.id] === o) delete _okna[o.id];
+  oknoOdklep();
+}
+function odpriOkno(id, izvor){
+  var back = $(id); if(!back) return;
+  var star = _okna[id];
+  if(star && !star.zapiram) return;
+  if(star) oknoPospravi(star);
+  var panel = back.querySelector(".okno"), notr = panel.querySelector(".okno-notr");
+  var o = _okna[id] = { id: id, back: back, panel: panel, notr: notr, najdi: najdiIzvor(izvor), kartica: jeViden(izvor) ? izvor : null };
   odprtaOkna = odprtaOkna.filter(function(x){ return x !== id; }); odprtaOkna.push(id);
+  oknoZaklep();
+  back.classList.add("odprto");
+  void back.offsetWidth; back.classList.add("show");   // zatemnitev začne takoj
+  if(oknoMirno() || !panel.animate) return;
+  if(!o.kartica){   // brez izvora: pojavi se kot potrditveno okno portala
+    panel.animate([{ opacity: 0, transform: "translateY(10px) scale(.98)" }, { opacity: 1, transform: "none" }], { duration: 200, easing: "ease" });
+    return;
+  }
+  o.morf = true;
+  var kl = oknoKljuci(o, OKNO_ODPRI, false);
+  var duh = oknoDuh(o);
+  o.kartica.classList.add("okno-vir");   // element se spremeni v okno: njegovo mesto se izprazni takoj
+  panel.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 90, easing: "linear" });
+  duh.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 170, delay: 60, easing: "ease", fill: "forwards" });
+  notr.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 190, delay: 110, easing: "ease", fill: "backwards" });
+  notr.animate(kl.notr, { duration: 380, easing: "linear" });
+  var konecRasti = function(){ if(!o.morf) return; o.morf = false; duh.remove(); };
+  panel.animate(kl.okno, { duration: 380, easing: "linear" }).finished.then(konecRasti, konecRasti);
+  setTimeout(konecRasti, 800);   // varovalo, če se animacija ne konča (zaslon v ozadju)
 }
 function zapriOkno(id){
-  var back = $(id); if(!back || !back.classList.contains("odprto")) return;
-  back.classList.add("zapira"); back.classList.remove("odprto");
+  var o = _okna[id]; if(!o || o.zapiram) return;
+  o.zapiram = true;
   odprtaOkna = odprtaOkna.filter(function(x){ return x !== id; });
-  setTimeout(function(){ if(!back.classList.contains("odprto")) back.classList.remove("zapira"); }, 260);
   var f = obZaprtju[id]; if(f){ try{ f(); }catch(e){} }
+  var koncano = false;
+  var konec = function(){ if(koncano) return; koncano = true; oknoPospravi(o); };
+  o.back.classList.remove("show");
+  if(oknoMirno() || !o.panel.animate){ konec(); return; }
+  setTimeout(konec, 800);
+  var k = o.najdi && o.najdi();
+  if(k && k.isConnected && !jeViden(k)){ try{ k.scrollIntoView({ block: "center" }); }catch(e){} }
+  o.panel.getAnimations().forEach(function(a){ a.cancel(); });
+  o.notr.getAnimations().forEach(function(a){ a.cancel(); });
+  if(!jeViden(k)){   // izvora ni več → okno samo izgine
+    o.panel.animate([{ opacity: 1, transform: "none" }, { opacity: 0, transform: "translateY(8px) scale(.98)" }], { duration: 200, easing: "ease", fill: "forwards" }).finished.then(konec, konec);
+    return;
+  }
+  if(o.kartica && o.kartica !== k) o.kartica.classList.remove("okno-vir");
+  o.kartica = k; o.cilj = k;
+  k.classList.add("okno-vir");   // med krčenjem je mesto še prazno; element se vrne, ko je okno spet on
+  var kl = oknoKljuci(o, OKNO_ZAPRI, true);
+  var duh = oknoDuh(o);
+  o.notr.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 110, easing: "ease", fill: "forwards" });
+  o.notr.animate(kl.notr, { duration: 320, easing: "linear", fill: "forwards" });
+  duh.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 160, delay: 150, easing: "ease", fill: "both" });
+  o.panel.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 90, delay: 230, easing: "linear", fill: "forwards" });
+  o.panel.animate(kl.okno, { duration: 320, easing: "linear", fill: "forwards" }).finished.then(konec, konec);
 }
-function zapriVsaOkna(){ odprtaOkna.slice().forEach(zapriOkno); }
+function zapriVsaOkna(){ odprtaOkna.slice().forEach(function(id){ if(id === "oknoPotrdi") zapriPotrdi(); else zapriOkno(id); }); }
+/* priprava: ločena plast zatemnitve in ovoj vsebine (nasprotni razteg) v vsakem oknu */
 document.querySelectorAll(".okno-back").forEach(function(back){
-  back.addEventListener("click", function(ev){ if(ev.target === back && back.id !== "oknoPotrdi") zapriOkno(back.id); });
+  var zat = document.createElement("div"); zat.className = "okno-zatemni"; back.insertBefore(zat, back.firstChild);
+  var panel = back.querySelector(".okno"), notr = document.createElement("div"); notr.className = "okno-notr";
+  while(panel.firstChild) notr.appendChild(panel.firstChild);
+  panel.appendChild(notr);
+  back.addEventListener("mousedown", function(e){ back._zunaj = e.target === back; });
+  back.addEventListener("touchstart", function(e){ back._zunaj = e.target === back; }, { passive: true });
+  back.addEventListener("click", function(ev){ if(ev.target === back && back._zunaj !== false) zapriOkno(back.id); back._zunaj = false; });
   back.querySelectorAll("[data-zapri]").forEach(function(b){ b.addEventListener("click", function(){ zapriOkno(back.id); }); });
 });
 
-var _ptDa = null;
-function askConfirm(naslov, sporocilo, gumbDa, onYes, nevarno, gumbNe, izvor){
+/* ── potrditev: kot potrdiModal v portalu ── */
+var _ptDa = null, _ptFokus = null;
+function askConfirm(naslov, sporocilo, gumbDa, onYes, nevarno, gumbNe){
   $("ptT").textContent = naslov; $("ptSp").textContent = sporocilo;
   $("ptDa").textContent = gumbDa || "Potrdi"; $("ptNe").textContent = gumbNe || "Prekliči";
-  $("ptDa").className = "btn" + (nevarno ? " rdeca" : "");
-  _ptDa = onYes;
-  odpriOkno("oknoPotrdi", izvor);
+  $("ptDa").className = "sc-modal-btn " + (nevarno ? "danger" : "primary");
+  _ptDa = onYes; _ptFokus = document.activeElement;
+  odprtaOkna = odprtaOkna.filter(function(x){ return x !== "oknoPotrdi"; }); odprtaOkna.push("oknoPotrdi");
+  var back = $("oknoPotrdi"); void back.offsetWidth; back.classList.add("show");
+  try{ $("ptDa").focus({ preventScroll: true }); }catch(e){}
 }
-$("ptDa").onclick = function(){ var f = _ptDa; _ptDa = null; zapriOkno("oknoPotrdi"); if(f) f(); };
-$("ptNe").onclick = function(){ _ptDa = null; zapriOkno("oknoPotrdi"); };
+function zapriPotrdi(){
+  $("oknoPotrdi").classList.remove("show");
+  odprtaOkna = odprtaOkna.filter(function(x){ return x !== "oknoPotrdi"; });
+  try{ if(_ptFokus && _ptFokus.isConnected) _ptFokus.focus({ preventScroll: true }); }catch(e){}
+}
+$("ptDa").onclick = function(e){ e.stopPropagation(); var f = _ptDa; _ptDa = null; zapriPotrdi(); if(f) f(); };
+$("ptNe").onclick = function(e){ e.stopPropagation(); _ptDa = null; zapriPotrdi(); };
+$("oknoPotrdi").addEventListener("click", function(e){ if(e.target === this){ _ptDa = null; zapriPotrdi(); } });
 
 /* ══════════ TEMA ══════════ */
 function autoDark(){ var h = new Date().getHours(); return !(h >= 7 && h < 19); }
-function applyTheme(){
+/* Preklop teme kot v portalu (uporabiTemo): View Transitions naredi GPU-pretapljanje (0,34 s),
+   ostali CSS prehodi so med tem izklopljeni (sc-notrans); brez podpore je preklop hipen. */
+function applyTheme(animiraj){
   var pref = settings.theme || "dark";
   var dark = pref === "auto" ? autoDark() : (pref !== "light");
-  document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+  var eff = dark ? "dark" : "light", de = document.documentElement;
+  if(animiraj && de.getAttribute("data-theme") && de.getAttribute("data-theme") !== eff){
+    if(document.startViewTransition && !oknoMirno()){
+      de.classList.add("sc-notrans");
+      try{
+        var vt = document.startViewTransition(function(){ de.setAttribute("data-theme", eff); });
+        vt.finished.then(function(){ de.classList.remove("sc-notrans"); }, function(){ de.classList.remove("sc-notrans"); });
+      }catch(e){ de.setAttribute("data-theme", eff); de.classList.remove("sc-notrans"); }
+    }else{
+      de.classList.add("sc-notrans"); de.setAttribute("data-theme", eff); void de.offsetWidth;
+      requestAnimationFrame(function(){ requestAnimationFrame(function(){ de.classList.remove("sc-notrans"); }); });
+    }
+  }else de.setAttribute("data-theme", eff);
   var m = document.querySelector('meta[name="theme-color"]'); if(m) m.setAttribute("content", dark ? "#0a0a0a" : "#ffffff");
   try{ localStorage.setItem("pralnica:tema", pref); }catch(e){}   // za izris pred nalaganjem (zagonski zaslon)
 }
-async function toggleTheme(){ settings.theme = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark"; applyTheme(); await saveSettings(); }
+async function toggleTheme(){ settings.theme = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark"; applyTheme(true); await saveSettings(); }
 document.querySelectorAll("[data-tema]").forEach(function(b){ b.onclick = toggleTheme; });
 
 /* ══════════ VNOS SPREMNEGA LISTA ══════════ */
@@ -635,7 +778,7 @@ function openSheet(id, izvor){
   odpriOkno("oknoPredogled", izvor);
   requestAnimationFrame(prilagodi);
 }
-obZaprtju.oknoPredogled = function(){ setTimeout(function(){ if(!$("oknoPredogled").classList.contains("odprto")) $("pdOkvir").innerHTML = ""; }, 280); };
+obZaprtju.oknoPredogled = function(){ setTimeout(function(){ if(!_okna.oknoPredogled) $("pdOkvir").innerHTML = ""; }, 900); };
 $("pdTisk").onclick = function(){ var e = entryById(previewId); if(e) printLists([e], $("pdEna").checked); };
 
 function pdfPlugin(){ try{ if(window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.PralnicaPrint) return Capacitor.Plugins.PralnicaPrint; }catch(e){} return null; }
@@ -707,9 +850,9 @@ function prikaziProfile(msg){
   $("ppMsg").textContent = msg || "";
   var urejeni = savedProfs.slice().sort(function(a, b){ return String(a.name || a.email).localeCompare(String(b.name || b.email), "sl"); });
   $("ppGrid").innerHTML = urejeni.map(function(p){
-    return '<div class="pp-wrap"><button type="button" class="pp-tile" data-em="' + esc(p.email) + '">' + avatarHtml(p) + '<span class="pp-nm">' + esc(p.name || p.email) + '</span></button>' +
-      '<button type="button" class="pp-x" data-pozabi="' + esc(p.email) + '" aria-label="Odstrani profil">×</button></div>';
-  }).join("") + '<div class="pp-wrap"><button type="button" class="pp-tile pp-add" id="ppDodaj"><span class="pp-av">+</span><span class="pp-nm">Dodaj</span></button></div>';
+    return '<div class="pp-tile-wrap"><button type="button" class="pp-tile" data-em="' + esc(p.email) + '">' + avatarHtml(p) + '<span class="pp-nm">' + esc(p.name || p.email) + '</span></button>' +
+      '<button type="button" class="pp-tile-x" data-pozabi="' + esc(p.email) + '" aria-label="Odstrani profil">×</button></div>';
+  }).join("") + '<div class="pp-tile-wrap"><button type="button" class="pp-tile pp-add" id="ppDodaj"><span class="pp-av">+</span><span class="pp-nm">Dodaj</span></button></div>';
   $("ppGrid").querySelectorAll("[data-em]").forEach(function(b){ b.onclick = function(){ izberiProfil(b.getAttribute("data-em"), b); }; });
   $("ppGrid").querySelectorAll("[data-pozabi]").forEach(function(b){ b.onclick = function(ev){ ev.stopPropagation(); pozabiProfil(b.getAttribute("data-pozabi"), b); }; });
   $("ppDodaj").onclick = function(){ showAccountLogin(""); setTimeout(function(){ $("acctEmail").focus(); }, 50); };
@@ -1085,19 +1228,18 @@ async function syncPush(tiho){
 /* ── stanje sinhronizacije v orodni vrstici ── */
 var IKO_SYNC = '<svg class="vrti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>';
 function risiSyncGumb(){
-  var b = $("syncChip"); if(!b) return;
+  var b = $("syncChip"), dot = $("syncDot"); if(!b) return;
   if(!portalNastavljen() || (!portalAuth && !session)){ b.hidden = true; return; }
   b.hidden = false;
-  if(!portalAuth){ b.innerHTML = '<span class="dot bad"></span><span class="sc-txt">Prijava potekla</span>'; b.title = "Seja v portalu je potekla. Tapni za ponovno prijavo."; return; }
   var caka = entries.filter(function(e){ return !e.syncedAt; }).length;
-  if(syncTecev || rocnoTece){ b.innerHTML = IKO_SYNC + '<span class="sc-txt">Pošiljam …</span>'; b.title = "Prenos v teku"; return; }
-  if(caka){
-    var brez = navigator.onLine === false || syncZadnje === "ni povezave" || syncZadnje === "ni omrežja";
-    b.innerHTML = '<span class="dot ' + (brez ? "bad" : "warn") + '"></span><span class="sc-txt">' + (brez ? "Brez povezave · " : "Čaka ") + caka + '</span>';
-    b.title = "Na prenos čaka " + caka + (syncZadnje ? " — " + syncZadnje : "") + ". Tapni za prenos zdaj."; return;
-  }
-  b.innerHTML = '<span class="dot ok"></span><span class="sc-txt">V portalu</span>';
-  b.title = "Vse je v portalu. Tapni za osvežitev.";
+  var brez = navigator.onLine === false || syncZadnje === "ni povezave" || syncZadnje === "ni omrežja";
+  var st, t;
+  if(!portalAuth){ st = "bad"; t = "Seja v portalu je potekla — tapni za ponovno prijavo."; }
+  else if(syncTecev || rocnoTece){ st = "warn"; t = "Prenos v teku …"; }
+  else if(caka){ st = brez ? "bad" : "warn"; t = "Na prenos čaka " + caka + (brez ? " — ni povezave" : (syncZadnje ? " — " + syncZadnje : "")) + ". Tapni za prenos zdaj."; }
+  else { st = "ok"; t = "Vse je v portalu. Tapni za osvežitev."; }
+  b.classList.toggle("vrti", !!(syncTecev || rocnoTece));
+  dot.className = "notif-dot " + st; b.title = t; b.setAttribute("aria-label", t);
 }
 var rocnoTece = false;
 $("syncChip").onclick = async function(){
