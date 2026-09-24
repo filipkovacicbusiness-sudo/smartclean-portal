@@ -70,6 +70,7 @@ določenega razdelka ne odpre. **Kljukica = datoteka je v tej mapi.**
 | 57 | `57_zapri_rpc_public.sql` | dokonča 52: `revoke … from anon` ne zadošča, ker anon pravico podeduje od `PUBLIC` | **✓** |
 | 58 | `58_zapri_rpc_public_2.sql` | isti vzrok: `odprte_izmene` je razkrivala, kdo je v službi | **✓** |
 | 59 | `59_app_postavke_stevilka.sql` | aplikacija: postavke v eni transakciji (`app_zamenjaj_postavke`), prosta številka lista (`app_prosta_stevilka`) | **✓** |
+| 60 | `60_app_realtime.sql` | aplikacija: `orgs`, `articles`, `delivery_notes`, `delivery_note_items` v publikaciji `supabase_realtime` (živa sinhronizacija) | **✓** |
 
 Poleg tega sta v mapi dve enkratni opravili, ki nista del sheme:
 `cenik_pocisti_nepovezane.sql` in `id_kljuc_migracija.sql`.

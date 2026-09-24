@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="sl" data-theme="dark">
+<head>
+<meta charset="UTF-8" />
+<!-- {{OPOZORILO}} -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.supabase.co; font-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-src 'self' data: blob:; base-uri 'none'; form-action 'none'; object-src 'none'" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<title>{{NASLOV}}</title>
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#0a0a0a" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="{{KRATKO_IME}}" />
+<link rel="apple-touch-icon" href="icon-192.png" />
+<link rel="icon" type="image/png" href="icon-192.png" />
+<script>
+/* Tema PRED prvim izrisom (kot boot.js v portalu) + zagonski zaslon. */
+(function(){
+  try{
+    var p = localStorage.getItem("pralnica:tema") || "dark", h = new Date().getHours();
+    var t = p === "auto" ? ((h >= 7 && h < 19) ? "light" : "dark") : (p === "light" ? "light" : "dark");
+    document.documentElement.setAttribute("data-theme", t);
+    var m = document.querySelector('meta[name="theme-color"]'); if(m) m.setAttribute("content", t === "light" ? "#ffffff" : "#0a0a0a");
+  }catch(e){}
+  try{ document.documentElement.classList.add("sc-booting"); }catch(e){}
+  window.scBootDone = function(){
+    try{ document.documentElement.classList.remove("sc-booting"); }catch(e){}
+    var b = document.getElementById("scBoot"); if(!b || b.__d) return; b.__d = 1;
+    b.classList.add("scBoot-hide");
+    setTimeout(function(){ if(b.parentNode) b.parentNode.removeChild(b); }, 560);
+  };
+  setTimeout(function(){ try{ window.scBootDone(); }catch(e){} }, 8000);
+})();
+</script>
+<!-- Pisave so vgrajene (base64): delujejo brez povezave in v natisnjenih/PDF dokumentih. -->
+<style id="pisave">{{PISAVE}}</style>
+<style>{{CSS}}</style>
+</head>
+<body>
+<div id="scBoot" aria-hidden="true"><div class="scBoot-in"><div class="wordmark">Smart<span>Clean</span></div><div class="scBoot-bar"><i></i></div></div></div>
+
+<!-- ══════════ PRIJAVA ══════════ -->
+<div class="auth" id="prijava" hidden>
+  <header class="auth-top"><div class="topbar-in">
+    <div class="wordmark">Smart<span>Clean</span></div>
+    <button class="icon-btn" type="button" data-tema aria-label="Svetel / temen način">
+      <svg class="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.4 1.4M17.6 17.6L19 19M19 5l-1.4 1.4M6.4 17.6L5 19"/></svg>
+      <svg class="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+    </button>
+  </div></header>
+  <div class="auth-main">
+    <div class="auth-hero"><h2 class="auth-claim">Peremo, vi pa <em>blestite.</em></h2></div>
+    <div class="auth-slot">
+      <div class="profile-picker" id="profili" hidden>
+        <p class="pp-h">Izberi profil</p>
+        <div class="pp-grid" id="ppGrid"></div>
+        <div class="msg bad" id="ppMsg" role="status" aria-live="polite"></div>
+      </div>
+      <div class="auth-box" id="prijavaObr" hidden>
+        <h1>Prijava s podatki za portal</h1>
+        <form id="acctForm" autocomplete="on" novalidate>
+          <div class="field"><label for="acctEmail">E-poštni naslov</label>
+            <input type="email" id="acctEmail" inputmode="email" autocapitalize="none" autocorrect="off" autocomplete="username" /></div>
+          <div class="field"><label for="acctPass">Geslo</label>
+            <input type="password" id="acctPass" autocomplete="current-password" /></div>
+          <button type="submit" class="btn lg" id="acctBtn">Prijavi se</button>
+          <div class="msg bad" id="acctErr" role="alert"></div>
+        </form>
+        <p style="text-align:center;margin-top:10px"><button type="button" class="link-btn" id="acctBack" hidden>Nazaj na profile</button></p>
+      </div>
+    </div>
+  </div>
+  <a class="auth-foot" href="https://eflitte.si" target="_blank" rel="noopener">Izdelava <b>eflitte</b></a>
+</div>
+
+<!-- ══════════ APLIKACIJA ══════════ -->
+<div class="app" id="app" hidden>
+  <header class="topbar"><div class="topbar-in">
+    <div class="wordmark">Smart<span>Clean</span></div>
+    <div class="tb-kdo"><span class="tb-ime" id="tbIme"></span><span class="tb-vloga">Spremni listi</span></div>
+    <div class="tools">
+      <button class="sync-chip" id="syncChip" type="button" hidden></button>
+      <button class="icon-btn" type="button" data-tema aria-label="Svetel / temen način">
+        <svg class="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.4 1.4M17.6 17.6L19 19M19 5l-1.4 1.4M6.4 17.6L5 19"/></svg>
+        <svg class="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
+      <button class="pill-btn" type="button" id="zamenjajBtn">Zamenjaj</button>
+      <button class="icon-btn" type="button" id="izklopBtn" aria-label="Izklop aplikacije" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5v8.5"/><path d="M6.6 6.6a8 8 0 1 0 10.8 0"/></svg>
+      </button>
+    </div>
+  </div></header>
+
+  <main class="stage">
+    <section class="panel panel-vnos">
+      <div class="panel-h">
+        <h2 id="vnosNaslov">Nov spremni list</h2>
+        <button class="pill-btn" type="button" id="pocistiBtn">Počisti</button>
+      </div>
+      <button class="stranka-btn prazen" type="button" id="strankaBtn"><span class="sb-ime" id="strankaIme">Izberi stranko</span><span class="chev">›</span></button>
+      <div class="vnos-telo" id="vnosTelo"></div>
+    </section>
+
+    <div class="stolpec">
+      <section class="panel panel-povzetek">
+        <div class="povzetek" id="povzetek"></div>
+      </section>
+      <section class="panel panel-hist">
+        <div class="hist-h">
+          <h2 id="seznamNaslov">Zadnji spremni listi</h2>
+          <div class="isci">
+            <span class="isci-lbl">Išči</span>
+            <button class="pill-btn" type="button" id="isciSt">Številka</button>
+            <span class="isci-datum"><button class="pill-btn" type="button" id="isciDat" tabindex="-1">Datum</button><input type="date" id="isciDatum" aria-label="Išči po datumu" /></span>
+            <button class="pill-btn" type="button" id="isciStr">Stranka</button>
+          </div>
+        </div>
+        <div class="isci-chip" id="isciChip" hidden><span id="isciChipT"></span><button class="pill-btn" type="button" id="isciPocisti">Počisti</button></div>
+        <div class="listi-ovoj"><div id="seznam"></div><p class="noga" id="noga"></p></div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<!-- ══════════ OKNA ══════════ -->
+<div class="okno-back" id="oknoKp"><div class="okno" role="dialog" aria-modal="true" aria-labelledby="kpT">
+  <div class="okno-h"><span class="t" id="kpT">Vnos kosov</span><button class="pill-btn" type="button" data-zapri>Prekliči</button></div>
+  <div class="okno-b">
+    <div class="kp-glava"><div class="kp-art"><div class="ime" id="kpIme">—</div><div class="zdaj" id="kpZdaj"></div></div><div class="kp-disp prazen" id="kpDisp">0</div></div>
+    <div class="kp-grid" id="kpGrid"></div>
+  </div>
+</div></div>
+
+<div class="okno-back" id="oknoStranke"><div class="okno siroko" role="dialog" aria-modal="true" aria-labelledby="stT">
+  <div class="okno-h"><span class="t" id="stT">Izberi stranko</span><button class="pill-btn" type="button" data-zapri>Zapri</button></div>
+  <div class="okno-b">
+    <div class="field st-isci"><input type="search" class="in" id="stIsci" placeholder="Išči stranko" autocomplete="off" /></div>
+    <div class="st-grid" id="stGrid"></div>
+  </div>
+</div></div>
+
+<div class="okno-back" id="oknoPregled"><div class="okno sirse" role="dialog" aria-modal="true" aria-labelledby="rvT">
+  <div class="okno-h"><span class="t" id="rvT">Pregled pred shranjevanjem</span><button class="pill-btn" type="button" data-zapri>Zapri</button></div>
+  <div class="okno-b" id="rvTelo"></div>
+  <div class="okno-akc" id="rvPotrdiAkc">
+    <button class="btn ghost" type="button" id="rvUredi">Uredi</button>
+    <button class="btn danger" type="button" id="rvZavrzi">Zavrzi</button>
+    <button class="btn" type="button" id="rvPotrdi">Potrdi in shrani</button>
+  </div>
+  <div class="okno-akc" id="rvTiskAkc" hidden>
+    <button class="btn ghost" type="button" id="rvPreskoci">Brez tiskanja</button>
+    <button class="btn ghost" type="button" id="rvTisk1">Natisni 1×</button>
+    <button class="btn" type="button" id="rvTisk2">Natisni 2×</button>
+  </div>
+</div></div>
+
+<div class="okno-back" id="oknoPredogled"><div class="okno siroko" role="dialog" aria-modal="true" aria-labelledby="pdT">
+  <div class="okno-h"><span class="t" id="pdT">Spremni list</span><button class="pill-btn" type="button" data-zapri>Zapri</button></div>
+  <div class="okno-b">
+    <div class="pred-okvir" id="pdOkvir"></div>
+    <label class="kopije"><input type="checkbox" id="pdEna" /> Natisni samo en izvod</label>
+  </div>
+  <div class="okno-akc"><button class="btn" type="button" id="pdTisk">Natisni</button></div>
+</div></div>
+
+<div class="okno-back" id="oknoOpombe"><div class="okno sirse" role="dialog" aria-modal="true" aria-labelledby="opT">
+  <div class="okno-h"><span class="t" id="opT">Opombe</span><button class="pill-btn" type="button" data-zapri>Prekliči</button></div>
+  <div class="okno-b">
+    <div class="field"><label class="f-lbl" for="opStranka">Opomba za stranko <small>· natisne se na spremni list</small></label>
+      <textarea id="opStranka" rows="3" placeholder="Npr. Perilo prevzeto mokro."></textarea></div>
+    <div class="field" style="margin-bottom:0"><label class="f-lbl" for="opEvidenca">Opomba za evidenco <small>· ne natisne se, vidna le v portalu</small></label>
+      <textarea id="opEvidenca" rows="3" placeholder="Npr. interna opomba za osebje."></textarea></div>
+  </div>
+  <div class="okno-akc"><button class="btn" type="button" id="opShrani">Shrani opombe</button></div>
+</div></div>
+
+<div class="okno-back" id="oknoPotrdi"><div class="okno" role="alertdialog" aria-modal="true" aria-labelledby="ptT">
+  <div class="okno-h"><span class="t" id="ptT">Potrdi</span></div>
+  <div class="okno-b"><p class="potrdi-sp" id="ptSp"></p></div>
+  <div class="okno-akc"><button class="btn ghost" type="button" id="ptNe">Prekliči</button><button class="btn" type="button" id="ptDa">Potrdi</button></div>
+</div></div>
+
+<div class="sc-toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="supabase.js"></script>
+<script>{{JS}}</script>
+<script>
+  if("serviceWorker" in navigator && location.protocol === "https:" && !/^localhost$/.test(location.hostname)){
+    window.addEventListener("load", function(){ navigator.serviceWorker.register("sw.js").catch(function(){}); });
+    /* Ko nova koda prevzame nadzor, se enkrat samodejno osveži. */
+    var _swReload = false;
+    navigator.serviceWorker.addEventListener("controllerchange", function(){ if(_swReload) return; _swReload = true; location.reload(); });
+  }
+</script>
+</body>
+</html>

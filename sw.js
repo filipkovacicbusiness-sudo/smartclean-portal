@@ -2,7 +2,8 @@
    STALNA IMENA DATOTEK: portal.css / portal.js se prepišeta na istem mestu.
    Koda (HTML/JS/CSS/JSON): network-first z obvezno osvežitvijo (cache:'no-cache'),
    zato so posodobitve vidne takoj, ko si na spletu — brez menjave imen datotek.
-   Slike/pisave/APK: cache-first (redko se menjajo). */
+   Slike/pisave: cache-first (redko se menjajo). APK: vedno z mreže (3+ MB, ob novi
+   različici bi sicer tablica dobila star paket iz predpomnilnika). */
 var CACHE = 'sc-portal';
 var PRECACHE = ['./boot.js', './portal.css', './portal.js', './start.js', './supabase.js', './index.html',
   './pdfgen.js'];   // lena modula za PDF — prednaloži, da PDF deluje tudi brez povezave
@@ -19,14 +20,20 @@ self.addEventListener('install', function (e) {
 self.addEventListener('activate', function (e) {
   e.waitUntil(caches.keys().then(function (ks) {
     return Promise.all(ks.map(function (k) { if (k !== CACHE) return caches.delete(k); }));
+  }).then(function () {
+    // stare kopije APK iz predpomnilnika (prej cache-first) odstrani
+    return caches.open(CACHE).then(function (c) { return c.keys().then(function (zahteve) {
+      return Promise.all(zahteve.filter(function (r) { return /\.apk(\?|$)/i.test(r.url); }).map(function (r) { return c.delete(r); }));
+    }); });
   }).then(function () { return self.clients.claim(); }));
 });
-function jeMedij(p) { return /\.(png|jpg|jpeg|gif|svg|webp|ico|woff2?|ttf|otf|apk)$/i.test(p); }
+function jeMedij(p) { return /\.(png|jpg|jpeg|gif|svg|webp|ico|woff2?|ttf|otf)$/i.test(p); }
 self.addEventListener('fetch', function (e) {
   var req = e.request; if (req.method !== 'GET') return;
   var url = new URL(req.url);
   if (url.origin !== self.location.origin) return;   /* Supabase / zunanje pusti */
   if (/\/config\.js$/.test(url.pathname)) return;     /* config vedno svež */
+  if (/\.apk$/i.test(url.pathname)) return;           /* APK vedno z mreže */
   if (jeMedij(url.pathname)) {
     e.respondWith(caches.match(req).then(function (hit) {
       return hit || fetch(req).then(function (res) { var c = res.clone(); caches.open(CACHE).then(function (k) { k.put(req, c); }).catch(function () {}); return res; });
