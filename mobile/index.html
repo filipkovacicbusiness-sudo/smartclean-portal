@@ -378,7 +378,7 @@
   .pw-wrap > input{width:100%;padding-right:46px !important}
   .pw-eye{position:absolute;top:0;right:6px;height:100%;width:36px;display:flex;align-items:center;justify-content:center;background:none;border:none;color:var(--ink-soft);cursor:pointer;padding:0}
   .pw-eye:hover{color:var(--ink)} .pw-eye svg{display:block}
-  .acct-btn{width:100%;border:none;border-radius:12px;padding:15px;font-size:16px;font-weight:700;color:#fff;background:var(--press);cursor:pointer}
+  .acct-btn{width:100%;border:none;border-radius:12px;padding:15px;font-size:16px;font-weight:700;color:var(--linen);background:var(--press);cursor:pointer}
   .acct-btn:disabled{opacity:.55}
   .acct-err{color:var(--warn);font-size:13.5px;font-weight:600;min-height:18px;text-align:center}
   .acct-note{font-size:12px;color:var(--ink-soft);text-align:center;line-height:1.4}
@@ -1305,13 +1305,15 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
     }
     el.innerHTML='<ul class="entries">'+t.map(function(e){
       return '<li class="entry'+(e.id===editingId?' editing':'')+'"><div class="meta"><div class="name">'+esc(e.strankaNaziv)+'</div>'+
-        '<div class="sub"><span class="no">'+e.stevilka+'</span> · '+fmtDateHuman(e.datum)+' · '+e.postavke.length+' art.</div></div>'+
+        '<div class="sub"><span class="no">'+e.stevilka+'</span> · '+fmtDateHuman(e.datum)+' · '+e.postavke.length+' art.</div>'+(e.stevilkaZasedena && !e.syncedAt ? '<div class="sub" style="color:#c2410c;font-weight:600">Številka je v portalu zasedena</div>' : '')+'</div>'+
+        (e.stevilkaZasedena && !e.syncedAt ? '<button class="iconbtn" data-renum="'+e.id+'" title="Nova številka" style="width:auto;padding:0 10px;font-weight:700;font-size:13px">Nova št.</button>' : '')+
         '<div class="pcs mono">'+e.skupajKosov+'<small>kos</small></div>'+
         '<button class="iconbtn" data-view="'+e.id+'" title="Predogled / natisni"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></button>'+
         '<button class="iconbtn" data-edit="'+e.id+'" title="Uredi"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg></button>'+
         ((e.syncedAt || e.prenesenIzPortala || e.potrjeno) ? '' : '<button class="iconbtn del" data-del="'+e.id+'" title="Izbriši osnutek"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 10v6M14 10v6"/></svg></button>')+'</li>';
     }).join("")+'</ul>';
     el.querySelectorAll("[data-view]").forEach(function(b){ b.onclick=function(){openSheet(b.getAttribute("data-view"));}; });
+    el.querySelectorAll("[data-renum]").forEach(function(b){ b.onclick=function(){ novaStevilka(b.getAttribute("data-renum")); }; });
     el.querySelectorAll("[data-edit]").forEach(function(b){ b.onclick=function(){startEdit(b.getAttribute("data-edit"));}; });
     el.querySelectorAll("[data-del]").forEach(function(b){ b.onclick=function(){delEntry(b.getAttribute("data-del"));}; });
   }
@@ -1334,6 +1336,21 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
       if(id===editingId) cancelEdit();
       await saveEntries(); render();
     });
+  }
+
+  /* Številka je v portalu že zasedena z drugim listom → predlagaj prosto (portal + naprava). */
+  async function novaStevilka(id){
+    var e=entryById(id); if(!e) return;
+    var leto=String(e.stevilka).split("/")[1]||String(new Date().getFullYear());
+    var izPortala=0;
+    try{ var r=await api("rpc/app_prosta_stevilka",{ method:"POST", body:{ p_leto:parseInt(leto,10) } }); if(typeof r==="number") izPortala=r; }catch(_){}
+    var maxLok=0; entries.forEach(function(x){ var p=String(x.stevilka||"").split("/"); if(p[1]===leto){ var s=parseInt(p[0],10); if(!isNaN(s)&&s>maxLok) maxLok=s; } });
+    var nova=String(Math.max(izPortala,maxLok+1)).padStart(4,"0")+"/"+leto;
+    askConfirm("Nova številka lista?", "Številka "+e.stevilka+" je v portalu že zasedena z drugim spremnim listom. Ta list dobi številko "+nova+". Na natisnjenem listu popravi številko ali ga natisni znova.", "Spremeni v "+nova, async function(){
+      await renameEntryNumber(id, nova);
+      e.stevilkaZasedena=false; e.syncNapaka=null; await saveEntries(); render();
+      try{ syncPush(false); }catch(_){}
+    }, false);
   }
 
   function entryById(id){ return entries.find(function(x){return x.id===id;}); }
@@ -1961,7 +1978,7 @@ html[data-theme="dark"] .tb-btn.ic .i-moon{display:none}
     }).join("") : '<div style="color:var(--ink-soft);font-size:13px">Danes še ni shranjenih listov.</div>';
     document.querySelectorAll("[data-opendanes]").forEach(function(b){ b.onclick=function(){ closeDanes(); openSheet(b.getAttribute("data-opendanes")); }; });
   }
-  var APP_VERZIJA="8.4";
+  var APP_VERZIJA="8.5";
   function openAdmin(){ return;  /* admin odstranjen povsod */
     if(!session||session.role!=="admin"||!jeFilip()||jeSpletniPogled()) return; var av=document.getElementById("admVerz"); if(av) av.textContent="v"+APP_VERZIJA; var vf=document.getElementById("verzFoot"); if(vf) vf.textContent=APP_VERZIJA; renderAdmin(); document.getElementById("adminScreen").classList.add("show"); }
   function closeAdmin(){ document.getElementById("adminScreen").classList.remove("show"); }
@@ -2315,6 +2332,19 @@ async function api(pot, opt, drugic){
   return j;
 }
 
+/* Postavke lista zamenja v ENI transakciji na strežniku (migracija 59). Prej sta bila to
+   dva klica (DELETE, nato POST): če je drugi padel, je list v portalu ostal brez postavk.
+   Rezerva za bazo brez funkcije: stari način. */
+async function zamenjajPostavke(noteId, post){
+  try{ await api("rpc/app_zamenjaj_postavke", { method: "POST", body: { p_note: noteId, p_postavke: post } }); return; }
+  catch(err){
+    var ni = err && (err.status === 404 || err.code === "PGRST202" || /app_zamenjaj_postavke/i.test(err.message || ""));
+    if(!ni) throw err;
+  }
+  await api("delivery_note_items?note_id=eq." + noteId, { method: "DELETE" });
+  if(post.length) await api("delivery_note_items", { method: "POST", body: post });
+}
+
 /* ── pošiljanje enega spremnega lista ───────────────────────────── */
 async function posljiEnega(e){
   /* 1. stranka — naprava je ne sme ustvariti, zato mora biti v portalu */
@@ -2356,7 +2386,15 @@ async function posljiEnega(e){
   var obst = await api("delivery_notes?legacy_id=eq." + encodeURIComponent(e.id) + "&select=id,potrjeno,popravljeno_at&limit=1");
   /* če ni zadetka po legacy_id, poišči obstoječi list po isti številki (leto+zap.št.) */
   if(!obst.length){
-    obst = await api("delivery_notes?doc_year=eq." + leto + "&doc_seq=eq." + seq + "&select=id,potrjeno,popravljeno_at&limit=1");
+    obst = await api("delivery_notes?doc_year=eq." + leto + "&doc_seq=eq." + seq + "&select=id,potrjeno,popravljeno_at,legacy_id,org_id,doc_date&limit=1");
+    /* Ista številka je lahko DRUG list — ustvarjen v portalu ali na drugi napravi, medtem
+       ko je bila ta brez povezave. Takega NIKOLI ne prepiši (prej je aplikacija zamenjala
+       njegovo stranko in postavke). List ostane v vrsti z opozorilom »Nova št.«. */
+    if(obst.length){
+      var _o = obst[0];
+      var _isti = (_o.legacy_id && _o.legacy_id === e.id) || (!_o.legacy_id && _o.org_id === orgId && String(_o.doc_date) === String(e.datum));
+      if(!_isti){ var _ez = new Error("številka " + e.stevilka + " je v portalu že zasedena"); _ez.stevilkaZasedena = true; throw _ez; }
+    }
   }
   var noteId;
   if(obst.length){
@@ -2388,7 +2426,6 @@ async function posljiEnega(e){
       }catch(_c){ /* če zapis prekrivanja ne uspe, pusti v vrsti za kasneje */ throw _c; }
     }
     await api("delivery_notes?id=eq." + noteId, { method: "PATCH", body: vrstica });
-    await api("delivery_note_items?note_id=eq." + noteId, { method: "DELETE" });
     e.portalPopravljenoAt = vrstica.popravljeno_at || portalP || e.portalPopravljenoAt || null;
   }else{
     var nova = await api("delivery_notes", {
@@ -2419,7 +2456,7 @@ async function posljiEnega(e){
         article_name: ime, pieces: Number(p.kosov) || 0, sort_order: i
       };
     });
-  post=(function(a){var s={},o=[];a.forEach(function(r){var k=r.article_id?("a"+r.article_id):("n"+String(r.article_name||"").toLowerCase());if(s[k]){s[k].pieces=(s[k].pieces||0)+(r.pieces||0);}else{s[k]=r;o.push(r);}});o.forEach(function(r,ix){r.sort_order=ix;});return o;})(post); if(post.length) await api("delivery_note_items", { method: "POST", body: post });
+  post=(function(a){var s={},o=[];a.forEach(function(r){var k=r.article_id?("a"+r.article_id):("n"+String(r.article_name||"").toLowerCase());if(s[k]){s[k].pieces=(s[k].pieces||0)+(r.pieces||0);}else{s[k]=r;o.push(r);}});o.forEach(function(r,ix){r.sort_order=ix;});return o;})(post); await zamenjajPostavke(noteId, post);
 
   return true;
 }
@@ -2442,16 +2479,18 @@ async function syncPush(tiho){
       await posljiEnega(e);
       e.syncedAt = new Date().toISOString();
       e.syncNapaka = null;
+      e.stevilkaZasedena = false;
       poslano++;
     }catch(err){
       var sporocilo = err.message || String(err);
       /* list s to številko že obstaja v portalu (edinstvena št.) → ni napaka,
          označi kot poslano, da ne blokira vrste v nedogled */
-      if(/duplicate key|already exists|doc_year_doc_seq|23505/i.test(sporocilo)){
-        e.syncedAt = new Date().toISOString();
-        e.syncNapaka = null;
-        e.zeVPortalu = true;
-        zeVPortalu++;
+      /* Številka (leto + zap. št.) je zasedena z DRUGIM listom. Prej je bil tak list označen
+         kot »že v portalu« in se nikoli ni prenesel. Zdaj ostane v vrsti z opozorilom. */
+      if(err.stevilkaZasedena || /duplicate key|already exists|doc_year_doc_seq|23505/i.test(sporocilo)){
+        e.stevilkaZasedena = true;
+        e.syncNapaka = "številka " + e.stevilka + " je v portalu že zasedena";
+        spodletelo++; zadnjaNapaka = e.syncNapaka;
         continue;
       }
       spodletelo++;
@@ -2660,14 +2699,15 @@ async function sinhronizirajRocno(){
       await posljiEnega(e);
       e.syncedAt = new Date().toISOString();
       e.syncNapaka = null;
+      e.stevilkaZasedena = false;
       por.poslano++;
     }catch(err){
       var m = err.message || String(err);
-      if(/duplicate key|already exists|doc_year_doc_seq|23505/i.test(m)){
-        e.syncedAt = new Date().toISOString();
-        e.syncNapaka = null;
-        e.zeVPortalu = true;
-        por.poslano++;
+      if(err.stevilkaZasedena || /duplicate key|already exists|doc_year_doc_seq|23505/i.test(m)){
+        e.stevilkaZasedena = true;
+        e.syncNapaka = "številka " + e.stevilka + " je v portalu že zasedena";
+        por.tezave.push(e.stevilka + " — številka je v portalu že zasedena (tapni »Nova št.«)");
+        por.ostalo++;
         continue;
       }
       if(err.name === "TypeError" || /Failed to fetch|NetworkError/i.test(m)) m = "ni povezave";
