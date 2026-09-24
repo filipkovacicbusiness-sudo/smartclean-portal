@@ -400,14 +400,9 @@
     if (r.error) r = await vseVrstice(function (a, b) { return sb.from('orgs').select('id,name,legal_name,address,vat_id').order('name').range(a, b); });
     // Če tudi rezerva pade, ostane seznam prazen — brez te vrstice je videti kot »ni strank«.
     if (r.error) { try { console.warn('[stranke] seznama strank ni bilo mogoče naložiti:', (r.error.message || r.error)); } catch (_) {} }
-    ORGSEZNAM = r.data || [];
-    ORGSEZNAM.sort(function (a, b) {
-      var sa = a.sort_order, sb2 = b.sort_order;
-      if (sa != null && sb2 != null && sa !== sb2) return sa - sb2;
-      if (sa != null && sb2 == null) return -1;
-      if (sa == null && sb2 != null) return 1;
-      return (a.name || '').localeCompare(b.name || '', 'sl');
-    });
+    // Vedno po abecedi. orgs.sort_order je ostanek ročnega razvrščanja strank, ki ga v
+    // portalu ni več; stare vrednosti so nekatere stranke (npr. Gostišče Jezersko) vlekle na vrh.
+    ORGSEZNAM = razvrstiStranke(r.data || [], 'abeceda');
     ORGIME = {};
     ORGSEZNAM.forEach(o => { ORGIME[o.id] = o.name; });
     return ORGSEZNAM;
@@ -5154,15 +5149,6 @@
     });
     var res = await Promise.all(updates);
     if (res.some(function (r) { return r.error; })) toast('Vrstni red morda ni v celoti shranjen.');
-  }
-  async function cenikShraniStrankiRed(container) {
-    const orgIds = [].slice.call(container.querySelectorAll('.cgrp')).map(el => el.dataset.key).filter(k => k && k.indexOf('org:') === 0).map(k => k.slice(4));
-    const updates = orgIds.map((id, i) => ({ id: id, sort_order: i }));
-    if (!updates.length) return;
-    updates.forEach(u => { var o = ORGSEZNAM.find(x => x.id === u.id); if (o) o.sort_order = u.sort_order; });
-    const res = await Promise.all(updates.map(u => sb.from('orgs').update({ sort_order: u.sort_order }).eq('id', u.id)));
-    if (res.some(r => r.error)) toast('Vrstni red strank morda ni v celoti shranjen.');
-    else toast('Vrstni red strank shranjen');
   }
   function izbrisiSkupino(prefix, btn) {
     const bar = btn.closest('.cgrp-bar');
