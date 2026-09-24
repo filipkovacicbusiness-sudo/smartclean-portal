@@ -7678,7 +7678,7 @@
     const jeSuperLastnik = function (u) { return (u.email || '').trim().toLowerCase() === 'filip@eflitte.si'; };
     // »super« (Super admin) je samo lastnik — ni ga mogoče dodeliti; dodeljive so admin in nižje.
     const VLOGE = [['admin', roleIme('admin'), 3], ['osebje', roleIme('osebje'), 2], ['zaposleni', roleIme('zaposleni'), 1], ['stranka', roleIme('stranka'), 0]];
-    $('usersList').innerHTML = (ljudje || []).map(u => {
+    $('usersList').innerHTML = '<div class="rows u-mreza">' + (ljudje || []).map(u => {
       const jaz = u.id === JAZ;
       const jeLastnikU = jeSuperLastnik(u);
       const vlogaVal = jeLastnikU ? 'super' : u.super_admin ? 'admin' : u.is_staff ? 'osebje' : u.zaposleni ? 'zaposleni' : 'stranka';
@@ -7688,35 +7688,42 @@
       const webOn = u.web_dostop !== false;   // privzeto vključen
       const pinSet = (u.app_pin !== null && u.app_pin !== void 0 && String(u.app_pin) !== '');   // ali je PIN nastavljen
       const roleOpts = VLOGE.filter(r => r[2] < mr).sort((a, b) => b[2] - a[2]).map(r => `<option value="${r[0]}"${vlogaVal === r[0] ? ' selected' : ''}>${r[1]}</option>`).join('');
-      return `<div class="u-row ${u.active ? '' : 'u-off'}">
-      <div class="u-info">
-        <div class="u-mail">${escape_(u.full_name || u.email || '—')}
-          ${naSpletu ? '<span class="pill pill-on"><span class="dot-on"></span>na spletu</span>' : ''}
-          ${jeLastnikU ? '<span class="pill pill-super">' + escape_(roleIme('super')) + '</span>' : ''}
-          ${(!jeLastnikU && u.super_admin) ? '<span class="pill pill-super">' + escape_(roleIme('admin')) + '</span>' : ''}
-          ${(!u.super_admin && !u.is_staff && u.zaposleni) ? '<span class="pill">' + escape_(roleIme('zaposleni')) + '</span>' : ''}
-          ${jaz ? '<span class="pill">vi</span>' : ''}
-          ${u.active ? '' : '<span class="pill">izklopljen</span>'}</div>
+      // Okvirček (Seznam/Mreža po nastavitvi Pogled); klik odpre okno z vlogo, podatki in dejanji.
+      const znacke = (naSpletu ? '<span class="pill pill-on"><span class="dot-on"></span>na spletu</span>' : '') +
+        (jeLastnikU ? '<span class="pill pill-super">' + escape_(roleIme('super')) + '</span>' : '') +
+        ((!jeLastnikU && u.super_admin) ? '<span class="pill pill-super">' + escape_(roleIme('admin')) + '</span>' : '') +
+        ((!u.super_admin && !u.is_staff && u.zaposleni) ? '<span class="pill">' + escape_(roleIme('zaposleni')) + '</span>' : '') +
+        (jaz ? '<span class="pill u-vi">vi</span>' : '') +
+        (u.active ? '' : '<span class="pill">izklopljen</span>');
+      const ime = u.full_name || u.email || '—';
+      const prijava = u.last_login ? datumcas(u.last_login) : '';
+      return `<div class="lcell${u.active ? '' : ' u-off'}"><button class="row has-tag" type="button" data-uid="${u.id}" aria-haspopup="dialog">
+      <span><span class="row-name"><span class="row-nm">${escape_(ime)}</span></span><br><span class="row-legal">${escape_(u.email || '—')}</span>${znacke ? '<span class="u-znacke">' + znacke + '</span>' : ''}</span>
+      <span class="row-pct"></span><span class="num u-prijava" title="Zadnja prijava">${prijava ? escape_(prijava.split(',')[0]) : '—'}</span><span class="chev" aria-hidden="true">›</span></button>
+      <div class="arts u-det">
         ${lahkoUredi ? `<div class="u-role-wrap">
-          <select class="u-role" data-role="${u.id}" data-cur="${vlogaVal}" aria-label="Vloga">${roleOpts}</select>
+          <select class="u-role" data-role="${u.id}" data-cur="${vlogaVal}" data-ime="${escape_(u.full_name || '')}" aria-label="Vloga">${roleOpts}</select>
           ${vlogaVal === 'stranka' ? `<select class="u-org" data-org="${u.id}" aria-label="Podjetje">
              <option value="">— izberi podjetje —</option>
              ${ORGSEZNAM.map(o => `<option value="${o.id}"${clanPo[u.id] === o.name ? ' selected' : ''}>${escape_(o.name)}</option>`).join('')}
            </select>` : ''}
         </div>` : ''}
-        <div class="u-sub">${escape_(u.email || '—')}</div>
-        <div class="u-sub">Zadnja prijava: ${u.last_login ? datumcas(u.last_login) : 'še nikoli'}</div>
-      </div>
-      <div class="u-acts">
+        <dl class="okno-dl">
+          <dt>Vloga</dt><dd>${escape_(roleIme(vlogaVal))}${vlogaVal === 'stranka' && clanPo[u.id] ? ' · ' + escape_(clanPo[u.id]) : ''}</dd>
+          <dt>E-pošta</dt><dd>${escape_(u.email || '—')}</dd>
+          <dt>Zadnja prijava</dt><dd>${prijava ? escape_(prijava) : '<span class="u-sub">še nikoli</span>'}</dd>
+        </dl>
+        <div class="u-acts">
         ${(jaz || lahkoUredi) ? `<button data-act="ime" data-id="${u.id}" data-ime="${escape_(u.full_name || '')}">preimenuj</button>` : ''}
         ${(jaz || lahkoUredi) ? `<button class="u-web${webOn ? ' on' : ''}" data-act="web" data-id="${u.id}" data-v="${webOn ? 0 : 1}" title="Dovoljenje za prijavo v aplikacijo / spletni pogled (izbira oseb)">Dostop app: ${webOn ? 'da' : 'ne'}</button>` : ''}
         ${lahkoUredi ? `<button data-act="active" data-id="${u.id}" data-v="${u.active ? 0 : 1}">${u.active ? 'izklopi' : 'vklopi'}</button>` : ''}
         ${(jaz || lahkoUredi) ? `<button data-act="pw" data-id="${u.id}">novo geslo</button>` : ''}
         ${(jaz || lahkoUredi) ? `<button class="u-pin${pinSet ? ' on' : ''}" data-act="pin" data-id="${u.id}" data-ime="${escape_(u.full_name || '')}" title="${pinSet ? 'PIN je nastavljen — klikni za spremembo ali izbris' : '4-mestni PIN za prijavo v aplikaciji'}">${pinSet ? 'PIN ✓' : 'PIN za app'}</button>` : ''}
         ${(jeLastnik && !jaz) ? `<button class="danger" data-act="del" data-id="${u.id}" data-m="${escape_(u.email || '')}">izbriši</button>` : ''}
-      </div>
-    </div>`;
-    }).join('') || '<p class="u-sub">Ni uporabnikov.</p>';
+        </div>
+      </div></div>`;
+    }).join('') + '</div>';
+    if (!(ljudje || []).length) $('usersList').innerHTML = '<p class="u-sub">Ni uporabnikov.</p>';
     $('usersList').dataset.loaded = '1';
     document.querySelectorAll('#usersList select[data-role]').forEach(sel => {
       sel.addEventListener('change', () => spremeniVlogo(sel));
@@ -7727,12 +7734,25 @@
     document.querySelectorAll('#usersList button[data-act]').forEach(b => {
       b.addEventListener('click', () => dejanje(b));
     });
-    // osveži prisotnost vsakih 30 s, dokler je seznam viden
+    document.querySelectorAll('#usersList .u-mreza .row[data-uid]').forEach(b => b.addEventListener('click', () => uporabnikOdpri(b)));
+    oknoPoIzrisu();   // po dejanju (vloga, PIN, izklop …) okno pokaže sveže stanje ali se zapre
+    // osveži prisotnost vsakih 30 s, dokler je seznam viden — a ne med odprtim oknom
+    // (osvežitev bi zaprla izbirnik vloge sredi urejanja).
     if (loadUsers._t) { clearTimeout(loadUsers._t); loadUsers._t = null; }
-    loadUsers._t = setTimeout(function () {
+    loadUsers._t = setTimeout(function ponovi() {
       const el = $('usersList');
-      if (el && el.offsetParent !== null) loadUsers();
+      if (!el || el.offsetParent === null) return;
+      if (_okno) { loadUsers._t = setTimeout(ponovi, 30000); return; }
+      loadUsers();
     }, 30000);
+  }
+  function uporabnikNajdi(uid) { return document.querySelector('#usersList .u-mreza .row[data-uid="' + String(uid).replace(/"/g, '\\"') + '"]'); }
+  function uporabnikOdpri(btn) {
+    if (_okno) return;
+    var uid = btn.dataset.uid;
+    oknoOdpri(btn, btn.nextElementSibling, function () { return uporabnikNajdi(uid); }, {
+      osvezi: function (k) { return k.nextElementSibling; }
+    });
   }
   function opisVloge(v) {
     if (v === 'super') return 'Super admin — najvišja raven (samo lastnik). Vedno vse pravice.';
@@ -7750,7 +7770,7 @@
       potrdi: 'Spremeni vlogo', preklici: 'Prekliči'
     });
     if (!ok) { loadUsers(); return; }
-    var ime = ''; try { var row = sel.closest('.u-row'); var nm = row && row.querySelector('.u-mail'); if (nm && nm.childNodes[0]) ime = (nm.childNodes[0].textContent || '').trim(); } catch (e) {}
+    var ime = sel.dataset.ime || '';   // ime iz izbirnika (seznam je zdaj v okvirčkih, izbirnik v oknu)
     await nastaviVlogo(uid, nova, ime);
   }
   async function nastaviVlogo(uid, vloga, ime) {

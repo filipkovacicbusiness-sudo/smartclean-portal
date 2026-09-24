@@ -2212,8 +2212,23 @@ html[data-view="grid"] .pris-zap .row .num::before{content:"danes ";color:var(--
 /* okno zaposlenega */
 .okno .okno-kartica .pris-badge{display:inline-block;position:static;transform:none;margin:8px 0 0;}
 .okno .pris-zap-det{padding:16px 22px 20px;}
-.pris-zap-dl{display:grid;grid-template-columns:auto 1fr;gap:10px 18px;align-items:center;margin:0 0 16px;}
-.pris-zap-dl dt{font-size:.82rem;color:var(--mid);font-weight:500;}
-.pris-zap-dl dd{margin:0;font-size:.92rem;display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-variant-numeric:tabular-nums;}
+.pris-zap-dl,.okno-dl{display:grid;grid-template-columns:auto 1fr;gap:10px 18px;align-items:center;margin:0 0 16px;}
+.pris-zap-dl dt,.okno-dl dt{font-size:.82rem;color:var(--mid);font-weight:500;}
+.pris-zap-dl dd,.okno-dl dd{margin:0;font-size:.92rem;display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-variant-numeric:tabular-nums;word-break:break-word;}
 .pris-zap-act{display:flex;flex-wrap:wrap;gap:8px;}
 @media(max-width:560px){.okno .pris-zap-det{padding:12px 16px 16px;}.pris-zap-act{display:grid;grid-template-columns:1fr 1fr;}.pris-zap-act .cgrp-btn{width:100%;justify-content:center;}}
+
+/* ══════════ UPORABNIKI: okvirčki (Seznam / Mreža) + okno ══════════ */
+.u-mreza .lcell:last-child .row{margin-bottom:0;}
+.u-off .row{opacity:.55;}
+.u-znacke{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px;}
+.u-znacke .pill{margin-left:0;}
+html[data-view="grid"] .u-mreza .u-znacke{flex-wrap:nowrap;overflow:hidden;align-self:flex-start;max-width:100%;}
+html[data-view="grid"] .u-mreza .u-znacke .pill{font-size:.64rem;padding:1px 7px;}
+html[data-view="grid"] .u-mreza .u-znacke .u-vi{display:none;}   /* v okvirčku ni prostora; v oknu je */
+html[data-view="grid"] .u-mreza .row .num::before{content:"prijava ";color:var(--mid);}
+html[data-view="list"] .u-mreza .lcell .row > span:first-child{padding-right:0;}
+.okno .u-det{padding:16px 22px 20px;}
+.okno .u-det .u-role-wrap{margin:0 0 14px;}
+.okno .okno-kartica .u-znacke{margin-top:8px;}
+@media(max-width:560px){.okno .u-det{padding:12px 16px 16px;}}
