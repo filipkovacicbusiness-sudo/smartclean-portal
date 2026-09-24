@@ -297,9 +297,11 @@ html.sc-booting,html.sc-booting body{overflow:hidden!important;}
 
 /* ── okna: ista animacija kot v portalu (oknoOdpri) — okno zraste iz elementa, ki ga je
    odprl, in se vanj vrne; zatemnitev je ločena plast; samo transform + opacity ── */
-.okno-back{position:fixed;inset:0;z-index:55;display:flex;align-items:center;justify-content:center;padding:24px;
-  overscroll-behavior:contain;visibility:hidden;pointer-events:none;}
-.okno-back.odprto{visibility:visible;pointer-events:auto;}
+/* Zaprto okno je display:none (ne visibility:hidden). Chrome je vsebini okna, ki se je med
+   hitrim zapri → odpri še animirala, pustil podedovano »hidden«: okno je bilo belo in prazno. */
+.okno-back{position:fixed;inset:0;z-index:55;display:none;align-items:center;justify-content:center;padding:24px;
+  overscroll-behavior:contain;}
+.okno-back.odprto{display:flex;}
 .okno-zatemni{position:fixed;inset:0;background:rgba(0,0,0,.42);opacity:0;transition:opacity .3s ease;pointer-events:none;}
 .okno-back.show .okno-zatemni{opacity:1;}
 .okno{position:relative;width:100%;max-width:440px;max-height:calc(100vh - 48px);max-height:calc(100dvh - 48px);display:flex;flex-direction:column;overflow:hidden;
@@ -321,9 +323,10 @@ html.okno-zaklep{overflow:hidden;}
 .okno-akc .btn{flex:1;white-space:nowrap;padding-left:12px;padding-right:12px;}
 
 /* potrditev: kot potrdiModal v portalu (.sc-modal) */
-.sc-modal-back{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.42);
-  opacity:0;visibility:hidden;transition:opacity .18s ease,visibility 0s linear .18s;}
-.sc-modal-back.show{opacity:1;visibility:visible;transition:opacity .18s ease,visibility 0s;}
+.sc-modal-back{position:fixed;inset:0;z-index:60;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.42);
+  opacity:0;transition:opacity .18s ease;}
+.sc-modal-back.vidno{display:flex;}   /* kot okna: display, ne visibility (glej .okno-back) */
+.sc-modal-back.show{opacity:1;}
 .sc-modal{width:100%;max-width:420px;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:16px;padding:22px 22px 18px;
   box-shadow:0 24px 70px rgba(0,0,0,.28);transform:translateY(10px) scale(.98);transition:transform .18s ease;}
 .sc-modal-back.show .sc-modal{transform:none;}
@@ -462,7 +465,7 @@ body,.topbar,.panel,.art,.list,.st-tile,.seg,.seg-b,input,textarea,.btn,.pill-bt
       <div class="auth-box" id="prijavaObr" hidden>
         <p class="eyebrow">Prijava</p>
         <h1>Dobrodošli nazaj</h1>
-        <p class="sub">Vpišite se s podatki za portal SmartClean.</p>
+        <p class="sub" id="prijavaSub">Vpišite se s podatki za portal SmartClean.</p>
         <form id="acctForm" autocomplete="on" novalidate>
           <div class="field"><label for="acctEmail">E-poštni naslov</label>
             <input type="email" id="acctEmail" inputmode="email" autocapitalize="none" autocorrect="off" autocomplete="username" /></div>
@@ -600,7 +603,7 @@ body,.topbar,.panel,.art,.list,.st-tile,.seg,.seg-b,input,textarea,.btn,.pill-bt
    Podatki ostanejo v istih ključih kot v prejšnjih različicah (pralnica:*),
    zato posodobitev ne izgubi ničesar.
    ══════════════════════════════════════════════════════════════════════ */
-var VARIANTA = "tablica", APP_VERZIJA = "9.5";
+var VARIANTA = "tablica", APP_VERZIJA = "9.6";
 var LASTNIK = "filip@eflitte.si";
 var DOK_BIZ = ["BSMART d.o.o.", "Škalska cesta 6, 3210 Slovenske Konjice", "+386 41 209 676", "+386 68 693 988", "blanka.kovacic1@gmail.com"];
 var PRIVZETI_PORTAL = "https://anrhtgbckxrccnafcmsz.supabase.co";
@@ -668,7 +671,7 @@ async function writeBackup(){
 }
 
 /* ══════════ STANJE ══════════ */
-var CLIENTS = [], entries = [], settings = {}, savedProfs = [], session = null, idleTimer = null;
+var CLIENTS = [], entries = [], settings = {}, savedProfs = [], session = null;
 var selectedId = null, draftQty = {}, draftPrevoz = "redni", editingId = null, showHidden = false;
 var draftOpombaStranka = "", draftOpombaEvidenca = "";
 var searchMode = "", searchQuery = "", searchDate = "", searchClientId = "", clientPickerMode = "entry";
@@ -681,7 +684,6 @@ async function loadClients(){ CLIENTS = await dbJson(CLIENTS_KEY, []); if(!Array
 async function saveClients(){ try{ await dbWrite(CLIENTS_KEY, JSON.stringify(CLIENTS)); }catch(e){} }
 async function loadSettings(){
   settings = await dbJson(SETTINGS_KEY, {}); if(!settings || typeof settings !== "object") settings = {};
-  settings.idleMin = 15;
   if(!settings.theme) settings.theme = "dark";
   if(!settings.portalUrl) settings.portalUrl = PRIVZETI_PORTAL;
   if(!settings.portalKey) settings.portalKey = PRIVZETI_KLJUC;
@@ -705,6 +707,8 @@ function normaliziraj(s){ return String(s || "").toLowerCase().normalize("NFD").
 function clientById(id){ return CLIENTS.find(function(c){ return c.id === id; }); }
 function artById(id){ var c = clientById(selectedId); return c ? c.artikli.find(function(a){ return a.id === id; }) : null; }
 function entryById(id){ return entries.find(function(x){ return x.id === id; }); }
+/* stranka lista: po uuid v portalu (zanesljivo), sicer po id-ju v aplikaciji */
+function strankaLista(e){ return (e.orgUuid ? CLIENTS.find(function(c){ return c.orgUuid === e.orgUuid; }) : null) || clientById(e.strankaId) || null; }
 function strankeUrejene(){ return CLIENTS.slice().sort(function(a, b){ return String(a.naziv || "").localeCompare(String(b.naziv || ""), "sl"); }); }
 function stKljuc(e){ var p = String(e.stevilka || "").split("/"); return (parseInt(p[1], 10) || 0) * 100000 + (parseInt(p[0], 10) || 0); }
 /* Naslednja številka: največja letošnja (lokalni + iz portala prenesen arhiv) + 1. */
@@ -789,13 +793,19 @@ function oknoOdklep(){
   if(Object.keys(_okna).length) return;
   document.documentElement.classList.remove("okno-zaklep"); document.documentElement.style.paddingRight = "";
 }
+/* Pospravi okno — a le, če je to še TRENUTNO okno s tem id-jem. Hitro zapri → odpri
+   (npr. menjava strank) je prej pustil zamujen »konec« starega zapiranja, ki je ugasnil
+   pravkar odprto okno: ostalo je prazno ali se ni več odprlo. */
 function oknoPospravi(o){
+  if(o.mrtev) return;
+  o.mrtev = true;
+  if(_okna[o.id] !== o) return;
   o.panel.getAnimations().forEach(function(a){ a.cancel(); });
   o.notr.getAnimations().forEach(function(a){ a.cancel(); });
   o.back.querySelectorAll(".okno-duh").forEach(function(d){ d.remove(); });
   o.back.classList.remove("odprto", "show");
   [o.kartica, o.cilj].forEach(function(k){ if(k) k.classList.remove("okno-vir"); });
-  if(_okna[o.id] === o) delete _okna[o.id];
+  delete _okna[o.id];
   oknoOdklep();
 }
 function odpriOkno(id, izvor){
@@ -831,8 +841,7 @@ function zapriOkno(id){
   o.zapiram = true;
   odprtaOkna = odprtaOkna.filter(function(x){ return x !== id; });
   var f = obZaprtju[id]; if(f){ try{ f(); }catch(e){} }
-  var koncano = false;
-  var konec = function(){ if(koncano) return; koncano = true; oknoPospravi(o); };
+  var konec = function(){ oknoPospravi(o); };
   o.back.classList.remove("show");
   if(oknoMirno() || !o.panel.animate){ konec(); return; }
   setTimeout(konec, 800);
@@ -862,6 +871,8 @@ document.querySelectorAll(".okno-back").forEach(function(back){
   var panel = back.querySelector(".okno"), notr = document.createElement("div"); notr.className = "okno-notr";
   while(panel.firstChild) notr.appendChild(panel.firstChild);
   panel.appendChild(notr);
+  /* med zapiranjem okno ne sprejema klikov (npr. drugi dotik na ploščico stranke, ki že izginja) */
+  back.addEventListener("click", function(ev){ var o = _okna[back.id]; if(!o || o.zapiram){ ev.stopPropagation(); ev.preventDefault(); } }, true);
   back.addEventListener("mousedown", function(e){ back._zunaj = e.target === back; });
   back.addEventListener("touchstart", function(e){ back._zunaj = e.target === back; }, { passive: true });
   back.addEventListener("click", function(ev){ if(ev.target === back && back._zunaj !== false) zapriOkno(back.id); back._zunaj = false; });
@@ -876,11 +887,13 @@ function askConfirm(naslov, sporocilo, gumbDa, onYes, nevarno, gumbNe){
   $("ptDa").className = "sc-modal-btn " + (nevarno ? "danger" : "primary");
   _ptDa = onYes; _ptFokus = document.activeElement;
   odprtaOkna = odprtaOkna.filter(function(x){ return x !== "oknoPotrdi"; }); odprtaOkna.push("oknoPotrdi");
-  var back = $("oknoPotrdi"); void back.offsetWidth; back.classList.add("show");
+  var back = $("oknoPotrdi"); clearTimeout(_ptSkrij); back.classList.add("vidno"); void back.offsetWidth; back.classList.add("show");
   try{ $("ptDa").focus({ preventScroll: true }); }catch(e){}
 }
+var _ptSkrij = null;
 function zapriPotrdi(){
-  $("oknoPotrdi").classList.remove("show");
+  var back = $("oknoPotrdi"); back.classList.remove("show");
+  clearTimeout(_ptSkrij); _ptSkrij = setTimeout(function(){ if(!back.classList.contains("show")) back.classList.remove("vidno"); }, 200);
   odprtaOkna = odprtaOkna.filter(function(x){ return x !== "oknoPotrdi"; });
   try{ if(_ptFokus && _ptFokus.isConnected) _ptFokus.focus({ preventScroll: true }); }catch(e){}
 }
@@ -916,7 +929,7 @@ document.querySelectorAll("[data-tema]").forEach(function(b){ b.onclick = toggle
 
 /* ══════════ VNOS SPREMNEGA LISTA ══════════ */
 function draftLines(){ var c = clientById(selectedId); if(!c) return [];
-  return c.artikli.filter(function(a){ return (draftQty[a.id] || 0) > 0; }).map(function(a){ return { id: a.id, naziv: a.naziv, kosov: draftQty[a.id] }; }); }
+  return c.artikli.filter(function(a){ return (draftQty[a.id] || 0) > 0; }).map(function(a){ return { id: a.id, uuid: a.uuid || null, naziv: a.naziv, kosov: draftQty[a.id] }; }); }
 function draftPieces(){ return draftLines().reduce(function(s, l){ return s + l.kosov; }, 0); }
 /* samodejna teža: Σ(teža na kos × kosov); teža je na artiklu stranke (portal) */
 function draftKgAuto(){ var c = clientById(selectedId); if(!c) return { kg: 0, ima: false };
@@ -1082,7 +1095,7 @@ $("opShrani").onclick = function(){
 function novZapis(c, lines){
   return { id: Date.now() + "-" + Math.random().toString(36).slice(2, 7),
     stevilka: nextNumber(), datum: todayISO(), ustvarjeno: new Date().toISOString(),
-    strankaId: c.id, strankaNaziv: c.naziv, strankaPodjetje: c.podjetje, strankaNaslov: c.naslov, strankaDavcna: c.davcna,
+    strankaId: c.id, orgUuid: c.orgUuid || null, strankaNaziv: c.naziv, strankaPodjetje: c.podjetje, strankaNaslov: c.naslov, strankaDavcna: c.davcna,
     izdal: (session ? session.user : ""), postavke: lines, skupajKosov: lines.reduce(function(a, l){ return a + l.kosov; }, 0),
     kg: draftKgAuto().kg, prevoz: draftPrevoz, opombaStranka: draftOpombaStranka || "", opombaEvidenca: draftOpombaEvidenca || "",
     saved: true, syncedAt: null, syncNapaka: null };
@@ -1135,12 +1148,12 @@ $("rvTisk2").onclick = function(){ var e = entryById(reviewEntryId); zapriOkno("
 function startEdit(id){
   var e = entryById(id); if(!e) return;
   if(jeZaklenjen(e)){ toast("List " + e.stevilka + " je v portalu potrjen — spremeniš ga lahko samo v portalu."); return; }
-  var c = clientById(e.strankaId); if(!c){ toast("Stranke ni več v seznamu — urejanje ni mogoče."); return; }
-  editingId = id; selectedId = e.strankaId; draftQty = {}; showHidden = false;
+  var c = strankaLista(e); if(!c){ toast("Stranke ni več v seznamu — urejanje ni mogoče."); return; }
+  editingId = id; selectedId = c.id; draftQty = {}; showHidden = false;
   draftPrevoz = e.prevoz === "izredni" ? "izredni" : "redni";
   draftOpombaStranka = e.opombaStranka || ""; draftOpombaEvidenca = e.opombaEvidenca || "";
   (e.postavke || []).forEach(function(p){
-    var art = (p.id && c.artikli.find(function(a){ return a.id === p.id; })) || c.artikli.find(function(a){ return a.naziv === p.naziv; });
+    var art = (p.uuid && c.artikli.find(function(a){ return a.uuid === p.uuid; })) || (p.id && c.artikli.find(function(a){ return a.id === p.id; })) || c.artikli.find(function(a){ return a.naziv === p.naziv; });
     if(art) draftQty[art.id] = (draftQty[art.id] || 0) + p.kosov;
   });
   osveziVse();
@@ -1419,14 +1432,103 @@ async function savePdfs(e){
 async function deleteSyncPdf(e){ var P = pdfPlugin(); if(!P || !e.pdfSaved) return; try{ await P.deleteFile({ relPath: SINHRO + pdfName(e) }); }catch(err){} }
 
 /* ══════════ PRIJAVA ══════════
-   Profili (kot v portalu): 1× prijava z geslom, nato en dotik (+ PIN, če ga ima
-   račun nastavljenega v portalu). Dostop imajo računi, ki jih baza spusti do
-   spremnih listov (sme_app: osebje, super admin, lastnik) in naprave. */
+   Splet (portal.smartclean.si/mobile): ISTA prijava kot portal — ista seja v brskalniku
+   (supabase-js, isti ključ kot portal). Kdor je prijavljen v portal, je prijavljen tudi
+   tukaj; prijava tukaj prijavi tudi portal. Brez profilov, kode in samodejne odjave.
+   Tablica: naprava ostane prijavljena z zadnjim uporabnikom, tudi po ponovnem zagonu.
+   Geslo samo prvič na tej tablici; koda (PIN, nastavi se v portalu) le ob menjavi
+   uporabnika (»Zamenjaj«). Prej je aplikacija po 15 minutah mirovanja sama odjavila —
+   zato je enkrat zahtevala kodo, drugič geslo.
+   Dostop imajo računi, ki jih baza spusti do spremnih listov (osebje, super admin,
+   lastnik) in naprave. */
+var SPLET = !jeNativno();
 var aktivniEmail = "";
+var SPLET_PROFIL_KEY = "pralnica:splet_profil";
+var NI_DOSTOPA = "Ta račun nima dostopa do spremnih listov. Dostop dodeli skrbnik v portalu (Uporabniki → vloga Osebje).";
 function pokaziPrijavo(){ $("app").hidden = true; $("prijava").hidden = false; }
+
+/* ── splet: seja portala ── */
+var sbAvt = null;
+function avtKlient(){
+  if(!sbAvt){ try{ if(window.supabase && window.supabase.createClient) sbAvt = window.supabase.createClient(settings.portalUrl, settings.portalKey); }catch(e){ sbAvt = null; } }
+  return sbAvt;
+}
+function izSeje(s){ return s ? { access_token: s.access_token, refresh_token: s.refresh_token, expires_at: (s.expires_at ? s.expires_at * 1000 : Date.now() + 3600000) - 60000 } : null; }
+/* shranjena seja portala (za vstop brez omrežja) */
+function shranjenaSeja(){
+  try{ var ref = new URL(settings.portalUrl).hostname.split(".")[0]; var v = JSON.parse(localStorage.getItem("sb-" + ref + "-auth-token") || "null"); return v && v.user ? v : null; }catch(e){ return null; }
+}
+function jeOmrezna(err){ var m = String((err && (err.message || err.name)) || err || ""); return /fetch|network|retryable|ni povezave|load failed/i.test(m); }
+async function spletnaSeja(sila){
+  var c = avtKlient(); if(!c) throw new Error("ni povezave");
+  var r;
+  try{ r = sila ? await c.auth.refreshSession() : await c.auth.getSession(); }catch(e){ throw new Error("ni povezave"); }
+  var s = r && r.data && r.data.session;
+  if(r && r.error && !s){ if(jeOmrezna(r.error)) throw new Error("ni povezave"); return null; }
+  return s || null;
+}
+function prikaziSpletnoPrijavo(msg, email){
+  session = null; zapriVsaOkna(); pokaziPrijavo();
+  $("profili").hidden = true; $("prijavaObr").hidden = false; $("acctBack").hidden = true;
+  $("prijavaSub").textContent = "Prijavite se s podatki za portal SmartClean. Prijava velja tudi za portal.";
+  $("acctErr").textContent = msg || ""; $("acctPass").value = "";
+  if(email) $("acctEmail").value = email;
+}
+async function spletVstop(){
+  var pp = await dbJson(SPLET_PROFIL_KEY, null);
+  try{
+    var prof = await portalProfil();
+    if(!prof.dostop){ prikaziSpletnoPrijavo(NI_DOSTOPA, prof.email); return; }
+    pp = { uid: prof.id, email: prof.email, name: prof.full_name || prof.email, dostop: true };
+    await dbWrite(SPLET_PROFIL_KEY, JSON.stringify(pp));
+  }catch(e){
+    /* brez omrežja: vstop z zadnjimi znanimi podatki istega računa, sinhronizacija dohiti */
+    var ss = shranjenaSeja();
+    if(jeOmrezna(e) && pp && pp.dostop && ss && ss.user.id === pp.uid){}
+    else { prikaziSpletnoPrijavo(jeOmrezna(e) ? "Ni povezave z internetom." : "Seja je potekla — prijavite se znova."); return; }
+  }
+  aktivniEmail = pp.email;
+  doLogin({ name: pp.name });
+  try{ zaziviRealtime(); }catch(e){}
+  polnaSinh();
+}
+/* varen trenutek za samodejno osvežitev nove različice (glej app.html) */
+window.__scVarno = function(){
+  var a = document.activeElement;
+  if(a && /^(INPUT|TEXTAREA)$/.test(a.tagName)) return false;
+  if(odprtaOkna.length || $("pinOkno")) return false;
+  if(session && (editingId || Object.keys(draftQty).some(function(k){ return draftQty[k] > 0; }))) return false;
+  return true;
+};
+async function spletZacni(){
+  $("zamenjajBtn").textContent = "Portal"; $("zamenjajBtn").setAttribute("aria-label", "Nazaj v portal");
+  /* stari profili spletne aplikacije (z lastnimi žetoni) niso več potrebni — ne hrani jih */
+  try{ localStorage.removeItem(PROFILES_KEY); localStorage.removeItem(PORTAL_AUTH_KEY); }catch(e){}
+  savedProfs = [];
+  var c = avtKlient();
+  if(!c){ prikaziSpletnoPrijavo("Povezava s portalom ni na voljo."); return; }
+  c.auth.onAuthStateChange(function(ev, s){
+    if(ev === "SIGNED_OUT"){
+      portalAuth = null; try{ risiSyncGumb(); }catch(e){}
+      if(session) setTimeout(function(){ prikaziSpletnoPrijavo("Odjavljeni ste iz portala — prijavite se znova."); }, 0);
+      return;
+    }
+    if(s && s.access_token){ portalAuth = izSeje(s); try{ realtimeAuth(); }catch(e){} }
+  });
+  var s = null;
+  try{ s = await spletnaSeja(false); }
+  catch(e){ var ss = shranjenaSeja(); if(ss) s = ss; }   // brez omrežja: shranjena seja portala
+  if(!s){ prikaziSpletnoPrijavo(""); return; }
+  portalAuth = izSeje(s);
+  await spletVstop();
+}
+
+/* ── tablica: profili na napravi ── */
 function showAccountLogin(msg, email){
-  session = null; clearTimeout(idleTimer); zapriVsaOkna(); pokaziPrijavo();
+  if(SPLET){ prikaziSpletnoPrijavo(msg, email); return; }
+  session = null; zapriVsaOkna(); pokaziPrijavo();
   $("profili").hidden = true; $("prijavaObr").hidden = false;
+  $("prijavaSub").textContent = "Vpišite se s podatki za portal SmartClean. Tablica si prijavo zapomni.";
   $("acctErr").textContent = msg || ""; $("acctPass").value = "";
   if(email) $("acctEmail").value = email;
   $("acctBack").hidden = !savedProfs.length;
@@ -1436,8 +1538,9 @@ function avatarHtml(p){
   return '<span class="pp-av av-sc"><span class="sc-s">S</span><span class="sc-c">C</span></span>';
 }
 function prikaziProfile(msg){
+  if(SPLET){ prikaziSpletnoPrijavo(msg || ""); return; }
   if(!savedProfs.length){ showAccountLogin(msg || ""); return; }
-  session = null; clearTimeout(idleTimer); zapriVsaOkna(); pokaziPrijavo();
+  session = null; zapriVsaOkna(); pokaziPrijavo();
   $("prijavaObr").hidden = true; $("profili").hidden = false;
   $("ppMsg").textContent = msg || "";
   var urejeni = savedProfs.slice().sort(function(a, b){ return String(a.name || a.email).localeCompare(String(b.name || b.email), "sl"); });
@@ -1458,7 +1561,7 @@ function pozabiProfil(em, izvor){
 /* Po vsaki osvežitvi žetona ga zapiši tudi v profil — sicer bi profil hranil že porabljen
    žeton in bi ga Supabase ob naslednjem vstopu zavrnil (prijava z geslom znova). */
 function posodobiProfilZeton(){
-  if(!aktivniEmail || !portalAuth || !portalAuth.refresh_token) return;
+  if(SPLET || !aktivniEmail || !portalAuth || !portalAuth.refresh_token) return;
   var p = savedProfs.find(function(x){ return x.email === aktivniEmail; });
   if(p && p.refresh_token !== portalAuth.refresh_token){ p.refresh_token = portalAuth.refresh_token; saveProfs(); }
 }
@@ -1481,12 +1584,20 @@ async function portalProfil(){
   if((out.email || "").trim().toLowerCase() === LASTNIK) out.dostop = true;
   return out;
 }
-var NI_DOSTOPA = "Ta račun nima dostopa do spremnih listov. Dostop dodeli skrbnik v portalu (Uporabniki → vloga Osebje).";
 async function acctSubmit(){
   var em = ($("acctEmail").value || "").trim(), pw = $("acctPass").value || "", btn = $("acctBtn"), er = $("acctErr");
   if(!em || !pw){ er.textContent = "Vpiši e-poštni naslov in geslo."; return; }
   btn.disabled = true; btn.textContent = "Prijavljam …"; er.textContent = "";
   try{
+    if(SPLET){
+      var c = avtKlient(); if(!c) throw new Error("ni povezave");
+      var r = await c.auth.signInWithPassword({ email: em, password: pw });
+      if(r.error) throw new Error(r.error.message || "prijava ni uspela");
+      portalAuth = izSeje(r.data.session);
+      $("acctPass").value = "";
+      await spletVstop();
+      return;
+    }
     aktivniEmail = "";
     await portalLogin(em, pw);
     var prof = await portalProfil();
@@ -1496,20 +1607,22 @@ async function acctSubmit(){
     var np = { email: email, name: prof.full_name || email, uid: prof.id || null, refresh_token: portalAuth.refresh_token, avatar: prof.avatar_url || "", pin: prof.app_pin || "", dostop: true };
     savedProfs.push(np); await saveProfs();
     $("acctPass").value = "";
-    vstopi(np);   // pravkar se je prijavil z geslom → brez PIN-a
+    vstopi(np);   // pravkar se je prijavil z geslom → brez kode
   }catch(e){
     var m = (e && e.message) || "";
-    er.textContent = /invalid login|invalid_grant|credentials/i.test(m) ? "Napačen e-poštni naslov ali geslo." : (/ni povezave|fetch/i.test(m) ? "Ni povezave z internetom." : (m || "Prijava ni uspela."));
+    er.textContent = /invalid login|invalid_grant|credentials/i.test(m) ? "Napačen e-poštni naslov ali geslo." : (jeOmrezna(m) ? "Ni povezave z internetom." : (m || "Prijava ni uspela."));
   }finally{ btn.disabled = false; btn.textContent = "Prijavi se"; }
 }
 $("acctForm").addEventListener("submit", function(e){ e.preventDefault(); acctSubmit(); });
 $("acctBack").onclick = function(){ prikaziProfile(); };
 
-async function izberiProfil(em, tile){
-  var p = savedProfs.find(function(x){ return x.email === em; }); if(!p) return;
+/* brezPina: samodejni vstop zadnjega uporabnika ob zagonu tablice (koda le ob menjavi) */
+async function izberiProfil(em, tile, brezPina){
+  var p = savedProfs.find(function(x){ return x.email === em; }); if(!p) return false;
   $("ppMsg").textContent = "";
   var nm = tile && tile.querySelector(".pp-nm"); if(nm) nm.textContent = "Prijavljam …";
   $("ppGrid").style.pointerEvents = "none";
+  var naprej = brezPina ? vstopi : vstopiSPinom;
   try{
     aktivniEmail = p.email;
     portalAuth = { refresh_token: p.refresh_token, access_token: null, expires_at: 0 };
@@ -1517,26 +1630,29 @@ async function izberiProfil(em, tile){
     var prof = await portalProfil();
     p.name = prof.full_name || p.name; p.avatar = prof.avatar_url || ""; p.pin = prof.app_pin || ""; p.dostop = prof.dostop; p.uid = prof.id || p.uid;
     await saveProfs();
-    if(!prof.dostop){ portalAuth = null; await savePortalAuth(); prikaziProfile(NI_DOSTOPA); return; }
-    vstopiSPinom(p);
+    if(!prof.dostop){ portalAuth = null; await savePortalAuth(); prikaziProfile(NI_DOSTOPA); return false; }
+    naprej(p); return true;
   }catch(e){
     var m = (e && e.message) || "";
     /* brez omrežja: naprava je že prijavljena → vstop z zadnjimi znanimi podatki, sinhronizacija dohiti */
     if(/ni povezave/i.test(m) && p.refresh_token){
-      if(p.dostop === false){ prikaziProfile(NI_DOSTOPA); return; }
-      vstopiSPinom(p); return;
+      if(p.dostop === false){ prikaziProfile(NI_DOSTOPA); return false; }
+      portalAuth = { refresh_token: p.refresh_token, access_token: null, expires_at: 0 };
+      naprej(p); return true;
     }
     showAccountLogin("Prijava je potekla — vpiši geslo za " + (p.name || p.email) + ".", p.email);
+    return false;
   }finally{ $("ppGrid").style.pointerEvents = ""; if(nm && nm.isConnected) nm.textContent = p.name || p.email; }
 }
 function vstopiSPinom(p){ if(p.pin) zahtevajPin(p, function(){ vstopi(p); }); else vstopi(p); }
 function vstopi(p){
   aktivniEmail = p.email;
+  if(settings.zadnjiProfil !== p.email){ settings.zadnjiProfil = p.email; saveSettings(); }
   doLogin({ name: p.name || p.email });
   try{ zaziviRealtime(); }catch(e){}
   polnaSinh();
 }
-/* PIN (nastavi se v portalu, Moj račun) */
+/* PIN (nastavi se v portalu, Uporabniki) — samo ob menjavi uporabnika na tablici */
 function zahtevajPin(p, onOk){
   var star = $("pinOkno"); if(star) star.remove();
   var buf = "";
@@ -1568,17 +1684,15 @@ function doLogin(u){
   $("tbIme").textContent = u.name || "";
   praznOsnutek(); searchMode = ""; searchQuery = ""; searchDate = ""; searchClientId = "";
   updateSearchChip(); osveziVse(); risiSyncGumb();
-  resetIdle();
   if(pdfPlugin() && !pdfPermOK && !askedPerm){
     askedPerm = true;
     askConfirm("Dovoljenje za datoteke", "Za samodejno shranjevanje spremnih listov kot PDF v mapo Dokumenti omogoči »Dostop do vseh datotek«.", "Odpri nastavitve",
       function(){ try{ pdfPlugin().requestPermission(); }catch(e){} }, false, "Pozneje");
   }
 }
-function logout(){ zapriVsaOkna(); session = null; clearTimeout(idleTimer); prikaziProfile(); }
-function resetIdle(){ if(!session) return; clearTimeout(idleTimer); idleTimer = setTimeout(logout, (settings.idleMin || 15) * 60000); }
-["click", "touchstart", "keydown"].forEach(function(ev){ document.addEventListener(ev, resetIdle, true); });
-$("zamenjajBtn").onclick = logout;
+/* »Zamenjaj« (tablica): izbira drugega uporabnika; ob naslednjem zagonu se odpre izbira */
+function logout(){ zapriVsaOkna(); session = null; if(settings.zadnjiProfil){ settings.zadnjiProfil = ""; saveSettings(); } prikaziProfile(); }
+$("zamenjajBtn").onclick = function(){ if(SPLET){ location.href = "../"; return; } logout(); };
 $("izklopBtn").onclick = function(){ askConfirm("Izklopim aplikacijo?", "Neposlani spremni listi ostanejo shranjeni na napravi in se pošljejo ob naslednjem zagonu.", "Izklopi", function(){
   try{ Capacitor.Plugins.App.exitApp(); }catch(e){}
 }, false, "Prekliči", this); };
@@ -1601,8 +1715,8 @@ document.querySelectorAll('input[type="password"]').forEach(function(inp){
    ponovno pošiljanje posodobi, ne podvoji. */
 var portalAuth = null, syncTecev = false, syncZadnje = "";
 function portalNastavljen(){ return !!(settings.portalUrl && settings.portalKey); }
-async function loadPortalAuth(){ portalAuth = await dbJson(PORTAL_AUTH_KEY, null); }
-async function savePortalAuth(){ try{ await dbWrite(PORTAL_AUTH_KEY, JSON.stringify(portalAuth || null)); }catch(e){} }
+async function loadPortalAuth(){ if(SPLET) return; portalAuth = await dbJson(PORTAL_AUTH_KEY, null); }
+async function savePortalAuth(){ if(SPLET) return; try{ await dbWrite(PORTAL_AUTH_KEY, JSON.stringify(portalAuth || null)); }catch(e){} }
 
 async function portalLogin(email, geslo){
   var r;
@@ -1618,6 +1732,15 @@ async function portalLogin(email, geslo){
   return true;
 }
 async function portalRefresh(){
+  if(SPLET){
+    /* splet: sejo osvežuje supabase-js (ista kot v portalu, z zaklepom med zavihki) */
+    var s = await spletnaSeja(false);
+    if(s && portalAuth && s.access_token === portalAuth.access_token) s = await spletnaSeja(true);   // isti (zavrnjen) žeton → prisilno osveži
+    if(!s){ portalAuth = null; try{ risiSyncGumb(); }catch(_){} throw new Error("seja je potekla, prijavi se znova"); }
+    portalAuth = izSeje(s);
+    try{ realtimeAuth(); }catch(e){}
+    return true;
+  }
   if(!portalAuth || !portalAuth.refresh_token) throw new Error("naprava ni prijavljena");
   var r;
   try{
@@ -1673,6 +1796,7 @@ async function apiVse(potBase, korak){
 var sbc = null, rtChan = null, _rtTimer = null, rtZivo = false;
 function realtimeKlient(){
   if(sbc) return sbc;
+  if(SPLET){ sbc = avtKlient(); return sbc; }   // splet: en sam odjemalec (seja portala)
   try{ if(window.supabase && window.supabase.createClient) sbc = window.supabase.createClient(settings.portalUrl, settings.portalKey, { auth: { persistSession: false, autoRefreshToken: false } }); }catch(e){ sbc = null; }
   return sbc;
 }
@@ -1701,14 +1825,16 @@ async function zamenjajPostavke(noteId, post){
 /* ── pošiljanje enega spremnega lista ── */
 async function posljiEnega(e){
   /* 1. stranka — naprava je ne ustvarja, mora biti v portalu */
-  var org = await api("orgs?legacy_id=eq." + encodeURIComponent(e.strankaId) + "&select=id&limit=1");
-  if(!org.length && e.strankaNaziv) org = await api("orgs?name=eq." + encodeURIComponent(e.strankaNaziv) + "&select=id&limit=1");
+  var orgUuid = e.orgUuid || ((strankaLista(e) || {}).orgUuid) || null, org = [];
+  if(orgUuid) org = await api("orgs?id=eq." + orgUuid + "&deleted_at=is.null&select=id&limit=1");
+  if(!org.length) org = await api("orgs?legacy_id=eq." + encodeURIComponent(e.strankaId) + "&deleted_at=is.null&select=id&limit=1");
+  if(!org.length && e.strankaNaziv) org = await api("orgs?name=eq." + encodeURIComponent(e.strankaNaziv) + "&deleted_at=is.null&select=id&limit=1");
   if(!org.length){ var err = new Error("stranke »" + (e.strankaNaziv || e.strankaId) + "« ni v portalu"); err.cakaNaStranko = true; throw err; }
   var orgId = org[0].id;
   /* 2. artikli — če katerega ni, gre postavka brez povezave, z imenom */
   var arts = await api("articles?org_id=eq." + orgId + "&select=id,name,legacy_id");
-  var poLegacy = {}, poImenu = {};
-  arts.forEach(function(a){ if(a.legacy_id) poLegacy[a.legacy_id] = a.id; poImenu[(a.name || "").trim().toLowerCase()] = a.id; });
+  var poLegacy = {}, poImenu = {}, poId = {};
+  arts.forEach(function(a){ poId[a.id] = true; if(a.legacy_id) poLegacy[a.legacy_id] = a.id; poImenu[(a.name || "").trim().toLowerCase()] = a.id; });
   /* 3. spremni list */
   var del = String(e.stevilka).split("/"), seq = parseInt(del[0], 10), leto = parseInt(del[1], 10) || new Date(e.datum).getFullYear();
   if(!seq) throw new Error("številke »" + e.stevilka + "« ni mogoče razbrati");
@@ -1762,7 +1888,7 @@ async function posljiEnega(e){
   /* 4. postavke (enaki artikli združeni) */
   var post = (e.postavke || []).filter(function(p){ return p && p.naziv; }).map(function(p, i){
     var ime = String(p.naziv).trim();
-    return { note_id: noteId, article_id: (p.id && poLegacy[p.id]) || poImenu[ime.toLowerCase()] || null, article_name: ime, pieces: Number(p.kosov) || 0, sort_order: i };
+    return { note_id: noteId, article_id: (p.uuid && poId[p.uuid] ? p.uuid : null) || (p.id && poLegacy[p.id]) || poImenu[ime.toLowerCase()] || null, article_name: ime, pieces: Number(p.kosov) || 0, sort_order: i };
   });
   var videni = {}, zdruzene = [];
   post.forEach(function(r){ var k = r.article_id ? ("a" + r.article_id) : ("n" + String(r.article_name || "").toLowerCase());
@@ -1849,65 +1975,91 @@ $("syncChip").onclick = async function(){
 
 /* ── katalog iz portala (portal je edini vir resnice za stranke in artikle) ── */
 var katalogTecev = false;
-function vArtikel(a){ return { id: a.legacy_id || ("s" + a.id.slice(0, 8)), naziv: a.name, sy: true, teza: (a.teza == null || a.teza === "") ? null : parseFloat(a.teza), vid: (a.viden_app !== false) }; }
+function vArtikel(a){ return { id: a.legacy_id || ("s" + a.id.slice(0, 8)), uuid: a.id, naziv: a.name, sy: true, teza: (a.teza == null || a.teza === "") ? null : parseFloat(a.teza), vid: (a.viden_app !== false) }; }
+/* Vrstni red artiklov kot pri stranki v portalu (risiArtikleBox): po vrstnem redu cene v
+   ceniku, nato po imenu. Prej je aplikacija uporabila svoj vrstni red. */
+var cenikVrstni = null;
+async function naloziCenikVrstni(){
+  try{
+    var r = await apiVse("pricelist?select=sifra,sort_order&deleted_at=is.null");
+    var m = {}; (r || []).forEach(function(x){ if(x.sort_order != null) m[x.sifra] = x.sort_order; });
+    cenikVrstni = m;
+  }catch(e){ if(!cenikVrstni) cenikVrstni = {}; }
+}
+function urediKotPortal(arts){
+  var m = cenikVrstni || {};
+  function v(a){ return (a.cena_sifra != null && m[a.cena_sifra] != null) ? m[a.cena_sifra] : null; }
+  return (arts || []).slice().sort(function(a, b){
+    var pa = v(a), pb = v(b);
+    if(pa != null && pb != null && pa !== pb) return pa - pb;
+    if(pa != null && pb == null) return -1;
+    if(pa == null && pb != null) return 1;
+    return String(a.name || "").localeCompare(String(b.name || ""), "sl");
+  });
+}
+/* id stranke v aplikaciji: legacy_id (tablica) ali prvih 8 znakov uuid-ja — enako kot pri
+   listih, prenesenih iz portala */
+function kanonId(o){ return o.legacy_id || ("s" + o.id.slice(0, 8)); }
 async function osveziKatalog(tiho){
   if(!portalNastavljen() || !portalAuth){ if(!tiho) toast("Ni prijave v portal."); return; }
   if(katalogTecev) return;
   katalogTecev = true;
   try{
-    /* kot v portalu: izbrisane stranke (koš, deleted_at) se ne prikažejo — prej jih je aplikacija kazala */
-    var orgs;
-    try{ orgs = await apiVse("orgs?select=id,name,legal_name,address,vat_id,legacy_id&deleted_at=is.null&order=name"); }
-    catch(_e){ if(/ni povezave|seja je potekla|ni prijavljena/i.test((_e && _e.message) || "")) throw _e; orgs = await apiVse("orgs?select=id,name,legal_name,address,vat_id,legacy_id&order=name"); }
-    var arts;
-    try{ arts = await apiVse("articles?select=id,org_id,name,legacy_id,sort_order,teza,viden_app&order=sort_order,id"); }
-    catch(_e){ arts = await apiVse("articles?select=id,org_id,name,legacy_id,sort_order,teza&order=sort_order,id"); }
+    /* kot v portalu: izbrisane stranke (koš, deleted_at) se ne prikažejo */
+    var orgs = await apiVse("orgs?select=id,name,legal_name,address,vat_id,legacy_id&deleted_at=is.null&order=name");
+    var arts = await apiVse("articles?select=id,org_id,name,legacy_id,sort_order,teza,viden_app,cena_sifra&order=sort_order,id");
+    await naloziCenikVrstni();
+    /* prazen odgovor ne izprazni naprave (npr. račun brez pravic) */
+    if(!orgs || !orgs.length){ if(!tiho) toast("Portal ni vrnil nobene stranke."); return; }
     var artPoOrg = {};
     (arts || []).forEach(function(a){ (artPoOrg[a.org_id] = artPoOrg[a.org_id] || []).push(a); });
-    (orgs || []).forEach(function(o){
-      var lok = CLIENTS.find(function(c){ return (o.legacy_id && c.id === o.legacy_id) || (c.orgUuid && c.orgUuid === o.id) || (c.naziv || "").toLowerCase() === (o.name || "").toLowerCase(); });
-      var portalArts = (artPoOrg[o.id] || []).map(vArtikel);
-      if(lok){
-        lok.naziv = o.name; lok.podjetje = o.legal_name || ""; lok.naslov = o.address || ""; lok.davcna = o.vat_id || ""; lok.sy = true; lok.orgUuid = o.id;
-        if(portalArts.length) lok.artikli = portalArts;   // portal nima artiklov → obdrži lokalne (varnost pred delnim prenosom)
-      }else{
-        CLIENTS.push({ id: o.legacy_id || ("s" + o.id.slice(0, 8)), orgUuid: o.id, naziv: o.name, podjetje: o.legal_name || "", naslov: o.address || "", davcna: o.vat_id || "", artikli: portalArts, sy: true });
-      }
+    /* Seznam strank se zgradi NA NOVO iz portala, stranka = uuid v portalu. Prej se je
+       lokalni seznam dopolnjeval (tudi po imenu), zato je lahko stranka dobila artikle
+       druge stranke — pri hitrem menjavanju strank so se pokazali napačni artikli. */
+    var novi = [], zaseden = {}, idOrg = {};
+    /* najprej stranke, ki jih naprava že pozna (obdržijo svoj id — nanj kažejo shranjeni listi), nato nove */
+    orgs.forEach(function(o){
+      var star = CLIENTS.find(function(c){ return c.orgUuid === o.id; });
+      if(star && !zaseden[star.id]){ idOrg[o.id] = star.id; zaseden[star.id] = true; }
     });
-    /* samo če je portal vrnil seznam (prazen odgovor ne izprazni naprave) */
-    if(orgs && orgs.length){
-      var pk = {};
-      orgs.forEach(function(o){ if(o.legacy_id) pk["l:" + o.legacy_id] = true; pk["u:" + o.id] = true; pk["n:" + (o.name || "").toLowerCase()] = true; });
-      /* portal je edini vir strank: odpadejo izbrisane in stari vgrajeni seznam (stranke, ki jih v
-         portalu ni); ostane le stranka, na katero še čaka neposlan list (da ga lahko urediš) */
-      var cakajo = {}; entries.forEach(function(e){ if(!e.syncedAt) cakajo[e.strankaId] = true; });
-      CLIENTS = CLIENTS.filter(function(c){ return !!(pk["l:" + c.id] || (c.orgUuid && pk["u:" + c.orgUuid]) || pk["n:" + (c.naziv || "").toLowerCase()]) || cakajo[c.id]; });
-      /* izbrana stranka je bila medtem v portalu izbrisana */
-      if(selectedId && !editingId && !clientById(selectedId)){ selectedId = null; draftQty = {}; toast("Izbrana stranka je bila v portalu izbrisana — izberi drugo."); if(session){ renderSummary(); } }
-    }
+    orgs.forEach(function(o){
+      if(idOrg[o.id]) return;
+      var id = kanonId(o);
+      if(zaseden[id]) id = "s" + o.id.slice(0, 8);
+      if(zaseden[id]) id = "u" + o.id;
+      idOrg[o.id] = id; zaseden[id] = true;
+    });
+    orgs.forEach(function(o){
+      var id = idOrg[o.id];
+      novi.push({ id: id, orgUuid: o.id, naziv: o.name, podjetje: o.legal_name || "", naslov: o.address || "", davcna: o.vat_id || "",
+        artikli: urediKotPortal(artPoOrg[o.id] || []).map(vArtikel), sy: true });
+    });
+    /* stranka, na katero še čaka neposlan list, ostane (da ga lahko urediš), tudi če je v portalu ni več */
+    entries.forEach(function(e){
+      if(e.syncedAt || zaseden[e.strankaId]) return;
+      var c = clientById(e.strankaId); if(c && novi.indexOf(c) < 0){ novi.push(c); zaseden[c.id] = true; }
+    });
+    CLIENTS = novi;
+    /* izbrana stranka je bila medtem v portalu izbrisana */
+    if(selectedId && !editingId && !clientById(selectedId)){ selectedId = null; draftQty = {}; toast("Izbrana stranka je bila v portalu izbrisana — izberi drugo."); if(session){ renderSummary(); } }
     await saveClients();
-    if(session){ setClientLabel(); renderEntry(); if($("oknoStranke").classList.contains("odprto")) fillClientGrid(); }
+    if(session){ setClientLabel(); renderEntry(); renderSummary(); if(_okna.oknoStranke && !_okna.oknoStranke.zapiram) fillClientGrid(); }
     if(!tiho) toast("Stranke in artikli osveženi.");
   }catch(err){ if(!tiho) toast("Katalog ni šel: " + (err.message || err)); }
   finally{ katalogTecev = false; }
 }
-/* ob izbiri stranke: artikli TE stranke naravnost iz portala */
+/* ob izbiri stranke: artikli TE stranke naravnost iz portala (po uuid stranke) */
+var _zahtevaArt = 0;
 async function osveziStrankinArtikle(cid){
-  var c = clientById(cid); if(!c || !portalAuth) return false;
+  var c = clientById(cid); if(!c || !c.orgUuid || !portalAuth) return false;
+  var moja = ++_zahtevaArt;
   try{
-    var orgId = c.orgUuid;
-    if(!orgId){
-      var orgs = await apiVse("orgs?select=id,name,legacy_id&deleted_at=is.null&order=name");
-      var org = orgs.find(function(o){ return (o.legacy_id && o.legacy_id === c.id) || (o.name || "").trim().toLowerCase() === (c.naziv || "").trim().toLowerCase(); });
-      if(!org) return false;
-      orgId = c.orgUuid = org.id;
-    }
-    var arts;
-    try{ arts = await apiVse("articles?select=id,name,legacy_id,sort_order,teza,viden_app&org_id=eq." + orgId + "&order=sort_order,id"); }
-    catch(_e){ arts = await apiVse("articles?select=id,name,legacy_id,sort_order,teza&org_id=eq." + orgId + "&order=sort_order,id"); }
-    c.artikli = (arts || []).map(vArtikel);
+    if(!cenikVrstni) await naloziCenikVrstni();
+    var arts = await apiVse("articles?select=id,name,legacy_id,sort_order,teza,viden_app,cena_sifra&org_id=eq." + c.orgUuid + "&order=sort_order,id");
+    c.artikli = urediKotPortal(arts || []).map(vArtikel);
     await saveClients();
-    if(selectedId === cid){ renderEntry(); renderSummary(); }
+    /* med čakanjem je bila izbrana druga stranka → ne izrisuj (njen zahtevek pride sam) */
+    if(moja === _zahtevaArt && selectedId === cid){ renderEntry(); renderSummary(); }
     return true;
   }catch(e){ return false; }
 }
@@ -1971,6 +2123,9 @@ async function potegniIzPortala(){
       /* ime in podatki stranke kot v portalu (preimenovanje v portalu velja tudi za stare liste) */
       if(pr.orgs){
         var o = pr.orgs;
+        if(o.id && e.orgUuid !== o.id){ e.orgUuid = o.id; spremenjeno = true; }
+        var _cl = o.id ? CLIENTS.find(function(c){ return c.orgUuid === o.id; }) : null;
+        if(_cl && e.strankaId !== _cl.id){ e.strankaId = _cl.id; spremenjeno = true; }
         if(o.name && o.name !== e.strankaNaziv){ e.strankaNaziv = o.name; spremenjeno = true; }
         if((o.legal_name || "") !== (e.strankaPodjetje || "") && o.legal_name){ e.strankaPodjetje = o.legal_name; spremenjeno = true; }
       }
@@ -1990,7 +2145,8 @@ async function potegniIzPortala(){
       var k = kljuc(r); if(lokalno[k]) return;
       var e = { id: k, portalId: r.id, stevilka: (r.doc_seq || "") + "/" + (r.doc_year || new Date(r.doc_date).getFullYear()), datum: r.doc_date,
         ustvarjeno: new Date().toISOString(),
-        strankaId: (r.orgs && r.orgs.legacy_id) || (r.orgs && r.orgs.id ? "s" + String(r.orgs.id).slice(0, 8) : ""),
+        strankaId: (function(){ var cl = r.orgs && r.orgs.id ? CLIENTS.find(function(c){ return c.orgUuid === r.orgs.id; }) : null; return cl ? cl.id : ((r.orgs && r.orgs.legacy_id) || (r.orgs && r.orgs.id ? "s" + String(r.orgs.id).slice(0, 8) : "")); })(),
+        orgUuid: (r.orgs && r.orgs.id) || null,
         strankaNaziv: (r.orgs && r.orgs.name) || "", strankaPodjetje: (r.orgs && r.orgs.legal_name) || "",
         strankaNaslov: (r.orgs && r.orgs.address) || "", strankaDavcna: (r.orgs && r.orgs.vat_id) || "",
         izdal: r.issued_name || "", postavke: [], skupajKosov: 0, prevoz: (r.transport === "izredni" ? "izredni" : "redni"),
@@ -2005,12 +2161,12 @@ async function potegniIzPortala(){
     for(var i = 0; i < idi.length; i += 50){
       var chunk = idi.slice(i, i + 50);
       try{
-        var its = await apiVse("delivery_note_items?note_id=in.(" + encodeURIComponent(chunk.map(function(x){ return '"' + x + '"'; }).join(",")) + ")&select=note_id,article_name,pieces,sort_order&order=sort_order");
+        var its = await apiVse("delivery_note_items?note_id=in.(" + encodeURIComponent(chunk.map(function(x){ return '"' + x + '"'; }).join(",")) + ")&select=note_id,article_id,article_name,pieces,sort_order&order=sort_order");
         var poNote = {};
         (its || []).forEach(function(p){ (poNote[p.note_id] = poNote[p.note_id] || []).push(p); });
         chunk.forEach(function(nid){
           var ee = potrebnePostavke[nid];
-          ee.postavke = (poNote[nid] || []).map(function(p){ return { id: null, naziv: p.article_name, kosov: p.pieces }; });
+          ee.postavke = (poNote[nid] || []).map(function(p){ return { id: null, uuid: p.article_id || null, naziv: p.article_name, kosov: p.pieces }; });
           ee.skupajKosov = ee.postavke.reduce(function(a, p){ return a + (Number(p.kosov) || 0); }, 0);
         });
       }catch(x){}
@@ -2092,7 +2248,11 @@ function pokaziZaklepShrambe(){
     buildKeypad(); updateSearchChip();
     if(shrambaZaklenjena){ pokaziZaklepShrambe(); return; }
     try{ realtimeKlient(); }catch(e){}
-    prikaziProfile();
+    if(SPLET){ await spletZacni(); return; }
+    /* tablica: zadnji uporabnik vstopi sam (brez kode); izbira profilov le, če ga ni */
+    var zadnji = settings.zadnjiProfil && savedProfs.find(function(p){ return p.email === settings.zadnjiProfil && p.refresh_token; });
+    if(zadnji && await izberiProfil(zadnji.email, null, true)) return;
+    if(!session && $("prijava").hidden) prikaziProfile();
   }finally{
     requestAnimationFrame(function(){ try{ window.scBootDone(); }catch(e){} });
   }
@@ -2100,15 +2260,22 @@ function pokaziZaklepShrambe(){
 
 /* za preizkuse (samo branje stanja) */
 window.__pralnica = { verzija: APP_VERZIJA, varianta: VARIANTA, stanje: function(){
-  return { entries: entries, CLIENTS: CLIENTS, profili: savedProfs.map(function(p){ return p.name; }), session: session, portal: !!portalAuth, rtZivo: rtZivo }; } };
+  return { entries: entries, CLIENTS: CLIENTS, profili: savedProfs.map(function(p){ return p.name; }), session: session, portal: !!portalAuth, rtZivo: rtZivo,
+  okna: Object.keys(_okna).map(function(k){ return k + (_okna[k].zapiram ? ":zapiram" : "") + (_okna[k].morf ? ":raste" : ""); }), odprta: odprtaOkna.slice() }; } };
 })();
 </script>
 <script>
   if("serviceWorker" in navigator && location.protocol === "https:" && !/^localhost$/.test(location.hostname)){
     window.addEventListener("load", function(){ navigator.serviceWorker.register("sw.js").catch(function(){}); });
-    /* Ko nova koda prevzame nadzor, se enkrat samodejno osveži. */
-    var _swReload = false;
-    navigator.serviceWorker.addEventListener("controllerchange", function(){ if(_swReload) return; _swReload = true; location.reload(); });
+    /* Nova koda prevzame nadzor → osveži, a le ob posodobitvi (ne ob prvi namestitvi — takrat
+       je stran že sveža; prej je osvežitev prekinila ravno odprto prijavo) in v varnem trenutku
+       (ne sredi vnosa lista, v odprtem oknu ali med tipkanjem). */
+    var _swImel = !!navigator.serviceWorker.controller, _swReload = false;
+    navigator.serviceWorker.addEventListener("controllerchange", function(){
+      if(!_swImel){ _swImel = true; return; }
+      if(_swReload) return; _swReload = true;
+      (function poskusi(){ if(!window.__scVarno || window.__scVarno()) location.reload(); else setTimeout(poskusi, 3000); })();
+    });
   }
 </script>
 </body>

@@ -260,9 +260,11 @@ html.sc-booting,html.sc-booting body{overflow:hidden!important;}
 
 /* ── okna: ista animacija kot v portalu (oknoOdpri) — okno zraste iz elementa, ki ga je
    odprl, in se vanj vrne; zatemnitev je ločena plast; samo transform + opacity ── */
-.okno-back{position:fixed;inset:0;z-index:55;display:flex;align-items:center;justify-content:center;padding:24px;
-  overscroll-behavior:contain;visibility:hidden;pointer-events:none;}
-.okno-back.odprto{visibility:visible;pointer-events:auto;}
+/* Zaprto okno je display:none (ne visibility:hidden). Chrome je vsebini okna, ki se je med
+   hitrim zapri → odpri še animirala, pustil podedovano »hidden«: okno je bilo belo in prazno. */
+.okno-back{position:fixed;inset:0;z-index:55;display:none;align-items:center;justify-content:center;padding:24px;
+  overscroll-behavior:contain;}
+.okno-back.odprto{display:flex;}
 .okno-zatemni{position:fixed;inset:0;background:rgba(0,0,0,.42);opacity:0;transition:opacity .3s ease;pointer-events:none;}
 .okno-back.show .okno-zatemni{opacity:1;}
 .okno{position:relative;width:100%;max-width:440px;max-height:calc(100vh - 48px);max-height:calc(100dvh - 48px);display:flex;flex-direction:column;overflow:hidden;
@@ -284,9 +286,10 @@ html.okno-zaklep{overflow:hidden;}
 .okno-akc .btn{flex:1;white-space:nowrap;padding-left:12px;padding-right:12px;}
 
 /* potrditev: kot potrdiModal v portalu (.sc-modal) */
-.sc-modal-back{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.42);
-  opacity:0;visibility:hidden;transition:opacity .18s ease,visibility 0s linear .18s;}
-.sc-modal-back.show{opacity:1;visibility:visible;transition:opacity .18s ease,visibility 0s;}
+.sc-modal-back{position:fixed;inset:0;z-index:60;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.42);
+  opacity:0;transition:opacity .18s ease;}
+.sc-modal-back.vidno{display:flex;}   /* kot okna: display, ne visibility (glej .okno-back) */
+.sc-modal-back.show{opacity:1;}
 .sc-modal{width:100%;max-width:420px;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:16px;padding:22px 22px 18px;
   box-shadow:0 24px 70px rgba(0,0,0,.28);transform:translateY(10px) scale(.98);transition:transform .18s ease;}
 .sc-modal-back.show .sc-modal{transform:none;}

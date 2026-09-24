@@ -25,7 +25,7 @@ import sys
 import tempfile
 import zipfile
 
-VERZIJA = "9.5"
+VERZIJA = "9.6"
 
 KOREN = pathlib.Path(__file__).resolve().parent.parent
 IZVOR = KOREN / "aplikacija"
@@ -212,7 +212,7 @@ def zgradi_apk():
     pj = KOREN / "portal.js"
     koda = pj.read_text(encoding="utf-8")
     nova = re.sub(r"tablica/Pralnica-sync\.apk\?v=[0-9.]+", "tablica/Pralnica-sync.apk?v=" + VERZIJA, koda)
-    nova = re.sub(r"\(različica [0-9.]+\)\. Pred prvo", "(različica " + VERZIJA + "). Pred prvo", nova)
+    nova = re.sub(r"\(različica [0-9.]+\)\.", "(različica " + VERZIJA + ").", nova)
     if nova != koda:
         pj.write_text(nova, encoding="utf-8")
         print("portal.js: povezava na APK →", VERZIJA, "(povečaj še APP_VERZIJA portala)")

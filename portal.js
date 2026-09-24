@@ -308,7 +308,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.26 · BETA';
+  var APP_VERZIJA = '4.27 · BETA';
   var NALAGANJE = '<div class="sc-load" aria-hidden="true"><span class="sc-load-line"></span></div>';
   // Stale-while-revalidate: ob ponovnem obisku razdelka NE pobriši vsebine v nalagalnik —
   // obdrži prejšnjo (takojšen prikaz) in jo osveži v ozadju. Trak le ob prvem nalaganju.
@@ -1973,6 +1973,10 @@
     for (var i = 0; i < priced.length; i++) { var p = CENIKMAP[priced[i].cena_sifra]; if (!p) return null; prefs[artPrefix(p.koda)] = 1; }
     var ks = Object.keys(prefs); return ks.length === 1 ? ks[0] : null;
   }
+  // Artikli, ki jih portal strankam doda MNOŽIČNO (cenik skupine, splošni cenik, nov artikel za
+  // vse, uvoz), so v aplikaciji skriti (viden_app: false), dokler jih stranka ne dobi na spremni
+  // list (sprožilec iz 45_skrij_neuporabljene.sql) ali jih kdo ne obkljuka »app«. Artikel, ki ga
+  // dodaš ročno ENI stranki, je viden. Prej je bil vsak nov artikel viden pri vseh strankah.
   // Zamenja cenik stranke z danimi šiframi (prazen seznam → izprazni).
   // Vsak napačen odgovor baze VRŽE napako (klicatelj jo mora prestreči in prikazati) —
   // prej se je tiho pogoltnila, zato je »dodal« lokalno, v bazi pa ne.
@@ -1983,7 +1987,7 @@
     for (var j = 0; j < ciljneSifre.length; j++) {
       var sif = ciljneSifre[j];
       if (obst[sif]) { var u = await sb.from('articles').update({ sort_order: j }).eq('org_id', orgId).eq('cena_sifra', sif); if (u.error) throw u.error; obst[sif].sort_order = j; delete obst[sif]; }
-      else { var p = CENIKMAP[sif]; vstavi.push({ org_id: orgId, name: (p ? p.naziv : '') || '', cena_sifra: sif, sort_order: j }); }
+      else { var p = CENIKMAP[sif]; vstavi.push({ org_id: orgId, name: (p ? p.naziv : '') || '', cena_sifra: sif, sort_order: j, viden_app: false }); }
     }
     // Manjkajoče artikle vstavi v ENEM zahtevku (hitro + brez delnega stanja).
     if (vstavi.length) {
@@ -2182,7 +2186,7 @@
     for (var ci = 0; ci < ciljOrgi.length; ci++) {
       var oid = ciljOrgi[ci].id;
       var maxo = -1; (CLANI || []).forEach(function (a) { if (a.org_id === oid && typeof a.sort_order === 'number' && a.sort_order > maxo) maxo = a.sort_order; });
-      var ins = await sb.from('articles').insert({ org_id: oid, name: nm, cena_sifra: sifra, sort_order: maxo + 1 }).select('id').maybeSingle();
+      var ins = await sb.from('articles').insert({ org_id: oid, name: nm, cena_sifra: sifra, sort_order: maxo + 1, viden_app: false }).select('id').maybeSingle();
       if (!(ins && ins.error)) { if (CLANI) CLANI.push({ id: ins && ins.data ? ins.data.id : null, org_id: oid, name: nm, cena_sifra: sifra, sort_order: maxo + 1 }); dodanih++; }
     }
     _artOpen = {}; _artOpen[pre] = true; logDodaj('Artikli', 'Dodano', 'Artikel „' + nm + '" (' + id + ')'); toast('Artikel dodan' + (dodanih ? ' · propagirano ' + dodanih + ' strankam' : '') + '.'); artRender();
@@ -3388,15 +3392,21 @@
     if (o.ro) o.ro.disconnect();
     var k = (o.najdi && o.najdi()) || null;   // po ponovnem izrisu je kartica nov element
     var konec = function () {
+      if (o.koncano) return; o.koncano = true;
       o.back.remove();
       var v = o.vsebina;
       v.classList.remove('show'); if (o.dom.id) v.id = o.dom.id;
       // Vsebino vrni na njeno mesto; če je seznam medtem izrisan na novo, je stara odveč.
       if (o.dom.parent && o.dom.parent.isConnected) o.dom.parent.insertBefore(v, (o.dom.next && o.dom.next.parentNode === o.dom.parent) ? o.dom.next : null);
       else v.remove();
-      document.querySelectorAll('.okno-vir').forEach(function (el) { el.classList.remove('okno-vir'); });
-      document.documentElement.classList.remove('okno-zaklep');
-      document.documentElement.style.paddingRight = '';
+      if (!_okno || _okno === o) {
+        document.querySelectorAll('.okno-vir').forEach(function (el) { el.classList.remove('okno-vir'); });
+        document.documentElement.classList.remove('okno-zaklep');
+        document.documentElement.style.paddingRight = '';
+      } else if (o.kartica && o.kartica !== _okno.kartica) {
+        // med zapiranjem je že odprto novo okno: pospravi le svoje, novega (izvor, zaklep strani) ne
+        o.kartica.classList.remove('okno-vir');
+      }
       if (_okno === o) _okno = null;
       if (k && !takoj) { try { k.focus({ preventScroll: true }); } catch (e) {} }
       if (o.obZaprtju) { try { o.obZaprtju(k); } catch (e) {} }
@@ -5374,7 +5384,7 @@
     for (var ci = 0; ci < ciljOrgi.length; ci++) {
       var oid = ciljOrgi[ci].id;
       var maxo = -1; (CLANI || []).forEach(function (a) { if (a.org_id === oid && typeof a.sort_order === 'number' && a.sort_order > maxo) maxo = a.sort_order; });
-      var ins = await sb.from('articles').insert({ org_id: oid, name: name, cena_sifra: sifra, sort_order: maxo + 1 }).select('id').maybeSingle();
+      var ins = await sb.from('articles').insert({ org_id: oid, name: name, cena_sifra: sifra, sort_order: maxo + 1, viden_app: false }).select('id').maybeSingle();
       if (!(ins && ins.error)) { if (CLANI) CLANI.push({ id: ins && ins.data ? ins.data.id : null, org_id: oid, name: name, cena_sifra: sifra, sort_order: maxo + 1 }); dodanih++; }
     }
     toast('Dodano v splošni cenik: ' + id + (dodanih ? ' · dodano ' + dodanih + ' strankam' : ''));
@@ -5676,7 +5686,7 @@
       if (orgId) {
         const { data: maxd } = await sb.from('articles').select('sort_order').eq('org_id', orgId).order('sort_order', { ascending: false }).limit(1);
         const aOrder = ((maxd && maxd[0] && maxd[0].sort_order) || 0) + 1;
-        const ai = await sb.from('articles').insert({ org_id: orgId, name: nm, sort_order: aOrder, cena_sifra: nova }).select('id').maybeSingle();
+        const ai = await sb.from('articles').insert({ org_id: orgId, name: nm, sort_order: aOrder, cena_sifra: nova, viden_app: true }).select('id').maybeSingle();
         if (CLANI) CLANI.push({ id: ai.data ? ai.data.id : null, org_id: orgId, name: nm, cena_sifra: nova, sort_order: aOrder });
       }
       CENIK.push(novaRec); zgradiCenikMap();
@@ -5713,7 +5723,7 @@
     async function izberi(sif) {
       var p = CENIKMAP[sif]; if (!p) return;
       var maxo = 0; (CLANI || []).forEach(function (a) { if (a.org_id === orgId && a.sort_order != null && a.sort_order > maxo) maxo = a.sort_order; });
-      var ins = await sb.from('articles').insert({ org_id: orgId, name: p.naziv || '', cena_sifra: sif, sort_order: maxo + 1 }).select('id').maybeSingle();
+      var ins = await sb.from('articles').insert({ org_id: orgId, name: p.naziv || '', cena_sifra: sif, sort_order: maxo + 1, viden_app: true }).select('id').maybeSingle();
       if (ins.error) { toast('Napaka: ' + ins.error.message); return; }
       if (CLANI) CLANI.push({ id: ins.data ? ins.data.id : null, org_id: orgId, name: p.naziv || '', cena_sifra: sif, sort_order: maxo + 1 });
       _cenikOpen['org:' + orgId] = true;
@@ -5779,7 +5789,7 @@
     for (var j = 0; j < ciljneSifre.length; j++) {
       var sif = ciljneSifre[j];
       if (obst[sif]) { await sb.from('articles').update({ sort_order: j }).eq('org_id', orgId).eq('cena_sifra', sif); obst[sif].sort_order = j; delete obst[sif]; }
-      else { var p = CENIKMAP[sif]; var ins = await sb.from('articles').insert({ org_id: orgId, name: (p ? p.naziv : '') || '', cena_sifra: sif, sort_order: j }).select('id').maybeSingle(); if (CLANI) CLANI.push({ id: ins.data ? ins.data.id : null, org_id: orgId, name: (p ? p.naziv : '') || '', cena_sifra: sif, sort_order: j }); }
+      else { var p = CENIKMAP[sif]; var ins = await sb.from('articles').insert({ org_id: orgId, name: (p ? p.naziv : '') || '', cena_sifra: sif, sort_order: j, viden_app: false }).select('id').maybeSingle(); if (CLANI) CLANI.push({ id: ins.data ? ins.data.id : null, org_id: orgId, name: (p ? p.naziv : '') || '', cena_sifra: sif, sort_order: j }); }
     }
     // odstrani članstva, ki jih v datoteki ni
     var odstrani = Object.keys(obst);
@@ -5805,7 +5815,7 @@
       for (var j = 0; j < ciljneSifre.length; j++) {
         var sif = ciljneSifre[j];
         if (obst[sif]) { await sb.from('articles').update({ sort_order: j }).eq('org_id', orgId).eq('cena_sifra', sif); obst[sif].sort_order = j; delete obst[sif]; }
-        else { var p = CENIKMAP[sif]; var ins = await sb.from('articles').insert({ org_id: orgId, name: (p ? p.naziv : '') || '', cena_sifra: sif, sort_order: j }).select('id').maybeSingle(); if (CLANI) CLANI.push({ id: ins.data ? ins.data.id : null, org_id: orgId, name: (p ? p.naziv : '') || '', cena_sifra: sif, sort_order: j }); }
+        else { var p = CENIKMAP[sif]; var ins = await sb.from('articles').insert({ org_id: orgId, name: (p ? p.naziv : '') || '', cena_sifra: sif, sort_order: j, viden_app: false }).select('id').maybeSingle(); if (CLANI) CLANI.push({ id: ins.data ? ins.data.id : null, org_id: orgId, name: (p ? p.naziv : '') || '', cena_sifra: sif, sort_order: j }); }
       }
       var odstrani = Object.keys(obst);
       for (var k = 0; k < odstrani.length; k++) {
@@ -6892,7 +6902,7 @@
      Namestitveni paket leži poleg spletne različice, ne v kodi portala.
      Če ga še ni, to tu tudi piše — namesto strani 404. */
   // ?v= ob vsaki novi različici aplikacije (aplikacija/zgradi.py): brskalnik in predpomnilnik vzameta nov paket.
-  var APK_POT = 'tablica/Pralnica-sync.apk?v=9.5';
+  var APK_POT = 'tablica/Pralnica-sync.apk?v=9.6';
 
   function wirePwa(scope) {
     var pb = (scope || document).querySelector('#pwaInstall');
@@ -6925,7 +6935,7 @@
 
     p.innerHTML = '<div class="prog-grid">' +
       _progCard(IKO_WEB, 'Spletni pogled', 'Deluje v vsakem brskalniku, brez namestitve — telefon, tablica ali računalnik.', _odpri) +
-      _progCard(IKO_DL, 'Tablica (Android)', 'Namestitveni paket za vnos in tiskanje spremnih listov na tablici (različica 9.5). Pred prvo namestitvijo te različice odstrani staro aplikacijo — shranjeni listi ostanejo.', '<a class="btn prog-act apk-dl" href="' + escape_(url) + '" download>' + IKO_DL + 'Prenesi<span class="apk-mb"></span></a>', 'apkTablet') +
+      _progCard(IKO_DL, 'Tablica (Android)', 'Namestitveni paket za vnos in tiskanje spremnih listov na tablici (različica 9.6). Namesti se čez obstoječo; le če je na tablici še različica 8 ali starejša, jo najprej odstrani — shranjeni listi ostanejo.', '<a class="btn prog-act apk-dl" href="' + escape_(url) + '" download>' + IKO_DL + 'Prenesi<span class="apk-mb"></span></a>', 'apkTablet') +
       _progCard(IKO_TEL, 'Telefon', 'Odpre se v brskalniku; dodaj na začetni zaslon za občutek prave aplikacije.', _odpri) +
       '</div>';
 

@@ -60,7 +60,7 @@
       <div class="auth-box" id="prijavaObr" hidden>
         <p class="eyebrow">Prijava</p>
         <h1>Dobrodošli nazaj</h1>
-        <p class="sub">Vpišite se s podatki za portal SmartClean.</p>
+        <p class="sub" id="prijavaSub">Vpišite se s podatki za portal SmartClean.</p>
         <form id="acctForm" autocomplete="on" novalidate>
           <div class="field"><label for="acctEmail">E-poštni naslov</label>
             <input type="email" id="acctEmail" inputmode="email" autocapitalize="none" autocorrect="off" autocomplete="username" /></div>
@@ -192,9 +192,15 @@
 <script>
   if("serviceWorker" in navigator && location.protocol === "https:" && !/^localhost$/.test(location.hostname)){
     window.addEventListener("load", function(){ navigator.serviceWorker.register("sw.js").catch(function(){}); });
-    /* Ko nova koda prevzame nadzor, se enkrat samodejno osveži. */
-    var _swReload = false;
-    navigator.serviceWorker.addEventListener("controllerchange", function(){ if(_swReload) return; _swReload = true; location.reload(); });
+    /* Nova koda prevzame nadzor → osveži, a le ob posodobitvi (ne ob prvi namestitvi — takrat
+       je stran že sveža; prej je osvežitev prekinila ravno odprto prijavo) in v varnem trenutku
+       (ne sredi vnosa lista, v odprtem oknu ali med tipkanjem). */
+    var _swImel = !!navigator.serviceWorker.controller, _swReload = false;
+    navigator.serviceWorker.addEventListener("controllerchange", function(){
+      if(!_swImel){ _swImel = true; return; }
+      if(_swReload) return; _swReload = true;
+      (function poskusi(){ if(!window.__scVarno || window.__scVarno()) location.reload(); else setTimeout(poskusi, 3000); })();
+    });
   }
 </script>
 </body>
