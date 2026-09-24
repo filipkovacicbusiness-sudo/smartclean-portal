@@ -25,7 +25,7 @@ import sys
 import tempfile
 import zipfile
 
-VERZIJA = "9.0"
+VERZIJA = "9.1"
 
 KOREN = pathlib.Path(__file__).resolve().parent.parent
 IZVOR = KOREN / "aplikacija"
@@ -94,11 +94,29 @@ def pisave_css():
     return "".join(deli)
 
 
+def iz_portala():
+    """Slog portala kot en vir: portal.css (brez @font-face — pisave so vgrajene) ter zagonski
+    zaslon in šestkotniško ozadje prijave iz index.html. Sprememba v portalu gre ob naslednji
+    gradnji tudi v aplikacijo."""
+    pcss = (KOREN / "portal.css").read_text(encoding="utf-8")
+    pcss = re.sub(r"@font-face\{[^}]*\}", "", pcss)
+    if "url('fonts/" in pcss:
+        sys.exit("portal.css: ostala je povezava na pisavo")
+    idx = (KOREN / "index.html").read_text(encoding="utf-8")
+    splash = next((m.group(1) for m in re.finditer(r"<style>(.*?)</style>", idx, re.S) if "#scBoot{" in m.group(1)), None)
+    hexcss = re.search(r'<style id="hexfx">(.*?)</style>', idx, re.S)
+    hexdiv = re.search(r'(<div class="sc-hex".*?</svg></div>)', idx, re.S)
+    if not (splash and hexcss and hexdiv):
+        sys.exit("index.html: ni zagonskega zaslona ali ozadja prijave (sc-hex)")
+    return pcss, splash.strip(), hexcss.group(1).strip(), hexdiv.group(1)
+
+
 def zgradi_splet():
     predloga = (IZVOR / "app.html").read_text(encoding="utf-8")
-    css = (IZVOR / "app.css").read_text(encoding="utf-8")
+    pcss, splash, hexcss, hexdiv = iz_portala()
+    css = pcss + "\n/* ═══ razširitve aplikacije (aplikacija/app.css) ═══ */\n" + (IZVOR / "app.css").read_text(encoding="utf-8")
     js = (IZVOR / "app.js").read_text(encoding="utf-8")
-    if "</script" in js.lower():
+    if "</script" in js.lower() or "</style" in css.lower():
         sys.exit("app.js ne sme vsebovati '</script' (zaprl bi vgrajeni skript)")
     pis = pisave_css()
     for mapa, r in RAZLICICE.items():
@@ -109,6 +127,9 @@ def zgradi_splet():
             "{{NASLOV}}": r["naslov"],
             "{{KRATKO_IME}}": "SmartClean",
             "{{PISAVE}}": pis,
+            "{{SPLASH_CSS}}": splash,
+            "{{HEX_CSS}}": hexcss,
+            "{{HEX}}": hexdiv,
             "{{CSS}}": css,
         }
         for k, v in zamenjave.items():

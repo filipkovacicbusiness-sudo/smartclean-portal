@@ -1387,6 +1387,12 @@ html[data-view="grid"] :is(#cenikList,.art-skupine) .cgrp:not(.open) .cgrp-count
   font-family:var(--mono);font-size:.76rem;font-weight:400;color:var(--mid);text-align:left;
   font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;align-self:auto;}
 html[data-view="grid"] .lcell:not(.open) .a-row .a-foot .num{font-size:.76rem;color:var(--mid);text-align:left;font-weight:400;}
+/* Noga ploščice: od leve (osnovno pravilo .a-foot jo poravna desno — ob dolgem imenu izdajatelja
+   je zato odrezalo datum na levi). Datum in količina ostaneta cela, ime se skrajša s »…«. */
+html[data-view="grid"] .lcell:not(.open) .a-row .a-foot{justify-content:flex-start;}
+html[data-view="grid"] .lcell:not(.open) .a-row .a-foot .a-date,
+html[data-view="grid"] .lcell:not(.open) .a-row .a-foot .a-qty{flex:none;}
+html[data-view="grid"] .lcell:not(.open) .a-row .a-foot .a-izdal{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;}
 html[data-view="grid"] .lcell:not(.open) .a-row .a-foot .a-qty::before{content:'· ';}
 /* ── Puščica spodaj desno ── */
 html[data-view="grid"] .lcell:not(.open) .row .chev,
@@ -1888,6 +1894,8 @@ html[data-view="list"] .dok-item .dok-more{opacity:1;top:50%;right:10px;transfor
 .pp-tile-x{position:absolute;top:-7px;right:-7px;width:22px;height:22px;border:1px solid var(--line);background:var(--surface);color:var(--mid);border-radius:50%;font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:0;transition:opacity .14s,color .14s,border-color .14s;box-shadow:var(--shadow);}
 .pp-tile-x:hover{color:var(--ink);border-color:var(--ink);}
 .pp-tile-wrap:hover .pp-tile-x,.pp-tile-x:focus-visible{opacity:1;}
+/* zaslon na dotik (telefon, tablica) nima lebdenja: × za odstranitev profila mora biti viden */
+@media(hover:none){.pp-tile-x{opacity:1;width:28px;height:28px;top:-9px;right:-9px;}}
 .pp-add{width:110px;}
 .pp-add .pp-av{background:transparent;border:1.5px dashed var(--line);color:var(--mid);font-size:24px;font-weight:400;}
 .pp-add .pp-nm{color:var(--mid);}
