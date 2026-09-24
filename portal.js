@@ -3553,10 +3553,10 @@
     const box = btn.nextElementSibling && btn.nextElementSibling.classList.contains('a-det') ? btn.nextElementSibling : $('det' + btn.dataset.i);
     const id = btn.dataset.id;
     if (!box.dataset.loaded) {
-      btn._nalagam = true;
+      btn._nalagam = true; btn.classList.add('nalaga');
       try { await naloziDetajl(box, id); }
       catch (e) { box.innerHTML = '<div class="a-det-in"><div class="a-det-pad"><p class="u-sub">Napaka pri nalaganju.</p></div></div>'; }
-      btn._nalagam = false;
+      btn._nalagam = false; btn.classList.remove('nalaga');
       if (!btn.isConnected || _okno) return;   // vmes izrisano na novo ali že odprto
     }
     oknoOdpri(btn, box, () => document.querySelector('#arhivList .a-row[data-id="' + String(id).replace(/"/g, '\\"') + '"]'));
@@ -5924,7 +5924,7 @@
       <span class="chev" aria-hidden="true">›</span>
     </button><div class="arts" id="a${i}"></div></div>`;
     }).join('') + '</div>';
-    document.querySelectorAll('#content .row').forEach(b => b.addEventListener('click', () => toggle(b)));
+    document.querySelectorAll('#content .row').forEach(b => { b.addEventListener('click', () => toggle(b)); strankaPredNalozi(b); });
     pripniMarquee('content');
     oknoPoIzrisu();
     requestAnimationFrame(function () { window.scrollTo(0, _sy); });
@@ -5948,19 +5948,46 @@
     cont.addEventListener('mouseover', function (e) { var row = e.target.closest('.row'); if (row && cont.contains(row)) odvij(row, true); });
     cont.addEventListener('mouseout', function (e) { var row = e.target.closest('.row'); if (row && !row.contains(e.relatedTarget)) odvij(row, false); });
   }
-  // Stranka se odpre v OKNU (prej se je razprla v mreži). Okno se odpre takoj,
-  // artikli se naložijo vanj in višina se jim gladko prilagodi.
+  // Stranka se odpre v OKNU (prej se je razprla v mreži). Artikli se naložijo PRED
+  // odprtjem — okno zraste naravnost v končno velikost, namesto da bi se odprlo prazno
+  // (»Nalagam …«) in se artikli pojavili šele za njim.
+  function strankaNalozi(btn) {
+    const box = $('a' + btn.dataset.i);
+    if (!box) return Promise.resolve();
+    box._kartica = btn;   // značko »Splošni cenik« sinhroniziramo na kartici, ne na sosednjem elementu (ta je v oknu drug)
+    if (box.dataset.loaded) return Promise.resolve();
+    if (!box._nalaganje) {
+      // loaded nastavi risiArtikleBox sam, le ob uspehu — po napaki se ob naslednjem odprtju poskusi znova.
+      box._nalaganje = risiArtikleBox(box, btn.dataset.id, true)
+        .then(null, function () {})
+        .then(function () { box._nalaganje = null; });
+    }
+    return box._nalaganje;
+  }
   async function toggle(btn) {
-    if (_okno) return;
+    if (_okno || btn._nalagam) return;
     const box = $('a' + btn.dataset.i);
     const id = btn.dataset.id;
-    box._kartica = btn;   // značko »Splošni cenik« sinhroniziramo na kartici, ne na sosednjem elementu (ta je v oknu drug)
+    if (!box.dataset.loaded) {
+      btn._nalagam = true; btn.classList.add('nalaga');
+      await strankaNalozi(btn);
+      btn._nalagam = false; btn.classList.remove('nalaga');
+      if (!btn.isConnected || _okno) return;   // vmes izrisano na novo ali že odprto
+    }
+    box._kartica = btn;
     oknoOdpri(btn, box, () => document.querySelector('#content .row[data-id="' + String(id).replace(/"/g, '\\"') + '"]'));
-    if (box.dataset.loaded) return;
-    await risiArtikleBox(box, id);
-    box.dataset.loaded = '1';
   }
-  async function risiArtikleBox(box, orgId) {
+  // Ko se miška za trenutek ustavi nad kartico, začni nalagati artikle — do klika so
+  // navadno že pripravljeni. Zamik, da prelet čez mrežo ne sproži desetin poizvedb.
+  function strankaPredNalozi(btn) {
+    var t = null;
+    btn.addEventListener('pointerenter', function (e) { if (e.pointerType !== 'mouse') return; t = setTimeout(function () { strankaNalozi(btn); }, 140); });
+    btn.addEventListener('pointerleave', function () { clearTimeout(t); });
+    btn.addEventListener('pointerdown', function () { strankaNalozi(btn); });   // dotik: začni že ob pritisku
+  }
+  // brezPomika: nalaganje v ozadju (pred odprtjem okna) — ne vračaj strani na staro višino,
+  // sicer bi te med drsenjem vrglo nazaj, ko se nalaganje konča.
+  async function risiArtikleBox(box, orgId, brezPomika) {
     var _sy = window.scrollY;
     // ob osvežitvi (box že ima vsebino) ne pokaži »Nalagam« — brez utripa
     if (!box.dataset.loaded) box.innerHTML = NALAGANJE;
@@ -6069,7 +6096,7 @@
       }
     } catch (e) {}
     box.dataset.loaded = '1';
-    requestAnimationFrame(function () { window.scrollTo(0, _sy); });
+    if (!brezPomika) requestAnimationFrame(function () { window.scrollTo(0, _sy); });
   }
   // Dodaj OBSTOJEČ artikel (deljeni katalog) tej stranki — v razdelku Stranke.
   async function dodajObstojecStranka(orgId, box) {
