@@ -308,7 +308,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.16 · BETA';
+  var APP_VERZIJA = '4.17 · BETA';
   var NALAGANJE = '<div class="sc-load" aria-hidden="true"><span class="sc-load-line"></span></div>';
   // Stale-while-revalidate: ob ponovnem obisku razdelka NE pobriši vsebine v nalagalnik —
   // obdrži prejšnjo (takojšen prikaz) in jo osveži v ozadju. Trak le ob prvem nalaganju.
@@ -2983,25 +2983,15 @@
   }
   function _ucEurStr(v) { return v == null ? '—' : (Math.round(v * 100) / 100).toFixed(2).replace('.', ',') + ' €'; }
   function ucKgFileBase(d) { return 'evidenca_kg_' + (d.obKratko || 'obdobje').replace(/[^0-9A-Za-z-]/g, '_'); }
-  // Predogled (HTML) — enak izgled kot spletni print (Playfair logotip, tabela).
+  // Predogled (HTML) — skupni slog dokumentov (glava z logotipom portala, tabela kot spremni list).
   function ucKgDocHtml(d) {
     var rows = d.arr.map(function (x) {
-      return '<tr><td class="an">' + escape_(x.ime) + '</td><td class="qty">' + fmtKg(x.kg) + '</td><td class="qty">' + _ucEurStr(x.eur) + '</td></tr>';
+      return '<tr><td class="an">' + escape_(x.ime) + '</td><td class="r b">' + fmtKg(x.kg) + '</td><td class="r b">' + _ucEurStr(x.eur) + '</td></tr>';
     }).join('');
-    return '<!DOCTYPE html><html lang="sl"><head><meta charset="utf-8"><title>Evidenca kg ' + escape_(d.obLabel) + '</title><style>' +
-      '@font-face{font-family:\'Archivo\';font-weight:100 900;font-display:swap;src:url(\'fonts/archivo-latin-wght-normal.woff2\') format(\'woff2\');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}' +
-      '@font-face{font-family:\'Archivo\';font-weight:100 900;font-display:swap;src:url(\'fonts/archivo-latin-ext-wght-normal.woff2\') format(\'woff2\');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;}' +
-      '@font-face{font-family:\'Playfair Display\';font-weight:700;font-display:swap;src:url(\'fonts/playfair-display-latin-700-normal.woff2\') format(\'woff2\');}' +
-      '@page{size:A4;margin:0}*{box-sizing:border-box}html{background:#e9edeb}body{margin:0;background:#fff;color:#0a0a0a;font-family:\'Archivo\',system-ui,-apple-system,sans-serif}@media print{html,body{background:#fff}}' +
-      '.a4{padding:14mm 14mm 16mm}.h{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:1.5px solid #0a0a0a;padding-bottom:12px;margin-bottom:16px}' +
-      '.wm{font-family:\'Playfair Display\',Georgia,serif;font-weight:700;letter-spacing:-.03em;font-size:30px;color:#0d1f17}.wm span{color:#1a6644}' +
-      '.sub{font-size:13px;font-weight:700;text-align:right}.sub small{display:block;font-weight:400;color:#666;font-size:11px;margin-top:3px}' +
-      'table{width:100%;border-collapse:collapse;font-size:11px;margin-top:6px}th{text-transform:uppercase;font-size:9px;letter-spacing:.08em;color:#0a0a0a;font-weight:700;padding:0 8px 8px;border-bottom:1.5px solid #0a0a0a;text-align:right}th.l{text-align:left}' +
-      'td{padding:6px 8px;border-bottom:1px solid #ececec}td.an{font-weight:600}td.qty{text-align:right;font-variant-numeric:tabular-nums;font-weight:700}' +
-      'tfoot td{border-top:1.5px solid #0a0a0a;border-bottom:none;font-weight:800;padding-top:8px}' +
-      '</style></head><body><div class="a4"><div class="h"><div class="wm">Smart<span>Clean</span></div><div class="sub">Evidenca kg<small>' + escape_(d.obLabel) + '</small></div></div>' +
-      '<table><thead><tr><th class="l">Stranka</th><th>Kilaža</th><th>&euro;/kg</th></tr></thead><tbody>' + rows + '</tbody>' +
-      '<tfoot><tr><td class="an">Skupaj</td><td class="qty">' + fmtKg(d.kgSkup) + '</td><td class="qty">' + _ucEurStr(d.eurTot) + '</td></tr></tfoot></table></div></body></html>';
+    return dokHtml('Evidenca kg ' + d.obLabel,
+      '<div class="sc-box sc-num"><span>Evidenca kg</span><span class="sc-obd">' + escape_(d.obLabel) + '</span></div>' +
+      '<table class="sc-table"><thead><tr><th class="l">Stranka</th><th class="r">Kilaža</th><th class="r">&euro;/kg</th></tr></thead><tbody>' + rows + '</tbody>' +
+      '<tfoot><tr><td class="an">Skupaj</td><td class="r b">' + fmtKg(d.kgSkup) + '</td><td class="r b">' + _ucEurStr(d.eurTot) + '</td></tr></tfoot></table>');
   }
   // Excel (.xlsx)
   function ucKgXlsx(d) {
@@ -3014,36 +3004,24 @@
     prenesiXlsx(ucKgFileBase(d) + '.xlsx', [{ name: 'Evidenca kg', rows: rows }]);
     toast('Excel pripravljen.');
   }
-  // PDF (prava datoteka, vektorsko — kot fakture)
+  // PDF (prava datoteka, vektorsko) — isti slog kot predogled.
   async function ucKgPdf(d) {
     if (!(await pdfPripravljen())) return;
-    var logo = await scLogo();
-    var doc = new PDFDoc();
-    var M = 44, right = doc.W - M;
-    doc.addPage();
-    var y = _pdfGlava(doc, logo, M);
-    doc.text(M, y, 'Evidenca kg', { size: 13, bold: true, color: _PDF.INK });
-    doc.text(right, y, d.obLabel, { size: 10, align: 'right', color: _PDF.GREY }); y += 22;
-    var cKg = right - 150, cEur = right;
-    function glava() {
-      doc.rect(M, y, right - M, 20, { fill: _PDF.HEAD });
-      doc.text(M + 6, y + 13.5, 'Stranka', { size: 8.5, bold: true, color: _PDF.INK });
-      doc.text(cKg, y + 13.5, 'Kilaža', { size: 8.5, bold: true, align: 'right', color: _PDF.INK });
-      doc.text(cEur, y + 13.5, '€/kg', { size: 8.5, bold: true, align: 'right', color: _PDF.INK });
-      y += 20;
-    }
-    glava();
-    d.arr.forEach(function (x) {
-      if (y + 18 > doc.H - 90) { doc.addPage(); y = _pdfGlava(doc, logo, M); glava(); }
-      doc.text(M + 6, y + 13, x.ime, { size: 9.5, color: _PDF.INK });
-      doc.text(cKg, y + 13, fmtKg(x.kg), { size: 9.5, align: 'right', color: _PDF.INK });
-      doc.text(cEur, y + 13, _ucEurStr(x.eur), { size: 9.5, align: 'right', color: _PDF.INK });
-      y += 18; doc.line(M, y, right, y, { width: 0.6, color: _PDF.LINE });
-    });
-    y += 6; doc.line(M, y, right, y, { width: 1.4, color: _PDF.GREEN }); y += 16;
-    doc.text(M + 6, y, 'Skupaj', { size: 11, bold: true, color: _PDF.INK });
-    doc.text(cKg, y, fmtKg(d.kgSkup), { size: 11, bold: true, align: 'right', color: _PDF.INK });
-    doc.text(cEur, y, _ucEurStr(d.eurTot), { size: 11, bold: true, align: 'right', color: _PDF.INK });
+    var doc = new PDFDoc(); doc.addPage();
+    var M = DPDF.M, R = doc.W - M;
+    var y = dpdfGlava(doc);
+    y = dpdfNaslovOkvir(doc, y, 'Evidenca kg', d.obLabel);
+    var cKg = R - 6 - 110, cEur = R - 6;
+    var st = [{ t: 'Stranka', x: M + 6 }, { t: 'Kilaža', x: cKg, align: 'right' }, { t: '€/kg', x: cEur, align: 'right' }];
+    y += 4 * PT; y = dpdfTabGlava(doc, y, st);
+    y = dpdfTabela(doc, y, st, d.arr.map(function (x) {
+      return [{ t: x.ime, x: M + 6, w: 600 }, { t: fmtKg(x.kg), x: cKg, align: 'right', w: 700 }, { t: _ucEurStr(x.eur), x: cEur, align: 'right', w: 700 }];
+    }), 30, 'Evidenca kg · ' + d.obLabel);
+    doc.line(M, y + 0.56, R, y + 0.56, { width: 1.5 * PT, color: DPDF.INK });
+    var osn = dpdfOsnova(y + 8 * PT, 10 * PT, 15 * PT);
+    doc.text(M + 6, osn, 'Skupaj', { size: 10 * PT, bold: true, color: DPDF.INK });
+    doc.text(cKg, osn, fmtKg(d.kgSkup), { size: 10 * PT, bold: true, align: 'right', color: DPDF.INK });
+    doc.text(cEur, osn, _ucEurStr(d.eurTot), { size: 10 * PT, bold: true, align: 'right', color: DPDF.INK });
     doc.save(ucKgFileBase(d) + '.pdf');
   }
 
@@ -4122,6 +4100,156 @@
     }
   }
 
+  /* ══════════ DOKUMENTI (predogled, tisk, PDF) — en slog za vse ══════════
+     Vzor je spremni list (enak izgled kot v aplikaciji na tablici). Logotip je povsod ISTI
+     kot v portalu (.wordmark): Playfair Display 700, razmik -0,03 em, »Smart« #0d1f17,
+     »Clean« #1a6644 — v HTML kot besedilo v pisavi iz fonts/, v PDF kot vektorsko besedilo
+     v isti pisavi (pdfgen.js). Nikoli slika ali nadomestna pisava. Logotip je na dokumentu
+     ENKRAT, na vrhu. */
+  var DOK_BIZ = ['BSMART d.o.o.', 'Škalska cesta 6, 3210 Slovenske Konjice', '+386 41 209 676', '+386 68 693 988', 'blanka.kovacic1@gmail.com'];
+  // Absolutni naslovi pisav: delujejo tudi v tiskalnem oknu brez osnovnega naslova.
+  function _dokPis(ime) { return new URL('fonts/' + ime, location.href).href; }
+  var _DOK_LAT = 'U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD';
+  var _DOK_EXT = 'U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF';
+  function dokCss() {
+    // font-display:block — dokument nikoli ne pokaže (ali natisne) nadomestne pisave.
+    return "@font-face{font-family:'Archivo';font-style:normal;font-weight:100 900;font-display:block;src:url('" + _dokPis('archivo-latin-wght-normal.woff2') + "') format('woff2');unicode-range:" + _DOK_LAT + "}" +
+      "@font-face{font-family:'Archivo';font-style:normal;font-weight:100 900;font-display:block;src:url('" + _dokPis('archivo-latin-ext-wght-normal.woff2') + "') format('woff2');unicode-range:" + _DOK_EXT + "}" +
+      "@font-face{font-family:'Playfair Display';font-style:normal;font-weight:700;font-display:block;src:url('" + _dokPis('playfair-display-latin-700-normal.woff2') + "') format('woff2');unicode-range:" + _DOK_LAT + "}" +
+      "@font-face{font-family:'Playfair Display';font-style:normal;font-weight:700;font-display:block;src:url('" + _dokPis('playfair-display-latin-ext-700-normal.woff2') + "') format('woff2');unicode-range:" + _DOK_EXT + "}" +
+      `@page{size:A4;margin:0}
+      *{box-sizing:border-box}
+      html{background:#e9edeb}
+      body{margin:0;background:#e9edeb;color:#0a0a0a;font-family:'Archivo',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif}
+      .a4{position:relative;padding:12mm 12mm 14mm;color:#0a0a0a;background:#fff;min-height:297mm;break-after:page}
+      .a4:last-child{break-after:auto}
+      .a4+.a4{margin-top:14px}
+      @media print{html,body{background:#fff}.a4{min-height:0}.a4+.a4{margin-top:0}}
+      .sc-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin-bottom:18px;padding-bottom:14px;border-bottom:1.5px solid #0a0a0a}
+      .sc-wm{font-family:'Playfair Display',serif;font-weight:700;letter-spacing:-.03em;line-height:.9;font-size:32px;color:#0d1f17;white-space:nowrap}
+      .sc-wm span{color:#1a6644}
+      .sc-biz{font-size:9px;line-height:1.6;text-align:right;color:#666;white-space:nowrap;font-weight:500}
+      .sc-box{border:1px solid #dcdcdc;border-radius:9px;padding:10px 14px;margin-bottom:10px}
+      .sc-num{font-size:13px;font-weight:700;display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+      .sc-num b{font-variant-numeric:tabular-nums;letter-spacing:.01em}
+      .sc-num .sc-obd{font-size:11px;font-weight:500;color:#666;font-variant-numeric:tabular-nums}
+      .sc-client{display:flex;justify-content:space-between;gap:14px}
+      .sc-client .cl{font-size:12px}
+      .sc-client .cname{font-weight:700;border-bottom:2px solid #0a0a0a;padding:0 2px}
+      .sc-client .cname-sec{font-weight:400;color:#6b7280;font-size:.85em;margin-left:4px}
+      .sc-client .sc-addr{margin-top:6px;font-size:11px;color:#666}
+      .sc-client .sc-dates{margin-top:10px;font-size:11px;color:#666}
+      .sc-sign{border-left:1px solid #dcdcdc;padding-left:16px;font-weight:600;font-size:12px;min-width:110px;color:#666}
+      table.sc-table{width:100%;border-collapse:collapse;font-size:10px;margin-top:4px}
+      table.sc-table th{color:#0a0a0a;font-weight:700;font-size:9px;letter-spacing:.09em;text-transform:uppercase;padding:0 8px 8px;text-align:center;border-bottom:1.5px solid #0a0a0a}
+      table.sc-table th.l{text-align:left}
+      table.sc-table th.r,table.sc-table td.r{text-align:right}
+      table.sc-table td{border-bottom:1px solid #ececec;padding:5px 8px;height:15px;font-variant-numeric:tabular-nums}
+      table.sc-table td.an{color:#0a0a0a;font-weight:600;text-align:left}
+      table.sc-table td.qty{text-align:center;font-weight:700;width:34%;color:#0a0a0a}
+      table.sc-table td.b{font-weight:700}
+      table.sc-table tfoot td{border-top:1.5px solid #0a0a0a;border-bottom:none;font-weight:700;padding-top:8px}
+      .sc-weight{margin-top:12px;font-size:12px;color:#0a0a0a;text-align:right;font-weight:600}
+      .sc-note{margin-top:10px;padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:12px;white-space:pre-wrap}
+      .sc-popr{margin-top:10px;padding:6px 10px;border-radius:8px;background:#fdf3e8;color:#8a5a00;font-size:11px;font-weight:600}
+      .sc-tot{margin:12px 0 0 auto;width:55%;font-size:11px}
+      .sc-tot div{display:flex;justify-content:space-between;gap:12px;padding:5px 8px;border-bottom:1px solid #ececec}
+      .sc-tot div span{color:#666}
+      .sc-tot div b{font-variant-numeric:tabular-nums}
+      .sc-tot .bruto{border-top:1.5px solid #0a0a0a;border-bottom:none;margin-top:4px;padding-top:8px;font-size:13px}
+      .sc-tot .bruto span{color:#0a0a0a;font-weight:700}
+      .sc-pozor{margin-top:10px;font-size:10px;color:#8a5a00}`;
+  }
+  function dokGlavaHtml() {
+    return '<div class="sc-head"><div class="sc-wm">Smart<span>Clean</span></div><div class="sc-biz">' + DOK_BIZ.map(escape_).join('<br>') + '</div></div>';
+  }
+  // telo: en list ali seznam listov — vsak list A4 ima glavo z logotipom enkrat, na vrhu.
+  function dokHtml(naslov, telo) {
+    var listi = Array.isArray(telo) ? telo : [telo];
+    return '<!DOCTYPE html><html lang="sl"><head><meta charset="utf-8"><title>' + escape_(naslov) + '</title><style>' + dokCss() + '</style></head><body>' +
+      listi.map(function (t) { return '<div class="a4">' + dokGlavaHtml() + t + '</div>'; }).join('') + '</body></html>';
+  }
+  function sklonListov(n) { var m = n % 100; return stevilo(n) + ' ' + (m === 1 ? 'spremni list' : m === 2 ? 'spremna lista' : (m === 3 || m === 4) ? 'spremni listi' : 'spremnih listov'); }
+  // »1 redni prevoz«, »2 redna prevoza«, »3 redni prevozi«, »5 rednih prevozov« (vrsta: 'redni' / 'izredni').
+  function sklonPrevoz(n, vrsta) {
+    var m = n % 100;
+    var pr = m === 1 ? vrsta : m === 2 ? vrsta.replace(/i$/, 'a') : (m === 3 || m === 4) ? vrsta : vrsta.replace(/i$/, 'ih');
+    return stevilo(n) + ' ' + pr + ' ' + (m === 1 ? 'prevoz' : m === 2 ? 'prevoza' : (m === 3 || m === 4) ? 'prevozi' : 'prevozov');
+  }
+  function fakPrevozi(g) { return sklonPrevoz(g.redni || 0, 'redni') + (g.izredni ? ' · ' + sklonPrevoz(g.izredni, 'izredni') : ''); }
+
+  // ── PDF v istem slogu: mere iz CSS zgoraj (1 px = 0,75 pt) ──
+  var PT = 0.75;
+  var DPDF = { M: 34.02, SP: 39.69, INK: [10 / 255, 10 / 255, 10 / 255], SIVA: [102 / 255, 102 / 255, 102 / 255], SIVA2: [107 / 255, 114 / 255, 128 / 255],
+    CRTA: [236 / 255, 236 / 255, 236 / 255], OKVIR: [220 / 255, 220 / 255, 220 / 255], OKVIR2: [221 / 255, 221 / 255, 221 / 255],
+    POPR_BG: [253 / 255, 243 / 255, 232 / 255], POPR: [138 / 255, 90 / 255, 0], POZOR: [138 / 255, 90 / 255, 0] };
+  // Osnovna črta prve vrstice v okvirju: vrh + (višina vrstice − višina pisave)/2 + vzpon (Archivo ≈ 0,878 em, vsa ≈ 1,088 em).
+  function dpdfOsnova(vrh, pisavaPt, vrsticaPt) { return vrh + (vrsticaPt - 1.088 * pisavaPt) / 2 + 0.878 * pisavaPt; }
+  function dpdfGlava(doc) {
+    var M = DPDF.M, R = doc.W - M, lh = 9 * 1.6 * PT, h = DOK_BIZ.length * lh;
+    DOK_BIZ.forEach(function (t, i) { doc.text(R, dpdfOsnova(M + i * lh, 9 * PT, lh), t, { size: 9 * PT, align: 'right', color: DPDF.SIVA }); });
+    var dno = M + h;
+    // .sc-wm: 32 px, line-height .9, poravnan na dno glave (align-items:flex-end)
+    doc.logo(M, dno - 1.3, 32 * PT);
+    var yl = dno + 14 * PT;
+    doc.line(M, yl + 0.56, R, yl + 0.56, { width: 1.5 * PT, color: DPDF.INK });
+    return yl + 1.5 * PT + 18 * PT;
+  }
+  function dpdfOkvir(doc, y, h) { doc.rrect(DPDF.M, y, doc.W - 2 * DPDF.M, h, 9 * PT, { stroke: DPDF.OKVIR, width: 1 * PT }); }
+  // Prelom besedila na širino (po besedah; predolge besede ostanejo cele).
+  function dpdfVrstice(doc, str, size, maxW, o) {
+    var out = [];
+    String(str == null ? '' : str).split(/\n/).forEach(function (odst) {
+      var vr = '';
+      odst.split(/\s+/).forEach(function (b) {
+        if (!b) return;
+        var t = vr ? vr + ' ' + b : b;
+        if (vr && doc.width(t, size, o) > maxW) { out.push(vr); vr = b; } else vr = t;
+      });
+      out.push(vr);
+    });
+    return out;
+  }
+  // Glava tabele (.sc-table th): stolpci [{t, x, align}] ; vrne y pod črto.
+  function dpdfTabGlava(doc, y, stolpci) {
+    var fs = 9 * PT, osn = y + 0.878 * fs + 0.5;
+    stolpci.forEach(function (c) { doc.text(c.x, osn, String(c.t).toUpperCase(), { size: fs, bold: true, spacing: 0.09, align: c.align || 'left', color: DPDF.INK }); });
+    var yl = y + 9 * 1.2 * PT + 8 * PT;
+    doc.line(DPDF.M, yl + 0.56, doc.W - DPDF.M, yl + 0.56, { width: 1.5 * PT, color: DPDF.INK });
+    return yl + 1.5 * PT;
+  }
+  var DPDF_VRSTA = 26 * PT;   // td: 15 px + 2 × 5 px + 1 px črta
+  function dpdfTabVrsta(doc, y, celice) {
+    var fs = 10 * PT, osn = dpdfOsnova(y + 5 * PT, fs, 15 * PT);
+    celice.forEach(function (c) { doc.text(c.x, osn, c.t, { size: fs, weight: c.w || 400, bold: c.w === 700, align: c.align || 'left', color: DPDF.INK }); });
+    var yl = y + 25 * PT;
+    doc.line(DPDF.M, yl + 0.37, doc.W - DPDF.M, yl + 0.37, { width: 1 * PT, color: DPDF.CRTA });
+    return yl + 1 * PT;
+  }
+  // Vrstice tabele s preloma strani: zadnji dve vrstici gresta vedno skupaj z blokom pod
+  // tabelo (seštevki), da ta nikoli ne ostane sam na novi strani. Na nadaljevanju se
+  // ponovi glava tabele, pred njo pa (neobvezno) oznaka »… — nadaljevanje«.
+  function dpdfTabela(doc, y, st, vrstice, blokPod, nadaljevanje) {
+    var n = vrstice.length;
+    for (var i = 0; i < n; i++) {
+      var ostane = n - i, rezerva = ostane <= 2 ? ostane * DPDF_VRSTA + (blokPod || 0) : DPDF_VRSTA;
+      if (i > 0 && !dpdfProstor(doc, y, rezerva)) {
+        y = dpdfNovaStran(doc);
+        if (nadaljevanje) y = dpdfNadaljevanje(doc, y, nadaljevanje);
+        y = dpdfTabGlava(doc, y, st);
+      }
+      y = dpdfTabVrsta(doc, y, vrstice[i]);
+    }
+    return y;
+  }
+  function dpdfNadaljevanje(doc, y, besedilo) {
+    doc.text(DPDF.M, dpdfOsnova(y, 11 * PT, 11 * 1.2 * PT), besedilo + ' — nadaljevanje', { size: 11 * PT, weight: 600, color: DPDF.SIVA });
+    return y + 11 * 1.2 * PT + 10 * PT;
+  }
+  // Nova stran brez glave (logotip je le na prvi strani); vrne začetni y.
+  function dpdfNovaStran(doc) { doc.addPage(); return DPDF.M; }
+  function dpdfProstor(doc, y, potrebno) { return y + potrebno <= doc.H - DPDF.SP; }
+
   function spremniDocHtml(box) {
     const n = box._note || {};
     const items = box._items || [];
@@ -4137,52 +4265,11 @@
     // Na spremni list se tiska SAMO opomba za stranko (interna opomba ostane le v portalu) — enako kot v spletni aplikaciji.
     const opombaP = n.opomba_stranka ? `<div class="sc-note"><b>Opomba:</b> ${escape_(n.opomba_stranka)}</div>` : '';
     const popr = n.popravljeno_at ? `<div class="sc-popr">Popravljeno v portalu · ${escape_(n.popravil || 'osebje')} · ${datum(String(n.popravljeno_at).slice(0, 10))}</div>` : '';
-    // Enak izgled kot v spletni aplikaciji (mobile): pisave iz /fonts/ (Archivo + Playfair), postavitev A4 ».a4«.
-    const html = `<!DOCTYPE html><html lang="sl"><head><meta charset="utf-8"><title>Spremni list ${escape_(n.number || '')}</title><style>
-      /* Pisave (samostojen dokument v iframe-u; datoteke iz /fonts/, dovoljene prek font-src 'self') */
-      @font-face{font-family:'Archivo';font-style:normal;font-weight:100 900;font-display:swap;src:url('fonts/archivo-latin-wght-normal.woff2') format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}
-      @font-face{font-family:'Archivo';font-style:normal;font-weight:100 900;font-display:swap;src:url('fonts/archivo-latin-ext-wght-normal.woff2') format('woff2');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;}
-      @font-face{font-family:'Playfair Display';font-style:normal;font-weight:700;font-display:swap;src:url('fonts/playfair-display-latin-700-normal.woff2') format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}
-      @font-face{font-family:'Playfair Display';font-style:normal;font-weight:700;font-display:swap;src:url('fonts/playfair-display-latin-ext-700-normal.woff2') format('woff2');unicode-range:U+0100-02AF,U+0304,U+0308,U+0329,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;}
-      /* margin:0 → brskalnik NE natisne glave/noge (URL, »1/1«); rob damo prek .a4 paddinga */
-      @page{size:A4;margin:0}
-      *{box-sizing:border-box}
-      html{background:#e9edeb}
-      body{margin:0;background:#fff;color:#0a0a0a;font-family:'Archivo',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif}
-      @media print{html,body{background:#fff}}
-      .a4{position:relative;padding:12mm 12mm 14mm;color:#0a0a0a}
-      .a4 .sc-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin-bottom:18px;padding-bottom:14px;border-bottom:1.5px solid #0a0a0a}
-      .a4 .sc-wm{font-family:'Playfair Display',Georgia,serif;font-weight:700;letter-spacing:-.03em;line-height:.9;font-size:32px;color:#0d1f17}
-      .a4 .sc-wm span{color:#1a6644}
-      .a4 .sc-biz{font-size:9px;line-height:1.6;text-align:right;color:#666;white-space:nowrap;font-weight:500}
-      .a4 .sc-box{border:1px solid #dcdcdc;border-radius:9px;padding:10px 14px;margin-bottom:10px}
-      .a4 .sc-num{font-size:13px;font-weight:700}
-      .a4 .sc-num b{font-variant-numeric:tabular-nums;letter-spacing:.01em}
-      .a4 .sc-client{display:flex;justify-content:space-between;gap:14px}
-      .a4 .sc-client .cl{font-size:12px}
-      .a4 .sc-client .cname{font-weight:700;border-bottom:2px solid #0a0a0a;padding:0 2px}
-      .a4 .sc-client .cname-sec{font-weight:400;color:#6b7280;font-size:.85em;margin-left:4px}
-      .a4 .sc-client .sc-dates{margin-top:10px;font-size:11px;color:#666}
-      .a4 .sc-sign{border-left:1px solid #dcdcdc;padding-left:16px;font-weight:600;font-size:12px;min-width:110px;color:#666}
-      .a4 table.sc-table{width:100%;border-collapse:collapse;font-size:10px;margin-top:4px}
-      .a4 table.sc-table th{color:#0a0a0a;font-weight:700;font-size:9px;letter-spacing:.09em;text-transform:uppercase;padding:0 8px 8px;text-align:center;border-bottom:1.5px solid #0a0a0a}
-      .a4 table.sc-table th.l{text-align:left}
-      .a4 table.sc-table td{border-bottom:1px solid #ececec;padding:5px 8px;height:15px}
-      .a4 table.sc-table td.an{color:#0a0a0a;font-weight:600;text-align:left}
-      .a4 table.sc-table td.qty{text-align:center;font-variant-numeric:tabular-nums;font-weight:700;width:34%;color:#0a0a0a}
-      .a4 .sc-weight{margin-top:12px;font-size:12px;color:#0a0a0a;text-align:right;font-weight:600}
-      .a4 .sc-note{margin-top:10px;padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:12px;white-space:pre-wrap}
-      .a4 .sc-popr{margin-top:10px;padding:6px 10px;border-radius:8px;background:#fdf3e8;color:#8a5a00;font-size:11px;font-weight:600}
-    </style></head><body>
-      <div class="a4">
-        <div class="sc-head"><div class="sc-wm">Smart<span>Clean</span></div><div class="sc-biz">BSMART d.o.o.<br>Škalska cesta 6, 3210 Slovenske Konjice<br>+386 41 209 676<br>+386 68 693 988<br>blanka.kovacic1@gmail.com</div></div>
-        <div class="sc-box sc-num">Št. spremnega lista: <b>${escape_(n.number || '—')}</b></div>
-        <div class="sc-box sc-client"><div class="cl"><div><b>Naročnik storitve:</b> <span class="cname">${escape_(naziv)}</span>${nazivSek ? ' <span class="cname-sec">(' + escape_(nazivSek) + ')</span>' : ''}</div><div class="sc-dates">Oddaja: ${datum(n.doc_date)}${izdal}${prevozP}</div></div><div class="sc-sign">Podpis:</div></div>
-        <table class="sc-table"><thead><tr><th class="l">Naziv Artikla</th><th>Oddaja (št. kosov)</th></tr></thead><tbody>${rows}</tbody></table>
-        ${kg}${opombaP}${popr}
-      </div>
-    </body></html>`;
-    return html;
+    return dokHtml('Spremni list ' + (n.number || ''),
+      `<div class="sc-box sc-num"><span>Št. spremnega lista: <b>${escape_(n.number || '—')}</b></span></div>
+      <div class="sc-box sc-client"><div class="cl"><div><b>Naročnik storitve:</b> <span class="cname">${escape_(naziv)}</span>${nazivSek ? ' <span class="cname-sec">(' + escape_(nazivSek) + ')</span>' : ''}</div><div class="sc-dates">Oddaja: ${datum(n.doc_date)}${izdal}${prevozP}</div></div><div class="sc-sign">Podpis:</div></div>
+      <table class="sc-table"><thead><tr><th class="l">Naziv Artikla</th><th>Oddaja (št. kosov)</th></tr></thead><tbody>${rows}</tbody></table>
+      ${kg}${opombaP}${popr}`);
   }
   function natisniList(box) {
     predogledDokument({ naslov: 'Spremni list ' + escape_((box._note || {}).number || ''), docHtml: spremniDocHtml(box), pdf: function () { return spremniPdfDownload(box); } });
@@ -4641,8 +4728,8 @@
       </div>
     </div>`;
   }
-  // HTML za eno stran »osnove za račun« (ena stranka).
-  function fakStranHtml(g, od, doo) {
+  // Osnova za račun: vsaka stranka na svojem listu A4 (glava z logotipom enkrat, na vrhu lista).
+  function fakSekcijaHtml(g, od, doo) {
     const org = ORGSEZNAM.find(o => o.id === g.org_id) || {};
     const naziv = org.legal_name || org.name || ORGIME[g.org_id] || '—';
     const naslov = [org.address, org.vat_id ? 'ID za DDV: ' + org.vat_id : ''].filter(Boolean).join(' · ');
@@ -4650,56 +4737,23 @@
     const post = g.postavke || Object.entries(g.artikli).map(([nm, q]) => ({ nm, q, cena: null, znesek: null }));
     const kolonc = money ? 4 : 2;
     const rows = post.length ? post.map(p => money
-      ? `<tr><td>${escape_(p.nm)}</td><td class="q">${p.cena != null ? cenaFmt(p.cena) : '—'}</td><td class="q">${stevilo(p.q)}</td><td class="q">${p.znesek != null ? cenaFmt(p.znesek) : '—'}</td></tr>`
-      : `<tr><td>${escape_(p.nm)}</td><td class="q">${stevilo(p.q)}</td></tr>`).join('') : `<tr><td colspan="${kolonc}" style="color:#888">Ni postavk</td></tr>`;
-    return `<div class="stran">
-      <div class="head"><img class="wm" alt="SmartClean" src="${SC_LOGO}"><div class="biz">BSMART d.o.o.<br>Škalska cesta 6, 3210 Slovenske Konjice<br>+386 41 209 676<br>+386 68 693 988<br>blanka.kovacic1@gmail.com</div></div>
-      <div class="num"><b>Osnova za račun</b></div>
-      <div class="client"><b>Naročnik storitve:</b> ${escape_(naziv)}${naslov ? '<br>' + escape_(naslov) : ''}<div class="dates">Obdobje: ${datum(od)} – ${datum(doo)} · ${stevilo(g.listov)} spremnih listov · ${stevilo(g.redni)} redni${g.izredni ? ' · ' + stevilo(g.izredni) + ' izredni prevoz' : ''}</div></div>
-      <table><thead>${money
-        ? '<tr><th>Naziv artikla</th><th class="q">Cena/kos</th><th class="q">Količina</th><th class="q">Znesek</th></tr>'
-        : '<tr><th>Naziv artikla</th><th class="q">Količina (kos)</th></tr>'}</thead><tbody>${rows}</tbody>
-        <tfoot>${money ? `
-          <tr><td colspan="3">Skupaj kosov</td><td class="q">${stevilo(g.kosov)}</td></tr>
-          <tr><td colspan="3">Neto skupaj</td><td class="q">${cenaFmt(g.neto)}</td></tr>
-          <tr><td colspan="3">DDV (22 %)</td><td class="q">${cenaFmt(g.ddv)}</td></tr>
-          <tr class="bruto"><td colspan="3">Za plačilo (z DDV)</td><td class="q">${cenaFmt(g.bruto)}</td></tr>`
-        : `<tr><td>Skupaj kosov</td><td class="q">${stevilo(g.kosov)}</td></tr><tr><td>Skupaj teža perila</td><td class="q">${fakKg(g.kg)}</td></tr>`}</tfoot></table>
-      ${g.neskladje ? `<div class="sign">Pozor: seštevek postavk je ${stevilo(g.kosovPostavke)} kosov, spremni listi pa navajajo ${stevilo(g.kosov)}.</div>` : ''}
-      ${money && g.brezCene ? `<div class="sign">Opomba: ${stevilo(g.brezCene)} artiklov še nima cene (poveži jih v razdelku Stranke). Ti niso vključeni v znesek.</div>` : ''}
-    </div>`;
+      ? `<tr><td class="an">${escape_(p.nm)}</td><td class="r">${p.cena != null ? cenaFmt(p.cena) : '—'}</td><td class="r b">${stevilo(p.q)}</td><td class="r b">${p.znesek != null ? cenaFmt(p.znesek) : '—'}</td></tr>`
+      : `<tr><td class="an">${escape_(p.nm)}</td><td class="r b">${stevilo(p.q)}</td></tr>`).join('') : `<tr><td class="an" colspan="${kolonc}" style="color:#888">Ni postavk</td></tr>`;
+    const tot = `<div><span>Skupaj kosov</span><b>${stevilo(g.kosov)}</b></div><div><span>Skupaj teža perila</span><b>${fakKg(g.kg)}</b></div>` +
+      (money ? `<div><span>Neto skupaj</span><b>${cenaFmt(g.neto)}</b></div><div><span>DDV (22 %)</span><b>${cenaFmt(g.ddv)}</b></div><div class="bruto"><span>Za plačilo (z DDV)</span><b>${cenaFmt(g.bruto)}</b></div>` : '');
+    return `<section>
+      <div class="sc-box sc-num"><span>Osnova za račun</span><span class="sc-obd">${datum(od)} – ${datum(doo)}</span></div>
+      <div class="sc-box sc-client"><div class="cl"><div><b>Naročnik storitve:</b> <span class="cname">${escape_(naziv)}</span></div>${naslov ? '<div class="sc-addr">' + escape_(naslov) + '</div>' : ''}<div class="sc-dates">${sklonListov(g.listov)} · ${fakPrevozi(g)}</div></div></div>
+      <table class="sc-table"><thead>${money
+        ? '<tr><th class="l">Naziv artikla</th><th class="r">Cena/kos</th><th class="r">Količina</th><th class="r">Znesek</th></tr>'
+        : '<tr><th class="l">Naziv artikla</th><th class="r">Količina (kos)</th></tr>'}</thead><tbody>${rows}</tbody></table>
+      <div class="sc-tot">${tot}</div>
+      ${g.neskladje ? `<div class="sc-pozor">Pozor: seštevek postavk je ${stevilo(g.kosovPostavke)} kosov, spremni listi pa navajajo ${stevilo(g.kosov)}.</div>` : ''}
+      ${money && g.brezCene ? `<div class="sc-pozor">Opomba: ${stevilo(g.brezCene)} artiklov še nima cene (poveži jih v razdelku Stranke). Ti niso vključeni v znesek.</div>` : ''}
+    </section>`;
   }
-  // Cel dokument (ena ali več strank, vsaka na svojo stran).
   function fakDokumentHtml(skupine, od, doo, naslovDok) {
-    const strani = skupine.map(g => fakStranHtml(g, od, doo)).join('');
-    return `<!DOCTYPE html><html lang="sl"><head><meta charset="utf-8"><title>${escape_(naslovDok || 'Osnova za račun')}</title><style>
-      @page{size:A4;margin:14mm}
-      @media screen{html{background:#e9edeb;margin:0}body{width:210mm;min-height:297mm;padding:14mm;margin:0 auto;background:#fff}}
-      @media print{html{background:#fff}body{width:auto;min-height:0;padding:0;margin:0}}
-      *{box-sizing:border-box;font-family:-apple-system,'Segoe UI',Roboto,Arial,sans-serif;color:#16202b}
-      body{margin:0;font-size:13px}
-      .stran{page-break-after:always}
-      .stran:last-child{page-break-after:auto}
-      .head{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #1a6644;padding-bottom:11px;margin-bottom:18px}
-      .wm{height:30px;width:auto;display:block}
-      .biz{font-size:11px;text-align:right;color:#5c6873;line-height:1.5}
-      .num{font-size:15px;margin:4px 0 6px}
-      .client{border:1px solid #dce2e0;border-radius:8px;padding:12px 14px;margin:12px 0 14px}
-      .dates{color:#5c6873;margin-top:5px}
-      table{width:100%;border-collapse:collapse;margin-top:4px}
-      th,td{text-align:left;padding:7px 8px;border-bottom:1px solid #e6ebe9}
-      th{background:#f2f5f4;text-transform:uppercase;font-size:11px;letter-spacing:.04em}
-      td.q,th.q{text-align:right;font-variant-numeric:tabular-nums;width:120px}
-      tfoot td{font-weight:700;border-top:1px solid #e6ebe9}
-      tfoot tr.bruto td{border-top:2px solid #1a6644;font-size:14px}
-      .sign{margin-top:22px;color:#5c6873;font-size:11px}
-    </style></head><body>${strani}</body></html>`;
-  }
-  function natisniDokument(html) {
-    const w = window.open('', '_blank');
-    if (!w) { toast('Za tiskanje dovoli pojavna okna.'); return; }
-    w.document.open(); w.document.write(html); w.document.close(); w.focus();
-    setTimeout(() => { try { w.print(); } catch (e) {} }, 350);
+    return dokHtml(naslovDok || 'Osnova za račun', skupine.map(g => fakSekcijaHtml(g, od, doo)));
   }
   function natisniFakturo(gi) {
     if (!FAK_ZADNJI || !FAK_ZADNJI.skupine[gi]) return;
@@ -4712,7 +4766,6 @@
   }
 
   /* ══════════ PDF (pravi prenos, brez knjižnice — pdfgen.js) ══════════ */
-  var _PDF = { INK: [0.086, 0.125, 0.169], GREY: [0.36, 0.41, 0.45], LINE: [0.902, 0.922, 0.914], HEAD: [0.949, 0.961, 0.953], GREEN: [0.102, 0.4, 0.267] };
   /* pdfgen.js se naloži ŠELE ob prvi uporabi (~80 kB manj ob vsakem zagonu).
      index.html ga namenoma ne nalaga — brez tega nalagalnika PDF ne deluje. */
   var _pdfP = null;
@@ -4735,133 +4788,165 @@
     try { await zagotoviPdf(); return true; }
     catch (e) { toast('PDF modula ni bilo mogoče naložiti. Preveri povezavo in poskusi znova.'); return false; }
   }
-  var _scLogoP = null;
-  function scLogo() {
-    if (_scLogoP) return _scLogoP;
-    _scLogoP = zagotoviPdf()
-      .then(function () { return PDFDoc.imageToJpeg(SC_LOGO, 260); })
-      .catch(function () { return null; });
-    return _scLogoP;
+  // Okvir z naslovom dokumenta (.sc-box.sc-num): levo naslov, desno (neobvezno) obdobje.
+  function dpdfNaslovOkvir(doc, y, levo, desno) {
+    var h = 10 * PT * 2 + 13 * 1.2 * PT;
+    dpdfOkvir(doc, y, h);
+    var osn = dpdfOsnova(y + 10 * PT, 13 * PT, 13 * 1.2 * PT);
+    doc.text(DPDF.M + 14 * PT, osn, levo, { size: 13 * PT, bold: true, color: DPDF.INK });
+    if (desno) doc.text(doc.W - DPDF.M - 14 * PT, osn, desno, { size: 11 * PT, weight: 600, color: DPDF.SIVA, align: 'right' });
+    return y + h + 10 * PT;
   }
-  function _pdfGlava(doc, logo, M) {
-    var right = doc.W - M, y = 50;
-    if (logo && logo.w) { var lh = 26, lw = lh * logo.w / logo.h; doc.image(logo.bytes, M, y - 14, lw, lh, logo.w, logo.h); }
-    doc.text(right, y - 6, 'BSMART d.o.o.', { size: 9, align: 'right', color: _PDF.GREY });
-    doc.text(right, y + 5, 'Škalska cesta 6, 3210 Slovenske Konjice', { size: 9, align: 'right', color: _PDF.GREY });
-    doc.text(right, y + 16, '+386 41 209 676 · +386 68 693 988', { size: 9, align: 'right', color: _PDF.GREY });
-    doc.text(right, y + 27, 'blanka.kovacic1@gmail.com', { size: 9, align: 'right', color: _PDF.GREY });
-    y += 37; doc.line(M, y, right, y, { width: 1.4, color: _PDF.GREEN });
-    return y + 24;
+  // Okvir naročnika (.sc-box.sc-client): ime podčrtano; pod njim naslov in podatki; desno (neobvezno) »Podpis:«.
+  function dpdfNarocnik(doc, y, naziv, nazivSek, vrstice, podpis) {
+    var M = DPDF.M, R = doc.W - M, x = M + 14 * PT, fs = 12 * PT, lh = 12 * 1.2 * PT;
+    var h = 10 * PT + lh;
+    vrstice.forEach(function (v) { h += v.razmik + 11 * 1.2 * PT; });
+    h += 10 * PT;
+    dpdfOkvir(doc, y, h);
+    var osn = dpdfOsnova(y + 10 * PT, fs, lh);
+    var w1 = doc.text(x, osn, 'Naročnik storitve: ', { size: fs, bold: true, color: DPDF.INK });
+    var xi = x + w1 + 2 * PT, wi = doc.text(xi, osn, naziv, { size: fs, bold: true, color: DPDF.INK });
+    doc.line(xi - 2 * PT, osn + 3.3, xi + wi + 2 * PT, osn + 3.3, { width: 2 * PT, color: DPDF.INK });
+    if (nazivSek) doc.text(xi + wi + 6 * PT, osn, '(' + nazivSek + ')', { size: fs * 0.85, color: DPDF.SIVA2 });
+    var yy = y + 10 * PT + lh;
+    vrstice.forEach(function (v) {
+      yy += v.razmik;
+      doc.text(x, dpdfOsnova(yy, 11 * PT, 11 * 1.2 * PT), v.t, { size: 11 * PT, color: DPDF.SIVA });
+      yy += 11 * 1.2 * PT;
+    });
+    if (podpis) {
+      var xs = R - 14 * PT - 110 * PT;
+      doc.line(xs, y + 10 * PT, xs, y + h - 10 * PT, { width: 1 * PT, color: DPDF.OKVIR });
+      doc.text(xs + 16 * PT, osn, 'Podpis:', { size: fs, weight: 600, color: DPDF.SIVA });
+    }
+    return y + h + 10 * PT;
   }
-  // Osnova za račun (fakture) → prava .pdf datoteka.
+  function dpdfSestevkiVisina(vrstice) {
+    var h = 12 * PT;
+    vrstice.forEach(function (v) { h += v.bruto ? 4 * PT + 1.5 * PT + 8 * PT + 13 * 1.2 * PT + 5 * PT : 10 * PT + 11 * PT * 1.2 + 1 * PT; });
+    return h;
+  }
+  // Seštevki (.sc-tot): desna polovica, vrstice z oznako in vrednostjo; zadnja (bruto) poudarjena.
+  function dpdfSestevki(doc, y, vrstice) {
+    var R = doc.W - DPDF.M, L = R - (doc.W - 2 * DPDF.M) * 0.55, fs = 11 * PT;
+    y += 12 * PT;
+    vrstice.forEach(function (v) {
+      if (v.bruto) {
+        y += 4 * PT; doc.line(L, y + 0.56, R, y + 0.56, { width: 1.5 * PT, color: DPDF.INK }); y += 1.5 * PT;
+        var o = dpdfOsnova(y + 8 * PT, 13 * PT, 13 * 1.2 * PT);
+        doc.text(L + 8 * PT, o, v.l, { size: 13 * PT, bold: true, color: DPDF.INK });
+        doc.text(R - 8 * PT, o, v.v, { size: 13 * PT, bold: true, align: 'right', color: DPDF.INK });
+        y += 8 * PT + 13 * 1.2 * PT + 5 * PT;
+      } else {
+        var os = dpdfOsnova(y + 5 * PT, fs, fs * 1.2);
+        doc.text(L + 8 * PT, os, v.l, { size: fs, color: DPDF.SIVA });
+        doc.text(R - 8 * PT, os, v.v, { size: fs, bold: true, align: 'right', color: DPDF.INK });
+        y += 10 * PT + fs * 1.2;
+        doc.line(L, y + 0.37, R, y + 0.37, { width: 1 * PT, color: DPDF.CRTA }); y += 1 * PT;
+      }
+    });
+    return y;
+  }
+  function dpdfOdstavek(doc, y, besedilo, o) {
+    var M = DPDF.M, maxW = doc.W - 2 * M, fs = o.size || 10 * PT;
+    dpdfVrstice(doc, besedilo, fs, maxW, o).forEach(function (vr) {
+      if (!dpdfProstor(doc, y, fs * 1.4)) y = dpdfNovaStran(doc);
+      doc.text(M, dpdfOsnova(y, fs, fs * 1.4), vr, { size: fs, color: o.color || DPDF.INK, weight: o.weight });
+      y += fs * 1.4;
+    });
+    return y;
+  }
+  // Osnova za račun (fakture) → prava .pdf datoteka, isti slog kot predogled. Vsaka stranka
+  // na svojem A4 z glavo (logotip enkrat, na vrhu); nadaljevanje iste stranke je brez glave.
   async function fakPdfDownload(skupine, od, doo) {
     if (!(await pdfPripravljen())) return;
-    var logo = await scLogo();
     var doc = new PDFDoc();
-    var M = 44, right = doc.W - M, obd = datum(od) + ' – ' + datum(doo);
+    var M = DPDF.M, R = doc.W - M, y;
     skupine.forEach(function (g) {
-      doc.addPage();
-      var y = _pdfGlava(doc, logo, M);
-      doc.text(M, y, 'Osnova za račun', { size: 13, bold: true, color: _PDF.INK }); y += 20;
+      var money = !!g.cenikOn, post = g.postavke || [];
+      doc.addPage(); y = dpdfGlava(doc);
       var org = ORGSEZNAM.find(function (o) { return o.id === g.org_id; }) || {};
       var naziv = org.legal_name || org.name || ORGIME[g.org_id] || '—';
       var naslov = [org.address, org.vat_id ? 'ID za DDV: ' + org.vat_id : ''].filter(Boolean).join(' · ');
-      var boxH = naslov ? 58 : 44;
-      doc.rect(M, y, right - M, boxH, { stroke: _PDF.LINE, width: 0.8 });
-      var yy = y + 17;
-      doc.text(M + 12, yy, 'Naročnik storitve: ' + naziv, { size: 10.5, bold: true, color: _PDF.INK }); yy += 14;
-      if (naslov) { doc.text(M + 12, yy, naslov, { size: 9, color: _PDF.GREY }); yy += 13; }
-      doc.text(M + 12, yy, 'Obdobje: ' + obd + ' · ' + stevilo(g.listov) + ' spremnih listov · ' + stevilo(g.redni) + ' redni' + (g.izredni ? ' · ' + stevilo(g.izredni) + ' izredni prevoz' : ''), { size: 9, color: _PDF.GREY });
-      y += boxH + 20;
-      var money = !!g.cenikOn;
-      var cZ = right, cK = right - 92, cC = right - 188, artL = M + 6;
-      function glava() {
-        doc.rect(M, y, right - M, 20, { fill: _PDF.HEAD });
-        doc.text(artL, y + 13.5, 'Naziv artikla', { size: 8.5, bold: true, color: _PDF.INK });
-        if (money) {
-          doc.text(cC, y + 13.5, 'Cena/kos', { size: 8.5, bold: true, align: 'right', color: _PDF.INK });
-          doc.text(cK, y + 13.5, 'Količina', { size: 8.5, bold: true, align: 'right', color: _PDF.INK });
-          doc.text(cZ, y + 13.5, 'Znesek', { size: 8.5, bold: true, align: 'right', color: _PDF.INK });
-        } else doc.text(cZ, y + 13.5, 'Količina (kos)', { size: 8.5, bold: true, align: 'right', color: _PDF.INK });
-        y += 20;
-      }
-      function novaStran() { doc.addPage(); y = _pdfGlava(doc, logo, M); doc.text(M, y, 'Osnova za račun — nadaljevanje', { size: 11, bold: true, color: _PDF.INK }); y += 18; glava(); }
-      glava();
-      var post = g.postavke || [];
-      if (!post.length) { doc.text(artL, y + 13, 'Ni postavk', { size: 10, color: _PDF.GREY }); y += 20; }
-      post.forEach(function (p) {
-        if (y + 18 > doc.H - 120) novaStran();
-        doc.text(artL, y + 13, p.nm, { size: 9.5, color: _PDF.INK });
-        if (money) {
-          doc.text(cC, y + 13, p.cena != null ? cenaFmt(p.cena) : '—', { size: 9.5, align: 'right', color: _PDF.INK });
-          doc.text(cK, y + 13, stevilo(p.q), { size: 9.5, align: 'right', color: _PDF.INK });
-          doc.text(cZ, y + 13, p.znesek != null ? cenaFmt(p.znesek) : '—', { size: 9.5, align: 'right', color: _PDF.INK });
-        } else doc.text(cZ, y + 13, stevilo(p.q), { size: 9.5, align: 'right', color: _PDF.INK });
-        y += 18; doc.line(M, y, right, y, { width: 0.6, color: _PDF.LINE });
-      });
-      // seštevki
-      y += 12;
-      function vrsticaSk(labela, vred, krepko, velik) {
-        doc.text(M + 6, y, labela, { size: velik ? 11 : 9.5, bold: true, color: _PDF.INK });
-        doc.text(cZ, y, vred, { size: velik ? 11 : 9.5, bold: !!krepko, color: _PDF.INK, align: 'right' });
-        y += velik ? 18 : 15;
-      }
-      if (money) {
-        vrsticaSk('Skupaj kosov', stevilo(g.kosov), true);
-        vrsticaSk('Teža perila', fakKg(g.kg), false);
-        vrsticaSk('Neto skupaj', cenaFmt(g.neto), true);
-        vrsticaSk('DDV (22 %)', cenaFmt(g.ddv), true);
-        y += 4; doc.line(M, y, right, y, { width: 1.4, color: _PDF.GREEN }); y += 15;
-        vrsticaSk('Za plačilo (z DDV)', cenaFmt(g.bruto), true, true);
-        var _oy = y + 6;
-        if (g.neskladje) { doc.text(M, _oy, 'Pozor: seštevek postavk je ' + stevilo(g.kosovPostavke) + ' kosov, spremni listi pa navajajo ' + stevilo(g.kosov) + '.', { size: 8.5, color: _PDF.GREY }); _oy += 11; }
-        if (g.brezCene) doc.text(M, _oy, stevilo(g.brezCene) + ' artiklov brez cene (niso všteti) — poveži jih v Strankah.', { size: 8.5, color: _PDF.GREY });
-      } else {
-        vrsticaSk('Skupaj kosov', stevilo(g.kosov), true);
-        vrsticaSk('Teža perila', fakKg(g.kg), true);
-        if (g.neskladje) doc.text(M, y + 6, 'Pozor: seštevek postavk je ' + stevilo(g.kosovPostavke) + ' kosov, spremni listi pa navajajo ' + stevilo(g.kosov) + '.', { size: 8.5, color: _PDF.GREY });
-      }
+      y = dpdfNaslovOkvir(doc, y, 'Osnova za račun', datum(od) + ' – ' + datum(doo));
+      var vr = [];
+      if (naslov) vr.push({ t: naslov, razmik: 6 * PT });
+      vr.push({ t: sklonListov(g.listov) + ' · ' + fakPrevozi(g), razmik: naslov ? 4 * PT : 10 * PT });
+      y = dpdfNarocnik(doc, y, naziv, '', vr, false);
+      var cZ = R - 8 * PT, cK = cZ - 92, cC = cK - 92;
+      var st = money ? [{ t: 'Naziv artikla', x: M + 8 * PT }, { t: 'Cena/kos', x: cC, align: 'right' }, { t: 'Količina', x: cK, align: 'right' }, { t: 'Znesek', x: cZ, align: 'right' }]
+        : [{ t: 'Naziv artikla', x: M + 8 * PT }, { t: 'Količina (kos)', x: cZ, align: 'right' }];
+      var sk = [{ l: 'Skupaj kosov', v: stevilo(g.kosov) }, { l: 'Skupaj teža perila', v: fakKg(g.kg) }];
+      if (money) sk.push({ l: 'Neto skupaj', v: cenaFmt(g.neto) }, { l: 'DDV (22 %)', v: cenaFmt(g.ddv) }, { l: 'Za plačilo (z DDV)', v: cenaFmt(g.bruto), bruto: true });
+      var vrs = post.length ? post.map(function (p) {
+        var cel = [{ t: p.nm, x: M + 8 * PT, w: 600 }];
+        if (money) cel.push({ t: p.cena != null ? cenaFmt(p.cena) : '—', x: cC, align: 'right' }, { t: stevilo(p.q), x: cK, align: 'right', w: 700 }, { t: p.znesek != null ? cenaFmt(p.znesek) : '—', x: cZ, align: 'right', w: 700 });
+        else cel.push({ t: stevilo(p.q), x: cZ, align: 'right', w: 700 });
+        return cel;
+      }) : [[{ t: 'Ni postavk', x: M + 8 * PT }]];
+      y += 4 * PT; y = dpdfTabGlava(doc, y, st);
+      y = dpdfTabela(doc, y, st, vrs, dpdfSestevkiVisina(sk), 'Osnova za račun · ' + (ORGIME[g.org_id] || naziv));
+      y = dpdfSestevki(doc, y, sk);
+      if (g.neskladje) { y += 10 * PT; y = dpdfOdstavek(doc, y, 'Pozor: seštevek postavk je ' + stevilo(g.kosovPostavke) + ' kosov, spremni listi pa navajajo ' + stevilo(g.kosov) + '.', { size: 10 * PT, color: DPDF.POZOR }); }
+      if (money && g.brezCene) { y += 6 * PT; y = dpdfOdstavek(doc, y, 'Opomba: ' + stevilo(g.brezCene) + ' artiklov še nima cene (poveži jih v razdelku Stranke). Ti niso vključeni v znesek.', { size: 10 * PT, color: DPDF.POZOR }); }
     });
     doc.save('fakture_' + od + '_' + doo + '.pdf');
   }
-  // Spremni list → prava .pdf datoteka (enak izpis kot v aplikaciji).
+  // Spremni list → prava .pdf datoteka, isti slog kot predogled (in aplikacija na tablici).
   async function spremniPdfDownload(box) {
     if (!(await pdfPripravljen())) return;
-    var logo = await scLogo();
     var n = box._note || {}, items = box._items || [];
     var org = ORGSEZNAM.find(function (o) { return o.id === n.org_id; }) || {};
     var naziv = org.legal_name || org.name || ORGIME[n.org_id] || '—';
     var nazivSek = (org.legal_name && org.name && org.name !== org.legal_name) ? org.name : '';
-    var doc = new PDFDoc();
-    var M = 44, right = doc.W - M;
-    doc.addPage();
-    var y = _pdfGlava(doc, logo, M);
-    doc.text(M, y, 'Št. spremnega lista: ' + (n.number || '—'), { size: 12, bold: true, color: _PDF.INK }); y += 20;
-    var boxH = 46;
-    doc.rect(M, y, right - M, boxH, { stroke: _PDF.LINE, width: 0.8 });
-    doc.text(M + 12, y + 17, 'Naročnik storitve: ' + naziv + (nazivSek ? '  (' + nazivSek + ')' : ''), { size: 10.5, bold: true, color: _PDF.INK });
-    doc.text(M + 12, y + 31, 'Oddaja: ' + datum(n.doc_date) + (n.issued_name ? ' · Izdal: ' + n.issued_name : '') + ' · ' + (n.transport === 'izredni' ? 'Izredni prevoz' : 'Redni prevoz'), { size: 9, color: _PDF.GREY });
-    doc.text(right - 12, y + 17, 'Podpis: ______________', { size: 9, align: 'right', color: _PDF.GREY });
-    y += boxH + 20;
-    var cK = right, artL = M + 6;
-    function glava() {
-      doc.rect(M, y, right - M, 20, { fill: _PDF.HEAD });
-      doc.text(artL, y + 13.5, 'Naziv artikla', { size: 8.5, bold: true, color: _PDF.INK });
-      doc.text(cK, y + 13.5, 'Kosov', { size: 8.5, bold: true, align: 'right', color: _PDF.INK });
-      y += 20;
+    var doc = new PDFDoc(); doc.addPage();
+    var M = DPDF.M, R = doc.W - M;
+    var y = dpdfGlava(doc);
+    // Št. spremnega lista (vse krepko, kot .sc-num)
+    var h = 10 * PT * 2 + 13 * 1.2 * PT; dpdfOkvir(doc, y, h);
+    var osn = dpdfOsnova(y + 10 * PT, 13 * PT, 13 * 1.2 * PT);
+    var w0 = doc.text(M + 14 * PT, osn, 'Št. spremnega lista: ', { size: 13 * PT, bold: true, color: DPDF.INK });
+    doc.text(M + 14 * PT + w0, osn, n.number || '—', { size: 13 * PT, bold: true, spacing: 0.01, color: DPDF.INK });
+    y += h + 10 * PT;
+    y = dpdfNarocnik(doc, y, naziv, nazivSek, [{ t: 'Oddaja: ' + datum(n.doc_date) + (n.issued_name ? '  ·  Izdal: ' + n.issued_name : '') + '  ·  ' + (n.transport === 'izredni' ? 'Izredni prevoz' : 'Redni prevoz'), razmik: 10 * PT }], true);
+    var cQ = M + (R - M) * 0.83;   // sredina stolpca »Oddaja« (34 % širine)
+    var st = [{ t: 'Naziv Artikla', x: M + 8 * PT }, { t: 'Oddaja (št. kosov)', x: cQ, align: 'center' }];
+    y += 4 * PT; y = dpdfTabGlava(doc, y, st);
+    y = dpdfTabela(doc, y, st, items.length ? items.map(function (p) {
+      return [{ t: p.naziv, x: M + 8 * PT, w: 600 }, { t: stevilo(p.kosov), x: cQ, align: 'center', w: 700 }];
+    }) : [[{ t: 'Ni postavk', x: M + 8 * PT }]], (n.weight_kg != null && n.weight_kg !== '') ? 26 : 0, 'Spremni list ' + (n.number || ''));
+    if (n.weight_kg != null && n.weight_kg !== '') {
+      y += 12 * PT; if (!dpdfProstor(doc, y, 20)) y = dpdfNovaStran(doc);
+      var o2 = dpdfOsnova(y, 12 * PT, 12 * 1.2 * PT), vv = tezaFmt(n.weight_kg);
+      var wv = doc.text(R, o2, vv, { size: 12 * PT, bold: true, align: 'right', color: DPDF.INK });
+      doc.text(R - wv, o2, 'Skupaj teža perila: ', { size: 12 * PT, weight: 600, align: 'right', color: DPDF.INK });
+      y += 12 * 1.2 * PT;
     }
-    glava();
-    if (!items.length) { doc.text(artL, y + 13, 'Ni postavk', { size: 10, color: _PDF.GREY }); y += 20; }
-    items.forEach(function (p) {
-      if (y + 18 > doc.H - 70) { doc.addPage(); y = _pdfGlava(doc, logo, M); glava(); }
-      doc.text(artL, y + 13, p.naziv, { size: 9.5, color: _PDF.INK });
-      doc.text(cK, y + 13, stevilo(p.kosov), { size: 9.5, align: 'right', color: _PDF.INK });
-      y += 18; doc.line(M, y, right, y, { width: 0.6, color: _PDF.LINE });
-    });
-    if (n.weight_kg != null && n.weight_kg !== '') { y += 14; doc.text(M, y, 'Skupaj teža perila: ' + tezaFmt(n.weight_kg), { size: 11, bold: true, color: _PDF.INK }); }
-    if (n.opomba_stranka) { y += 22; doc.text(M, y, 'Opomba:', { size: 9, bold: true, color: _PDF.GREY }); y += 13; doc.text(M, y, n.opomba_stranka, { size: 9.5, color: _PDF.INK }); }
-    if (n.opomba) { y += 22; doc.text(M, y, 'Opomba:', { size: 9, bold: true, color: _PDF.GREY }); y += 13; doc.text(M, y, n.opomba, { size: 9.5, color: _PDF.INK }); }
-    doc.save('spremni_list_' + (n.number || 'brez') + '.pdf');
+    // Tiska se SAMO opomba za stranko (interna ostane v portalu) — enako kot predogled in aplikacija.
+    if (n.opomba_stranka) {
+      y += 10 * PT;
+      var fs = 12 * PT, sirina = R - M - 2 * 12 * PT;
+      var vrs = dpdfVrstice(doc, 'Opomba: ' + n.opomba_stranka, fs, sirina);
+      var hh = 8 * PT * 2 + vrs.length * fs * 1.25;
+      if (!dpdfProstor(doc, y, hh)) y = dpdfNovaStran(doc);
+      doc.rrect(M, y, R - M, hh, 8 * PT, { stroke: DPDF.OKVIR2, width: 1 * PT });
+      vrs.forEach(function (vr, i) {
+        var ob = dpdfOsnova(y + 8 * PT + i * fs * 1.25, fs, fs * 1.25), xx = M + 12 * PT;
+        if (i === 0 && vr.indexOf('Opomba:') === 0) { var wo = doc.text(xx, ob, 'Opomba:', { size: fs, bold: true, color: DPDF.INK }); doc.text(xx + wo, ob, vr.slice(7), { size: fs, color: DPDF.INK }); }
+        else doc.text(xx, ob, vr, { size: fs, color: DPDF.INK });
+      });
+      y += hh;
+    }
+    if (n.popravljeno_at) {
+      y += 10 * PT;
+      var tp = 'Popravljeno v portalu · ' + (n.popravil || 'osebje') + ' · ' + datum(String(n.popravljeno_at).slice(0, 10));
+      var fsp = 11 * PT, hp = 6 * PT * 2 + fsp * 1.25;
+      if (!dpdfProstor(doc, y, hp)) y = dpdfNovaStran(doc);
+      doc.rrect(M, y, R - M, hp, 8 * PT, { fill: DPDF.POPR_BG });
+      doc.text(M + 10 * PT, dpdfOsnova(y + 6 * PT, fsp, fsp * 1.25), tp, { size: fsp, weight: 600, color: DPDF.POPR });
+    }
+    doc.save('spremni_list_' + String(n.number || 'brez').replace(/[\/\\:]+/g, '-') + '.pdf');   // »1664/2026« → 1664-2026 (poševnica ni dovoljena v imenu datoteke)
   }
 
   /* ══════════ PREDOGLED DOKUMENTA (skupni pop-up: natisni / shrani) ══════════ */
@@ -4903,7 +4988,10 @@
     back.addEventListener('click', function (e) { if (e.target === back) zapri(); });
     document.addEventListener('keydown', onKey);
     back.querySelector('[data-print]').addEventListener('click', function () {
-      try { fr.contentWindow.focus(); fr.contentWindow.print(); } catch (e) { toast('Tiskanje ni uspelo.'); }
+      // Natisni šele, ko so pisave dokumenta (tudi logotip) naložene — nikoli nadomestna pisava.
+      var natisni = function () { try { fr.contentWindow.focus(); fr.contentWindow.print(); } catch (e) { toast('Tiskanje ni uspelo.'); } };
+      try { var fd = fr.contentDocument && fr.contentDocument.fonts; if (fd && fd.ready) { fd.ready.then(natisni, natisni); return; } } catch (e) {}
+      natisni();
     });
     var pb = back.querySelector('[data-pdf]');
     if (pb) pb.addEventListener('click', async function () {
@@ -6787,10 +6875,6 @@
      Namestitveni paket leži poleg spletne različice, ne v kodi portala.
      Če ga še ni, to tu tudi piše — namesto strani 404. */
   var APK_POT = 'tablica/Pralnica-sync.apk';
-  // Logotip je datoteka (smartclean-logo.png), ne vgrajen base64 — portal.js je s tem
-  // ~66 kB manjši ob vsakem zagonu. Absolutni URL, ker tiskalno okno (about:blank)
-  // relativnih poti ne razreši.
-  var SC_LOGO = new URL('smartclean-logo.png', location.href).href;
 
   function wirePwa(scope) {
     var pb = (scope || document).querySelector('#pwaInstall');
