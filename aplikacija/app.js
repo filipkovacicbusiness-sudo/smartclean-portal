@@ -596,6 +596,7 @@ function risiPostavke(box, d){
     return '<div class="ur-post ap-post' + (k > 0 ? " polno" : "") + '" data-aid="' + esc(a.id) + '"><div class="ap-pn"><span title="' + esc(a.naziv) + '">' + esc(a.naziv) + '</span></div>' +
       '<input type="text" inputmode="numeric" pattern="[0-9]*" data-pk placeholder="kos" value="' + (k > 0 ? k : "") + '" aria-label="Količina (kosov) — ' + esc(a.naziv) + '"' + (DOTIK ? " readonly" : "") + '></div>';
   }).join("");
+  if(!vidni.length) pBox.innerHTML = '<div class="ap-prazno-art u-sub">Za to stranko ni artiklov, označenih za aplikacijo (portal → Stranke → oznaka »app«). Artikel dodaš s »+ Dodaj postavko«.</div>';
   add.classList.toggle("hidden", !izven.length);
   add.textContent = d.vsi ? "Skrij artikle izven seznama" : "+ Dodaj postavko (izven seznama) · " + izven.length;
   pBox.querySelectorAll(".ap-post").forEach(function(row){

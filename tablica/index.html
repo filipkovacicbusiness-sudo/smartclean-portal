@@ -2549,7 +2549,7 @@ html[data-view="list"] .u-mreza .lcell .row > span:first-child{padding-right:0;}
 
    Podatki ostanejo v istih ključih kot v prejšnjih različicah (pralnica:*).
    ══════════════════════════════════════════════════════════════════════ */
-var VARIANTA = "tablica", APP_VERZIJA = "9.1";
+var VARIANTA = "tablica", APP_VERZIJA = "9.2";
 var LASTNIK = "filip@eflitte.si";
 var DOK_BIZ = ["BSMART d.o.o.", "Škalska cesta 6, 3210 Slovenske Konjice", "+386 41 209 676", "+386 68 693 988", "blanka.kovacic1@gmail.com"];
 var PRIVZETI_PORTAL = "https://anrhtgbckxrccnafcmsz.supabase.co";
@@ -3134,6 +3134,7 @@ function risiPostavke(box, d){
     return '<div class="ur-post ap-post' + (k > 0 ? " polno" : "") + '" data-aid="' + esc(a.id) + '"><div class="ap-pn"><span title="' + esc(a.naziv) + '">' + esc(a.naziv) + '</span></div>' +
       '<input type="text" inputmode="numeric" pattern="[0-9]*" data-pk placeholder="kos" value="' + (k > 0 ? k : "") + '" aria-label="Količina (kosov) — ' + esc(a.naziv) + '"' + (DOTIK ? " readonly" : "") + '></div>';
   }).join("");
+  if(!vidni.length) pBox.innerHTML = '<div class="ap-prazno-art u-sub">Za to stranko ni artiklov, označenih za aplikacijo (portal → Stranke → oznaka »app«). Artikel dodaš s »+ Dodaj postavko«.</div>';
   add.classList.toggle("hidden", !izven.length);
   add.textContent = d.vsi ? "Skrij artikle izven seznama" : "+ Dodaj postavko (izven seznama) · " + izven.length;
   pBox.querySelectorAll(".ap-post").forEach(function(row){
