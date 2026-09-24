@@ -2094,3 +2094,60 @@ html[data-theme="dark"] .u-acts .u-pin.on{background:rgba(52,199,110,.16);color:
    vodoravno drsi; glava kartice ostane na mestu. */
 .gor-scroll{overflow-x:auto;margin:0 -2px;}
 .gor-tbl{min-width:730px;}
+
+/* ══════════ OKNO: kartica se razpre v okno (Arhiv, Stranke) — oknoOdpri() v portal.js ══════════
+   Nad glavo portala (20), pod potrditvenim oknom in predogledom (60), da ta dva odpreta NAD njim. */
+.okno-back{position:fixed;inset:0;z-index:55;display:flex;justify-content:center;align-items:flex-start;
+  padding:max(28px,6vh) 24px 24px;overscroll-behavior:contain;}
+/* Zatemnitev je ločena plast: okno samo mora biti neprosojno že od prvega okvirja animacije. */
+.okno-back::before{content:"";position:fixed;inset:0;background:rgba(0,0,0,.42);opacity:0;transition:opacity .3s ease;}
+.okno-back.show::before{opacity:1;}
+.okno{position:relative;width:min(880px,100%);display:flex;flex-direction:column;overflow:hidden;
+  max-height:calc(100vh - max(28px,6vh) - 24px);max-height:calc(100dvh - max(28px,6vh) - 24px);
+  background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:18px;
+  box-shadow:0 24px 70px rgba(0,0,0,.28);}
+.okno-notr{display:flex;flex-direction:column;min-height:0;flex:1 1 auto;}
+.okno-glava{position:relative;flex:0 0 auto;}
+.okno-telo{flex:1 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain;}
+.okno-x{position:absolute;top:16px;right:16px;z-index:2;}
+.okno-vir{visibility:hidden;}   /* kartica, iz katere je okno nastalo — njeno mesto ostane prazno */
+html.okno-zaklep{overflow:hidden;}
+
+/* Glava = kartica, postavljena za okno: brez okvirja in hoverja, statusni levi rob ostane. */
+.okno-glava .okno-kartica{margin:0;border-width:0 0 1px 0;border-bottom-color:var(--line);border-radius:0;
+  cursor:default;box-shadow:none!important;transform:none!important;padding:20px 64px 18px 22px;pointer-events:none;}
+.okno-glava.arh-green .okno-kartica,.okno-glava.arh-yellow .okno-kartica,.okno-glava.arh-red .okno-kartica{border-left-width:4px;}
+.okno-glava .okno-kartica .arh-chk.clk{pointer-events:auto;}
+.okno-glava .okno-kartica .chev{display:none;}
+/* Arhiv: kljukica levo, številka / stranka / podatki drug pod drugim (tudi na telefonu). */
+.okno .okno-kartica.a-row{grid-template-columns:auto minmax(0,1fr);grid-template-areas:"chk num" "chk cli" "chk foot";
+  column-gap:14px;row-gap:4px;align-items:center;}
+.okno .okno-kartica .arh-chk{grid-area:chk;position:static;align-self:start;margin-top:1px;}
+.okno .okno-kartica .a-num{grid-area:num;font-size:1.2rem;font-weight:700;}
+.okno .okno-kartica .a-cli{grid-area:cli;display:block;white-space:normal;overflow:visible;font-size:.98rem;}
+.okno .okno-kartica .a-foot{grid-area:foot;display:flex;flex-wrap:wrap;gap:4px 10px;justify-content:flex-start;}
+.okno .okno-kartica .a-date{display:inline;}
+.okno .okno-kartica .a-qty::before{content:"·";color:var(--line);margin-right:4px;}
+.okno .okno-kartica .num{text-align:left;font-size:.84rem;color:var(--mid);}
+/* Stranke: naziv večji in brez rezanja, delež in kilaža desno. */
+.okno .okno-kartica.row{grid-template-columns:minmax(0,1fr) auto auto;}
+.okno .okno-kartica .row-name{display:block;white-space:normal;overflow:visible;font-size:1.15rem;font-weight:700;line-height:1.3;}
+.okno .okno-kartica .row-nm{white-space:normal;overflow:visible;max-width:none;}
+.okno .okno-kartica .row-legal{display:block;white-space:normal;overflow:visible;margin-top:2px;}
+.okno .okno-kartica br{display:none;}   /* naziv je tu blok — <br> bi dodal prazno vrstico */
+.okno .okno-kartica .sc-tag{position:static;transform:none;display:inline-block;margin:8px 0 0;}
+
+/* Vsebina v oknu: brez okvirja kartice in brez animacije razpiranja (to zdaj naredi okno). */
+.okno .a-det{grid-template-rows:1fr;opacity:1;transition:none;border:0;border-radius:0;margin:0;padding:6px 22px 4px;background:none;}
+.okno .arts{display:block;border:0;border-radius:0;margin:0;padding:14px 22px 20px;background:none;}
+
+@media(max-width:560px){
+  .okno-back{padding:calc(10px + env(safe-area-inset-top)) 10px calc(10px + env(safe-area-inset-bottom));}
+  .okno{border-radius:16px;max-height:calc(100vh - 20px);max-height:calc(100dvh - 20px - env(safe-area-inset-top) - env(safe-area-inset-bottom));}
+  .okno-glava .okno-kartica{padding:16px 56px 14px 16px;}
+  .okno-x{top:12px;right:12px;}
+  .okno .a-det{padding:4px 16px 2px;}
+  .okno .arts{padding:12px 16px 16px;}
+  .okno .okno-kartica.row{grid-template-columns:minmax(0,1fr) auto;}
+}
+@media(prefers-reduced-motion:reduce){.okno-back::before{transition:opacity .12s ease;}}
