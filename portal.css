@@ -2258,3 +2258,36 @@ html[data-view="list"] .u-mreza .lcell .row > span:first-child{padding-right:0;}
   .head .filtri .cs,.head .filtri select{max-width:none;width:100%;min-width:0;}
   .head .filtri .dok-tbtn{width:100%;}
 }
+
+/* ══════════ OBDOBJE OD–DO KOT ENO POLJE (Arhiv, Fakture) ══════════
+   Prej dva ločena okvirja in gumb × ob njiju: vrstica orodij se je prelomila
+   (v Fakturah je »Izvozi PDF« padel v svojo vrstico, v Arhivu obdobje). Zdaj en
+   okvir z ločnico med Od in Do; × za ponastavitev je v okvirju. */
+.head .filtri .arh-obd,.head .filtri .fak-obd{display:inline-flex;align-items:center;gap:0;height:44px;padding:0 7px 0 0;
+  border:1.5px solid var(--line);border-radius:9px;background:var(--bg);box-sizing:border-box;flex:0 0 auto;}
+.head .filtri .arh-obd:focus-within,.head .filtri .fak-obd:focus-within{border-color:var(--green-l);}
+.head .filtri .arh-obd .arh-lab,.head .filtri .fak-obd .fak-lab{height:100%;border:none;border-radius:0;background:transparent;padding:0 9px 0 12px;gap:7px;}
+.head .filtri .arh-obd .arh-lab + .arh-lab,.head .filtri .fak-obd .fak-lab + .fak-lab{border-left:1px solid var(--line);}
+.head .filtri .arh-obd .arh-lab:last-of-type,.head .filtri .fak-obd .fak-lab:last-of-type{padding-right:5px;}
+.head .filtri .arh-obd .arh-obd-x,.head .filtri .fak-obd .arh-obd-x{width:26px;height:26px;font-size:.95rem;margin-left:4px;}
+.head .filtri .arh-obd input[type=date],.head .filtri .fak-obd input[type=date]{width:128px;flex:none;}
+/* izvoz: kratek napis z ikono (»Excel«, »PDF«) — polni opis je v title */
+.btn-izvoz{gap:7px;}
+.btn-izvoz svg{width:16px;height:16px;flex:none;}
+@media(max-width:760px){
+  .head .filtri .arh-obd,.head .filtri .fak-obd{display:flex;width:100%;}
+  .head .filtri .arh-obd .arh-lab,.head .filtri .fak-obd .fak-lab{flex:1 1 0;min-width:0;}
+  .head .filtri .arh-obd input[type=date],.head .filtri .fak-obd input[type=date]{width:auto;flex:1 1 auto;min-width:0;}
+  .head .filtri .arh-obd .arh-lab,.head .filtri .fak-obd .fak-lab{padding:0 6px 0 10px;gap:6px;}
+  /* na telefonu se izbirnik datuma odpre ob dotiku polja — ikona le vzame prostor datumu */
+  .head .filtri .arh-obd input[type=date]::-webkit-calendar-picker-indicator,
+  .head .filtri .fak-obd input[type=date]::-webkit-calendar-picker-indicator{display:none;}
+  .head .filtri .arh-obd .arh-obd-x,.head .filtri .fak-obd .arh-obd-x{width:30px;height:30px;}
+}
+
+/* Fakture: cela kartica je gumb (prej samo vrstica z napisom) — kazalec in odziv kot pri ostalih karticah */
+.fak-grid .fak-card{cursor:pointer;transition:background-color .18s,border-color .18s,transform .18s;}
+.fak-grid .fak-card:not(.open):hover{background:var(--green-m);border-color:var(--green-l);}
+html[data-view="grid"] .fak-grid .fak-card:not(.open):hover{transform:translateY(-2px);}
+.fak-grid .fak-card:focus-visible{outline:2px solid var(--green-l);outline-offset:3px;}
+

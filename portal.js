@@ -308,7 +308,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.22 · BETA';
+  var APP_VERZIJA = '4.23 · BETA';
   var NALAGANJE = '<div class="sc-load" aria-hidden="true"><span class="sc-load-line"></span></div>';
   // Stale-while-revalidate: ob ponovnem obisku razdelka NE pobriši vsebine v nalagalnik —
   // obdrži prejšnjo (takojšen prikaz) in jo osveži v ozadju. Trak le ob prvem nalaganju.
@@ -3278,7 +3278,12 @@
       var f = zapri ? e : 1 - e;   // delež »kartice«: 1 = kartica, 0 = okno
       var sx = 1 + (sx0 - 1) * f, sy = 1 + (sy0 - 1) * f;
       okno.push({ offset: t, transform: 'translate(' + (dx * f) + 'px,' + (dy * f) + 'px) scale(' + sx + ',' + sy + ')' });
-      notr.push({ offset: t, transform: 'scale(' + (1 / sx) + ',' + (1 / sy) + ')' });
+      // Nasprotni razteg omejen na 1/0,5: dokler je okno manjše od 50 %, je vsebina prosojna
+      // (ob odpiranju se pretopi šele po 110 ms, ob zapiranju izgine v 110 ms) — kadar je vidna,
+      // je vedno v pravi velikosti (preverjeno za kartice od 1 % do 50 % velikosti okna).
+      // Brez omejitve je bil razteg pri majhni kartici tudi 8-kraten in brskalnik je moral
+      // vsebino izrisati v 8-kratni velikosti: dvakrat več dela in zatikanje na počasnejših napravah.
+      notr.push({ offset: t, transform: 'scale(' + (1 / Math.max(sx, 0.5)) + ',' + (1 / Math.max(sy, 0.5)) + ')' });
     }
     return { okno: okno, notr: notr };
   }
@@ -3363,7 +3368,7 @@
     // Okno (s senco) raste iz kartice; kopija kartice nad njim izgine; vsebina se pretopi.
     panel.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 90, easing: 'linear' });
     duh.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 170, delay: 60, easing: 'ease', fill: 'forwards' });
-    notr.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, delay: 90, easing: 'ease', fill: 'backwards' });
+    notr.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 190, delay: 110, easing: 'ease', fill: 'backwards' });
     notr.animate(kl.notr, { duration: 380, easing: 'linear' });
     var konecRasti = function () { duh.remove(); o.morf = false; o.visina = panel.offsetHeight; };
     panel.animate(kl.okno, { duration: 380, easing: 'linear' }).finished.then(konecRasti, konecRasti);
@@ -3413,7 +3418,7 @@
     o.notr.getAnimations().forEach(function (a) { a.cancel(); });
     var kl = oknoKljuci(o, OKNO_ZAPRI, true);
     var duh = oknoDuh(o);
-    o.notr.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 140, easing: 'ease', fill: 'forwards' });
+    o.notr.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 110, easing: 'ease', fill: 'forwards' });
     o.notr.animate(kl.notr, { duration: 320, easing: 'linear', fill: 'forwards' });
     duh.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 160, delay: 150, easing: 'ease', fill: 'both' });
     o.panel.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 90, delay: 230, easing: 'linear', fill: 'forwards' });   // senca okna ugasne, ko je okno že kartica
@@ -4176,6 +4181,7 @@
       listi.map(function (t) { return '<div class="a4">' + dokGlavaHtml() + t + '</div>'; }).join('') + '</body></html>';
   }
   function sklonListov(n) { var m = n % 100; return stevilo(n) + ' ' + (m === 1 ? 'spremni list' : m === 2 ? 'spremna lista' : (m === 3 || m === 4) ? 'spremni listi' : 'spremnih listov'); }
+  function sklonKosov(n) { var m = n % 100; return stevilo(n) + ' ' + (m === 1 ? 'kos' : m === 2 ? 'kosa' : (m === 3 || m === 4) ? 'kosi' : 'kosov'); }
   // »1 redni prevoz«, »2 redna prevoza«, »3 redni prevozi«, »5 rednih prevozov« (vrsta: 'redni' / 'izredni').
   function sklonPrevoz(n, vrsta) {
     var m = n % 100;
@@ -4670,7 +4676,12 @@
     list.innerHTML = '<div class="fak-grid">' + skupine.map((g, gi) => fakKartica(g, gi)).join('') + '</div>';
     list.dataset.loaded = '1';
     list.querySelectorAll('[data-fakprint]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); natisniFakturo(parseInt(b.dataset.fakprint, 10)); }));
-    list.querySelectorAll('[data-faktoggle]').forEach(h => h.addEventListener('click', () => fakOdpri(h.closest('.fak-card'))));
+    // Klik kjerkoli na kartici (ne le na napisu): prej je poslušala samo notranja vrstica z besedilom,
+    // zato robovi in prazen prostor kartice niso odprli okna.
+    list.querySelectorAll('.fak-card').forEach(c => {
+      c.addEventListener('click', e => { if (e.target.closest('.fak-body, button, a, input, select')) return; fakOdpri(c); });
+      c.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target === c) { e.preventDefault(); fakOdpri(c); } });
+    });
     oknoPoIzrisu();
   }
   // Osnova za račun se odpre v OKNU (prej se je kartica razprla v mreži).
@@ -4713,9 +4724,9 @@
             <div class="fak-tot-r fak-tot-bruto"><span>Za plačilo (z DDV)</span><b>${cenaFmt(g.bruto)}</b></div>
             ${g.brezCene ? `<div class="fak-tot-r"><span class="fak-warn">${stevilo(g.brezCene)} artiklov brez cene — NISO všteti v znesek; poveži jih v Strankah</span><b></b></div>` : ''}` : '';
     const povzetek = money && g.neto ? ` · <b>${cenaFmt(g.bruto)}</b> z DDV` : '';
-    return `<div class="fak-card" data-org="${escape_(String(g.org_id || ''))}">
+    return `<div class="fak-card" data-org="${escape_(String(g.org_id || ''))}" role="button" tabindex="0" aria-label="${escape_(ime)} — osnova za račun">
       <div class="fak-card-h" data-faktoggle="${gi}">
-        <div class="fak-card-info"><h3>${escape_(ime)}</h3><p class="u-sub">${stevilo(g.listov)} spremnih listov · ${stevilo(g.kosov)} kosov · ${fakKg(g.kg)}${g.izredni ? ' · ' + stevilo(g.izredni) + '× izredni prevoz' : ''}${povzetek}</p></div>
+        <div class="fak-card-info"><h3>${escape_(ime)}</h3><p class="u-sub">${sklonListov(g.listov)} · ${sklonKosov(g.kosov)} · ${fakKg(g.kg)}${g.izredni ? ' · ' + stevilo(g.izredni) + '× izredni prevoz' : ''}${povzetek}</p></div>
         <span class="fak-chev" aria-hidden="true">›</span>
       </div>
       <div class="fak-body" id="fakbody${gi}">
