@@ -1998,8 +1998,12 @@
     if (grupe['—']) prefs.push('—');
     var strPoGrupi = {}; (ORGSEZNAM || []).forEach(function (o) { var g = strankaSkupina(o.id); if (g) (strPoGrupi[g] = strPoGrupi[g] || []).push(o); });
     var topbar = '<div class="art-topbar"><button type="button" class="btn btn-narrow art-nova">+ Nov cenik</button><button type="button" class="btn btn-narrow ghost art-uskladi" title="Poskrbi, da ima vsaka stranka vse artikle svojega cenika">Uskladi artikle</button></div>';
-    box.innerHTML = topbar + (prefs.length ? prefs.map(function (pre) {
-      var arts = grupe[pre] || []; var open = !!_artOpen[pre]; var str = strPoGrupi[pre] || [];
+    // Skupine se odpirajo v OKNU. _artOpen je zdaj le zahteva »odpri to skupino« (nov cenik,
+    // dodan artikel, »Uredi v Ceniku ›« iz stranke) — v seznamu so skupine vedno zaprte.
+    var zahtevana = Object.keys(_artOpen).filter(function (k) { return _artOpen[k]; })[0] || null;
+    _artOpen = {};
+    box.innerHTML = topbar + (prefs.length ? '<div class="art-skupine">' + prefs.map(function (pre) {
+      var arts = grupe[pre] || []; var open = false; var str = strPoGrupi[pre] || [];
       var rows = arts.map(function (x) {
         var c = Number(x.cena1) || 0;
         var pot = !!x.cena_potrjena;
@@ -2020,11 +2024,11 @@
         '<div class="art-thead"><span>ID</span><span>Naziv</span><span>Cena</span><span></span></div><div class="art-rows">' + rows + '</div>' +
         '<div class="art-add-new"><input type="text" class="art-nn-nm" placeholder="nov artikel"><input type="text" class="art-nn-id" maxlength="5" value="' + escape_(pre + artNextNum(pre)) + '"><input type="text" inputmode="decimal" class="art-nn-cena" placeholder="€"><button type="button" class="cgrp-btn art-nn-btn" data-pre="' + escape_(pre) + '">+ Dodaj</button></div>' +
         '</div></div>';
-    }).join('') : '<div class="pris-card"><p class="u-sub">Ni artiklov. Ustvari nov cenik z gumbom zgoraj.</p></div>');
+    }).join('') + '</div>' : '<div class="pris-card"><p class="u-sub">Ni artiklov. Ustvari nov cenik z gumbom zgoraj.</p></div>');
 
     { var nb = box.querySelector('.art-nova'); if (nb) nb.addEventListener('click', function () { artNovCenik(); }); }
     { var ub = box.querySelector('.art-uskladi'); if (ub) ub.addEventListener('click', function () { artUskladiVse(); }); }
-    box.querySelectorAll('[data-artgrp]').forEach(function (h) { h.addEventListener('click', function () { var k = h.dataset.artgrp; var willOpen = !_artOpen[k]; _artOpen = {}; if (willOpen) _artOpen[k] = true; artRender(); }); });
+    box.querySelectorAll('[data-artgrp]').forEach(function (h) { h.addEventListener('click', function () { artOdpriSkupino(h.dataset.artgrp); }); });
     box.querySelectorAll('[data-aedit]').forEach(function (b) { b.addEventListener('click', function (e) { e.stopPropagation(); artUredi(parseInt(b.dataset.aedit, 10)); }); });
     box.querySelectorAll('[data-adel]').forEach(function (b) { b.addEventListener('click', function (e) { e.stopPropagation(); artIzbrisi(parseInt(b.dataset.adel, 10)); }); });
     box.querySelectorAll('.art-dodeli').forEach(function (b) { b.addEventListener('click', function (e) { e.stopPropagation(); artDodeli(b.dataset.pre); }); });
@@ -2034,6 +2038,26 @@
     box.querySelectorAll('[data-cpot]').forEach(function (cb) { cb.addEventListener('click', function (e) { e.stopPropagation(); }); cb.addEventListener('change', function (e) { e.stopPropagation(); artPotrdiCeno(parseInt(cb.dataset.cpot, 10), cb.checked); }); });
     box.querySelectorAll('.art-rows').forEach(function (rw) { dndSort(rw, '.art-row', '.art-grip', function () { artShraniVrstniRed(rw); }); });
     requestAnimationFrame(function () { window.scrollTo(0, _sy); });
+    oknoPoIzrisu();   // odprto okno skupine dobi svežo vsebino (ali se zapre, če skupine ni več)
+    if (zahtevana && !_okno) artOdpriSkupino(zahtevana);
+  }
+  function artNajdiSkupino(pre) { return document.querySelector('#artList .cgrp[data-pre="' + String(pre).replace(/"/g, '\\"') + '"]'); }
+  // Glava okna skupine: ime cenika, predpona, število strank in artiklov (iz trenutne kartice).
+  function artGlavaOkna(k) {
+    var d = document.createElement('div');
+    var nm = k && k.querySelector('.cgrp-nm'), sub = k && k.querySelector('.cgrp-sub'), cnt = k && k.querySelector('.cgrp-count');
+    d.innerHTML = '<h3 class="sec-h">' + escape_(nm ? nm.textContent : '') + '</h3>' +
+      '<div class="okno-glava-sub">' + escape_([sub ? sub.textContent : '', cnt ? cnt.textContent : ''].filter(Boolean).join(' · ')) + '</div>';
+    return d;
+  }
+  function artOdpriSkupino(pre) {
+    if (_okno) return;
+    var k = artNajdiSkupino(pre); if (!k) return;
+    var body = k.querySelector('.cgrp-body'); if (!body) return;
+    oknoOdpri(k, body, function () { return artNajdiSkupino(pre); }, {
+      glava: artGlavaOkna,
+      osvezi: function (k2) { return k2.querySelector('.cgrp-body'); }
+    });
   }
   async function artPotrdiCeno(sifra, on) {
     var rec = CENIKMAP[sifra];
@@ -3179,6 +3203,13 @@
   // Glava okna je kopija kartice (isti podatki, ista statusna barva), postavljena za okno.
   function oknoGlava() {
     var o = _okno; if (!o) return;
+    if (o.glavaFn) {   // okno brez kartice (npr. nov spremni list iz gumba): naslov + ×
+      o.glava.className = 'okno-glava okno-glava-naslov';
+      var n = o.glavaFn(o.kartica);
+      o.glava.innerHTML = ''; o.glava.appendChild(n); o.glava.appendChild(o.x);
+      o.panel.setAttribute('aria-label', n.textContent.trim());
+      return;
+    }
     var k = o.kartica, cel = k.closest('.lcell');
     o.glava.className = 'okno-glava' + (cel ? ' ' + [].filter.call(cel.classList, function (c) { return c !== 'lcell' && c !== 'open'; }).join(' ') : '');
     var kop = document.createElement('div');
@@ -3214,9 +3245,11 @@
   // okvir zapiranja sta videti kot kartica sama — kartica se poveča v okno (in skrči nazaj),
   // namesto da bi nad njo zrasla kopija, ona pa izginila šele na koncu.
   function oknoDuh(o) {
-    var k = o.kartica, r = k.getBoundingClientRect(), cel = k.closest('.lcell');
+    // Ovoj dobi razrede starša kartice (.lcell s statusom, mreža skupin …), da kopijo
+    // oblikujejo ista pravila kot kartico v seznamu.
+    var k = o.kartica, r = k.getBoundingClientRect(), star = k.parentElement;
     var ovoj = document.createElement('div');
-    ovoj.className = (cel ? [].filter.call(cel.classList, function (c) { return c !== 'open'; }).join(' ') + ' ' : '') + 'okno-duh';
+    ovoj.className = (star ? [].filter.call(star.classList, function (c) { return c !== 'open' && c !== 'hidden'; }).join(' ') + ' ' : '') + 'okno-duh';
     ovoj.style.width = r.width + 'px'; ovoj.style.height = r.height + 'px';
     ovoj.setAttribute('aria-hidden', 'true');
     var kop = k.cloneNode(true);
@@ -3228,7 +3261,12 @@
     o.panel.appendChild(ovoj);
     return ovoj;
   }
-  function oknoOdpri(kartica, vsebina, najdi) {
+  // moznosti.glava: funkcija(kartica), ki vrne element glave (sicer kopija kartice);
+  // moznosti.obZaprtju: klic, ko je okno zaprto in vsebina vrnjena na svoje mesto;
+  // moznosti.osvezi: funkcija(nova kartica) → nova vsebina po ponovnem izrisu seznama
+  //   (za razdelke, ki ob vsaki spremembi izrišejo vse na novo, npr. Cenik & Artikli).
+  function oknoOdpri(kartica, vsebina, najdi, moznosti) {
+    moznosti = moznosti || {};
     if (_okno) oknoZapri(true);
     var back = document.createElement('div'); back.className = 'okno-back';
     var zatemni = document.createElement('div'); zatemni.className = 'okno-zatemni'; back.appendChild(zatemni);
@@ -3240,7 +3278,8 @@
     var x = document.createElement('button'); x.type = 'button'; x.className = 'doc-x okno-x'; x.setAttribute('aria-label', 'Zapri'); x.textContent = '×';
     notr.appendChild(glava); notr.appendChild(telo); panel.appendChild(notr); back.appendChild(panel);
     var o = _okno = { back: back, panel: panel, notr: notr, glava: glava, telo: telo, x: x, kartica: kartica, vsebina: vsebina, najdi: najdi,
-      id: kartica.dataset.id, dom: { parent: vsebina.parentNode, next: vsebina.nextSibling, id: vsebina.id } };
+      id: kartica.dataset.id, dom: { parent: vsebina.parentNode, next: vsebina.nextSibling, id: vsebina.id },
+      glavaFn: moznosti.glava || null, obZaprtju: moznosti.obZaprtju || null, osvezi: moznosti.osvezi || null };
     oknoGlava();
     vsebina.removeAttribute('id');   // po ponovnem izrisu ima nova kartica element z istim id-jem
     vsebina.classList.add('show');
@@ -3302,12 +3341,12 @@
       // Vsebino vrni na njeno mesto; če je seznam medtem izrisan na novo, je stara odveč.
       if (o.dom.parent && o.dom.parent.isConnected) o.dom.parent.insertBefore(v, (o.dom.next && o.dom.next.parentNode === o.dom.parent) ? o.dom.next : null);
       else v.remove();
-      if (k) k.classList.remove('okno-vir');
-      o.kartica.classList.remove('okno-vir');
+      document.querySelectorAll('.okno-vir').forEach(function (el) { el.classList.remove('okno-vir'); });
       document.documentElement.classList.remove('okno-zaklep');
       document.documentElement.style.paddingRight = '';
       if (_okno === o) _okno = null;
       if (k && !takoj) { try { k.focus({ preventScroll: true }); } catch (e) {} }
+      if (o.obZaprtju) { try { o.obZaprtju(k); } catch (e) {} }
     };
     if (takoj || oknoMirno() || !o.panel.animate) { konec(); return; }
     o.back.classList.remove('show');
@@ -3315,6 +3354,7 @@
       o.panel.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateY(8px) scale(.98)' }], { duration: 200, easing: 'ease', fill: 'forwards' }).finished.then(konec, konec);
       return;
     }
+    if (o.kartica !== k) o.kartica.classList.remove('okno-vir');   // okno gre drugam (npr. gumb → kartica novega lista): izvor se vrne takoj
     o.kartica = k;
     k.classList.add('okno-vir');   // med krčenjem je mesto še prazno; kartica se vrne, ko je okno spet ona
     // Kartica mora biti na zaslonu, sicer bi se okno skrčilo nekam izven pogleda.
@@ -3334,8 +3374,20 @@
     var k = o.najdi && o.najdi();
     if (!k) { oknoZapri(); return; }
     if (k !== o.kartica) { o.kartica = k; if (!o.morf) k.classList.add('okno-vir'); }
+    if (o.osvezi) { var nova = o.osvezi(k); if (nova && nova !== o.vsebina) oknoZamenjajVsebino(nova); }
     if ('_kartica' in o.vsebina) o.vsebina._kartica = k;
     oknoGlava();
+  }
+  // Seznam je izrisan na novo in ima svežo vsebino za odprto okno: zamenjaj jo v oknu.
+  // Stara vsebina je odveč; ob zaprtju se nova vrne na mesto v novem izrisu.
+  function oknoZamenjajVsebino(nova) {
+    var o = _okno; if (!o) return;
+    if (o.ro) o.ro.unobserve(o.vsebina);
+    o.vsebina.remove();
+    o.dom = { parent: nova.parentNode, next: nova.nextSibling, id: nova.id };
+    nova.removeAttribute('id'); nova.classList.add('show');
+    o.telo.appendChild(nova); o.vsebina = nova;
+    if (o.ro) o.ro.observe(nova);
   }
 
   /* ══════════ ARHIV ══════════ */
@@ -4105,16 +4157,32 @@
     el.textContent = r.ima ? tezaFmt(r.kg) : '—';
     el.dataset.kg = r.ima ? String(Math.round(r.kg * 1000) / 1000) : '';
   }
+  // Nov spremni list se odpre v OKNU, ki zraste iz gumba »+ Nov spremni list«.
+  // Po shranjevanju se okno skrči v kartico novega lista, ob preklicu nazaj v gumb.
+  // ×, Esc ali klik na ozadje okno le zaprejo — vpisano ostane in se ob ponovnem
+  // odprtju pokaže (nenameren klik ob okno ne izbriše vnosa).
+  function novListOkno(box) {
+    const gumb = $('arhivNovBtn');
+    oknoOdpri(gumb, box, () => $('arhivNovBtn'), {
+      glava: () => { const h = document.createElement('h3'); h.className = 'sec-h'; h.textContent = 'Nov spremni list'; return h; },
+      obZaprtju: () => { if (box._zavrzi) { box._zavrzi = false; box.innerHTML = ''; delete box.dataset.osnutek; } }
+    });
+  }
+  function novListZapri(box, zavrzi) {
+    if (_okno && _okno.vsebina === box) { box._zavrzi = !!zavrzi; oknoZapri(); }
+    else if (zavrzi) { box.innerHTML = ''; box.classList.remove('show'); delete box.dataset.osnutek; }
+  }
   async function novList() {
     const box = $('novListBox');
-    if (!box) return;
+    if (!box || _okno) return;
+    if (box.dataset.osnutek) { novListOkno(box); return; }   // nedokončan vnos: odpri ga, kot je bil
+    const gumb = $('arhivNovBtn'); if (gumb) gumb.classList.add('nalaga');
     const letos = new Date().getFullYear();
     let maxSeq = 0;
     LISTI.forEach(l => { const d = String(l.number || '').split('/'); if ((parseInt(d[1], 10) || 0) === letos) { const sq = parseInt(d[0], 10) || 0; if (sq > maxSeq) maxSeq = sq; } });
     const dnes = new Date().toISOString().slice(0, 10);
     const orgOpt = '<option value="">— izberi stranko —</option>' + ORGSEZNAM.map(o => `<option value="${o.id}">${escape_(o.name)}</option>`).join('');
     box.innerHTML = `<div class="ur-form">
-      <h3 class="sec-h" style="margin-bottom:12px">Nov spremni list</h3>
       <label class="ur-f"><span>Stranka</span><select data-org>${orgOpt}</select></label>
       <div class="ur-grid ur-grid-3">
         <label class="ur-f"><span>Št.</span><input type="number" data-seq value="${maxSeq + 1}"></label>
@@ -4186,13 +4254,15 @@
     };
     napolniPremade();
     box.querySelector('[data-dodaj]').addEventListener('click', () => dodajVrstico());
-    box.querySelector('[data-preklici]').addEventListener('click', () => { box.innerHTML = ''; box.classList.remove('show'); });
+    box.querySelector('[data-preklici]').addEventListener('click', () => novListZapri(box, true));
     box.querySelector('[data-shrani]').addEventListener('click', () => shraniNovList(box));
     wireSeg(box);
     vnosVrata(box);
     { const _os = box.querySelector('[data-org]'); if (_os) _os.addEventListener('change', async () => { await nalozArtSez(box); napolniPremade(); osveziKgPrikaz(box); }); }
-    box.classList.add('show');
-    box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    box.dataset.osnutek = '1';
+    if (gumb) gumb.classList.remove('nalaga');
+    if (_okno) return;
+    novListOkno(box);
   }
 
   async function shraniNovList(box) {
@@ -4251,10 +4321,22 @@
       }
       logDodaj('Arhiv', 'Dodano', 'Spremni list ' + seq + '/' + leto + ' · ' + (ORGIME[org_id] || ''));
       toast('Spremni list ustvarjen');
-      box.innerHTML = ''; box.classList.remove('show');
       await naloziListe();
       risiArhiv();
-      pokaziList(nova && nova.id);
+      const nid = nova && nova.id;
+      if (_okno && _okno.vsebina === box) {
+        // Okno se skrči naravnost v kartico novega lista (če je v trenutnem filtru), sicer nazaj v gumb.
+        const najdiNov = () => nid ? document.querySelector('#arhivList .a-row[data-id="' + String(nid).replace(/"/g, '\\"') + '"]') : null;
+        if (najdiNov()) {
+          _okno.najdi = najdiNov; _okno.id = String(nid);
+          const prej = _okno.obZaprtju;
+          _okno.obZaprtju = function (k) { prej(k); if (k) { k.classList.add('arh-flash'); setTimeout(function () { k.classList.remove('arh-flash'); }, 1700); } };
+        }
+        novListZapri(box, true);
+      } else {
+        box.innerHTML = ''; box.classList.remove('show'); delete box.dataset.osnutek;
+        pokaziList(nid);
+      }
     } catch (e) {
       msg.textContent = 'Napaka: ' + (/duplicate|unique/i.test(e.message || '') ? 'številka ' + seq + '/' + leto + ' je že zasedena' : (e.message || e));
     }
