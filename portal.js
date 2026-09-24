@@ -308,7 +308,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.17 · BETA';
+  var APP_VERZIJA = '4.18 · BETA';
   var NALAGANJE = '<div class="sc-load" aria-hidden="true"><span class="sc-load-line"></span></div>';
   // Stale-while-revalidate: ob ponovnem obisku razdelka NE pobriši vsebine v nalagalnik —
   // obdrži prejšnjo (takojšen prikaz) in jo osveži v ozadju. Trak le ob prvem nalaganju.
@@ -2021,12 +2021,12 @@
     var prefs = Object.keys(preSet).sort();
     if (grupe['—']) prefs.push('—');
     var strPoGrupi = {}; (ORGSEZNAM || []).forEach(function (o) { var g = strankaSkupina(o.id); if (g) (strPoGrupi[g] = strPoGrupi[g] || []).push(o); });
-    var topbar = '<div class="art-topbar"><button type="button" class="btn btn-narrow art-nova">+ Nov cenik</button><button type="button" class="btn btn-narrow ghost art-uskladi" title="Poskrbi, da ima vsaka stranka vse artikle svojega cenika">Uskladi artikle</button></div>';
+    // Gumba »+ Nov cenik« in »Uskladi artikle« sta v glavi razdelka (enotna orodna vrstica), ne več v seznamu.
     // Skupine se odpirajo v OKNU. _artOpen je zdaj le zahteva »odpri to skupino« (nov cenik,
     // dodan artikel, »Uredi v Ceniku ›« iz stranke) — v seznamu so skupine vedno zaprte.
     var zahtevana = Object.keys(_artOpen).filter(function (k) { return _artOpen[k]; })[0] || null;
     _artOpen = {};
-    box.innerHTML = topbar + (prefs.length ? '<div class="art-skupine">' + prefs.map(function (pre) {
+    box.innerHTML = (prefs.length ? '<div class="art-skupine">' + prefs.map(function (pre) {
       var arts = grupe[pre] || []; var open = false; var str = strPoGrupi[pre] || [];
       var rows = arts.map(function (x) {
         var c = Number(x.cena1) || 0;
@@ -2050,8 +2050,6 @@
         '</div></div>';
     }).join('') + '</div>' : '<div class="pris-card"><p class="u-sub">Ni artiklov. Ustvari nov cenik z gumbom zgoraj.</p></div>');
 
-    { var nb = box.querySelector('.art-nova'); if (nb) nb.addEventListener('click', function () { artNovCenik(); }); }
-    { var ub = box.querySelector('.art-uskladi'); if (ub) ub.addEventListener('click', function () { artUskladiVse(); }); }
     box.querySelectorAll('[data-artgrp]').forEach(function (h) { h.addEventListener('click', function () { artOdpriSkupino(h.dataset.artgrp); }); });
     box.querySelectorAll('[data-aedit]').forEach(function (b) { b.addEventListener('click', function (e) { e.stopPropagation(); artUredi(parseInt(b.dataset.aedit, 10)); }); });
     box.querySelectorAll('[data-adel]').forEach(function (b) { b.addEventListener('click', function (e) { e.stopPropagation(); artIzbrisi(parseInt(b.dataset.adel, 10)); }); });
@@ -2065,6 +2063,8 @@
     oknoPoIzrisu();   // odprto okno skupine dobi svežo vsebino (ali se zapre, če skupine ni več)
     if (zahtevana && !_okno) artOdpriSkupino(zahtevana);
   }
+  { const _an = $('artNovaBtn'); if (_an) _an.addEventListener('click', function () { artNovCenik(); }); }
+  { const _au = $('artUskladiBtn'); if (_au) _au.addEventListener('click', function () { artUskladiVse(); }); }
   function artNajdiSkupino(pre) { return document.querySelector('#artList .cgrp[data-pre="' + String(pre).replace(/"/g, '\\"') + '"]'); }
   // Glava okna skupine: ime cenika, predpona, število strank in artiklov (iz trenutne kartice).
   function artGlavaOkna(k) {
@@ -3294,11 +3294,17 @@
     ovoj.style.left = r.left + 'px'; ovoj.style.top = r.top + 'px';
     ovoj.style.width = r.width + 'px'; ovoj.style.height = r.height + 'px';
     ovoj.setAttribute('aria-hidden', 'true');
+    // Videz kartice v trenutku klika (tudi stanje »miška nad njo«: ozadje, obroba, senca),
+    // sicer bi kopija ob kliku za trenutek utripnila v videz brez hoverja.
+    var cs = getComputedStyle(k);
     var kop = k.cloneNode(true);
     kop.classList.remove('okno-vir', 'arh-flash');
     ['id', 'data-id', 'data-i', 'aria-expanded', 'style'].forEach(function (a) { kop.removeAttribute(a); });
     kop.querySelectorAll('[style],[data-pot],[tabindex]').forEach(function (el) { el.removeAttribute('style'); el.removeAttribute('data-pot'); el.removeAttribute('tabindex'); });
     kop.setAttribute('tabindex', '-1');
+    kop.style.backgroundColor = cs.backgroundColor; kop.style.backgroundImage = cs.backgroundImage;
+    kop.style.borderColor = cs.borderTopColor + ' ' + cs.borderRightColor + ' ' + cs.borderBottomColor + ' ' + cs.borderLeftColor;
+    kop.style.boxShadow = cs.boxShadow; kop.style.transition = 'none';
     ovoj.appendChild(kop);
     o.back.appendChild(ovoj);   // nad oknom: prvi okvir odpiranja / zadnji zapiranja je kartica
     return ovoj;

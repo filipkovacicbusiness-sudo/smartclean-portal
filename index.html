@@ -218,6 +218,11 @@ html[data-theme="light"] .sc-hex{opacity:.5}
         <div class="head">
           <div><h2>Arhiv spremnih listov</h2><p class="count" id="arhivPod"></p></div>
           <div class="filtri">
+            <input type="search" id="arhivIsci" placeholder="Iskanje po številki …" aria-label="Iskanje"/>
+            <span class="tb-grupa arh-actbar hidden" id="arhivActBar">
+              <button type="button" id="arhivNovBtn" class="btn btn-narrow">+ Nov spremni list</button>
+              <button type="button" id="arhivKosBtn" class="btn btn-narrow btn-alt">Nedavno brisani</button>
+            </span>
             <select id="arhivOrg" class="hidden"></select>
             <select id="arhivSort" aria-label="Razvrsti">
               <option value="st_desc" selected>Št. ↓</option>
@@ -231,12 +236,7 @@ html[data-theme="light"] .sc-hex{opacity:.5}
               <label class="arh-lab">Do<input type="date" id="arhivDo" class="arh-dan" aria-label="Do datuma"/></label>
               <button type="button" id="arhivObdX" class="arh-obd-x hidden" aria-label="Počisti obdobje" title="Počisti obdobje">×</button>
             </span>
-            <input type="search" id="arhivIsci" placeholder="Iskanje po številki …" aria-label="Iskanje"/>
           </div>
-        </div>
-        <div class="head-act arh-actbar hidden" id="arhivActBar">
-          <button type="button" id="arhivNovBtn" class="btn btn-narrow">+ Nov spremni list</button>
-          <button type="button" id="arhivKosBtn" class="btn btn-narrow btn-alt">Nedavno brisani</button>
         </div>
         <div id="arhivKonflikti"></div>
         <div id="novListBox" class="nov-list"></div>
@@ -246,36 +246,34 @@ html[data-theme="light"] .sc-hex{opacity:.5}
       <section class="sec hidden" id="sec-fakture">
         <div class="head">
           <div><h2>Fakture</h2><p class="count" id="fakPod">Osnova za račun — seštevek artiklov in teže po strankah</p></div>
-        </div>
-        <div class="fak-hitri-row">
-          <div class="fak-hitri" id="fakHitri"></div>
-          <div class="fak-exp">
+          <div class="filtri">
+            <span class="fak-obd">
+              <label class="fak-lab">Od <input type="date" id="fakOd"/></label>
+              <label class="fak-lab">Do <input type="date" id="fakDo"/></label>
+              <button type="button" id="fakObdX" class="arh-obd-x hidden" aria-label="Počisti obdobje" title="Počisti obdobje">×</button>
+            </span>
+            <select id="fakOrg" aria-label="Stranka"><option value="">Vse stranke</option></select>
+            <button type="button" id="fakBtn" class="btn btn-narrow">Prikaži</button>
             <button type="button" id="fakXlsxBtn" class="btn btn-narrow btn-alt">Izvozi v Excel</button>
             <button type="button" id="fakPdfBtn" class="btn btn-narrow btn-alt">Izvozi PDF</button>
           </div>
         </div>
-        <!-- Obdobje in stranka tik nad karticami (prej v glavi desno od naslova). -->
-        <div class="filtri fak-filtri">
-          <span class="fak-obd">
-            <label class="fak-lab">Od <input type="date" id="fakOd"/></label>
-            <label class="fak-lab">Do <input type="date" id="fakDo"/></label>
-            <button type="button" id="fakObdX" class="arh-obd-x hidden" aria-label="Počisti obdobje" title="Počisti obdobje">×</button>
-          </span>
-          <select id="fakOrg" aria-label="Stranka"><option value="">Vse stranke</option></select>
-          <button type="button" id="fakBtn" class="btn btn-narrow">Prikaži</button>
-        </div>
+        <div class="fak-hitri-row"><div class="fak-hitri" id="fakHitri"></div></div>
         <div id="fakList"></div>
       </section>
 
       <section class="sec hidden" id="sec-stranke">
         <div class="head">
           <div><h2>Stranke</h2><p class="count" id="count"></p></div>
-          <div class="filtri"><select id="strankeSort" aria-label="Razvrsti stranke">
+          <div class="filtri">
+            <input type="search" id="search" placeholder="Iskanje po nazivu …" aria-label="Iskanje strank"/>
+            <button type="button" id="novaStrankaBtn" class="btn btn-narrow hidden">+ Nova stranka</button>
+            <select id="strankeSort" aria-label="Razvrsti stranke">
               <option value="promet" selected>Po prometu</option>
               <option value="abeceda">Abecedno</option>
-            </select><input type="search" id="search" placeholder="Iskanje po nazivu …" aria-label="Iskanje strank"/></div>
+            </select>
+          </div>
         </div>
-        <button type="button" id="novaStrankaBtn" class="btn btn-narrow head-act hidden">+ Nova stranka</button>
         <div id="novaStrankaBox"></div>
         <div id="content"></div>
       </section>
@@ -357,7 +355,12 @@ html[data-theme="light"] .sc-hex{opacity:.5}
       </section>
 
       <section class="sec hidden" id="sec-artikli">
-        <div class="head"><div><h2>Cenik &amp; Artikli</h2><p class="count" id="artPod">Katalog po skupinah ID — teža in dodeljevanje strankam</p></div></div>
+        <div class="head"><div><h2>Cenik &amp; Artikli</h2><p class="count" id="artPod">Katalog po skupinah ID — teža in dodeljevanje strankam</p></div>
+          <div class="filtri">
+            <button type="button" id="artNovaBtn" class="btn btn-narrow">+ Nov cenik</button>
+            <button type="button" id="artUskladiBtn" class="btn btn-narrow btn-alt" title="Poskrbi, da ima vsaka stranka vse artikle svojega cenika">Uskladi artikle</button>
+          </div>
+        </div>
         <div id="artList"></div>
       </section>
 
