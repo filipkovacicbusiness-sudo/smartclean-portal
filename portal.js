@@ -181,7 +181,7 @@
       m.textContent = /invalid/i.test(error.message) ? 'E-naslov ali geslo se ne ujemata.' : /confirm/i.test(error.message) ? 'Ta račun še ni potrjen. Javite se administratorju.' : 'Prijava ni uspela: ' + error.message;
       return;
     }
-    start();
+    if (await start() === false) { m.className = 'msg bad show'; m.textContent = zagonSporocilo(); }
   });
   function showAuthPane(which) {
     ['loginForm', 'resetForm', 'newPwForm'].forEach(id => {
@@ -308,7 +308,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.27 · BETA';
+  var APP_VERZIJA = '4.28 · BETA';
   var NALAGANJE = '<div class="sc-load" aria-hidden="true"><span class="sc-load-line"></span></div>';
   // Stale-while-revalidate: ob ponovnem obisku razdelka NE pobriši vsebine v nalagalnik —
   // obdrži prejšnjo (takojšen prikaz) in jo osveži v ozadju. Trak le ob prvem nalaganju.
@@ -608,13 +608,16 @@
   var EYE_OFF = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 4l16 16"/><path d="M9.5 5.2A10 10 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3 3.6"/><path d="M6.2 7.3A17 17 0 0 0 2 12s3.5 7 10 7a10 10 0 0 0 3.3-.6"/></svg>';
 
   /* ══════════ ZAGON ══════════ */
+  // Vrne false, če uporabnika ni mogoče preveriti (ni povezave, seja potekla/preklicana);
+  // razlog je v ZAGON_NAPAKA. Prej je tiho končala in portal je obstal na golem
+  // prijavnem zaslonu (»Peremo, vi pa blestite.«) brez obrazca.
+  var ZAGON_NAPAKA = null;
   async function start() {
-    const {
-      data: {
-        user
-      }
-    } = await sb.auth.getUser();
-    if (!user) return;
+    ZAGON_NAPAKA = null;
+    let _gu = null;
+    try { _gu = await sb.auth.getUser(); } catch (e) { ZAGON_NAPAKA = e; return false; }
+    const user = _gu && _gu.data && _gu.data.user;
+    if (!user) { ZAGON_NAPAKA = (_gu && _gu.error) || new Error('ni uporabnika'); return false; }
     JAZ = user.id;
     let profil = null;
     { const _pr = await sb.from('profiles').select('full_name,is_staff,super_admin,zaposleni,nastavitve,avatar_url,phone,contact_email').eq('id', user.id).maybeSingle();
@@ -6902,7 +6905,7 @@
      Namestitveni paket leži poleg spletne različice, ne v kodi portala.
      Če ga še ni, to tu tudi piše — namesto strani 404. */
   // ?v= ob vsaki novi različici aplikacije (aplikacija/zgradi.py): brskalnik in predpomnilnik vzameta nov paket.
-  var APK_POT = 'tablica/Pralnica-sync.apk?v=9.6';
+  var APK_POT = 'tablica/Pralnica-sync.apk?v=9.7';
 
   function wirePwa(scope) {
     var pb = (scope || document).querySelector('#pwaInstall');
@@ -6935,7 +6938,7 @@
 
     p.innerHTML = '<div class="prog-grid">' +
       _progCard(IKO_WEB, 'Spletni pogled', 'Deluje v vsakem brskalniku, brez namestitve — telefon, tablica ali računalnik.', _odpri) +
-      _progCard(IKO_DL, 'Tablica (Android)', 'Namestitveni paket za vnos in tiskanje spremnih listov na tablici (različica 9.6). Namesti se čez obstoječo; le če je na tablici še različica 8 ali starejša, jo najprej odstrani — shranjeni listi ostanejo.', '<a class="btn prog-act apk-dl" href="' + escape_(url) + '" download>' + IKO_DL + 'Prenesi<span class="apk-mb"></span></a>', 'apkTablet') +
+      _progCard(IKO_DL, 'Tablica (Android)', 'Namestitveni paket za vnos in tiskanje spremnih listov na tablici (različica 9.7). Namesti se čez obstoječo; le če je na tablici še različica 8 ali starejša, jo najprej odstrani — shranjeni listi ostanejo.', '<a class="btn prog-act apk-dl" href="' + escape_(url) + '" download>' + IKO_DL + 'Prenesi<span class="apk-mb"></span></a>', 'apkTablet') +
       _progCard(IKO_TEL, 'Telefon', 'Odpre se v brskalniku; dodaj na začetni zaslon za občutek prave aplikacije.', _odpri) +
       '</div>';
 
@@ -8115,6 +8118,14 @@
       lp.classList.remove('hidden');
     }
   }
+  function jeOmreznaNapaka(e) {
+    var t = String((e && (e.name + ' ' + e.message)) || e || '');
+    return (navigator.onLine === false) || /fetch|network|retryable|load failed|timeout|timed out/i.test(t);
+  }
+  function zagonSporocilo() {
+    if (jeOmreznaNapaka(ZAGON_NAPAKA)) return 'Ni povezave s strežnikom. Preverite, ali ima ta naprava internet (ne samo WiFi tiskalnika), nato se prijavite znova.';
+    return 'Prijava na tej napravi je potekla ali je bila preklicana — prijavite se znova.';
+  }
   function pokaziIzbirnik() {
     narisiIzbirnik();
     // Sveže stanje: počisti sporočilo (stari, neuporabljeni gumb skrij, če obstaja v HTML).
@@ -8151,7 +8162,7 @@
         if (m) { m.className = 'msg'; m.textContent = ''; }
         // Seja JE vzpostavljena (verifyOtp). Če izris aplikacije spodleti (prehodno),
         // NE vračaj na prijavo — seja je veljavna → osveži, obnovitev seje jo pobere.
-        try { await start(); }
+        try { if (await start() === false) pokaziPrijavo(email, zagonSporocilo()); }
         catch (se) { try { console.warn('[bio] start() po uspešni prijavi ni uspel:', se); } catch (_) {} location.reload(); }
         return;
       } catch (e) {
@@ -8752,12 +8763,16 @@
       // tako kot pri velikih ponudnikih. Odjava (gumb) sejo ukine → spodaj izbirnik.
       var _seja = null;
       try { var _rs = await sb.auth.getSession(); _seja = _rs && _rs.data && _rs.data.session; } catch (e) {}
+      var _zagonMsg = '';
       if (!recovery && _seja && _seja.user) {
-        try { await start(); return; } catch (e) {}
+        try { if (await start() !== false) return; } catch (e) { ZAGON_NAPAKA = e; }
+        _zagonMsg = zagonSporocilo();
+        // neveljavna seja (ne le brez povezave) → pozabi jo na tej napravi, da se ne ponavlja
+        if (!jeOmreznaNapaka(ZAGON_NAPAKA)) { try { await sb.auth.signOut({ scope: 'local' }); } catch (e) {} }
       }
       if (!recovery) {
-        if (beriProfile().length) pokaziIzbirnik();
-        else pokaziPrijavo('');
+        if (beriProfile().length) { pokaziIzbirnik(); if (_zagonMsg) { var _pm = $('ppMsg'); if (_pm) { _pm.className = 'msg bad show'; _pm.textContent = _zagonMsg; } } }
+        else pokaziPrijavo('', _zagonMsg);
       }
     }
     // Prijavni zaslon je pripravljen → umakni zagonski zaslon.

@@ -1,7 +1,7 @@
 /* SmartClean — service worker (SmartClean mobile). ZGRAJENO z aplikacija/zgradi.py — ne urejaj ročno. */
 /* HTML = network-first (vedno sveža koda, brez povezave iz predpomnilnika),
    lastne statične datoteke = cache-first. Klici na Supabase se NIKOLI ne predpomnijo. */
-const CACHE = "pralnica-mobil-v9-6";
+const CACHE = "pralnica-mobil-v9-7";
 const CORE = ["index.html", "manifest.json", "icon-192.png", "icon-512.png", "supabase.js"];
 
 self.addEventListener("install", (e) => {

@@ -603,13 +603,22 @@ body,.topbar,.panel,.art,.list,.st-tile,.seg,.seg-b,input,textarea,.btn,.pill-bt
    Podatki ostanejo v istih ključih kot v prejšnjih različicah (pralnica:*),
    zato posodobitev ne izgubi ničesar.
    ══════════════════════════════════════════════════════════════════════ */
-var VARIANTA = "tablica", APP_VERZIJA = "9.6";
+var VARIANTA = "tablica", APP_VERZIJA = "9.7";
 var LASTNIK = "filip@eflitte.si";
 var DOK_BIZ = ["BSMART d.o.o.", "Škalska cesta 6, 3210 Slovenske Konjice", "+386 41 209 676", "+386 68 693 988", "blanka.kovacic1@gmail.com"];
 var PRIVZETI_PORTAL = "https://anrhtgbckxrccnafcmsz.supabase.co";
 var PRIVZETI_KLJUC = "sb_publishable_LYMbUOYW2IFz4NxgvjXLOg_PJ2-qpS4";   // javni ključ (RLS varuje podatke)
 
 function $(id){ return document.getElementById(id); }
+/* Klic na strežnik z omejenim časom. Na WiFi tiskalnika brez interneta zahteva lahko visi
+   minute — aplikacija bi obstala; po izteku velja kot »ni povezave«. */
+function fetchT(url, opt, ms){
+  opt = opt || {};
+  var ac = (typeof AbortController !== "undefined") ? new AbortController() : null, t = null;
+  if(ac){ opt.signal = ac.signal; t = setTimeout(function(){ try{ ac.abort(); }catch(e){} }, ms || 20000); }
+  return fetch(url, opt).then(function(r){ clearTimeout(t); return r; }, function(e){ clearTimeout(t); throw e; });
+}
+function zRokom(obljuba, ms){ return Promise.race([obljuba, new Promise(function(_, ne){ setTimeout(function(){ ne(new Error("ni povezave")); }, ms); })]); }
 
 /* ══════════ SHRAMBA ══════════
    Tablica: Capacitor Filesystem (Documents — ostane tudi ob ponovni namestitvi).
@@ -1462,7 +1471,7 @@ function jeOmrezna(err){ var m = String((err && (err.message || err.name)) || er
 async function spletnaSeja(sila){
   var c = avtKlient(); if(!c) throw new Error("ni povezave");
   var r;
-  try{ r = sila ? await c.auth.refreshSession() : await c.auth.getSession(); }catch(e){ throw new Error("ni povezave"); }
+  try{ r = await zRokom(sila ? c.auth.refreshSession() : c.auth.getSession(), 20000); }catch(e){ throw new Error("ni povezave"); }
   var s = r && r.data && r.data.session;
   if(r && r.error && !s){ if(jeOmrezna(r.error)) throw new Error("ni povezave"); return null; }
   return s || null;
@@ -1485,7 +1494,12 @@ async function spletVstop(){
     /* brez omrežja: vstop z zadnjimi znanimi podatki istega računa, sinhronizacija dohiti */
     var ss = shranjenaSeja();
     if(jeOmrezna(e) && pp && pp.dostop && ss && ss.user.id === pp.uid){}
-    else { prikaziSpletnoPrijavo(jeOmrezna(e) ? "Ni povezave z internetom." : "Seja je potekla — prijavite se znova."); return; }
+    else if(jeOmrezna(e)){ prikaziSpletnoPrijavo("Ni povezave z internetom."); return; }
+    else {
+      /* seje strežnik ne pozna več (potekla/preklicana) → pozabi jo, sicer bi obstala tudi v portalu */
+      try{ await zRokom(avtKlient().auth.signOut({ scope: "local" }), 5000); }catch(_){}
+      prikaziSpletnoPrijavo("Prijava je potekla ali je bila preklicana — prijavite se znova."); return;
+    }
   }
   aktivniEmail = pp.email;
   doLogin({ name: pp.name });
@@ -1567,7 +1581,7 @@ function posodobiProfilZeton(){
 }
 async function portalProfil(){
   var ur;
-  try{ ur = await fetch(settings.portalUrl + "/auth/v1/user", { headers: { apikey: settings.portalKey, Authorization: "Bearer " + portalAuth.access_token } }); }
+  try{ ur = await fetchT(settings.portalUrl + "/auth/v1/user", { headers: { apikey: settings.portalKey, Authorization: "Bearer " + portalAuth.access_token } }, 12000); }
   catch(e){ throw new Error("ni povezave"); }
   var u = await ur.json().catch(function(){ return {}; });
   if(!ur.ok) throw new Error("seja ni veljavna");
@@ -1591,7 +1605,7 @@ async function acctSubmit(){
   try{
     if(SPLET){
       var c = avtKlient(); if(!c) throw new Error("ni povezave");
-      var r = await c.auth.signInWithPassword({ email: em, password: pw });
+      var r = await zRokom(c.auth.signInWithPassword({ email: em, password: pw }), 25000);
       if(r.error) throw new Error(r.error.message || "prijava ni uspela");
       portalAuth = izSeje(r.data.session);
       $("acctPass").value = "";
@@ -1616,13 +1630,12 @@ async function acctSubmit(){
 $("acctForm").addEventListener("submit", function(e){ e.preventDefault(); acctSubmit(); });
 $("acctBack").onclick = function(){ prikaziProfile(); };
 
-/* brezPina: samodejni vstop zadnjega uporabnika ob zagonu tablice (koda le ob menjavi) */
-async function izberiProfil(em, tile, brezPina){
+async function izberiProfil(em, tile){
   var p = savedProfs.find(function(x){ return x.email === em; }); if(!p) return false;
   $("ppMsg").textContent = "";
   var nm = tile && tile.querySelector(".pp-nm"); if(nm) nm.textContent = "Prijavljam …";
   $("ppGrid").style.pointerEvents = "none";
-  var naprej = brezPina ? vstopi : vstopiSPinom;
+  var naprej = vstopiSPinom;
   try{
     aktivniEmail = p.email;
     portalAuth = { refresh_token: p.refresh_token, access_token: null, expires_at: 0 };
@@ -1645,12 +1658,39 @@ async function izberiProfil(em, tile, brezPina){
   }finally{ $("ppGrid").style.pointerEvents = ""; if(nm && nm.isConnected) nm.textContent = p.name || p.email; }
 }
 function vstopiSPinom(p){ if(p.pin) zahtevajPin(p, function(){ vstopi(p); }); else vstopi(p); }
-function vstopi(p){
+function vstopi(p, brezSinh){
   aktivniEmail = p.email;
   if(settings.zadnjiProfil !== p.email){ settings.zadnjiProfil = p.email; saveSettings(); }
   doLogin({ name: p.name || p.email });
+  if(brezSinh) return;
   try{ zaziviRealtime(); }catch(e){}
   polnaSinh();
+}
+/* Zagon tablice: zadnji uporabnik vstopi TAKOJ (z zadnjimi znanimi podatki), prijava se
+   preveri v ozadju. Prej je zagon čakal na strežnik — na WiFi tiskalnika brez interneta
+   je zaslon ostal prazen. */
+function vstopiZadnjega(p){
+  if(p.dostop === false) return false;
+  aktivniEmail = p.email;
+  portalAuth = { refresh_token: p.refresh_token, access_token: null, expires_at: 0 };
+  vstopi(p, true);
+  (async function(){
+    try{
+      await portalRefresh();
+      var prof = await portalProfil();
+      p.name = prof.full_name || p.name; p.avatar = prof.avatar_url || ""; p.pin = prof.app_pin || ""; p.dostop = prof.dostop; p.uid = prof.id || p.uid;
+      await saveProfs();
+      if(!prof.dostop){ portalAuth = null; await savePortalAuth(); prikaziProfile(NI_DOSTOPA); return; }
+      if(session && aktivniEmail === p.email){ session.user = p.name; $("tbIme").textContent = p.name; }
+    }catch(e){
+      if(!/ni povezave/i.test((e && e.message) || "")) toast("Prijava na tej tablici je potekla — tapni oblaček zgoraj in vpiši geslo.");
+      risiSyncGumb();
+      return;   // brez povezave: delo teče naprej, sinhronizacija dohiti (urnik, »online«)
+    }
+    try{ zaziviRealtime(); }catch(e){}
+    polnaSinh();
+  })();
+  return true;
 }
 /* PIN (nastavi se v portalu, Uporabniki) — samo ob menjavi uporabnika na tablici */
 function zahtevajPin(p, onOk){
@@ -1721,9 +1761,9 @@ async function savePortalAuth(){ if(SPLET) return; try{ await dbWrite(PORTAL_AUT
 async function portalLogin(email, geslo){
   var r;
   try{
-    r = await fetch(settings.portalUrl + "/auth/v1/token?grant_type=password", {
+    r = await fetchT(settings.portalUrl + "/auth/v1/token?grant_type=password", {
       method: "POST", headers: { apikey: settings.portalKey, "Content-Type": "application/json" },
-      body: JSON.stringify({ email: email, password: geslo }) });
+      body: JSON.stringify({ email: email, password: geslo }) }, 12000);
   }catch(e){ throw new Error("ni povezave"); }
   var j = await r.json().catch(function(){ return {}; });
   if(!r.ok) throw new Error(j.error_description || j.msg || j.message || ("prijava ni uspela (" + r.status + ")"));
@@ -1744,9 +1784,9 @@ async function portalRefresh(){
   if(!portalAuth || !portalAuth.refresh_token) throw new Error("naprava ni prijavljena");
   var r;
   try{
-    r = await fetch(settings.portalUrl + "/auth/v1/token?grant_type=refresh_token", {
+    r = await fetchT(settings.portalUrl + "/auth/v1/token?grant_type=refresh_token", {
       method: "POST", headers: { apikey: settings.portalKey, "Content-Type": "application/json" },
-      body: JSON.stringify({ refresh_token: portalAuth.refresh_token }) });
+      body: JSON.stringify({ refresh_token: portalAuth.refresh_token }) }, 25000);   // dlje: prekinjena osvežitev bi lahko porabila žeton
   }catch(netErr){ throw new Error("ni povezave"); }   // brez omrežja žetona NE brišemo
   var j = await r.json().catch(function(){ return {}; });
   if(!r.ok){
@@ -1770,7 +1810,7 @@ async function api(pot, opt, drugic){
   var h = { apikey: settings.portalKey, Authorization: "Bearer " + portalAuth.access_token, "Content-Type": "application/json" };
   if(opt.prefer) h.Prefer = opt.prefer;
   var r;
-  try{ r = await fetch(settings.portalUrl + "/rest/v1/" + pot, { method: opt.method || "GET", headers: h, body: opt.body ? JSON.stringify(opt.body) : undefined }); }
+  try{ r = await fetchT(settings.portalUrl + "/rest/v1/" + pot, { method: opt.method || "GET", headers: h, body: opt.body ? JSON.stringify(opt.body) : undefined }); }
   catch(e){ throw new Error("ni povezave"); }
   if(r.status === 401 && !drugic){ await portalRefresh(); return api(pot, opt, true); }
   var t = await r.text(), j = null;
@@ -2240,6 +2280,11 @@ function pokaziZaklepShrambe(){
 
 /* ══════════ ZAGON ══════════ */
 (async function init(){
+  setTimeout(function(){
+    if(!$("prijava").hidden || !$("app").hidden || $("zaklepShrambe")) return;
+    try{ window.scBootDone(); }catch(e){}
+    showAccountLogin("Strežnik se ne odziva. Preveri, ali ima naprava internet (ne samo WiFi tiskalnika).");
+  }, 32000);
   try{
     nativnaPriprava();
     await loadSettings(); applyTheme();
@@ -2251,7 +2296,7 @@ function pokaziZaklepShrambe(){
     if(SPLET){ await spletZacni(); return; }
     /* tablica: zadnji uporabnik vstopi sam (brez kode); izbira profilov le, če ga ni */
     var zadnji = settings.zadnjiProfil && savedProfs.find(function(p){ return p.email === settings.zadnjiProfil && p.refresh_token; });
-    if(zadnji && await izberiProfil(zadnji.email, null, true)) return;
+    if(zadnji && vstopiZadnjega(zadnji)) return;
     if(!session && $("prijava").hidden) prikaziProfile();
   }finally{
     requestAnimationFrame(function(){ try{ window.scBootDone(); }catch(e){} });

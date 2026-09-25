@@ -10,11 +10,19 @@
     window.__SC.napake.push((e.message || 'napaka') + (kje ? ' [' + kje + ':' + (e.lineno || 0) + ']' : ''));
   }, true);
 
+  /* Sporočilo je v okvirju prijave, ki je sprva skrit — brez tega napaka ni bila vidna
+     in je ostal le napis »Peremo, vi pa blestite.«. */
+  function odpriOkvir() {
+    var pp = document.getElementById('profilePicker'), ab = document.getElementById('authBox');
+    if (pp) pp.className = pp.className.replace(/\bhidden\b/, '') + ' hidden';
+    if (ab) ab.className = ab.className.replace(/\bhidden\b/g, '');
+  }
   function pokazi() {
     if (window.__SC.ok) return;
     try { if (window.scBootDone) window.scBootDone(); } catch (e) {}   // umakni splash, da je napaka vidna
     var m = document.getElementById('loginMsg');
     if (!m) return;
+    odpriOkvir();
     var t = 'Portal se na tej napravi ni zagnal.';
     if (!window.supabase) t += ' Knjižnica se ni naložila.';
     if (window.__SC.napake.length) t += ' ' + window.__SC.napake[0];
@@ -29,11 +37,29 @@
     if (b) b.disabled = true;
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function () { setTimeout(pokazi, 2500); });
-  } else {
-    setTimeout(pokazi, 2500);
+  /* Varovalo: skripta teče, a po 15 s še ni izbran noben zaslon (prijava, profili ali
+     portal) — npr. strežnik ne odgovori. Pokaži prijavo s pojasnilom, ne golega napisa. */
+  function varovalo() {
+    if (!window.__SC.ok) return;
+    var auth = document.getElementById('auth'), pp = document.getElementById('profilePicker'), ab = document.getElementById('authBox');
+    if (!auth || auth.style.display === 'none' || !pp || !ab) return;
+    if (!/\bhidden\b/.test(pp.className) || !/\bhidden\b/.test(ab.className)) return;
+    try { if (window.scBootDone) window.scBootDone(); } catch (e) {}
+    odpriOkvir();
+    var m = document.getElementById('loginMsg');
+    if (m) {
+      m.className = 'msg bad show';
+      m.textContent = navigator.onLine === false
+        ? 'Ta naprava nima interneta. Povežite jo z omrežjem z internetom in osvežite stran.'
+        : 'Strežnik se ne odziva. Preverite, ali ima naprava internet (ne samo WiFi tiskalnika), in osvežite stran.';
+    }
   }
+  function ob(f, ms) {
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { setTimeout(f, ms); });
+    else setTimeout(f, ms);
+  }
+  ob(pokazi, 2500);
+  ob(varovalo, 15000);
 })();
 
 /* PWA: registriraj service worker (namestljiv portal na Androidu/iPhonu).
