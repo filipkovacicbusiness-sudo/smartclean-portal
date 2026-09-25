@@ -603,7 +603,7 @@ body,.topbar,.panel,.art,.list,.st-tile,.seg,.seg-b,input,textarea,.btn,.pill-bt
    Podatki ostanejo v istih ključih kot v prejšnjih različicah (pralnica:*),
    zato posodobitev ne izgubi ničesar.
    ══════════════════════════════════════════════════════════════════════ */
-var VARIANTA = "splet", APP_VERZIJA = "9.7";
+var VARIANTA = "splet", APP_VERZIJA = "9.8";
 var LASTNIK = "filip@eflitte.si";
 var DOK_BIZ = ["BSMART d.o.o.", "Škalska cesta 6, 3210 Slovenske Konjice", "+386 41 209 676", "+386 68 693 988", "blanka.kovacic1@gmail.com"];
 var PRIVZETI_PORTAL = "https://anrhtgbckxrccnafcmsz.supabase.co";
@@ -1506,7 +1506,8 @@ async function spletVstop(){
   try{ zaziviRealtime(); }catch(e){}
   polnaSinh();
 }
-/* varen trenutek za samodejno osvežitev nove različice (glej app.html) */
+/* različica, ki teče (app.html jo primerja z objavljeno), in varen trenutek za osvežitev */
+window.__scVerzija = APP_VERZIJA;
 window.__scVarno = function(){
   var a = document.activeElement;
   if(a && /^(INPUT|TEXTAREA)$/.test(a.tagName)) return false;
@@ -2319,7 +2320,14 @@ window.__pralnica = { verzija: APP_VERZIJA, varianta: VARIANTA, stanje: function
     navigator.serviceWorker.addEventListener("controllerchange", function(){
       if(!_swImel){ _swImel = true; return; }
       if(_swReload) return; _swReload = true;
-      (function poskusi(){ if(!window.__scVarno || window.__scVarno()) location.reload(); else setTimeout(poskusi, 3000); })();
+      /* Osveži le, če ta stran res teče s staro kodo. Stran se naloži z mreže, zato ima
+         nova različica navadno že najnovejšo kodo — prej se je vseeno osvežila in za
+         trenutek znova pokazala zagonski zaslon, ko si bil že notri. */
+      fetch(location.href.split("#")[0], { cache: "no-store" }).then(function(r){ return r.text(); }).then(function(t){
+        var m = /VARIANTA = "[^"]*", APP_VERZIJA = "([^"]+)"/.exec(t);
+        if(!m || m[1] === window.__scVerzija) return;
+        (function poskusi(){ if(!window.__scVarno || window.__scVarno()) location.reload(); else setTimeout(poskusi, 3000); })();
+      }).catch(function(){});
     });
   }
 </script>

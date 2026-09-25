@@ -199,7 +199,14 @@
     navigator.serviceWorker.addEventListener("controllerchange", function(){
       if(!_swImel){ _swImel = true; return; }
       if(_swReload) return; _swReload = true;
-      (function poskusi(){ if(!window.__scVarno || window.__scVarno()) location.reload(); else setTimeout(poskusi, 3000); })();
+      /* Osveži le, če ta stran res teče s staro kodo. Stran se naloži z mreže, zato ima
+         nova različica navadno že najnovejšo kodo — prej se je vseeno osvežila in za
+         trenutek znova pokazala zagonski zaslon, ko si bil že notri. */
+      fetch(location.href.split("#")[0], { cache: "no-store" }).then(function(r){ return r.text(); }).then(function(t){
+        var m = /VARIANTA = "[^"]*", APP_VERZIJA = "([^"]+)"/.exec(t);
+        if(!m || m[1] === window.__scVerzija) return;
+        (function poskusi(){ if(!window.__scVarno || window.__scVarno()) location.reload(); else setTimeout(poskusi, 3000); })();
+      }).catch(function(){});
     });
   }
 </script>

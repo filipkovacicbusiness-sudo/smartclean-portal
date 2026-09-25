@@ -911,7 +911,8 @@ async function spletVstop(){
   try{ zaziviRealtime(); }catch(e){}
   polnaSinh();
 }
-/* varen trenutek za samodejno osvežitev nove različice (glej app.html) */
+/* različica, ki teče (app.html jo primerja z objavljeno), in varen trenutek za osvežitev */
+window.__scVerzija = APP_VERZIJA;
 window.__scVarno = function(){
   var a = document.activeElement;
   if(a && /^(INPUT|TEXTAREA)$/.test(a.tagName)) return false;
