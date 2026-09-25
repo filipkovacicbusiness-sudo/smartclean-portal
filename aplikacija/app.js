@@ -696,8 +696,11 @@ function renderList(){
     el.querySelectorAll("[data-renum]").forEach(function(b){ b.onclick = function(){ novaStevilka(b.getAttribute("data-renum"), b); }; });
   }
   var skupaj = entries.length;
-  $("noga").textContent = skupaj ? ("Na napravi " + stevilo(skupaj) + " " + sklon(skupaj, "spremni list", "spremna lista", "spremni listi", "spremnih listov") + " · različica " + APP_VERZIJA) : ("Različica " + APP_VERZIJA);
+  nogaOsnova = skupaj ? ("Na napravi " + stevilo(skupaj) + " " + sklon(skupaj, "spremni list", "spremna lista", "spremni listi", "spremnih listov") + " · različica " + APP_VERZIJA) : ("Različica " + APP_VERZIJA);
+  risiNogo();
 }
+var nogaOsnova = "";
+function risiNogo(){ if(!nogaOsnova) return; var u = usklajeno(); $("noga").textContent = nogaOsnova + (u ? " · usklajeno s portalom " + kdajUskl(u) : ""); }
 function updateSearchChip(){
   var txt = "";
   if(searchMode === "id" && searchQuery) txt = "Številka vsebuje " + searchQuery;
@@ -1391,7 +1394,40 @@ async function syncPush(tiho){
 
 /* ── stanje sinhronizacije v orodni vrstici ── */
 var IKO_SYNC = '<svg class="vrti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>';
+/* ── ali je aplikacija res usklajena s portalom ──
+   Prej je zelena pika pomenila le »ni neposlanih listov« — tudi ko naprava ure ni dobila
+   strank in artiklov iz portala (npr. tablica na WiFi tiskalnika). Zdaj šteje čas zadnjega
+   USPEŠNEGA prenosa strank/artiklov (k) in listov (p); starejši od 12 min → opozorilo. */
+var USKL_MEJA = 12 * 60000;
+function usklajeno(){ var u = settings.uskl || {}; return (u.k && u.p) ? Math.min(u.k, u.p) : 0; }
+function zabeleziUskl(kaj){
+  settings.uskl = settings.uskl || {};
+  var prej = settings.uskl[kaj] || 0; settings.uskl[kaj] = Date.now();
+  if(Date.now() - prej > 60000) saveSettings();
+  risiSyncGumb();
+}
+function kdajUskl(t){
+  var d = new Date(t), h = String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+  return todayISO() === (d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0")) ? "ob " + h : (d.getDate() + ". " + (d.getMonth() + 1) + ". ob " + h);
+}
+function stanjeUskl(){
+  if(!session) return null;
+  if(!portalAuth) return { t: "Prijava v portal je potekla — stranke, artikli in listi se ne usklajujejo.", gumb: "Prijava" };
+  if(katalogTecev || pullTecev) return null;
+  var u = usklajeno();
+  if(u && Date.now() - u < USKL_MEJA) return null;
+  var brez = navigator.onLine === false ? " Naprava nima interneta." : " Preveri internet na napravi (ne samo WiFi tiskalnika).";
+  return { t: (u ? "Ni usklajeno s portalom od " + kdajUskl(u).replace(/^ob /, "") + "." : "Še ni usklajeno s portalom.") + " Stranke in artikli morda niso najnovejši." + brez, gumb: "Poskusi zdaj" };
+}
+function risiUskl(){
+  var el = $("uskl"); if(!el) return;
+  var st = stanjeUskl();
+  el.hidden = !st;
+  if(st){ $("usklT").textContent = st.t; $("usklBtn").textContent = st.gumb; }
+  risiNogo();
+}
 function risiSyncGumb(){
+  risiUskl();
   var b = $("syncChip"), dot = $("syncDot"); if(!b) return;
   if(!portalNastavljen() || (!portalAuth && !session)){ b.hidden = true; return; }
   b.hidden = false;
@@ -1401,11 +1437,13 @@ function risiSyncGumb(){
   if(!portalAuth){ st = "bad"; t = "Seja v portalu je potekla — tapni za ponovno prijavo."; }
   else if(syncTecev || rocnoTece){ st = "warn"; t = "Prenos v teku …"; }
   else if(caka){ st = brez ? "bad" : "warn"; t = "Na prenos čaka " + caka + (brez ? " — ni povezave" : (syncZadnje ? " — " + syncZadnje : "")) + ". Tapni za prenos zdaj."; }
-  else { st = "ok"; t = "Vse je v portalu. Tapni za osvežitev."; }
+  else if(stanjeUskl()){ st = "warn"; t = stanjeUskl().t + " Tapni za poskus."; }
+  else { st = "ok"; t = "Usklajeno s portalom " + kdajUskl(usklajeno()) + ". Tapni za osvežitev."; }
   b.classList.toggle("vrti", !!(syncTecev || rocnoTece));
   dot.className = "notif-dot " + st; b.title = t; b.setAttribute("aria-label", t);
 }
 var rocnoTece = false;
+$("usklBtn").onclick = function(){ $("syncChip").click(); };
 $("syncChip").onclick = async function(){
   if(rocnoTece) return;
   if(!portalAuth){ var p = savedProfs.find(function(x){ return x.email === aktivniEmail; }); showAccountLogin("Seja je potekla — vpiši geslo.", p ? p.email : ""); return; }
@@ -1490,6 +1528,7 @@ async function osveziKatalog(tiho){
     if(selectedId && !editingId && !clientById(selectedId)){ selectedId = null; draftQty = {}; toast("Izbrana stranka je bila v portalu izbrisana — izberi drugo."); if(session){ renderSummary(); } }
     await saveClients();
     if(session){ setClientLabel(); renderEntry(); renderSummary(); if(_okna.oknoStranke && !_okna.oknoStranke.zapiram) fillClientGrid(); }
+    zabeleziUskl("k");
     if(!tiho) toast("Stranke in artikli osveženi.");
   }catch(err){ if(!tiho) toast("Katalog ni šel: " + (err.message || err)); }
   finally{ katalogTecev = false; }
@@ -1618,6 +1657,7 @@ async function potegniIzPortala(){
       }catch(x){}
     }
     zadnjiPoteg = Date.now();
+    zabeleziUskl("p");
     if(spremenjeno){
       await saveEntries();
       if(editingId && !entryById(editingId)){ praznOsnutek(); toast("List, ki si ga urejal, je bil v portalu izbrisan."); }
@@ -1645,6 +1685,7 @@ setInterval(function(){
   if(entries.some(function(e){ return !e.syncedAt && !e.stevilkaZasedena; }) && Date.now() - _zadnjiNeuspeh > 120000) syncPush(true);
   if(document.visibilityState !== "visible") return;
   if(Date.now() - zadnjiPoteg > (rtZivo ? 300000 : 60000)) osveziIzPortala();
+  risiSyncGumb();
 }, 30000);
 window.addEventListener("online", function(){ risiSyncGumb(); if(!portalAuth) return; try{ zaziviRealtime(); }catch(e){} polnaSinh(); });
 window.addEventListener("offline", risiSyncGumb);

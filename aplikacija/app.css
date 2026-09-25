@@ -184,6 +184,11 @@ html.sc-booting,html.sc-booting body{overflow:hidden!important;}
 .notif-wrap{position:relative;display:inline-flex;}
 /* stanje prenosa: pika kot pri obvestilih v portalu (zelena = vse v portalu, rumena = čaka, rdeča = brez povezave) */
 .notif-dot{position:absolute;top:5px;right:5px;width:8px;height:8px;border-radius:50%;background:#2eaa5a;box-shadow:0 0 0 2px var(--bg);}
+/* opozorilo: aplikacija ni usklajena s portalom (videz kot .msg v portalu) */
+.uskl{display:flex;align-items:center;gap:12px;width:calc(100% - 32px);max-width:608px;margin:12px auto 0;padding:11px 14px;border-radius:9px;font-size:.85rem;line-height:1.45;border:1px solid var(--line);background:var(--green-m);}
+.uskl-dot{flex:none;width:8px;height:8px;border-radius:50%;background:var(--st-warn);}
+.uskl-t{flex:1;min-width:0;}
+.uskl .link-btn{flex:none;white-space:nowrap;}
 .notif-dot.ok{background:var(--st-ok);} .notif-dot.warn{background:var(--st-warn);} .notif-dot.bad{background:var(--st-bad);}
 #syncChip.vrti svg{animation:vrti 1s linear infinite;}
 
@@ -360,6 +365,7 @@ html.sc-notrans,html.sc-notrans *,html.sc-notrans *::before,html.sc-notrans *::a
 
 /* ── tablica: dve koloni na cel zaslon ── */
 @media (min-width:900px) and (min-height:600px){
+  .uskl{max-width:none;}
   html,body{height:100%;overflow:hidden;}
   .app{height:100vh;height:100dvh;}
   .stage{flex:1;min-height:0;max-width:none;display:grid;grid-template-columns:1.35fr 1fr;gap:16px;padding:16px;}
@@ -380,6 +386,7 @@ html.sc-notrans,html.sc-notrans *,html.sc-notrans *::before,html.sc-notrans *::a
   .link-btn{font-size:.79rem;}
 }
 @media (max-width:560px){
+  .uskl{width:calc(100% - 24px);}
   .auth-claim{font-size:clamp(1.7rem,8vw,2.3rem);}
   .auth-main{padding:18px 16px 16px;}
   .pp-tile-wrap{width:calc(50% - 6px);}   /* kot v portalu (≤520 px) */
