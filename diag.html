@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="sl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex" />
+<title>SmartClean — preverjanje naprave</title>
+<!-- Preverjanje naprave, ko se portal ne zažene. Namenoma brez knjižnic in v stari
+     skladnji JavaScripta, da deluje tudi v zelo starih brskalnikih. Ne prikaže nobenih
+     žetonov ali gesel — le, ali je prijava shranjena in do kdaj velja. -->
+<style>
+  body{margin:0;padding:18px;font:16px/1.45 -apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#fff;color:#0a0a0a;}
+  h1{font-size:20px;margin:0 0 4px;} p.sub{margin:0 0 14px;color:#666;font-size:14px;}
+  table{border-collapse:collapse;width:100%;max-width:720px;}
+  td{padding:7px 8px;border-bottom:1px solid #e5e5e5;vertical-align:top;font-size:15px;}
+  td.k{color:#555;width:42%;} .ok{color:#137333;font-weight:600;} .ne{color:#b3261e;font-weight:600;}
+  button{font:inherit;padding:12px 18px;border-radius:999px;border:1.5px solid #0a0a0a;background:#0a0a0a;color:#fff;margin:14px 8px 0 0;}
+  button.alt{background:#fff;color:#0a0a0a;}
+  #povzetek{max-width:720px;margin:0 0 14px;padding:12px 14px;border-radius:12px;background:#f4f4f4;font-weight:600;}
+</style>
+<script src="config.js"></script>
+</head>
+<body>
+<h1>Preverjanje naprave</h1>
+<p class="sub">Posnemi zaslon te strani in ga pošlji. Stran ne pokaže gesel ali žetonov.</p>
+<div id="povzetek">Preverjam …</div>
+<table id="t"></table>
+<button type="button" id="pocisti">Počisti predpomnilnik portala</button>
+<button type="button" class="alt" id="portal">Odpri portal</button>
+<script>
+(function () {
+  var t = document.getElementById('t'), tezave = [], cakam = 0;
+  function vrstica(k, v, stanje) {
+    var tr = document.createElement('tr'), a = document.createElement('td'), b = document.createElement('td');
+    a.className = 'k'; a.appendChild(document.createTextNode(k));
+    b.className = stanje === true ? 'ok' : (stanje === false ? 'ne' : '');
+    b.appendChild(document.createTextNode((stanje === true ? '✓ ' : (stanje === false ? '✗ ' : '')) + v));
+    tr.appendChild(a); tr.appendChild(b); t.appendChild(tr);
+    if (stanje === false) tezave.push(k);
+  }
+  function povzetek() {
+    if (cakam > 0) return;
+    document.getElementById('povzetek').innerHTML = tezave.length ? ('Težave: ' + tezave.join(', ')) : 'Vse preverjeno — ni najdenih težav.';
+  }
+  function zacni() { cakam++; }
+  function konec() { cakam--; povzetek(); }
+  function sintaksa(koda) { try { new Function(koda); return true; } catch (e) { return false; } }
+
+  var ua = navigator.userAgent || '';
+  var ch = ua.match(/Chrome\/(\d+)/), sam = ua.match(/SamsungBrowser\/([\d.]+)/), an = ua.match(/Android ([\d.]+)/), ios = ua.match(/OS (\d+)_\d+.* like Mac OS X/), sf = ua.match(/Version\/(\d+)[\d.]* .*Safari/);
+  var brs = sam ? ('Samsung Internet ' + sam[1]) : (ch ? ('Chrome ' + ch[1]) : (sf ? ('Safari ' + sf[1]) : 'neznan'));
+  vrstica('Brskalnik', brs + (an ? ' · Android ' + an[1] : '') + (ios ? ' · iOS ' + ios[1] : ''), ch ? (+ch[1] >= 80) : null);
+  vrstica('Celoten opis', ua.slice(0, 160), null);
+  vrstica('Internet (po mnenju naprave)', navigator.onLine === false ? 'ni povezave' : 'povezan', navigator.onLine !== false);
+  vrstica('Ura na napravi', new Date().toString().slice(0, 24), null);
+
+  // skladnja, ki jo potrebujeta portal (ES2017) in knjižnica prijave (ES2020)
+  vrstica('JavaScript: async/await (portal)', sintaksa('async function f(){ await 1; }') ? 'da' : 'ne', sintaksa('async function f(){ await 1; }'));
+  vrstica('JavaScript: {...objekt} (knjižnica)', sintaksa('var a = {}; var b = { ...a };') ? 'da' : 'ne', sintaksa('var a = {}; var b = { ...a };'));
+  vrstica('JavaScript: a?.b in a ?? b (knjižnica)', sintaksa('var a; var b = a?.x ?? 1;') ? 'da' : 'ne', sintaksa('var a; var b = a?.x ?? 1;'));
+  vrstica('Shramba (localStorage)', (function () { try { localStorage.setItem('__t', '1'); localStorage.removeItem('__t'); return 'deluje'; } catch (e) { return 'ne deluje'; } })(), (function () { try { localStorage.setItem('__t', '1'); localStorage.removeItem('__t'); return true; } catch (e) { return false; } })());
+  vrstica('fetch / Promise', (window.fetch ? 'fetch da' : 'fetch ne') + ' · ' + (window.Promise ? 'Promise da' : 'Promise ne'), !!(window.fetch && window.Promise));
+
+  // shranjena prijava (brez vsebine žetonov)
+  try {
+    var ref = (window.SC_CONFIG && window.SC_CONFIG.url || '').replace(/^https:\/\//, '').split('.')[0];
+    var s = JSON.parse(localStorage.getItem('sb-' + ref + '-auth-token') || 'null');
+    if (s && s.expires_at) {
+      var ost = Math.round((s.expires_at * 1000 - Date.now()) / 60000);
+      vrstica('Shranjena prijava', (s.user && s.user.email ? s.user.email : 'da') + ' · žeton ' + (ost > 0 ? 'velja še ' + ost + ' min' : 'potekel pred ' + (-ost) + ' min (osveži se)'), null);
+    } else vrstica('Shranjena prijava', 'ni (pokaže se prijava)', null);
+  } catch (e) { vrstica('Shranjena prijava', 'ni mogoče prebrati', null); }
+
+  // knjižnica prijave
+  zacni();
+  var sc = document.createElement('script');
+  sc.src = 'supabase.js?diag=' + Date.now();
+  sc.onload = function () { vrstica('Knjižnica prijave (supabase.js)', window.supabase && window.supabase.createClient ? 'naložena' : 'se ni zagnala', !!(window.supabase && window.supabase.createClient)); konec(); };
+  sc.onerror = function () { vrstica('Knjižnica prijave (supabase.js)', 'se ni prenesla', false); konec(); };
+  document.body.appendChild(sc);
+
+  // koda portala: sveža z mreže in tista, ki jo da predpomnilnik (service worker)
+  function beri(url, nacin, cb) {
+    try {
+      var x = new XMLHttpRequest(); x.open('GET', url, true);
+      if (nacin) { x.setRequestHeader('Cache-Control', 'no-cache'); x.setRequestHeader('Pragma', 'no-cache'); }
+      x.onload = function () { cb(x.status, x.responseText, x); }; x.onerror = function () { cb(0, '', x); }; x.send();
+    } catch (e) { cb(0, '', null); }
+  }
+  function verzija(txt) { var m = /APP_VERZIJA = '([^']+)'/.exec(txt || ''); return m ? m[1] : '?'; }
+  zacni();
+  beri('portal.js?diag=' + Date.now(), true, function (st1, a, xa) {
+    // napačna ura na napravi podre prijavo (žetoni »potečejo« ali še »ne veljajo«)
+    var d = 0; try { d = Date.parse((xa && xa.getResponseHeader('Date')) || ''); } catch (e) {}
+    if (d) { var raz = Math.round((Date.now() - d) / 60000); vrstica('Ura naprave glede na strežnik', Math.abs(raz) < 2 ? 'pravilna' : ((raz > 0 ? 'prehiteva ' : 'zaostaja ') + Math.abs(raz) + ' min'), Math.abs(raz) < 5); }
+    beri('portal.js', false, function (st2, b) {
+      var v1 = verzija(a), v2 = verzija(b);
+      vrstica('Portal na strežniku', st1 ? v1 : 'ni dosegljiv', st1 ? true : false);
+      vrstica('Portal, ki ga naloži naprava', st2 ? v2 : 'ni dosegljiv', st2 ? (v1 === '?' || v1 === v2) : false);
+      konec();
+    });
+  });
+  zacni();
+  beri('start.js', false, function (st, txt) { vrstica('Varovalo zagona (start.js)', st ? (/varovalo/.test(txt) ? 'novo' : 'staro') : 'ni dosegljivo', st ? /varovalo/.test(txt) : false); konec(); });
+
+  // service worker
+  if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+    zacni();
+    navigator.serviceWorker.getRegistrations().then(function (r) {
+      vrstica('Service worker', r.length + ' registriran(ih)' + (navigator.serviceWorker.controller ? ', nadzoruje stran' : ''), null); konec();
+    }, function () { vrstica('Service worker', 'ni mogoče prebrati', null); konec(); });
+  } else vrstica('Service worker', 'brskalnik ga ne podpira', null);
+
+  // strežnik prijave + ura strežnika
+  if (window.SC_CONFIG && window.SC_CONFIG.url) {
+    zacni();
+    try {
+      var x = new XMLHttpRequest(); var t0 = Date.now();
+      x.open('GET', window.SC_CONFIG.url + '/auth/v1/health', true);
+      x.setRequestHeader('apikey', window.SC_CONFIG.key);
+      x.timeout = 15000;
+      x.onload = function () {
+        vrstica('Strežnik prijave (Supabase)', 'odgovori (' + x.status + ', ' + (Date.now() - t0) + ' ms)', x.status > 0 && x.status < 500);
+        konec();
+      };
+      x.onerror = function () { vrstica('Strežnik prijave (Supabase)', 'ni dosegljiv', false); konec(); };
+      x.ontimeout = function () { vrstica('Strežnik prijave (Supabase)', 'ne odgovori (15 s)', false); konec(); };
+      x.send();
+    } catch (e) { vrstica('Strežnik prijave (Supabase)', 'napaka: ' + e.message, false); konec(); }
+  }
+  povzetek();
+
+  // Počisti SAMO shranjene datoteke portala (service worker in predpomnilnik), prijava ostane.
+  document.getElementById('pocisti').onclick = function () {
+    var b = this; b.disabled = true; b.innerHTML = 'Čistim …';
+    var dela = [];
+    try { if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) dela.push(navigator.serviceWorker.getRegistrations().then(function (r) { for (var i = 0; i < r.length; i++) r[i].unregister(); })); } catch (e) {}
+    try { if (window.caches && caches.keys) dela.push(caches.keys().then(function (k) { for (var i = 0; i < k.length; i++) caches['delete'](k[i]); })); } catch (e) {}
+    var naprej = function () { location.href = './?osvezeno=' + Date.now(); };
+    if (window.Promise && dela.length) Promise.all(dela).then(function () { setTimeout(naprej, 400); }, naprej); else naprej();
+  };
+  document.getElementById('portal').onclick = function () { location.href = './'; };
+})();
+</script>
+</body>
+</html>
