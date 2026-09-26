@@ -308,7 +308,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.31 · BETA';
+  var APP_VERZIJA = '4.32 · BETA';
   var NALAGANJE = '<div class="sc-load" aria-hidden="true"><span class="sc-load-line"></span></div>';
   // Stale-while-revalidate: ob ponovnem obisku razdelka NE pobriši vsebine v nalagalnik —
   // obdrži prejšnjo (takojšen prikaz) in jo osveži v ozadju. Trak le ob prvem nalaganju.
@@ -3617,8 +3617,19 @@
     box.querySelectorAll('[data-obnovi]').forEach(function (bn) { bn.addEventListener('click', function () { spremniObnovi(bn.dataset.obnovi); }); });
     box.querySelectorAll('[data-dokoncno]').forEach(function (bn) { bn.addEventListener('click', function () { spremniIzbrisiDokoncno(bn.dataset.dokoncno); }); });
   }
+  // Številka lista v košu je prosta (61_stevilke_kos.sql). Če jo je medtem dobil drug list,
+  // obnova ponudi naslednjo prosto številko, namesto napake »duplicate key«.
   async function spremniObnovi(id) {
     var r = await sb.from('delivery_notes').update({ deleted_at: null }).eq('id', id);
+    if (r.error && /duplicate|unique/i.test(r.error.message || '')) {
+      var st = (await sb.from('delivery_notes').select('doc_year,doc_seq').eq('id', id).maybeSingle()).data;
+      var nx = st ? await sb.rpc('app_prosta_stevilka', { p_leto: st.doc_year }) : null;
+      var nova = nx && !nx.error ? nx.data : null;
+      if (!st || !nova) { toast('Številko tega lista ima medtem drug spremni list.'); return; }
+      var ok = await potrdiModal({ naslov: 'Številka je zasedena', sporocilo: 'Številko ' + st.doc_seq + '/' + st.doc_year + ' ima medtem drug spremni list. Obnovim ta list s številko ' + nova + '/' + st.doc_year + '?', potrdi: 'Obnovi kot ' + nova + '/' + st.doc_year, preklici: 'Prekliči' });
+      if (!ok) return;
+      r = await sb.from('delivery_notes').update({ deleted_at: null, doc_seq: nova }).eq('id', id);
+    }
     if (r.error) { toast('Napaka: ' + r.error.message); return; }
     logDodaj('Arhiv', 'Obnovljeno', 'Spremni list obnovljen iz koša');
     toast('Spremni list obnovljen'); await naloziListe(); arhivKos();
@@ -4120,7 +4131,7 @@
       risiArhiv();
       pokaziList(_vrniSe);
     } catch (e) {
-      msg.textContent = 'Napaka: ' + (e.message || e);
+      msg.textContent = /duplicate|unique/i.test(e.message || '') ? 'Številka ' + seq + '/' + leto + ' je že uporabljena za drug spremni list.' : 'Napaka: ' + (e.message || e);
     }
   }
 
@@ -4518,7 +4529,7 @@
         pokaziList(nid);
       }
     } catch (e) {
-      msg.textContent = 'Napaka: ' + (/duplicate|unique/i.test(e.message || '') ? 'številka ' + seq + '/' + leto + ' je že zasedena' : (e.message || e));
+      msg.textContent = /duplicate|unique/i.test(e.message || '') ? 'Številka ' + seq + '/' + leto + ' je že uporabljena za drug spremni list.' : 'Napaka: ' + (e.message || e);
     }
   }
 
@@ -6905,7 +6916,7 @@
      Namestitveni paket leži poleg spletne različice, ne v kodi portala.
      Če ga še ni, to tu tudi piše — namesto strani 404. */
   // ?v= ob vsaki novi različici aplikacije (aplikacija/zgradi.py): brskalnik in predpomnilnik vzameta nov paket.
-  var APK_POT = 'tablica/Pralnica-sync.apk?v=9.9';
+  var APK_POT = 'tablica/Pralnica-sync.apk?v=10.0';
 
   function wirePwa(scope) {
     var pb = (scope || document).querySelector('#pwaInstall');
@@ -6938,7 +6949,7 @@
 
     p.innerHTML = '<div class="prog-grid">' +
       _progCard(IKO_WEB, 'Spletni pogled', 'Deluje v vsakem brskalniku, brez namestitve — telefon, tablica ali računalnik.', _odpri) +
-      _progCard(IKO_DL, 'Tablica (Android)', 'Namestitveni paket za vnos in tiskanje spremnih listov na tablici (različica 9.9). Namesti se čez obstoječo; le če je na tablici še različica 8 ali starejša, jo najprej odstrani — shranjeni listi ostanejo.', '<a class="btn prog-act apk-dl" href="' + escape_(url) + '" download>' + IKO_DL + 'Prenesi<span class="apk-mb"></span></a>', 'apkTablet') +
+      _progCard(IKO_DL, 'Tablica (Android)', 'Namestitveni paket za vnos in tiskanje spremnih listov na tablici (različica 10.0). Namesti se čez obstoječo; le če je na tablici še različica 8 ali starejša, jo najprej odstrani — shranjeni listi ostanejo.', '<a class="btn prog-act apk-dl" href="' + escape_(url) + '" download>' + IKO_DL + 'Prenesi<span class="apk-mb"></span></a>', 'apkTablet') +
       _progCard(IKO_TEL, 'Telefon', 'Odpre se v brskalniku; dodaj na začetni zaslon za občutek prave aplikacije.', _odpri) +
       '</div>';
 

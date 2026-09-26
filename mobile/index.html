@@ -611,7 +611,7 @@ body,.topbar,.panel,.art,.list,.st-tile,.seg,.seg-b,input,textarea,.btn,.pill-bt
    Podatki ostanejo v istih ključih kot v prejšnjih različicah (pralnica:*),
    zato posodobitev ne izgubi ničesar.
    ══════════════════════════════════════════════════════════════════════ */
-var VARIANTA = "splet", APP_VERZIJA = "9.9";
+var VARIANTA = "splet", APP_VERZIJA = "10.0";
 var LASTNIK = "filip@eflitte.si";
 var DOK_BIZ = ["BSMART d.o.o.", "Škalska cesta 6, 3210 Slovenske Konjice", "+386 41 209 676", "+386 68 693 988", "blanka.kovacic1@gmail.com"];
 var PRIVZETI_PORTAL = "https://anrhtgbckxrccnafcmsz.supabase.co";
@@ -1896,7 +1896,8 @@ async function posljiEnega(e){
   var obst = await api("delivery_notes?legacy_id=eq." + encodeURIComponent(e.id) + "&select=id,potrjeno,popravljeno_at&limit=1");
   if(!obst.length){
     /* po številki: ista številka je lahko DRUG list (portal ali druga naprava) — takega nikoli ne prepiši */
-    obst = await api("delivery_notes?doc_year=eq." + leto + "&doc_seq=eq." + seq + "&select=id,potrjeno,popravljeno_at,legacy_id,org_id,doc_date&limit=1");
+    /* listi v košu številke ne zasedajo (61_stevilke_kos.sql) */
+    obst = await api("delivery_notes?doc_year=eq." + leto + "&doc_seq=eq." + seq + "&deleted_at=is.null&select=id,potrjeno,popravljeno_at,legacy_id,org_id,doc_date&limit=1");
     if(obst.length){
       var _o = obst[0];
       var _isti = (_o.legacy_id && _o.legacy_id === e.id) || (!_o.legacy_id && _o.org_id === orgId && String(_o.doc_date) === String(e.datum));

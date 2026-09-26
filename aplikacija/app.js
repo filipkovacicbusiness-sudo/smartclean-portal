@@ -1293,7 +1293,8 @@ async function posljiEnega(e){
   var obst = await api("delivery_notes?legacy_id=eq." + encodeURIComponent(e.id) + "&select=id,potrjeno,popravljeno_at&limit=1");
   if(!obst.length){
     /* po številki: ista številka je lahko DRUG list (portal ali druga naprava) — takega nikoli ne prepiši */
-    obst = await api("delivery_notes?doc_year=eq." + leto + "&doc_seq=eq." + seq + "&select=id,potrjeno,popravljeno_at,legacy_id,org_id,doc_date&limit=1");
+    /* listi v košu številke ne zasedajo (61_stevilke_kos.sql) */
+    obst = await api("delivery_notes?doc_year=eq." + leto + "&doc_seq=eq." + seq + "&deleted_at=is.null&select=id,potrjeno,popravljeno_at,legacy_id,org_id,doc_date&limit=1");
     if(obst.length){
       var _o = obst[0];
       var _isti = (_o.legacy_id && _o.legacy_id === e.id) || (!_o.legacy_id && _o.org_id === orgId && String(_o.doc_date) === String(e.datum));
