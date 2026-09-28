@@ -308,7 +308,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.32 · BETA';
+  var APP_VERZIJA = '4.33 · BETA';
   var NALAGANJE = '<div class="sc-load" aria-hidden="true"><span class="sc-load-line"></span></div>';
   // Stale-while-revalidate: ob ponovnem obisku razdelka NE pobriši vsebine v nalagalnik —
   // obdrži prejšnjo (takojšen prikaz) in jo osveži v ozadju. Trak le ob prvem nalaganju.
@@ -815,6 +815,7 @@
     });
     if (meni._drsnik) meni._drsnik();
     window.scrollTo(0, 0);
+    if (kam !== 'arhiv') arhIzbiraKonec();   // način »Izberi« velja le v Arhivu
     if (kam === 'domov') risiPregled();
     if (kam === 'arhiv') risiArhiv();
     if (kam === 'fakture') risiFakture();
@@ -2789,6 +2790,7 @@
         _uc3dRAF = requestAnimationFrame(frame);
       } else {
         _uc3dRAF = null;
+        _uc3dMirno = Date.now() + 1200;   // napisi zaplavajo še ~1 s — do takrat diagrama ne izrisujemo znova
         svgEl.innerHTML = uc3dSvgBuild(d.segs, d.total, 1, { sweep: true });   // napisi zaplavajo od leve proti desni
         uc3dHover(svgEl);
       }
@@ -2824,7 +2826,7 @@
       // rezine se gladko spreminjajo, napisi se čisto pojavijo šele na koncu.
       svgEl.innerHTML = uc3dSvgBuild(segs, total, 1, { hideLabels: true });
       if (p < 1) { _uc3dRAF = requestAnimationFrame(frame); }
-      else { _uc3dRAF = null; svgEl.innerHTML = uc3dSvgBuild(toSegs, toTotal, 1, { labFade: true }); uc3dHover(svgEl); }
+      else { _uc3dRAF = null; _uc3dMirno = Date.now() + 300; svgEl.innerHTML = uc3dSvgBuild(toSegs, toTotal, 1, { labFade: true }); uc3dHover(svgEl); }
     }
     _uc3dRAF = requestAnimationFrame(frame);
   }
@@ -2835,8 +2837,26 @@
     var dog = UCEN_DOG || [];
     return [(UCEN_LISTI || []).length, Math.round(kg * 100), dog.length, dog.length ? dog[dog.length - 1].id : '', Math.round(vse * 100)].join('|');
   }
+  // Animacija diagrama se je včasih pokvarila: (1) osvežitev v ozadju je diagram izrisala
+  // znova sredi animacije (skok na konec), (2) prednalaganje in odprtje razdelka sta hkrati
+  // nalagala in izrisovala (animacija je skočila ali stekla dvakrat). Zdaj: ena poizvedba
+  // naenkrat (ucNalozi), izriše le zadnji klic (_ucGen), osvežitev počaka konec animacije.
+  var _ucNal = null, _ucGen = 0, _uc3dMirno = 0;
+  function ucNalozi() {
+    if (!_ucNal) _ucNal = naloziUcinek().then(function (v) { _ucNal = null; return v; }, function (e) { _ucNal = null; throw e; });
+    return _ucNal;
+  }
+  function ucPoAnimaciji(fn) {
+    var t0 = Date.now();
+    (function cakaj() {
+      if ((_uc3dRAF || Date.now() < _uc3dMirno) && Date.now() - t0 < 8000) { setTimeout(cakaj, 120); return; }
+      fn();
+    })();
+  }
   async function risiUcinek(prefetch) {
     var box = $('ucList'); if (!box) return;
+    if (prefetch && _ucNal) return;   // že nalaga
+    var gen = ++_ucGen;
     // Podatki so že naloženi (prednalaganje ob prijavi ali prejšnji obisk): diagram nariši in
     // animiraj TAKOJ, sveže podatke naloži v ozadju. Prej se je ob vsakem odprtju čakalo na
     // bazo in diagrama za trenutek sploh ni bilo.
@@ -2844,9 +2864,16 @@
       if (!_ucDan) _ucDan = danes10();
       _uc3dAnim = true; ucRender();
       try {
-        var prej = ucOdtis();
-        await naloziUcinek();
-        if (ucOdtis() !== prej) { _uc3dAnim = false; ucRender(); }   // spremembe pokaži brez ponovne animacije
+        var prej = ucOdtis(), prejSegs = ucDonutSegs(_ucDonutRange);
+        await ucNalozi();
+        if (gen !== _ucGen || ucOdtis() === prej) return;
+        // spremembe pokaži šele po koncu animacije; diagram se le preoblikuje (brez ponovne animacije)
+        ucPoAnimaciji(function () {
+          if (gen !== _ucGen) return;
+          var nov = ucDonutSegs(_ucDonutRange);
+          _uc3dTweenFromSegs = JSON.stringify(nov) === JSON.stringify(prejSegs) ? null : prejSegs;
+          _uc3dAnim = false; ucRender();
+        });
       } catch (e) {}
       return;
     }
@@ -2855,7 +2882,8 @@
     if (!prefetch) { var _pre = box.querySelector('.uc3d-svg'); if (_pre) _pre.innerHTML = ''; }
     pokaziNalaganje(box);
     try {
-      await naloziUcinek();
+      await ucNalozi();
+      if (gen !== _ucGen) return;   // medtem je razdelek odprt znova (npr. med prednalaganjem) — izriše tisti klic
       if (!_ucDan) _ucDan = danes10();
       _uc3dAnim = !prefetch;   // med prednalaganjem (skrito) NE animiramo; animira se šele ob odprtju
       ucRender();
@@ -3472,10 +3500,12 @@
       const clk = OSEBJE && !zaklep;
       const chkTitle = legacy ? 'star zapis (postavka brez artikla) — ni mogoče potrditi' : (prazno ? 'prazen list — ni mogoče potrditi' : (pot ? 'potrjeno — klikni za preklic' : 'klikni za potrditev (urejeno)'));
       const chk = '<span class="arh-chk' + (pot ? ' on' : '') + (clk ? ' clk' : ' dis') + (legacy && !prazno ? ' leg' : '') + '"' + (clk ? ' data-pot="' + l.id + '" role="button" tabindex="0"' : '') + ' title="' + chkTitle + '">' + (pot ? '✓' : (legacy && !prazno ? '★' : '')) + '</span>';
-      return `<div class="lcell arh-${stat}">
-    <button class="a-row" type="button" data-i="${i}" data-id="${l.id}" aria-expanded="false"
+      // krožec za izbiro več listov (viden le v načinu »Izberi«, na mestu kljukice)
+      const izbran = klikljivo && ARH_IZB && ARH_IZB.has(l.id);
+      return `<div class="lcell arh-${stat}${izbran ? ' izbran' : ''}">
+    <button class="a-row" type="button" data-i="${i}" data-id="${l.id}" aria-expanded="false"${klikljivo && ARH_IZB ? ' aria-pressed="' + (izbran ? 'true' : 'false') + '"' : ''}
       ${klikljivo ? '' : 'style="cursor:default"'}>
-      ${chk}<span class="a-num">${escape_(l.number || '—')}${l.popravljeno_at ? '<span class="a-pop" title="Popravljeno v aplikaciji' + (l.popravil ? ' · ' + escape_(l.popravil) : '') + '">✎</span>' : ''}</span>
+      ${klikljivo ? '<span class="a-sel" aria-hidden="true"></span>' : ''}${chk}<span class="a-num">${escape_(l.number || '—')}${l.popravljeno_at ? '<span class="a-pop" title="Popravljeno v aplikaciji' + (l.popravil ? ' · ' + escape_(l.popravil) : '') + '">✎</span>' : ''}</span>
       <span class="a-cli">${escape_(OSEBJE ? ORGIME[l.org_id] || '—' : l.issued_name || '')}${l.transport === 'izredni' ? '<span class="a-izr" title="Izredni prevoz">Izredni</span>' : ''}</span>
       <span class="a-foot"><span class="num a-date">${datum(l.doc_date)}</span>${OSEBJE && l.issued_name ? '<span class="a-izdal" title="Izdelal spremni list">' + escape_(l.issued_name) + '</span>' : ''}<span class="num a-qty">${stevilo(l.total_pieces)} kos</span></span>
       <span class="chev" aria-hidden="true">${klikljivo ? '›' : ''}</span>
@@ -3562,16 +3592,20 @@
     else if (sortv === 'stranka_az') vrstice.sort((a, b) => imeStr(a).localeCompare(imeStr(b), 'sl', { sensitivity: 'base' }));
     else if (sortv === 'stranka_za') vrstice.sort((a, b) => imeStr(b).localeCompare(imeStr(a), 'sl', { sensitivity: 'base' }));
     $('arhivPod').textContent = LISTI.length ? vrstice.length + ' od ' + stevilo(VSEHLISTOV) + ' spremnih listov' : 'v bazi še ni spremnih listov';
+    ARH_VIDNI = vrstice;
+    if (ARH_IZB) { const _obst = new Set(LISTI.map(l => l.id)); ARH_IZB.forEach(id => { if (!_obst.has(id)) ARH_IZB.delete(id); }); }   // medtem izbrisani
     $('arhivList').innerHTML = tabelaListov(vrstice, true);
+    $('arhivList').classList.toggle('izbira', !!ARH_IZB);
     prednaloziPostavke(vrstice);   // v ozadju pripravi postavke → prvo razpiranje je takoj gladko
     naloziKonflikte().then(risiKonflikti);
     document.querySelectorAll('#arhivList .a-row').forEach(b => {
-      b.addEventListener('click', () => odpriList(b));
+      b.addEventListener('click', () => { if (ARH_IZB) arhIzbiraPreklopi(b); else odpriList(b); });
     });
     document.querySelectorAll('#arhivList .arh-chk.clk').forEach(c => {
-      c.addEventListener('click', e => { e.stopPropagation(); potrdiList(c); });
-      c.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); potrdiList(c); } });
+      c.addEventListener('click', e => { if (ARH_IZB) return; e.stopPropagation(); potrdiList(c); });
+      c.addEventListener('keydown', e => { if (ARH_IZB) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); potrdiList(c); } });
     });
+    arhIzbiraRisi();
     oknoPoIzrisu();
   }
   async function potrdiList(chk) {
@@ -3587,6 +3621,98 @@
     const rec = (LISTI || []).find(x => x.id === id); if (rec) rec.potrjeno = naVkljuceno;
     toast(naVkljuceno ? 'Potrjeno kot urejeno.' : 'Potrditev preklicana.');
   }
+  // ── Izbira več spremnih listov (kot »Izberi« na iPhonu) → skupen tisk ──
+  // Gumb »Izberi« v orodni vrstici: dotik kartice jo izbere (namesto da jo odpre), spodaj se
+  // pokaže vrstica s številom izbranih, »Izberi vse« (vidne po filtru) in »Natisni«.
+  // Izbira ostane ob menjavi filtrov; izhod: »Prekliči«, Esc ali drug razdelek.
+  var ARH_IZB = null, ARH_VIDNI = [], _arhBar = null;
+  function arhIzbiraZacni() {
+    if (_okno) oknoZapri(true);
+    ARH_IZB = new Set();
+    var b = $('arhivIzberiBtn'); if (b) b.textContent = 'Prekliči';
+    arhIzbiraBar().classList.add('show');
+    risiArhiv();
+  }
+  function arhIzbiraKonec() {
+    if (!ARH_IZB) return;
+    ARH_IZB = null;
+    var b = $('arhivIzberiBtn'); if (b) b.textContent = 'Izberi';
+    if (_arhBar) _arhBar.classList.remove('show');
+    var l = $('arhivList');
+    if (l) {
+      l.classList.remove('izbira');
+      l.querySelectorAll('.lcell.izbran').forEach(c => c.classList.remove('izbran'));
+      l.querySelectorAll('.a-row[aria-pressed]').forEach(r => r.removeAttribute('aria-pressed'));
+    }
+  }
+  function arhIzbiraBar() {
+    if (_arhBar) return _arhBar;
+    var d = document.createElement('div');
+    d.className = 'arh-izbira'; d.setAttribute('role', 'toolbar'); d.setAttribute('aria-label', 'Izbrani spremni listi');
+    d.innerHTML = '<span class="arh-izb-n" aria-live="polite"></span>' +
+      '<button type="button" class="btn btn-narrow btn-alt" data-vse>Izberi vse</button>' +
+      '<button type="button" class="btn btn-narrow" data-tisk>Natisni</button>';
+    document.body.appendChild(d);
+    d.querySelector('[data-vse]').addEventListener('click', function () {
+      if (!ARH_IZB) return;
+      var vsi = ARH_VIDNI.length && ARH_VIDNI.every(l => ARH_IZB.has(l.id));
+      ARH_VIDNI.forEach(l => { if (vsi) ARH_IZB.delete(l.id); else ARH_IZB.add(l.id); });
+      document.querySelectorAll('#arhivList .a-row').forEach(r => {
+        var on = ARH_IZB.has(r.dataset.id);
+        r.closest('.lcell').classList.toggle('izbran', on); r.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+      arhIzbiraRisi();
+    });
+    d.querySelector('[data-tisk]').addEventListener('click', arhIzbiraNatisni);
+    _arhBar = d;
+    return d;
+  }
+  function arhIzbiraRisi() {
+    if (!ARH_IZB || !_arhBar) return;
+    var n = ARH_IZB.size, vsi = ARH_VIDNI.length && ARH_VIDNI.every(l => ARH_IZB.has(l.id));
+    _arhBar.querySelector('.arh-izb-n').textContent = n ? 'Izbrano: ' + sklonListov(n) : 'Izberi spremne liste';
+    var bv = _arhBar.querySelector('[data-vse]'); bv.textContent = vsi ? 'Počisti' : 'Izberi vse'; bv.disabled = !ARH_VIDNI.length;
+    var bt = _arhBar.querySelector('[data-tisk]'); if (!bt._tece) { bt.disabled = !n; bt.textContent = n ? 'Natisni (' + n + ')' : 'Natisni'; }
+  }
+  function arhIzbiraPreklopi(btn) {
+    var id = btn.dataset.id; if (!id || !ARH_IZB) return;
+    if (ARH_IZB.has(id)) ARH_IZB.delete(id); else ARH_IZB.add(id);
+    var on = ARH_IZB.has(id);
+    btn.closest('.lcell').classList.toggle('izbran', on);
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    arhIzbiraRisi();
+  }
+  // Izbrani listi v enem dokumentu (vsak na svoji strani A4), po številki naraščajoče.
+  async function arhIzbiraNatisni() {
+    if (!ARH_IZB || !ARH_IZB.size) return;
+    var bt = _arhBar.querySelector('[data-tisk]');
+    bt._tece = true; bt.disabled = true; bt.textContent = 'Pripravljam …';
+    try {
+      var stK = l => { var d = String(l.number || '').split('/'); return (parseInt(d[1], 10) || 0) * 1e7 + (parseInt(d[0], 10) || 0); };
+      var listi = LISTI.filter(l => ARH_IZB.has(l.id)).sort((a, b) => stK(a) - stK(b));
+      if (!listi.length) { toast('Izbrani spremni listi niso več v arhivu.'); return; }
+      await arhPostavke(listi.map(l => l.id));
+      var boxi = listi.map(l => ({ _note: l, _items: _POST_CACHE[l.id] || [] }));
+      var en = boxi.length === 1, naslov = en ? 'Spremni list ' + (listi[0].number || '') : sklonListov(boxi.length);
+      predogledDokument({ naslov: naslov, docHtml: dokHtml(en ? naslov : 'Spremni listi', boxi.map(spremniTeloHtml)), pdf: function () { return spremniPdfDownload(boxi); } });
+    } catch (e) { toast('Napaka: ' + ((e && e.message) || e)); }
+    finally { bt._tece = false; arhIzbiraRisi(); }
+  }
+  // Postavke več listov naenkrat (predpomnilnik ima le prvih 80 iz seznama).
+  async function arhPostavke(ids) {
+    var manjka = ids.filter(id => !_POST_CACHE[id]);
+    for (var i = 0; i < manjka.length; i += 100) {
+      var del = manjka.slice(i, i + 100);
+      var r = await vseVrstice(function (a, b) {
+        return sb.from('delivery_note_items').select('note_id,article_name,article_id,pieces,sort_order').in('note_id', del).order('note_id', { ascending: true }).order('sort_order', { ascending: true }).range(a, b);
+      });
+      if (r.error) throw r.error;
+      var by = {}; (r.data || []).forEach(it => { (by[it.note_id] = by[it.note_id] || []).push({ naziv: it.article_name, kosov: it.pieces, artId: it.article_id }); });
+      del.forEach(id => { _POST_CACHE[id] = by[id] || []; });
+    }
+  }
+  { const ib = $('arhivIzberiBtn'); if (ib) ib.addEventListener('click', () => { if (ARH_IZB) arhIzbiraKonec(); else arhIzbiraZacni(); }); }
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && ARH_IZB && !document.querySelector('.sc-modal-back, .okno-back')) arhIzbiraKonec(); });
   $('arhivIsci').addEventListener('input', risiArhiv);
   { const ss = $('arhivSort'); if (ss) ss.addEventListener('change', risiArhiv); }
   { const od = $('arhivOd'); if (od) od.addEventListener('change', risiArhiv); }
@@ -3596,6 +3722,7 @@
   { const _kb = $('arhivKosBtn'); if (_kb) _kb.addEventListener('click', () => arhivKos()); }
   // ── Koš spremnih listov (Nedavno brisani — obnovljivi) ──
   async function arhivKos() {
+    arhIzbiraKonec();
     var box = $('arhivList'); if (!box) return;
     box.innerHTML = NALAGANJE;
     var mejnik = new Date(Date.now() - 30 * 864e5).toISOString();
@@ -4287,6 +4414,10 @@
   function dpdfProstor(doc, y, potrebno) { return y + potrebno <= doc.H - DPDF.SP; }
 
   function spremniDocHtml(box) {
+    return dokHtml('Spremni list ' + ((box._note || {}).number || ''), spremniTeloHtml(box));
+  }
+  // Vsebina enega spremnega lista (brez ovoja dokumenta) — za en list ali več izbranih v enem tisku.
+  function spremniTeloHtml(box) {
     const n = box._note || {};
     const items = box._items || [];
     const org = ORGSEZNAM.find(o => o.id === n.org_id) || {};
@@ -4301,11 +4432,10 @@
     // Na spremni list se tiska SAMO opomba za stranko (interna opomba ostane le v portalu) — enako kot v spletni aplikaciji.
     const opombaP = n.opomba_stranka ? `<div class="sc-note"><b>Opomba:</b> ${escape_(n.opomba_stranka)}</div>` : '';
     const popr = n.popravljeno_at ? `<div class="sc-popr">Popravljeno v portalu · ${escape_(n.popravil || 'osebje')} · ${datum(String(n.popravljeno_at).slice(0, 10))}</div>` : '';
-    return dokHtml('Spremni list ' + (n.number || ''),
-      `<div class="sc-box sc-num"><span>Št. spremnega lista: <b>${escape_(n.number || '—')}</b></span></div>
+    return `<div class="sc-box sc-num"><span>Št. spremnega lista: <b>${escape_(n.number || '—')}</b></span></div>
       <div class="sc-box sc-client"><div class="cl"><div><b>Naročnik storitve:</b> <span class="cname">${escape_(naziv)}</span>${nazivSek ? ' <span class="cname-sec">(' + escape_(nazivSek) + ')</span>' : ''}</div><div class="sc-dates">Oddaja: ${datum(n.doc_date)}${izdal}${prevozP}</div></div><div class="sc-sign">Podpis:</div></div>
       <table class="sc-table"><thead><tr><th class="l">Naziv Artikla</th><th>Oddaja (št. kosov)</th></tr></thead><tbody>${rows}</tbody></table>
-      ${kg}${opombaP}${popr}`);
+      ${kg}${opombaP}${popr}`;
   }
   function natisniList(box) {
     predogledDokument({ naslov: 'Spremni list ' + escape_((box._note || {}).number || ''), docHtml: spremniDocHtml(box), pdf: function () { return spremniPdfDownload(box); } });
@@ -4935,13 +5065,20 @@
     doc.save('fakture_' + od + '_' + doo + '.pdf');
   }
   // Spremni list → prava .pdf datoteka, isti slog kot predogled (in aplikacija na tablici).
-  async function spremniPdfDownload(box) {
+  // En list ali seznam izbranih (Arhiv → Izberi): vsak se začne na svoji strani, ena datoteka.
+  async function spremniPdfDownload(boxi) {
     if (!(await pdfPripravljen())) return;
+    var seznam = Array.isArray(boxi) ? boxi : [boxi];
+    var doc = new PDFDoc();
+    seznam.forEach(function (box) { doc.addPage(); spremniPdfStran(doc, box); });
+    var ime = function (b) { return String(((b && b._note) || {}).number || 'brez').replace(/[\/\\:]+/g, '-'); };   // »1664/2026« → 1664-2026 (poševnica ni dovoljena v imenu datoteke)
+    doc.save(seznam.length === 1 ? 'spremni_list_' + ime(seznam[0]) + '.pdf' : 'spremni_listi_' + ime(seznam[0]) + '_do_' + ime(seznam[seznam.length - 1]) + '.pdf');
+  }
+  function spremniPdfStran(doc, box) {
     var n = box._note || {}, items = box._items || [];
     var org = ORGSEZNAM.find(function (o) { return o.id === n.org_id; }) || {};
     var naziv = org.legal_name || org.name || ORGIME[n.org_id] || '—';
     var nazivSek = (org.legal_name && org.name && org.name !== org.legal_name) ? org.name : '';
-    var doc = new PDFDoc(); doc.addPage();
     var M = DPDF.M, R = doc.W - M;
     var y = dpdfGlava(doc);
     // Št. spremnega lista (vse krepko, kot .sc-num)
@@ -4987,7 +5124,6 @@
       doc.rrect(M, y, R - M, hp, 8 * PT, { fill: DPDF.POPR_BG });
       doc.text(M + 10 * PT, dpdfOsnova(y + 6 * PT, fsp, fsp * 1.25), tp, { size: fsp, weight: 600, color: DPDF.POPR });
     }
-    doc.save('spremni_list_' + String(n.number || 'brez').replace(/[\/\\:]+/g, '-') + '.pdf');   // »1664/2026« → 1664-2026 (poševnica ni dovoljena v imenu datoteke)
   }
 
   /* ══════════ PREDOGLED DOKUMENTA (skupni pop-up: natisni / shrani) ══════════ */

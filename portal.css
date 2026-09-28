@@ -441,6 +441,35 @@ html[data-view="grid"] .a-foot{display:contents;}   /* v mreži naj se datum/izd
   box-shadow:0 6px 18px rgba(207,107,92,.26);box-shadow:0 6px 18px color-mix(in srgb, var(--st-bad) 28%, transparent);
   background:linear-gradient(135deg, color-mix(in srgb, var(--st-bad) 26%, var(--surface)) 0%, color-mix(in srgb, var(--st-bad) 11%, var(--surface)) 46%, var(--surface) 100%);}
 html[data-view="grid"] .lcell .a-row .arh-chk{position:absolute;top:12px;right:14px;}
+/* Izbira več listov (Arhiv → »Izberi«): krožec na mestu kljukice potrditve, izbrana
+   kartica dobi obrobo. Krožec je absolutno postavljen, da ne zasede stolpca v mreži vrstice. */
+.a-sel{display:none;position:absolute;left:18px;top:50%;margin-top:-14px;width:28px;height:28px;border-radius:50%;
+  border:2px solid var(--mid);background:var(--bg);color:var(--bg);align-items:center;justify-content:center;
+  font-size:15px;font-weight:800;line-height:1;pointer-events:none;transition:background .15s,border-color .15s;}
+html[data-view="grid"] .lcell .a-row .a-sel{left:auto;right:14px;top:12px;margin-top:0;}
+#arhivList.izbira .a-sel{display:inline-flex;}
+#arhivList.izbira .arh-chk{visibility:hidden;pointer-events:none;}
+#arhivList.izbira .chev{visibility:hidden;}
+#arhivList.izbira .lcell.izbran .a-sel{background:var(--ink);border-color:var(--ink);}
+#arhivList.izbira .lcell.izbran .a-sel::after{content:'✓';}
+#arhivList.izbira .lcell.izbran .a-row{box-shadow:0 0 0 2px var(--ink);}
+#arhivList.izbira{padding-bottom:90px;}   /* zadnja vrsta kartic ne ostane pod spodnjo vrstico */
+/* Spodnja vrstica izbire (kot orodna vrstica na iPhonu): število, »Izberi vse«, »Natisni«. */
+.arh-izbira{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));z-index:30;display:flex;align-items:center;gap:10px;
+  max-width:calc(100vw - 24px);padding:10px 10px 10px 18px;border:1px solid var(--line);border-radius:16px;
+  background:var(--surface);color:var(--ink);box-shadow:0 12px 36px rgba(0,0,0,.18);
+  opacity:0;visibility:hidden;transform:translate(-50%,16px);
+  transition:opacity .2s ease,transform .2s ease,visibility 0s linear .2s;}
+.arh-izbira.show{opacity:1;visibility:visible;transform:translate(-50%,0);transition:opacity .2s ease,transform .2s ease,visibility 0s;}
+.arh-izb-n{flex:1;min-width:150px;margin-right:6px;font-size:.9rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.arh-izbira .btn{white-space:nowrap;}
+@media (max-width:560px){
+  /* telefon: število zgoraj, gumba pod njim (drugače ga gumba izrineta) */
+  .arh-izbira{left:12px;right:12px;max-width:none;flex-wrap:wrap;gap:8px;padding:10px 12px 12px;transform:translateY(16px);}
+  .arh-izbira.show{transform:none;}
+  .arh-izb-n{flex:1 0 100%;min-width:0;margin:0;padding:2px 4px 0;font-size:.86rem;}
+  .arh-izbira .btn{flex:1;}
+}
 /* Razpiranje kartice: gladek »spust« (grid-template-rows 0fr→1fr) — brez rezanja vsebine. */
 .a-det{display:grid;grid-template-rows:0fr;opacity:0;border:0 solid var(--line);border-top:none;padding:0 18px;
   border-radius:0 0 var(--radius) var(--radius);background:var(--surface);margin-bottom:0;
