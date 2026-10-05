@@ -308,7 +308,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.33 · BETA';
+  var APP_VERZIJA = '4.34 · BETA';
   var NALAGANJE = '<div class="sc-load" aria-hidden="true"><span class="sc-load-line"></span></div>';
   // Stale-while-revalidate: ob ponovnem obisku razdelka NE pobriši vsebine v nalagalnik —
   // obdrži prejšnjo (takojšen prikaz) in jo osveži v ozadju. Trak le ob prvem nalaganju.
@@ -1503,6 +1503,116 @@
     toast('Izvoz pripravljen: ure_' + mesecKljuc + '.xlsx');
   }
 
+  // ── Listi za ročni vpis ur (natisni) ──
+  // Za vsako izbrano zaposleno en list A4 na papirju podjetja (glava z logotipom): za vsak
+  // dan v mesecu razen nedelje vrstica Prihod / Odhod / Podpis. Prazniki so označeni.
+  function velikaNoc(Y) {   // gregorijanski izračun (Meeus/Jones/Butcher)
+    var a = Y % 19, b = Math.floor(Y / 100), c = Y % 100, d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25),
+      g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30, i = Math.floor(c / 4), k = c % 4,
+      l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451), n = h + l - 7 * m + 114;
+    return new Date(Y, Math.floor(n / 31) - 1, (n % 31) + 1);
+  }
+  // Dela prosti dnevi v Sloveniji (ki niso nujno nedelja); velikonočni ponedeljek se izračuna.
+  function jePraznik(iso) {
+    if (['01-01', '01-02', '02-08', '04-27', '05-01', '05-02', '06-25', '08-15', '10-31', '11-01', '12-25', '12-26'].indexOf(iso.slice(5)) >= 0) return true;
+    var v = velikaNoc(+iso.slice(0, 4)), pon = new Date(v.getFullYear(), v.getMonth(), v.getDate() + 1);
+    return iso === pon.getFullYear() + '-' + ('0' + (pon.getMonth() + 1)).slice(-2) + '-' + ('0' + pon.getDate()).slice(-2);
+  }
+  // Delovni dnevi meseca (vsi razen nedelje): [{ iso, oznaka: »sre 1. 10.«, sob, praznik }]
+  function urDnevi(mesec) {
+    var out = [], n = dniVMesecu(mesec), mm = +mesec.slice(5, 7);
+    for (var d = 1; d <= n; d++) {
+      var iso = mesec + '-' + ('0' + d).slice(-2), wd = new Date(iso + 'T00:00:00').getDay();
+      if (wd === 0) continue;
+      out.push({ iso: iso, oznaka: DNEVI_KR[wd] + ' ' + d + '. ' + mm + '.', sob: wd === 6, praznik: jePraznik(iso) });
+    }
+    return out;
+  }
+  function urListHtml(z, mesec) {
+    var vrstice = urDnevi(mesec).map(function (d) {
+      return '<tr class="' + (d.sob ? 'sob' : '') + (d.praznik ? ' praz' : '') + '"><td class="ur-dan">' + d.oznaka + (d.praznik ? '<span class="ur-praz">praznik</span>' : '') + '</td><td></td><td></td><td></td></tr>';
+    }).join('');
+    return '<section>' +
+      '<div class="sc-box sc-num"><span>Evidenca delovnega časa</span><span class="sc-obd">' + escape_(_mesecLabel(mesec)) + '</span></div>' +
+      '<div class="sc-box sc-client"><div class="cl"><b>Zaposleni:</b> <span class="cname">' + escape_(z.ime || '') + '</span></div></div>' +
+      '<table class="sc-table ur-tbl"><thead><tr><th class="l">Dan</th><th>Prihod</th><th>Odhod</th><th>Podpis</th></tr></thead><tbody>' + vrstice + '</tbody></table>' +
+      '</section>';
+  }
+  // PDF: enaka postavitev kot predogled (glava, naslov, ime, mreža za ročni vpis).
+  function urPdfStran(doc, z, mesec) {
+    var M = DPDF.M, R = doc.W - M, y = dpdfGlava(doc);
+    y = dpdfNaslovOkvir(doc, y, 'Evidenca delovnega časa', _mesecLabel(mesec));
+    var fs = 12 * PT, lh = 12 * 1.2 * PT, h = 20 * PT + lh;
+    dpdfOkvir(doc, y, h);
+    var osn = dpdfOsnova(y + 10 * PT, fs, lh), x = M + 14 * PT;
+    var w1 = doc.text(x, osn, 'Zaposleni: ', { size: fs, bold: true, color: DPDF.INK });
+    var w2 = doc.text(x + w1, osn, z.ime || '', { size: fs, bold: true, color: DPDF.INK });
+    doc.line(x + w1 - 2 * PT, osn + 3.5 * PT, x + w1 + w2 + 2 * PT, osn + 3.5 * PT, { width: 2 * PT, color: DPDF.INK });
+    y += h + 14 * PT;
+    var W = R - M, kol = [M, M + W * 0.24, M + W * 0.41, M + W * 0.58, R];   // Dan | Prihod | Odhod | Podpis
+    var st = [{ t: 'Dan', x: M + 8 * PT }, { t: 'Prihod', x: (kol[1] + kol[2]) / 2, align: 'center' }, { t: 'Odhod', x: (kol[2] + kol[3]) / 2, align: 'center' }, { t: 'Podpis', x: (kol[3] + kol[4]) / 2, align: 'center' }];
+    y = dpdfTabGlava(doc, y, st);
+    var dni = urDnevi(mesec), vrsta = 7.2 * 72 / 25.4, top = y, SIVA = [207 / 255, 207 / 255, 207 / 255];
+    dni.forEach(function (d) {
+      if (d.praznik) doc.rect(M, y, W, vrsta, { fill: [246 / 255, 246 / 255, 246 / 255] });
+      var o = dpdfOsnova(y, 10 * PT, vrsta);
+      var wd = doc.text(M + 8 * PT, o, d.oznaka, { size: 10 * PT, weight: 600, color: d.sob ? DPDF.SIVA : DPDF.INK });
+      if (d.praznik) doc.text(M + 8 * PT + wd + 6 * PT, o, 'PRAZNIK', { size: 7.5 * PT, weight: 600, spacing: 0.06, color: DPDF.POZOR });
+      y += vrsta;
+      doc.line(M, y, R, y, { width: 0.75 * PT, color: SIVA });
+    });
+    [kol[1], kol[2], kol[3]].forEach(function (cx) { doc.line(cx, top, cx, y, { width: 0.75 * PT, color: SIVA }); });
+    doc.line(M, top, M, y, { width: 0.75 * PT, color: SIVA }); doc.line(R, top, R, y, { width: 0.75 * PT, color: SIVA });
+  }
+  async function urPdfPrenesi(osebe, mesec) {
+    if (!(await pdfPripravljen())) return;
+    var doc = new PDFDoc();
+    osebe.forEach(function (z) { doc.addPage(); urPdfStran(doc, z, mesec); });
+    doc.save('listi_ure_' + mesec + '.pdf');
+  }
+  // Okno: mesec + zaposleni (aktivni izbrani) → predogled (Natisni / Shrani kot PDF).
+  function urListiModal() {
+    var zap = (ZAPOSLENI || []).filter(function (z) { return z.active; }).sort(function (a, b) { return (a.ime || '').localeCompare(b.ime || '', 'sl', { sensitivity: 'base' }); });
+    var back = document.createElement('div'); back.className = 'sc-modal-back';
+    var checks = zap.map(function (z) { return '<label class="fx-cli"><input type="checkbox" class="fx-org" value="' + escape_(z.id) + '" checked><span>' + escape_(z.ime) + '</span></label>'; }).join('') || '<p class="u-sub">Ni aktivnih zaposlenih.</p>';
+    back.innerHTML = '<div class="sc-modal sc-modal-wide" role="dialog" aria-modal="true">' +
+      '<h4>Listi za vpis ur</h4>' +
+      '<p>Za vsako izbrano zaposleno en list: za vsak dan razen nedelje prihod, odhod in podpis.</p>' +
+      '<div class="fx-dates"><label>Mesec<input type="month" class="sc-modal-input ur-mesec"></label></div>' +
+      '<div class="fx-cli-head"><span>Zaposleni</span><label class="fx-all"><input type="checkbox" class="fx-vse" checked><span>Vse</span></label></div>' +
+      '<div class="fx-cli-list">' + checks + '</div>' +
+      '<div class="fx-msg msg"></div>' +
+      '<div class="sc-modal-acts"><button type="button" class="sc-modal-btn ghost" data-no>Prekliči</button><button type="button" class="sc-modal-btn primary" data-yes>Predogled</button></div>' +
+      '</div>';
+    document.body.appendChild(back);
+    var mI = back.querySelector('.ur-mesec'); mI.value = (_prisDan || danes10()).slice(0, 7);
+    var vse = back.querySelector('.fx-vse');
+    var izb = function () { return Array.prototype.slice.call(back.querySelectorAll('.fx-org')); };
+    vse.addEventListener('change', function () { izb().forEach(function (c) { c.checked = vse.checked; }); });
+    back.querySelector('.fx-cli-list').addEventListener('change', function () { vse.checked = izb().every(function (c) { return c.checked; }); });
+    requestAnimationFrame(function () { back.classList.add('show'); });
+    var done = false;
+    function zapri() { if (done) return; done = true; back.classList.remove('show'); document.removeEventListener('keydown', onKey); setTimeout(function () { if (back.parentNode) back.parentNode.removeChild(back); }, 180); }
+    function onKey(e) { if (e.key === 'Escape') zapri(); }
+    back.querySelector('[data-no]').addEventListener('click', zapri);
+    back.addEventListener('click', function (e) { if (e.target === back) zapri(); });
+    document.addEventListener('keydown', onKey);
+    var msg = back.querySelector('.fx-msg');
+    back.querySelector('[data-yes]').addEventListener('click', function () {
+      var mesec = mI.value;
+      if (!/^\d{4}-\d{2}$/.test(mesec)) { msg.className = 'fx-msg msg bad show'; msg.textContent = 'Izberi mesec.'; return; }
+      var ids = izb().filter(function (c) { return c.checked; }).map(function (c) { return c.value; });
+      var osebe = zap.filter(function (z) { return ids.indexOf(z.id) >= 0; });
+      if (!osebe.length) { msg.className = 'fx-msg msg bad show'; msg.textContent = 'Izberi vsaj eno zaposleno.'; return; }
+      zapri();
+      predogledDokument({
+        naslov: 'Listi za vpis ur — ' + _mesecLabel(mesec),
+        docHtml: dokHtml('Evidenca delovnega časa — ' + _mesecLabel(mesec), osebe.map(function (z) { return urListHtml(z, mesec); })),
+        pdf: function () { return urPdfPrenesi(osebe, mesec); }
+      });
+    });
+  }
+
   // Ročna odjava zaposlenega (če pozabi tapniti odhod). Vpiše dogodek 'out'
   // (source='manual'). Stanje je le v bazi — Pi in kartica nimata stanja.
   async function prisOdjavi(empId) {
@@ -1655,7 +1765,8 @@
         '</table></div>';
     }
     var blok2 = '<div class="pris-card"><div class="pris-h"><h3 class="sec-h">Evidenca</h3>' +
-      '<button type="button" class="cgrp-btn ghost pris-izvoz">Izvozi ' + escape_(_mesecLabel(_prisDan.slice(0, 7))) + '</button></div>' +
+      '<span class="pris-hbtns"><button type="button" class="cgrp-btn ghost pris-ure-listi">Natisni liste za ure</button>' +
+      '<button type="button" class="cgrp-btn ghost pris-izvoz">Izvozi ' + escape_(_mesecLabel(_prisDan.slice(0, 7))) + '</button></span></div>' +
       '<div class="pris-barvrsta">' +
         '<div class="pris-datum">' +
           '<button type="button" class="pris-nav" data-nav="-1" aria-label="Prejšnji"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button>' +
@@ -1678,6 +1789,7 @@
     { var os = $('prisOsebaSel'); if (os) os.addEventListener('change', function () { _prisOseba = this.value; prisRender(); }); }
     box.querySelectorAll('[data-rocniday]').forEach(function (b) { b.addEventListener('click', function () { var p = String(b.dataset.rocniday).split('|'); prisRocni(p[0], p[1]); }); });
     { var ib = box.querySelector('.pris-izvoz'); if (ib) ib.addEventListener('click', prisIzvoz); }
+    { var ul = box.querySelector('.pris-ure-listi'); if (ul) ul.addEventListener('click', urListiModal); }
     box.querySelectorAll('[data-odjavi]').forEach(function (b) { b.addEventListener('click', function () { prisOdjavi(b.dataset.odjavi); }); });
     box.querySelectorAll('[data-rocni]').forEach(function (b) { b.addEventListener('click', function () { prisRocni(b.dataset.rocni); }); });
     box.querySelectorAll('[data-delpair]').forEach(function (b) { b.addEventListener('click', function (e) { e.stopPropagation(); prisIzbrisiPar(b.dataset.delpair); }); });
@@ -4320,7 +4432,15 @@
       .sc-tot div b{font-variant-numeric:tabular-nums}
       .sc-tot .bruto{border-top:1.5px solid #0a0a0a;border-bottom:none;margin-top:4px;padding-top:8px;font-size:13px}
       .sc-tot .bruto span{color:#0a0a0a;font-weight:700}
-      .sc-pozor{margin-top:10px;font-size:10px;color:#8a5a00}`;
+      .sc-pozor{margin-top:10px;font-size:10px;color:#8a5a00}
+      table.ur-tbl{table-layout:fixed;margin-top:6px}
+      table.ur-tbl th:nth-child(1){width:24%}
+      table.ur-tbl th:nth-child(2),table.ur-tbl th:nth-child(3){width:17%}
+      table.ur-tbl td{height:7.2mm;padding:0 8px;border:1px solid #cfcfcf;border-top:none;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+      table.ur-tbl td.ur-dan{font-weight:600;white-space:nowrap}
+      table.ur-tbl tr.sob td.ur-dan{color:#666}
+      table.ur-tbl tr.praz td{background:#f6f6f6}
+      .ur-praz{margin-left:6px;font-size:7.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#8a5a00}`;
   }
   function dokGlavaHtml() {
     return '<div class="sc-head"><div class="sc-wm">Smart<span>Clean</span></div><div class="sc-biz">' + DOK_BIZ.map(escape_).join('<br>') + '</div></div>';
