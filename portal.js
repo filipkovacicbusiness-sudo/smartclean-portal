@@ -308,7 +308,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.34 · BETA';
+  var APP_VERZIJA = '4.35 · BETA';
   var NALAGANJE = '<div class="sc-load" aria-hidden="true"><span class="sc-load-line"></span></div>';
   // Stale-while-revalidate: ob ponovnem obisku razdelka NE pobriši vsebine v nalagalnik —
   // obdrži prejšnjo (takojšen prikaz) in jo osveži v ozadju. Trak le ob prvem nalaganju.
@@ -3601,9 +3601,16 @@
   }
 
   /* ══════════ ARHIV ══════════ */
-  function tabelaListov(vrstice, klikljivo) {
+  // mera: 'kg' / 'cena' — ob razvrščanju po teži ali vrednosti kartica pokaže še to vrednost.
+  function tabelaListov(vrstice, klikljivo, mera) {
     if (!vrstice.length) return LISTI_NAPAKA ? napakaListi : prazniListi(OSEBJE ? 'osebje' : 'stranka');
     return '<div class="rows">' + vrstice.map((l, i) => {
+      let mer = '';
+      if (mera === 'kg') mer = '<span class="num a-mer">' + (l.weight_kg != null ? tezaFmt(l.weight_kg) : '—') + '</span>';
+      else if (mera === 'cena') {
+        const v = arhVrednost(l);
+        mer = '<span class="num a-mer" title="' + (v == null ? 'vrednost še ni izračunana' : 'vrednost po ceniku brez DDV' + (v.brez ? ' · ' + v.brez + ' postavk brez cene ni všteto' : '')) + '">' + (v == null ? '—' : cenaFmt(v.neto) + (v.brez ? '*' : '')) + '</span>';
+      }
       const prazno = !(l.total_pieces > 0);
       const legacy = STAR_SET.has(l.id);   // vsebuje star zapis (postavka brez povezave na artikel)
       const pot = l.potrjeno === true;
@@ -3619,7 +3626,7 @@
       ${klikljivo ? '' : 'style="cursor:default"'}>
       ${klikljivo ? '<span class="a-sel" aria-hidden="true"></span>' : ''}${chk}<span class="a-num">${escape_(l.number || '—')}${l.popravljeno_at ? '<span class="a-pop" title="Popravljeno v aplikaciji' + (l.popravil ? ' · ' + escape_(l.popravil) : '') + '">✎</span>' : ''}</span>
       <span class="a-cli">${escape_(OSEBJE ? ORGIME[l.org_id] || '—' : l.issued_name || '')}${l.transport === 'izredni' ? '<span class="a-izr" title="Izredni prevoz">Izredni</span>' : ''}</span>
-      <span class="a-foot"><span class="num a-date">${datum(l.doc_date)}</span>${OSEBJE && l.issued_name ? '<span class="a-izdal" title="Izdelal spremni list">' + escape_(l.issued_name) + '</span>' : ''}<span class="num a-qty">${stevilo(l.total_pieces)} kos</span></span>
+      <span class="a-foot${mer ? ' z-mero' : ''}"><span class="num a-date">${datum(l.doc_date)}</span>${OSEBJE && l.issued_name ? '<span class="a-izdal" title="Izdelal spremni list">' + escape_(l.issued_name) + '</span>' : ''}<span class="num a-qty">${stevilo(l.total_pieces)} kos</span>${mer}</span>
       <span class="chev" aria-hidden="true">${klikljivo ? '›' : ''}</span>
     </button>
     <div class="a-det" id="det${i}"></div></div>`;
@@ -3677,7 +3684,69 @@
       await naloziListe(); await naloziKonflikte(); risiArhiv();
     } catch (e) { toast('Napaka: ' + (e.message || e)); }
   }
+  // ── Razvrščanje po vrednosti (Arhiv → »Cena«) ──
+  // Vrednost lista = vsota (cena po ceniku × kosov) brez DDV, izračunana enako kot v Fakturah:
+  // postavka → artikel (article_id, sicer ime pri stranki) → šifra cenika → cena1.
+  // Cene vidi le, kdor sme v Fakture. Postavke se berejo v _POST_CACHE (isti kot ob odpiranju lista),
+  // zato po urejanju lista (pozabiPostavke) vrednost tistega lista samodejno izračunamo znova.
+  var _arhArtMap = null, _arhCeneP = null, _arhCeneNapaka = false;
+  function arhSmeCene() { return sme('fakture'); }
+  function arhSortMoznosti() {
+    var s = $('arhivSort'); if (!s) return;
+    var ima = !!s.querySelector('option[value="cena_desc"]'), sme_ = arhSmeCene();
+    if (sme_ && !ima) {
+      [['cena_desc', 'Cena ↓'], ['cena_asc', 'Cena ↑']].forEach(function (o) {
+        var e = document.createElement('option'); e.value = o[0]; e.textContent = o[1]; s.appendChild(e);
+      });
+    } else if (!sme_ && ima) {
+      if (/^cena_/.test(s.value)) s.value = 'st_desc';
+      s.querySelectorAll('option[value^="cena_"]').forEach(function (e) { e.remove(); });
+    }
+  }
+  function arhCenePripravljene(listi) { return !!(_arhArtMap && CENIKMAP) && listi.every(function (l) { return _POST_CACHE[l.id]; }); }
+  function arhVrednost(l) {
+    var p = _POST_CACHE[l.id]; if (!p || !_arhArtMap || !CENIKMAP) return null;
+    var neto = 0, brez = 0;
+    p.forEach(function (it) {
+      var byId = (it.artId && _arhArtMap.__byId) ? _arhArtMap.__byId[it.artId] : null;
+      var sif = (byId && byId.sifra != null) ? byId.sifra : _arhArtMap[l.org_id + '|' + String(it.naziv || '').trim().toLowerCase()];
+      var c = cenaZaArtikel(sif);
+      if (c != null) neto += c * (it.kosov || 0); else if (it.kosov) brez++;
+    });
+    return { neto: Math.round(neto * 100) / 100, brez: brez };
+  }
+  // Naloži cenik, povezave artikel → cenik in postavke listov, ki jih še ni v predpomnilniku.
+  function arhCeneNalozi(listi) {
+    if (_arhCeneP) return _arhCeneP;
+    _arhCeneP = (async function () {
+      try {
+        var c = await nalozicenik(); if (!c || !c.ok) throw new Error('cenik');
+        if (!_arhArtMap) _arhArtMap = await naloziArtMap(null);
+        var ids = listi.map(function (l) { return l.id; }).filter(function (id) { return id && !_POST_CACHE[id]; });
+        if (ids.length) {
+          var izb = 'id,note_id,article_name,article_id,pieces,sort_order';
+          // Malo listov → samo njihove postavke; sicer vse naenkrat (seznam ID-jev v naslovu bi bil predolg).
+          var r = await vseVrstice(function (a, b) {
+            var q = sb.from('delivery_note_items').select(izb);
+            if (ids.length <= 60) q = q.in('note_id', ids);
+            return q.order('note_id', { ascending: true }).order('sort_order', { ascending: true }).order('id', { ascending: true }).range(a, b);
+          });
+          if (r.error) throw r.error;
+          var by = {};
+          (r.data || []).forEach(function (it) { (by[it.note_id] = by[it.note_id] || []).push({ naziv: it.article_name, kosov: it.pieces, artId: it.article_id }); });
+          ids.forEach(function (id) { if (!_POST_CACHE[id]) _POST_CACHE[id] = by[id] || []; });
+        }
+        _arhCeneNapaka = false;
+        return true;
+      } catch (e) {
+        _arhCeneNapaka = true;
+        return false;
+      } finally { _arhCeneP = null; }
+    })();
+    return _arhCeneP;
+  }
   function risiArhiv() {
+    arhSortMoznosti();
     if (OSEBJE) {
       const sel = $('arhivOrg');
       sel.classList.remove('hidden');
@@ -3699,14 +3768,29 @@
     const sortv = ($('arhivSort') && $('arhivSort').value) || 'st_desc';
     const imeStr = l => (OSEBJE ? (ORGIME[l.org_id] || '') : (l.issued_name || ''));
     const stK = l => { const d = String(l.number || '').split('/'); return (parseInt(d[1], 10) || 0) * 1e7 + (parseInt(d[0], 10) || 0); };
+    // Po teži / vrednosti: listi brez podatka gredo na konec v obeh smereh, enaki po številki (novejši prej).
+    const poMeri = (mera, smer) => vrstice.sort((a, b) => {
+      const x = mera(a), y = mera(b);
+      if (x == null || y == null) return (x == null) - (y == null) || stK(b) - stK(a);
+      return (x - y) * smer || stK(b) - stK(a);
+    });
+    const kgM = l => (l.weight_kg != null && !isNaN(parseFloat(l.weight_kg))) ? parseFloat(l.weight_kg) : null;
+    const cenaM = l => { const v = arhVrednost(l); return v ? v.neto : null; };
+    const poCeni = sortv === 'cena_desc' || sortv === 'cena_asc';
+    const ceneManjkajo = poCeni && !arhCenePripravljene(vrstice);
     if (sortv === 'st_asc') vrstice.sort((a, b) => stK(a) - stK(b));
-    else if (sortv === 'st_desc') vrstice.sort((a, b) => stK(b) - stK(a));
+    else if (sortv === 'st_desc' || ceneManjkajo) vrstice.sort((a, b) => stK(b) - stK(a));
     else if (sortv === 'stranka_az') vrstice.sort((a, b) => imeStr(a).localeCompare(imeStr(b), 'sl', { sensitivity: 'base' }));
     else if (sortv === 'stranka_za') vrstice.sort((a, b) => imeStr(b).localeCompare(imeStr(a), 'sl', { sensitivity: 'base' }));
-    $('arhivPod').textContent = LISTI.length ? vrstice.length + ' od ' + stevilo(VSEHLISTOV) + ' spremnih listov' : 'v bazi še ni spremnih listov';
+    else if (sortv === 'kg_desc') poMeri(kgM, -1);
+    else if (sortv === 'kg_asc') poMeri(kgM, 1);
+    else if (sortv === 'cena_desc') poMeri(cenaM, -1);
+    else if (sortv === 'cena_asc') poMeri(cenaM, 1);
+    $('arhivPod').textContent = LISTI.length ? vrstice.length + ' od ' + stevilo(VSEHLISTOV) + ' spremnih listov' + (ceneManjkajo ? (_arhCeneNapaka ? ' · vrednosti ni bilo mogoče izračunati' : ' · računam vrednosti …') : '') : 'v bazi še ni spremnih listov';
     ARH_VIDNI = vrstice;
     if (ARH_IZB) { const _obst = new Set(LISTI.map(l => l.id)); ARH_IZB.forEach(id => { if (!_obst.has(id)) ARH_IZB.delete(id); }); }   // medtem izbrisani
-    $('arhivList').innerHTML = tabelaListov(vrstice, true);
+    $('arhivList').innerHTML = tabelaListov(vrstice, true, (sortv === 'kg_desc' || sortv === 'kg_asc') ? 'kg' : (poCeni && !ceneManjkajo ? 'cena' : null));
+    if (ceneManjkajo && !_arhCeneNapaka) arhCeneNalozi(vrstice).then(ok => { if (ok && /^cena_/.test(($('arhivSort') || {}).value || '')) risiArhiv(); });
     $('arhivList').classList.toggle('izbira', !!ARH_IZB);
     prednaloziPostavke(vrstice);   // v ozadju pripravi postavke → prvo razpiranje je takoj gladko
     naloziKonflikte().then(risiKonflikti);
@@ -3826,7 +3910,11 @@
   { const ib = $('arhivIzberiBtn'); if (ib) ib.addEventListener('click', () => { if (ARH_IZB) arhIzbiraKonec(); else arhIzbiraZacni(); }); }
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && ARH_IZB && !document.querySelector('.sc-modal-back, .okno-back')) arhIzbiraKonec(); });
   $('arhivIsci').addEventListener('input', risiArhiv);
-  { const ss = $('arhivSort'); if (ss) ss.addEventListener('change', risiArhiv); }
+  { const ss = $('arhivSort'); if (ss) ss.addEventListener('change', () => {
+    // Ob vsaki izbiri »Cena« sveže povezave artikel → cenik (medtem so jih morda uredili v Strankah).
+    if (/^cena_/.test(ss.value)) { _arhArtMap = null; _arhCeneNapaka = false; }
+    risiArhiv();
+  }); }
   { const od = $('arhivOd'); if (od) od.addEventListener('change', risiArhiv); }
   { const dd = $('arhivDo'); if (dd) dd.addEventListener('change', risiArhiv); }
   { const xb = $('arhivObdX'); if (xb) xb.addEventListener('click', () => { const a = $('arhivOd'), b = $('arhivDo'); if (a) a.value = ''; if (b) b.value = ''; risiArhiv(); }); }

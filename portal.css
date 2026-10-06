@@ -403,6 +403,8 @@ html[data-view="grid"] .a-row[aria-expanded="true"]:hover{transform:none;}
 .a-foot{display:flex;align-items:center;gap:10px;justify-content:flex-end;white-space:nowrap;}
 html[data-view="grid"] .a-foot{display:contents;}   /* v mreži naj se datum/izdal/kos zložijo navpično */
 .a-date,.a-qty{white-space:nowrap;}
+/* Teža ali vrednost lista — vidna le, ko je Arhiv razvrščen po njej. */
+.a-mer{white-space:nowrap;font-weight:600;color:var(--ink);}
 /* Oznaka izrednega prevoza na kartici arhiva. */
 .a-izr{display:inline-block;margin-left:8px;padding:1px 9px;border-radius:100px;font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.03em;vertical-align:middle;white-space:nowrap;background:var(--st-warn);color:#141414;}
 /* Arhiv — status potrditve (zeleno potrjeno / rumeno nepotrjeno / rdeče prazno) */
@@ -1420,9 +1422,17 @@ html[data-view="grid"] .lcell:not(.open) .a-row .a-foot .num{font-size:.76rem;co
    je zato odrezalo datum na levi). Datum in količina ostaneta cela, ime se skrajša s »…«. */
 html[data-view="grid"] .lcell:not(.open) .a-row .a-foot{justify-content:flex-start;}
 html[data-view="grid"] .lcell:not(.open) .a-row .a-foot .a-date,
-html[data-view="grid"] .lcell:not(.open) .a-row .a-foot .a-qty{flex:none;}
+html[data-view="grid"] .lcell:not(.open) .a-row .a-foot .a-qty,
+html[data-view="grid"] .lcell:not(.open) .a-row .a-foot .a-mer{flex:none;}
 html[data-view="grid"] .lcell:not(.open) .a-row .a-foot .a-izdal{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;}
-html[data-view="grid"] .lcell:not(.open) .a-row .a-foot .a-qty::before{content:'· ';}
+html[data-view="grid"] .lcell:not(.open) .a-row .a-foot .a-qty::before,
+html[data-view="grid"] .lcell:not(.open) .a-row .a-foot .a-mer::before{content:'· ';}
+html[data-view="grid"] .lcell:not(.open) .a-row .a-foot .a-mer{font-weight:600;color:var(--ink);}
+/* Ploščica je ozka: ob razvrščanju po teži/vrednosti gre vrednost takoj za datum, izdajatelj se skrije,
+   količina pa se po potrebi skrajša s »…« (cela je vidna v seznamu in v odprtem listu). */
+html[data-view="grid"] .lcell:not(.open) .a-row .a-foot.z-mero .a-izdal{display:none;}
+html[data-view="grid"] .lcell:not(.open) .a-row .a-foot.z-mero .a-mer{order:1;}
+html[data-view="grid"] .lcell:not(.open) .a-row .a-foot.z-mero .a-qty{order:2;flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;}
 /* ── Puščica spodaj desno ── */
 html[data-view="grid"] .lcell:not(.open) .row .chev,
 html[data-view="grid"] .lcell:not(.open) .a-row .chev,
@@ -2185,7 +2195,8 @@ html.okno-zaklep{overflow:hidden;}
 .okno .okno-kartica .a-cli{grid-area:cli;display:block;white-space:normal;overflow:visible;font-size:.98rem;}
 .okno .okno-kartica .a-foot{grid-area:foot;display:flex;flex-wrap:wrap;gap:4px 10px;justify-content:flex-start;}
 .okno .okno-kartica .a-date{display:inline;}
-.okno .okno-kartica .a-qty::before{content:"·";color:var(--line);margin-right:4px;}
+.okno .okno-kartica .a-qty::before,
+.okno .okno-kartica .a-mer::before{content:"·";color:var(--line);margin-right:4px;}
 .okno .okno-kartica .num{text-align:left;font-size:.84rem;color:var(--mid);}
 /* Stranke: naziv večji in brez rezanja, delež in kilaža desno. */
 .okno .okno-kartica.row{grid-template-columns:minmax(0,1fr) auto auto;}
