@@ -321,7 +321,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.47 · BETA';
+  var APP_VERZIJA = '4.48 · BETA';
   var NALAGANJE = '<div class="sc-load" aria-hidden="true"><span class="sc-load-line"></span></div>';
   // Stale-while-revalidate: ob ponovnem obisku razdelka NE pobriši vsebine v nalagalnik —
   // obdrži prejšnjo (takojšen prikaz) in jo osveži v ozadju. Trak le ob prvem nalaganju.
@@ -339,7 +339,7 @@
   // Razdelki, katerih vidnost/pravice je mogoče nastavljati po vlogah.
   var ADMIN_RAZDELKI = [
     ['domov', 'Domov'], ['dokumenti', 'Dokumenti'], ['prisotnost', 'Prisotnost'], ['stranke', 'Stranke'],
-    ['arhiv', 'Arhiv'], ['artikli', 'Cenik & Artikli'], ['fakture', 'Fakture'], ['uporabniki', 'Uporabniki'],
+    ['arhiv', 'Arhiv'], ['artikli', 'Cenik & artikli'], ['fakture', 'Fakture'], ['uporabniki', 'Uporabniki'],
     ['statistika', 'Statistika'], ['gorivo', 'Gorivo'], ['konzola', 'Konzola'], ['aplikacija', 'Programska oprema'], ['katalog', 'Katalog']
   ];
   var ADMIN_VLOGE = ['super', 'admin', 'osebje', 'zaposleni', 'stranka'];
@@ -506,6 +506,12 @@
     });
   }
   var DND_ICON = '<svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg>';
+  // Drobne ikone v besedilu (namesto znakov ✎ ⚠ ✚ 📁): ena debelina črte, barva iz besedila.
+  function ikoT(pot) { return '<svg class="iko-t" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + pot + '</svg>'; }
+  var IKO_T_POZOR = ikoT('<path d="M10.3 4.2 2.6 17.6A2 2 0 0 0 4.3 20.5h15.4a2 2 0 0 0 1.7-2.9L13.7 4.2a2 2 0 0 0-3.4 0z"/><path d="M12 9.5v4.2M12 16.9v.1"/>');
+  var IKO_T_SVINC = ikoT('<path d="M4 20h4L18.5 9.5a2.1 2.1 0 0 0-3-3L5 17z"/><path d="m13.5 8.5 3 3"/>');
+  var IKO_T_PLUS = ikoT('<path d="M12 5v14M5 12h14"/>');
+  var IKO_T_MAPA = ikoT('<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>');
   // Oceni postavko: RDEČ, če ni izbran artikel; ORANŽEN, če je artikel brez količine.
   function _ocenaPostavke(row) {
     if (!row) return;
@@ -750,7 +756,7 @@
     // Lastnik: vedno vse (Admin ureja pravice ostalih, sebi jih ne more odvzeti).
     if (JE_LASTNIK()) {
       return [['domov', 'Domov'], ['dokumenti', 'Dokumenti'], ['prisotnost', 'Prisotnost'], ['stranke', 'Stranke'],
-        ['arhiv', 'Arhiv'], ['artikli', 'Cenik & Artikli'], ['fakture', 'Fakture'], ['uporabniki', 'Uporabniki'],
+        ['arhiv', 'Arhiv'], ['artikli', 'Cenik & artikli'], ['fakture', 'Fakture'], ['uporabniki', 'Uporabniki'],
         ['statistika', 'Statistika'], ['gorivo', 'Gorivo'], ['konzola', 'Konzola'], ['aplikacija', 'Programska oprema']];
     }
     // Ostali: vidnost razdelkov po pravicah vloge (nastavljivo v Admin).
@@ -868,7 +874,7 @@
       '<p class="spr-pod">Trenutna različica ' + escape_(APP_VERZIJA) + '</p>' +
       '<div class="spr-seznam">' + (Array.isArray(seznam) ? seznam : []).map(function (x) {
         var tr = String(x.v) === zdaj;
-        return '<section class="spr-v' + (tr ? ' zdaj' : '') + '"><div class="spr-vh"><b>' + escape_(String(x.v)) + '</b>' + (tr ? '<span class="spr-oz">trenutna</span>' : '') +
+        return '<section class="spr-v' + (tr ? ' zdaj' : '') + '"><div class="spr-vh"><b>' + escape_(String(x.v)) + '</b>' + (tr ? '<span class="spr-oz">Trenutna</span>' : '') +
           '<span class="spr-d">' + escape_(casObjave(x)) + '</span></div>' +
           '<ul>' + (x.t || []).map(function (t) { return '<li>' + escape_(String(t)) + '</li>'; }).join('') + '</ul></section>';
       }).join('') + '</div></div>';
@@ -2393,7 +2399,7 @@
           '<span class="art-r-cena">' + cenaFmt(x.cena1) + '</span>' +
           '<span class="art-r-acts">' +
             '<label class="art-chk' + (c <= 0 ? ' dis' : '') + '" title="' + (c <= 0 ? 'Vpiši ceno' : 'Označi, ko je cena potrjena') + '"><input type="checkbox" data-cpot="' + x.sifra + '"' + (pot ? ' checked' : '') + (c <= 0 ? ' disabled' : '') + '><span class="art-chk-box"></span></label>' +
-            '<button type="button" class="art-grip dnd-handle" title="povleci za razvrščanje" aria-label="razvrsti">' + DND_ICON + '</button><button type="button" class="art-r-edit" data-aedit="' + x.sifra + '" title="uredi" aria-label="uredi">✎</button><button type="button" class="art-r-del" data-adel="' + x.sifra + '" title="izbriši" aria-label="izbriši">×</button></span></div>';
+            '<button type="button" class="art-grip dnd-handle" title="povleci za razvrščanje" aria-label="razvrsti">' + DND_ICON + '</button><button type="button" class="art-r-edit" data-aedit="' + x.sifra + '" title="uredi" aria-label="uredi">' + IKO_T_SVINC + '</button><button type="button" class="art-r-del" data-adel="' + x.sifra + '" title="izbriši" aria-label="izbriši">×</button></span></div>';
       }).join('');
       var chips = str.length ? str.map(function (o) { return '<span class="pris-chip"><span class="pris-chip-t" style="cursor:default">' + escape_(ORGIME[o.id] || o.name) + '</span></span>'; }).join(' ') : '<span class="u-sub">Ni dodeljenih strank.</span>';
       return '<div class="cgrp' + (open ? ' open' : '') + '" data-pre="' + escape_(pre) + '"><div class="cgrp-head-row"><button type="button" class="cgrp-h' + (open ? ' open' : '') + '" data-artgrp="' + escape_(pre) + '">' +
@@ -3860,7 +3866,7 @@
       return `<div class="lcell arh-${stat}${izbran ? ' izbran' : ''}">
     <button class="a-row" type="button" data-i="${i}" data-id="${l.id}" aria-expanded="false"${klikljivo && ARH_IZB ? ' aria-pressed="' + (izbran ? 'true' : 'false') + '"' : ''}
       ${klikljivo ? '' : 'style="cursor:default"'}>
-      ${klikljivo ? '<span class="a-sel" aria-hidden="true"></span>' : ''}${chk}<span class="a-num">${escape_(l.number || '—')}${l.popravljeno_at ? '<span class="a-pop" title="Popravljeno v aplikaciji' + (l.popravil ? ' · ' + escape_(l.popravil) : '') + '">✎</span>' : ''}</span>
+      ${klikljivo ? '<span class="a-sel" aria-hidden="true"></span>' : ''}${chk}<span class="a-num">${escape_(l.number || '—')}${l.popravljeno_at ? '<span class="a-pop" title="Popravljeno v aplikaciji' + (l.popravil ? ' · ' + escape_(l.popravil) : '') + '">' + IKO_T_SVINC + '</span>' : ''}</span>
       <span class="a-cli">${escape_(OSEBJE ? ORGIME[l.org_id] || '—' : l.issued_name || '')}${l.transport === 'izredni' ? '<span class="a-izr" title="Izredni prevoz">Izredni</span>' : ''}</span>
       <span class="a-foot${mer ? ' z-mero' : ''}"><span class="num a-date">${datum(l.doc_date)}</span>${OSEBJE && l.issued_name ? '<span class="a-izdal" title="Izdelal spremni list">' + escape_(l.issued_name) + '</span>' : ''}<span class="num a-qty">${stevilo(l.total_pieces)} kos</span>${mer}</span>
       <span class="chev" aria-hidden="true">${klikljivo ? '›' : ''}</span>
@@ -3882,7 +3888,7 @@
     if (!OSEBJE || !KONFLIKTI.length) { box.innerHTML = ''; box.className = ''; box.removeAttribute('data-open'); return; }
     var open = box.dataset.open === '1';
     box.className = 'konf-card';
-    box.innerHTML = '<div class="konf-head"><span class="konf-warn">⚠ ' + KONFLIKTI.length + ' ' + (KONFLIKTI.length === 1 ? 'prekrivanje' : 'prekrivanj') + ' · offline urejanje na tablici</span><button type="button" class="btn-mini konf-toggle">' + (open ? 'Skrij' : 'Reši') + '</button></div>' +
+    box.innerHTML = '<div class="konf-head"><span class="konf-warn">' + IKO_T_POZOR + KONFLIKTI.length + ' ' + (KONFLIKTI.length === 1 ? 'prekrivanje' : 'prekrivanj') + ' · offline urejanje na tablici</span><button type="button" class="btn-mini konf-toggle">' + (open ? 'Skrij' : 'Reši') + '</button></div>' +
       (open ? '<div class="konf-list">' + KONFLIKTI.map(risiEnKonflikt).join('') + '</div>' : '');
     box.querySelector('.konf-toggle').addEventListener('click', function () { box.dataset.open = open ? '0' : '1'; risiKonflikti(); });
     if (open) box.querySelectorAll('[data-keep]').forEach(function (b) { b.addEventListener('click', function () { resiKonflikt(b.dataset.id, b.dataset.keep); }); });
@@ -4338,8 +4344,8 @@
     const seznam = items.length ? '<ul>' + items.map(p => `<li><span title="${escape_(p.naziv)}">${escape_(p.naziv)}</span><b>${stevilo(p.kosov)}</b></li>`).join('') + '</ul>' : '<p class="u-sub">Ta spremni list nima postavk.</p>';
     const prevozV = `<span class="prevoz-znak ${n.transport === 'izredni' ? 'izr' : 'red'}">${n.transport === 'izredni' ? 'Izredni prevoz' : 'Redni prevoz'}</span>`;
     const izdalV = `<p class="u-sub" style="margin-top:8px">${prevozV}${n.issued_name ? ' · Izdal: ' + escape_(n.issued_name) : ''}</p>`;
-    const popravek = n.popravljeno_at ? `<div class="ur-popravek">✎ Popravljeno · ${escape_(n.popravil || 'osebje')} · ${datumcas(n.popravljeno_at)}${n.popravki ? '<div class="ur-popravki">' + escape_(n.popravki).replace(/\n/g, '<br>') + '</div>' : ''}</div>` : '';
-    const ustvarjenoV = n.source === 'portal' ? `<p class="ur-ustvarjeno">✚ Ustvarjeno v portalu${n.issued_name ? ' · ' + escape_(n.issued_name) : ''}</p>` : '';
+    const popravek = n.popravljeno_at ? `<div class="ur-popravek">${IKO_T_SVINC}Popravljeno · ${escape_(n.popravil || 'osebje')} · ${datumcas(n.popravljeno_at)}${n.popravki ? '<div class="ur-popravki">' + escape_(n.popravki).replace(/\n/g, '<br>') + '</div>' : ''}</div>` : '';
+    const ustvarjenoV = n.source === 'portal' ? `<p class="ur-ustvarjeno">${IKO_T_PLUS}Ustvarjeno v portalu${n.issued_name ? ' · ' + escape_(n.issued_name) : ''}</p>` : '';
     const gumbi = '<div class="u-acts" style="margin-top:12px"><button type="button" data-natisni>Natisni</button>' +
       (OSEBJE ? '<button type="button" data-uredi>Uredi</button><button type="button" class="danger" data-izbrisi>Izbriši</button>' : '') + '</div>';
     box.innerHTML = '<div class="a-det-in"><div class="a-det-pad">' + seznam + izdalV + ustvarjenoV + popravek + opombeAppHtml(n) + opombaHtml(n) + gumbi + '</div></div>';
@@ -4913,7 +4919,7 @@
     const nazivSek = (org.legal_name && org.name && org.name !== org.legal_name) ? org.name : '';
     const rows = items.length
       ? items.map(p => `<tr><td class="an">${escape_(p.naziv)}</td><td class="qty">${stevilo(p.kosov)}</td></tr>`).join('')
-      : '<tr><td class="an" colspan="2" style="color:#888">Ni postavk</td></tr>';
+      : '<tr><td class="an" colspan="2" style="color:var(--mid)">Ni postavk</td></tr>';
     const izdal = n.issued_name ? ` &nbsp;·&nbsp; Izdal: ${escape_(n.issued_name)}` : '';
     const prevozP = ` &nbsp;·&nbsp; ${n.transport === 'izredni' ? 'Izredni prevoz' : 'Redni prevoz'}`;
     const kg = (n.weight_kg != null && n.weight_kg !== '') ? `<div class="sc-weight">Skupaj teža perila: <b>${tezaFmt(n.weight_kg)}</b></div>` : '';
@@ -5399,7 +5405,7 @@
     const kolonc = money ? 4 : 2;
     const rows = post.length ? post.map(p => money
       ? `<tr><td class="an">${escape_(p.nm)}</td><td class="r">${p.cena != null ? cenaFmt(p.cena) : '—'}</td><td class="r b">${stevilo(p.q)}</td><td class="r b">${p.znesek != null ? cenaFmt(p.znesek) : '—'}</td></tr>`
-      : `<tr><td class="an">${escape_(p.nm)}</td><td class="r b">${stevilo(p.q)}</td></tr>`).join('') : `<tr><td class="an" colspan="${kolonc}" style="color:#888">Ni postavk</td></tr>`;
+      : `<tr><td class="an">${escape_(p.nm)}</td><td class="r b">${stevilo(p.q)}</td></tr>`).join('') : `<tr><td class="an" colspan="${kolonc}" style="color:var(--mid)">Ni postavk</td></tr>`;
     const tot = `<div><span>Skupaj kosov</span><b>${stevilo(g.kosov)}</b></div><div><span>Skupaj teža perila</span><b>${fakKg(g.kg)}</b></div>` +
       (money ? `<div><span>Neto skupaj</span><b>${cenaFmt(g.neto)}</b></div><div><span>DDV (22 %)</span><b>${cenaFmt(g.ddv)}</b></div><div class="bruto"><span>Za plačilo (z DDV)</span><b>${cenaFmt(g.bruto)}</b></div>` : '');
     return `<section>
@@ -6122,7 +6128,7 @@
     return '<div class="cenik-row" data-s="' + x.sifra + '" data-org="' + escape_(orgId || '') + '" data-art="' + (artId != null ? escape_(String(artId)) : '') + '"><div class="cenik-nm">' + escape_(nm) + '</div>' +
       '<div class="cenik-meta">' + (x.koda ? escape_(normId(x.koda)) : 'brez ID') + ' · ' + escape_(x.em || 'kos') + '</div>' +
       '<div class="cenik-cena"><span class="cenik-val">' + cenaFmt(x.cena1) + '</span>' +
-      (OSEBJE ? '<span class="cenik-acts"><button type="button" class="cenik-grip dnd-handle" title="povleci za razvrščanje" aria-label="razvrsti">' + DND_ICON + '</button><button type="button" class="cenik-edit" data-cedit="' + x.sifra + '" title="uredi ceno" aria-label="uredi">✎</button></span>' : '') +
+      (OSEBJE ? '<span class="cenik-acts"><button type="button" class="cenik-grip dnd-handle" title="povleci za razvrščanje" aria-label="razvrsti">' + DND_ICON + '</button><button type="button" class="cenik-edit" data-cedit="' + x.sifra + '" title="uredi ceno" aria-label="uredi">' + IKO_T_SVINC + '</button></span>' : '') +
       '</div></div>';
   }
   function cenikRender() {
@@ -6249,7 +6255,7 @@
     const bar = btn.closest('.cgrp-bar');
     if (bar.nextElementSibling && bar.nextElementSibling.classList && bar.nextElementSibling.classList.contains('cenik-delconf')) { cenikRender(); return; }
     const ime = ORGIME[orgId] || 'stranko';
-    bar.insertAdjacentHTML('afterend', '<div class="cenik-delconf"><p class="cenik-warn">⚠ Res izbrišem stranko <b>' + escape_(ime) + '</b>? Skrita bo iz Strank, Faktur in cenika. Artikli in spremni listi ostanejo. Obnoviš jo lahko 30 dni v »Nedavno brisani«.</p><div class="cgrp-bar"><button type="button" class="cgrp-btn danger cenik-delconf-yes">Da, izbriši</button><button type="button" class="cgrp-btn ghost cenik-delconf-no">Prekliči</button></div></div>');
+    bar.insertAdjacentHTML('afterend', '<div class="cenik-delconf"><p class="cenik-warn">' + IKO_T_POZOR + 'Res izbrišem stranko <b>' + escape_(ime) + '</b>? Skrita bo iz Strank, Faktur in cenika. Artikli in spremni listi ostanejo. Obnoviš jo lahko 30 dni v »Nedavno brisani«.</p><div class="cgrp-bar"><button type="button" class="cgrp-btn danger cenik-delconf-yes">Da, izbriši</button><button type="button" class="cgrp-btn ghost cenik-delconf-no">Prekliči</button></div></div>');
     const wrap = bar.nextElementSibling;
     wrap.querySelector('.cenik-delconf-no').addEventListener('click', e => { e.stopPropagation(); cenikRender(); });
     wrap.querySelector('.cenik-delconf-yes').addEventListener('click', async e => {
@@ -6290,7 +6296,7 @@
     const bar = btn.closest('.cgrp-bar');
     if (bar.nextElementSibling && bar.nextElementSibling.classList && bar.nextElementSibling.classList.contains('cenik-delconf')) { cenikRender(); return; }
     const sifre = CENIK.filter(x => !x.org_id && cenikSkupina(x.naziv) === prefix).map(x => x.sifra);
-    bar.insertAdjacentHTML('afterend', '<div class="cenik-delconf"><p class="cenik-warn">⚠ Izbrišem celotno skupino <b>' + escape_(prefix) + '</b> (' + sifre.length + ' artiklov)? Gredo v koš — obnoviš jih lahko 30 dni v »Nedavno brisani«.</p><div class="cgrp-bar"><button type="button" class="cgrp-btn danger cenik-delconf-yes">Da, izbriši ' + sifre.length + ' art.</button><button type="button" class="cgrp-btn ghost cenik-delconf-no">Prekliči</button></div></div>');
+    bar.insertAdjacentHTML('afterend', '<div class="cenik-delconf"><p class="cenik-warn">' + IKO_T_POZOR + 'Izbrišem celotno skupino <b>' + escape_(prefix) + '</b> (' + sifre.length + ' artiklov)? Gredo v koš — obnoviš jih lahko 30 dni v »Nedavno brisani«.</p><div class="cgrp-bar"><button type="button" class="cgrp-btn danger cenik-delconf-yes">Da, izbriši ' + sifre.length + ' art.</button><button type="button" class="cgrp-btn ghost cenik-delconf-no">Prekliči</button></div></div>');
     const wrap = bar.nextElementSibling;
     wrap.querySelector('.cenik-delconf-no').addEventListener('click', e => { e.stopPropagation(); cenikRender(); });
     wrap.querySelector('.cenik-delconf-yes').addEventListener('click', async e => {
@@ -7295,7 +7301,7 @@
   }
   function izbrisiStrankoStranke(orgId, box) {
     const ime = ORGIME[orgId] || 'stranko';
-    box.innerHTML = '<div class="str-delconf"><p class="cenik-warn">⚠ Res izbrišem stranko <b>' + escape_(ime) + '</b>? Skrita bo iz Strank, Faktur in cenika. Artikli in spremni listi ostanejo. Obnoviš jo lahko 30 dni v Ceniki → »Nedavno brisani«.</p><div class="u-acts"><button type="button" class="cgrp-btn danger" data-yes>Da, izbriši</button><button type="button" class="cgrp-btn ghost" data-no>Prekliči</button></div></div>';
+    box.innerHTML = '<div class="str-delconf"><p class="cenik-warn">' + IKO_T_POZOR + 'Res izbrišem stranko <b>' + escape_(ime) + '</b>? Skrita bo iz Strank, Faktur in cenika. Artikli in spremni listi ostanejo. Obnoviš jo lahko 30 dni v Ceniki → »Nedavno brisani«.</p><div class="u-acts"><button type="button" class="cgrp-btn danger" data-yes>Da, izbriši</button><button type="button" class="cgrp-btn ghost" data-no>Prekliči</button></div></div>';
     box.querySelector('[data-no]').addEventListener('click', e => { e.stopPropagation(); risiArtikleBox(box, orgId); });
     box.querySelector('[data-yes]').addEventListener('click', async e => {
       e.stopPropagation();
@@ -7997,7 +8003,7 @@
     else if (!arr.length) html += '<div class="empty"><h3>Koš je prazen</h3><p>Zadnjih 30 dni ni brisanih dokumentov.</p></div>';
     else html += '<div class="cenik">' + arr.map(function (d) {
       var nm = d.ime || (d.storage_path ? String(d.storage_path).split('/').pop() : '—');
-      return '<div class="cenik-row"><div class="cenik-nm">' + (d.je_mapa ? '📁 ' : '') + escape_(nm) + '</div>' +
+      return '<div class="cenik-row"><div class="cenik-nm">' + (d.je_mapa ? IKO_T_MAPA : '') + escape_(nm) + '</div>' +
         '<div class="cenik-meta">' + (d.mapa ? escape_(d.mapa) + ' · ' : '') + 'izbrisano ' + datumcas(d.deleted_at) + '</div>' +
         '<div class="cenik-cena"><button type="button" class="btn-mini cenik-restore" data-dobnovi="' + d.id + '">Obnovi</button> ' +
         '<button type="button" class="btn-mini" data-ddokoncno="' + d.id + '">Izbriši dokončno</button></div></div>';

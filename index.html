@@ -105,6 +105,10 @@ html[data-theme="light"] .sc-hex{opacity:.5}
 .sc-hex .hw21{animation:hw21 20s ease-out infinite}
 .sc-hex .hw22{animation:hw22 20s ease-out infinite}
 .sc-hex .hw23{animation:hw23 20s ease-out infinite}
+/* minimalizem: šestkotniki samo na prijavi; v aplikaciji ozadje ostane mirno */
+.sc-hex{transition:opacity .6s ease,visibility 0s linear 0s}
+body:has(> .app.show) .sc-hex{opacity:0;visibility:hidden;transition:opacity .6s ease,visibility 0s linear .6s}
+body:has(> .app.show) .sc-hex [class*="hw"]{animation-play-state:paused}
 @media (prefers-reduced-motion:reduce){.sc-hex [class*="hw"]{animation:none;opacity:0}}
 </style>
 </head>
@@ -375,7 +379,7 @@ html[data-theme="light"] .sc-hex{opacity:.5}
       </section>
 
       <section class="sec hidden" id="sec-artikli">
-        <div class="head"><div><h2>Cenik &amp; Artikli</h2><p class="count" id="artPod">Katalog po skupinah ID — teža in dodeljevanje strankam</p></div>
+        <div class="head"><div><h2>Cenik &amp; artikli</h2><p class="count" id="artPod">Katalog po skupinah ID — teža in dodeljevanje strankam</p></div>
           <div class="filtri">
             <button type="button" id="artNovaBtn" class="btn btn-narrow tb-ikona" title="Nov cenik" aria-label="Nov cenik"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
             <button type="button" id="artUskladiBtn" class="btn btn-narrow btn-alt" title="Poskrbi, da ima vsaka stranka vse artikle svojega cenika">Uskladi artikle</button>
