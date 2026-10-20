@@ -310,7 +310,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.40 · BETA';
+  var APP_VERZIJA = '4.41 · BETA';
   var NALAGANJE = '<div class="sc-load" aria-hidden="true"><span class="sc-load-line"></span></div>';
   // Stale-while-revalidate: ob ponovnem obisku razdelka NE pobriši vsebine v nalagalnik —
   // obdrži prejšnjo (takojšen prikaz) in jo osveži v ozadju. Trak le ob prvem nalaganju.
@@ -750,7 +750,7 @@
     if (JE_LASTNIK()) nast.push(['admin', 'Admin']);
     const veja = ([k, l]) => `<a data-go="${k}">${ikona(k)}${l}</a>`;
     $('side').innerHTML = '<span class="side-slider" aria-hidden="true"></span>' + glavni.map(veja).join('') + '<div class="side-sep"></div>' + nast.map(veja).join('') +
-      '<div class="side-foot"><span class="side-ver">Različica ' + escape_(APP_VERZIJA) + '</span><a class="side-eflitte" href="https://eflitte.si" target="_blank" rel="noopener">Izdelava <b>eflitte</b></a></div>';
+      '<div class="side-foot"><button type="button" class="side-ver" title="Kaj je novega — vse posodobitve">Različica ' + escape_(APP_VERZIJA) + '</button><a class="side-eflitte" href="https://eflitte.si" target="_blank" rel="noopener">Izdelava <b>eflitte</b></a></div>';
     const _side = $('side');
     const _sl = _side.querySelector('.side-slider');
     const premakniDrsnik = a => {
@@ -783,6 +783,52 @@
     document.body.classList.toggle('meni-odprt', on);
   });
   $('scrim').addEventListener('click', zapriMeni);
+  // ── Različica v meniju: pritisk pokaže vse posodobitve (spremembe.json, ob objavi dodaj vnos) ──
+  var _spremembeOdpiram = false;
+  async function odpriSpremembe() {
+    if (_spremembeOdpiram || document.querySelector('.spr-modal')) return;
+    _spremembeOdpiram = true;
+    var seznam;
+    try {
+      var r = await fetch('spremembe.json?v=' + encodeURIComponent(APP_VERZIJA), { cache: 'no-cache' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      seznam = await r.json();
+    } catch (e) { toast('Seznama posodobitev ni bilo mogoče naložiti.'); return; }
+    finally { _spremembeOdpiram = false; }
+    zapriMeni();
+    var zdaj = String(APP_VERZIJA).split(' ')[0];
+    var dat = function (d) { var p = String(d || '').split('-'); return p.length === 3 ? (+p[2]) + '. ' + (+p[1]) + '. ' + p[0] : ''; };
+    // čas objave po slovenskem času s časovnim pasom: »20. 10. 2026 ob 19:58 · CEST (UTC+2)«
+    var casObjave = function (x) {
+      var t = x.c ? new Date(x.c) : null; if (!t || isNaN(t)) return dat(x.d);
+      var tz = 'Europe/Ljubljana', oz = '';
+      try {
+        var off = (new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'shortOffset' }).formatToParts(t).find(function (p) { return p.type === 'timeZoneName'; }) || {}).value || '';
+        var m = /GMT([+-]\d+)/.exec(off), u = m ? +m[1] : null;
+        oz = u === 2 ? 'CEST (UTC+2)' : u === 1 ? 'CET (UTC+1)' : off;
+      } catch (e) {}
+      return t.toLocaleDateString('sl-SI', { timeZone: tz, day: 'numeric', month: 'numeric', year: 'numeric' }) + ' ob ' +
+        t.toLocaleTimeString('sl-SI', { timeZone: tz, hour: '2-digit', minute: '2-digit' }) + (oz ? ' · ' + oz : '');
+    };
+    var back = document.createElement('div'); back.className = 'sc-modal-back';
+    back.innerHTML = '<div class="sc-modal spr-modal" role="dialog" aria-modal="true" aria-label="Posodobitve">' +
+      '<div class="spr-glava"><h4>Posodobitve</h4><button type="button" class="spr-x" aria-label="Zapri">×</button></div>' +
+      '<p class="spr-pod">Trenutna različica ' + escape_(APP_VERZIJA) + '</p>' +
+      '<div class="spr-seznam">' + (Array.isArray(seznam) ? seznam : []).map(function (x) {
+        var tr = String(x.v) === zdaj;
+        return '<section class="spr-v' + (tr ? ' zdaj' : '') + '"><div class="spr-vh"><b>' + escape_(String(x.v)) + '</b>' + (tr ? '<span class="spr-oz">trenutna</span>' : '') +
+          '<span class="spr-d">' + escape_(casObjave(x)) + '</span></div>' +
+          '<ul>' + (x.t || []).map(function (t) { return '<li>' + escape_(String(t)) + '</li>'; }).join('') + '</ul></section>';
+      }).join('') + '</div></div>';
+    document.body.appendChild(back);
+    requestAnimationFrame(function () { back.classList.add('show'); });
+    function zapri() { back.classList.remove('show'); document.removeEventListener('keydown', onKey); setTimeout(function () { if (back.parentNode) back.parentNode.removeChild(back); }, 180); }
+    function onKey(e) { if (e.key === 'Escape') zapri(); }
+    document.addEventListener('keydown', onKey);
+    back.querySelector('.spr-x').addEventListener('click', zapri);
+    back.addEventListener('click', function (e) { if (e.target === back) zapri(); });
+  }
+  document.addEventListener('click', function (e) { if (e.target.closest && e.target.closest('.side-ver')) odpriSpremembe(); });
   // Klik na logotip (zgoraj levo) → Domov.
   { var _hl = $('homeLogo'); if (_hl) { _hl.style.cursor = 'pointer'; _hl.addEventListener('click', function () { pojdi('domov'); }); _hl.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pojdi('domov'); } }); } }
   // Onemogoči nehoteno spreminjanje števil s kolescem miške (scroll) — velja povsod.
@@ -1707,15 +1753,18 @@
           '<button type="button" class="cgrp-btn ghost" data-aktiv="' + z.id + '" data-v="' + (z.active ? '0' : '1') + '">' + (z.active ? 'Deaktiviraj' : 'Aktiviraj') + '</button>' +
           '<button type="button" class="cgrp-btn danger" data-izbrisi="' + z.id + '">Izbriši</button>' +
         '</div>';
-      return '<div class="lcell' + (z.active ? '' : ' pris-neakt') + '"><button class="row has-tag" type="button" data-zid="' + z.id + '" aria-haspopup="dialog">' +
-        '<span><span class="row-name"><span class="row-nm">' + escape_(z.ime) + '</span></span><br><span class="row-legal">' + escape_(pod) + '</span>' + znak + '</span>' +
-        '<span class="row-pct"></span><span class="num pris-zap-ure" title="Danes">' + (danUre || '—') + '</span><span class="chev" aria-hidden="true">›</span></button>' +
+      // ENA vrstica na zaposlenega: ime · stanje · ure danes (prej tri: ime, kartica, značka —
+      // do mesečne evidence je bilo treba dolgo drseti). Kartica in uporabnik sta v oknu.
+      var stKr = !z.active ? '<span class="pz-st off">neaktiven</span>' : (notri ? '<span class="pz-st in">od ' + uraMin(l.ts) + '</span>' : '<span class="pz-st">odsoten</span>');
+      return '<div class="pz-cell' + (z.active ? '' : ' pris-neakt') + '"><button class="row pz" type="button" data-zid="' + z.id + '" aria-haspopup="dialog" title="' + escape_(pod) + '">' +
+        '<span class="pz-ime"><span class="row-name"><span class="row-nm">' + escape_(z.ime) + '</span></span>' + stKr + '</span>' +
+        '<span class="num pris-zap-ure" title="Danes">' + (danUre || '—') + '</span><span class="chev" aria-hidden="true">›</span></button>' +
         '<div class="arts pris-zap-det">' + det + '</div></div>';
     }).join('');
     var aktivnihN = aktivni.length;
     var blok1 = '<div class="pris-card pris-zap-card"><div class="pris-h"><h3 class="sec-h">Zaposleni</h3>' +
       '<span class="pris-count" title="prisotni / aktivni">' + prisotnihN + ' / ' + aktivnihN + ' prisotnih</span></div>' +
-      (zapKartice ? '<div class="rows pris-zap">' + zapKartice + '</div>' : '<p class="u-sub" style="padding:10px 2px">Še ni zaposlenih.</p>') +
+      (zapKartice ? '<div class="pris-zap pz-seznam">' + zapKartice + '</div>' : '<p class="u-sub" style="padding:10px 2px">Še ni zaposlenih.</p>') +
       '<div class="pris-add"><input type="text" class="pris-new" placeholder="Ime in priimek novega zaposlenega"><button type="button" class="cgrp-btn pris-add-btn">+ Dodaj</button></div></div>';
 
     // ── Blok 2: evidenca (dan/mesec/oseba) ──
@@ -3880,6 +3929,22 @@
     })();
     return _arhCeneP;
   }
+  var ARH_NA_STRAN = 60, _arhStran = 0, _arhKljuc = null;
+  // Številčenje strani: ‹ 1 … 4 5 6 … 15 ›  ·  61–120 od 852
+  function arhStraniHtml(n, zac, vseh) {
+    if (n <= 1) return '';
+    var cur = _arhStran, b = [], prej = -1;
+    b.push('<button type="button" class="arh-str arh-str-nav" data-str="' + (cur - 1) + '"' + (cur === 0 ? ' disabled' : '') + ' aria-label="Prejšnja stran">‹</button>');
+    for (var i = 0; i < n; i++) {
+      if (!(i === 0 || i === n - 1 || Math.abs(i - cur) <= 1)) continue;
+      if (i - prej > 1) b.push('<span class="arh-str-tri" aria-hidden="true">…</span>');
+      b.push('<button type="button" class="arh-str' + (i === cur ? ' on' : '') + '" data-str="' + i + '"' + (i === cur ? ' aria-current="page"' : '') + ' aria-label="Stran ' + (i + 1) + '">' + (i + 1) + '</button>');
+      prej = i;
+    }
+    b.push('<button type="button" class="arh-str arh-str-nav" data-str="' + (cur + 1) + '"' + (cur >= n - 1 ? ' disabled' : '') + ' aria-label="Naslednja stran">›</button>');
+    return '<nav class="arh-strani" aria-label="Strani arhiva"><div class="arh-str-gumbi">' + b.join('') + '</div>' +
+      '<span class="arh-str-info">' + stevilo(zac + 1) + '–' + stevilo(Math.min(zac + ARH_NA_STRAN, vseh)) + ' od ' + stevilo(vseh) + '</span></nav>';
+  }
   function risiArhiv() {
     arhSortMoznosti();
     if (OSEBJE) {
@@ -3922,12 +3987,24 @@
     else if (sortv === 'cena_desc') poMeri(cenaM, -1);
     else if (sortv === 'cena_asc') poMeri(cenaM, 1);
     $('arhivPod').textContent = LISTI.length ? vrstice.length + ' od ' + stevilo(VSEHLISTOV) + ' spremnih listov' + (ceneManjkajo ? (_arhCeneNapaka ? ' · vrednosti ni bilo mogoče izračunati' : ' · računam vrednosti …') : '') : 'v bazi še ni spremnih listov';
-    ARH_VIDNI = vrstice;
+    // ── strani: največ ARH_NA_STRAN listov naenkrat (prej vsi na eni strani — pri tisočih počasno).
+    // Iskanje, filtri in razvrščanje veljajo za CEL arhiv; ob njihovi spremembi nazaj na 1. stran.
+    const kljucF = [q, org, _od, _do, sortv].join('|');
+    if (kljucF !== _arhKljuc) { _arhKljuc = kljucF; _arhStran = 0; }
+    const nStrani = Math.max(1, Math.ceil(vrstice.length / ARH_NA_STRAN));
+    if (_arhStran > nStrani - 1) _arhStran = nStrani - 1;
+    if (_arhStran < 0) _arhStran = 0;
+    const zac = _arhStran * ARH_NA_STRAN, stran = vrstice.slice(zac, zac + ARH_NA_STRAN);
+    ARH_VIDNI = stran;   // »Izberi vse« = listi na tej strani
     if (ARH_IZB) { const _obst = new Set(LISTI.map(l => l.id)); ARH_IZB.forEach(id => { if (!_obst.has(id)) ARH_IZB.delete(id); }); }   // medtem izbrisani
-    $('arhivList').innerHTML = tabelaListov(vrstice, true, (sortv === 'kg_desc' || sortv === 'kg_asc') ? 'kg' : (poCeni && !ceneManjkajo ? 'cena' : null));
+    $('arhivList').innerHTML = tabelaListov(stran, true, (sortv === 'kg_desc' || sortv === 'kg_asc') ? 'kg' : (poCeni && !ceneManjkajo ? 'cena' : null)) + arhStraniHtml(nStrani, zac, vrstice.length);
+    $('arhivList').querySelectorAll('[data-str]').forEach(b => b.addEventListener('click', () => {
+      _arhStran = parseInt(b.dataset.str, 10) || 0; risiArhiv();
+      const l = $('arhivList'); if (l) try { l.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) {}
+    }));
     if (ceneManjkajo && !_arhCeneNapaka) arhCeneNalozi(vrstice).then(ok => { if (ok && /^cena_/.test(($('arhivSort') || {}).value || '')) risiArhiv(); });
     $('arhivList').classList.toggle('izbira', !!ARH_IZB);
-    prednaloziPostavke(vrstice);   // v ozadju pripravi postavke → prvo razpiranje je takoj gladko
+    prednaloziPostavke(stran);   // v ozadju pripravi postavke → prvo razpiranje je takoj gladko
     naloziKonflikte().then(risiKonflikti);
     document.querySelectorAll('#arhivList .a-row').forEach(b => {
       b.addEventListener('click', () => { if (ARH_IZB) arhIzbiraPreklopi(b); else odpriList(b); });
@@ -4986,6 +5063,7 @@
       logDodaj('Arhiv', 'Dodano', 'Spremni list ' + seq + '/' + leto + ' · ' + (ORGIME[org_id] || ''));
       toast('Spremni list ustvarjen');
       await naloziListe();
+      _arhStran = 0;   // nov list je na vrhu prve strani
       risiArhiv();
       const nid = nova && nova.id;
       if (_okno && _okno.vsebina === box) {

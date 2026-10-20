@@ -317,7 +317,9 @@ select:focus{border-color:var(--green-l);outline:none;}
 .side{position:sticky;top:65px;padding:22px 14px 12px;border-right:1px solid var(--line);
   height:calc(100vh - 65px);height:calc(100dvh - 65px);overflow-y:auto;display:flex;flex-direction:column;gap:2px;background:var(--bg);}
 .side-foot{margin-top:auto;padding:18px 11px 0;display:flex;flex-direction:column;align-items:flex-start;gap:3px;}
-.side-ver{font-size:.62rem;letter-spacing:.04em;color:var(--mid);opacity:.6;}
+.side-ver{font:inherit;font-size:.62rem;letter-spacing:.04em;color:var(--mid);opacity:.6;background:none;border:0;padding:6px 0;margin:-6px 0;cursor:pointer;text-align:left;
+  text-decoration:underline;text-decoration-color:transparent;text-underline-offset:3px;transition:opacity .15s,text-decoration-color .15s;}
+.side-ver:hover,.side-ver:focus-visible{opacity:1;text-decoration-color:currentColor;}
 .side a.side-eflitte{display:block;padding:0;border-radius:0;background:none;font-size:.62rem;letter-spacing:.03em;
   color:var(--mid);text-decoration:none;opacity:.72;font-weight:400;text-align:left;transition:opacity .15s;}
 .side a.side-eflitte:hover{opacity:1;color:var(--mid);background:none;}
@@ -1348,6 +1350,11 @@ html{-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent;}
    baterijo kazala zamegljeno vsebino, ki se pomika pod njo (»zgornji del ekrana je zamegljen«). */
 @media (hover:none) and (pointer:coarse){
   .topbar{background:var(--bg);backdrop-filter:none;-webkit-backdrop-filter:none;}
+  /* iOS 26 čez vrh strani nariše mehak zatemnjen prehod (»scroll edge effect«) — tudi po
+     odstranitvi black-translucent (preverjeno na iPhonu, 20. 10. 2026). WebKit ga izpusti, ko vrh
+     pokriva PRITRJENA (fixed) vrstica s polno barvo; »sticky« ni bil dovolj. */
+  .topbar{position:fixed;top:0;left:0;right:0;}
+  .app.show{padding-top:calc(65px + env(safe-area-inset-top));}
 }
 .topbar-in{padding-left:calc(24px + env(safe-area-inset-left));padding-right:calc(24px + env(safe-area-inset-right));}
 .scrim{top:calc(64px + env(safe-area-inset-top));}
@@ -1685,7 +1692,7 @@ html[data-theme="dark"] .pris-chip-x:hover{background:rgba(255,138,122,.16);colo
 .pris-new{flex:1;min-width:0;padding:10px 13px;border:1.5px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink);font-size:16px;}
 .pris-new:focus{border-color:var(--green-l);outline:none;}
 .pris-add .pris-add-btn{flex:0 0 auto;white-space:nowrap;padding:8px 22px;border-radius:9px;}
-@media(max-width:600px){ .pris-add{flex-direction:column;} .pris-add .pris-add-btn{width:100%;} }
+@media(max-width:600px){ .pris-add{margin-top:10px;} .pris-add .pris-add-btn{padding:8px 16px;} }   /* polje in gumb v eni vrsti */
 .pris-lab{display:block;font-size:.78rem;color:var(--mid);margin:4px 0 6px;}
 .pris-cas{width:100%;}
 .pris-r-cas{display:flex;gap:10px;}
@@ -2394,3 +2401,52 @@ html[data-view="grid"] .fak-grid .fak-card:not(.open):hover{transform:translateY
   html.sc-tisk-on body>:not(#sc-tisk){display:none!important;}
   html.sc-tisk-on #sc-tisk{display:block!important;}
 }
+
+/* ══ Prisotnost: zaposleni v ENI vrstici (ime · stanje · ure danes) ══
+   Prej tri vrstice na zaposlenega (ime, kartica, značka) in velike ploščice — do mesečne
+   evidence je bilo treba dolgo drseti. Lasten seznam (ne .lcell/.rows), zato ga pogleda
+   Seznam/Mreža ne raztegneta. */
+.pz-seznam{display:flex;flex-direction:column;gap:6px;}
+.pz-seznam .row.pz{grid-template-columns:minmax(0,1fr) auto 16px;gap:12px;padding:10px 14px;margin:0;min-height:0;}
+.pz-seznam .pz-ime{display:flex;align-items:center;gap:10px;min-width:0;}
+.pz-seznam .pz-ime .row-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.pz-seznam .pris-zap-ure{font-size:.86rem;color:var(--mid);white-space:nowrap;font-variant-numeric:tabular-nums;}
+.pz-st{flex:none;display:inline-flex;align-items:center;gap:6px;font-size:.76rem;font-weight:600;color:var(--mid);white-space:nowrap;}
+.pz-st::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor;opacity:.45;}
+.pz-st.in{color:var(--wm-green,#3f9f6f);}
+.pz-st.in::before{background:#2eaa5a;opacity:1;}
+.pz-cell .arts{display:none;}
+.pz-cell.pris-neakt .row{opacity:.62;}
+html[data-view] .pz-seznam .row .num::before{content:none;}
+
+/* ══ Arhiv: strani (po 60 listov) ══ */
+#arhivList{scroll-margin-top:calc(80px + env(safe-area-inset-top));}
+@media(max-width:900px){ #arhivList{scroll-margin-top:calc(124px + env(safe-area-inset-top));} }
+.arh-strani{display:flex;flex-direction:column;align-items:center;gap:10px;margin:22px 0 6px;}
+.arh-str-gumbi{display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap;}
+.arh-str{min-width:42px;height:42px;padding:0 10px;border:1.5px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);
+  font:600 .92rem var(--sans);font-variant-numeric:tabular-nums;cursor:pointer;transition:background .15s,border-color .15s;}
+.arh-str:hover:not(:disabled):not(.on){border-color:var(--green-l);background:var(--green-m);}
+.arh-str.on{background:var(--green);border-color:var(--green);color:var(--btn-ink,#fff);cursor:default;}
+.arh-str:disabled{opacity:.35;cursor:default;}
+.arh-str-nav{font-size:1.2rem;line-height:1;}
+.arh-str-tri{color:var(--mid);padding:0 2px;}
+.arh-str-info{font-size:.8rem;color:var(--mid);font-variant-numeric:tabular-nums;}
+
+/* ══ Posodobitve (pritisk na različico v meniju) ══ */
+.spr-modal{max-width:520px;max-height:min(84vh,760px);max-height:min(84dvh,760px);display:flex;flex-direction:column;padding:20px 0 0;}
+.spr-glava{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 22px;}
+.spr-glava h4{margin:0;}
+.spr-x{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--mid);font-size:18px;line-height:1;cursor:pointer;flex:none;}
+.spr-x:hover{color:var(--ink);border-color:var(--ink);}
+.sc-modal p.spr-pod{margin:4px 22px 12px;font-size:.84rem;}
+.spr-seznam{overflow:auto;overscroll-behavior:contain;padding:0 22px 18px;border-top:1px solid var(--line);}
+.spr-v{padding:14px 0;border-bottom:1px solid var(--line);}
+.spr-v:last-child{border-bottom:0;}
+.spr-vh{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 10px;margin-bottom:6px;}
+.spr-vh b{font-size:1rem;font-variant-numeric:tabular-nums;}
+.spr-oz{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:2px 8px;border-radius:100px;background:var(--green);color:var(--btn-ink);}
+.spr-d{flex-basis:100%;font-size:.78rem;color:var(--mid);font-variant-numeric:tabular-nums;}
+.spr-v ul{margin:0;padding-left:18px;}
+.spr-v li{font-size:.88rem;line-height:1.45;color:var(--ink);margin:2px 0;}
+.spr-v li::marker{color:var(--mid);}

@@ -1,0 +1,459 @@
+[
+ {
+  "v": "4.41",
+  "d": "2026-10-20",
+  "c": "2026-10-20T20:17:05+02:00",
+  "t": [
+   "Prisotnost: vsak zaposleni v eni vrstici (ime · stanje · ure danes) — do Evidence je bliže.",
+   "Arhiv: listi po straneh, po 60; iskanje, filtri in razvrščanje veljajo za cel arhiv.",
+   "Različica v meniju odpre vse posodobitve z datumom, uro in časovnim pasom.",
+   "iPhone: zgornja vrstica je pritrjena, da iOS 26 vrha strani ne zatemni."
+  ]
+ },
+ {
+  "v": "4.40",
+  "d": "2026-10-20",
+  "t": [
+   "iPhone: vrstica z uro je polna, v barvi teme (velja za na novo dodano ikono na začetni zaslon).",
+   "Telefon in tablica: med pomikanjem se pod zgornjo vrstico pokaže naslov razdelka; dotik vrne na vrh.",
+   "Prisotnost: okno Vnos ur se odpre šele z naloženimi izmenami, brez skoka."
+  ],
+  "c": "2026-10-20T20:06:30+02:00"
+ },
+ {
+  "v": "4.39",
+  "d": "2026-10-20",
+  "t": [
+   "Spletna aplikacija: zanesljivejše pošiljanje in usklajevanje spremnih listov s portalom.",
+   "Telefon: sistemski »nazaj« zapre okno; neshranjen list ostane na napravi in se obnovi.",
+   "Prehodna napaka strežnika ne odjavi več iz aplikacije ali portala."
+  ],
+  "c": "2026-10-20T19:56:22+02:00"
+ },
+ {
+  "v": "4.38",
+  "d": "2026-10-20",
+  "t": [
+   "Prisotnost: »+ ročno«, »Odjavi« in urejanje vpisa odprejo isto okno Vnos ur; nov gumb »Vnesi ure«.",
+   "Vnos ur: ure s številkami (730 → 07:30), premik na prejšnji ali naslednji dan, preverjanje prekrivanja.",
+   "iPhone: ura in baterija sta v svetli temi spet vidni."
+  ],
+  "c": "2026-10-20T19:40:13+02:00"
+ },
+ {
+  "v": "4.37",
+  "d": "2026-10-20",
+  "t": [
+   "Telefon in tablica: zgornja vrstica je neprosojna, vsebina pod uro in baterijo ni več zamegljena."
+  ],
+  "c": "2026-10-20T19:18:46+02:00"
+ },
+ {
+  "v": "4.36",
+  "d": "2026-10-20",
+  "t": [
+   "Telefoni in tablice: natisne se dokument, ne portal ali prazna stran (tudi v spletni aplikaciji).",
+   "Stran za preverjanje naprave ima gumb »Preizkusni tisk«."
+  ],
+  "c": "2026-10-20T19:13:57+02:00"
+ },
+ {
+  "v": "4.35",
+  "d": "2026-10-06",
+  "t": [
+   "Arhiv: razvrščanje po kg in po ceni (cena le za tiste z dostopom do Faktur).",
+   "Ob razvrščanju kartica pokaže kg oziroma vrednost lista brez DDV."
+  ],
+  "c": "2026-10-06T11:17:10+02:00"
+ },
+ {
+  "v": "4.34",
+  "d": "2026-10-05",
+  "t": [
+   "Prisotnost: natis listov za ročni vpis ur za izbrani mesec in zaposlene.",
+   "Vsak list A4 ima glavo podjetja in tabelo Dan / Prihod / Odhod / Podpis; prazniki so označeni."
+  ],
+  "c": "2026-10-05T11:24:58+02:00"
+ },
+ {
+  "v": "4.33",
+  "d": "2026-09-28",
+  "t": [
+   "Arhiv: gumb »Izberi« za izbiro več spremnih listov in skupen tisk ali PDF.",
+   "Statistika: diagram se ne izriše več znova sredi animacije."
+  ],
+  "c": "2026-09-28T15:51:14+02:00"
+ },
+ {
+  "v": "4.32",
+  "d": "2026-09-26",
+  "t": [
+   "Številka spremnega lista v košu je spet prosta za nov list.",
+   "Ob zasedeni številki portal to jasno pove; obnova iz koša ponudi naslednjo prosto številko."
+  ],
+  "c": "2026-09-26T09:51:54+02:00"
+ },
+ {
+  "v": "4.31",
+  "d": "2026-09-25",
+  "t": [
+   "Aplikacija pokaže, kdaj je bila nazadnje usklajena s portalom.",
+   "Če uskladitev zamuja več kot 12 minut, se pokaže opozorilo z gumbom »Poskusi zdaj«."
+  ],
+  "c": "2026-09-25T08:38:56+02:00"
+ },
+ {
+  "v": "4.30",
+  "d": "2026-09-25",
+  "t": [
+   "Nova stran za preverjanje naprave, kadar se portal ne zažene.",
+   "Gumb na tej strani počisti predpomnilnik portala, prijava ostane."
+  ],
+  "c": "2026-09-25T08:19:19+02:00"
+ },
+ {
+  "v": "4.29",
+  "d": "2026-09-25",
+  "t": [
+   "Spletna aplikacija ob novi različici ne pokaže več znova zagonskega zaslona."
+  ],
+  "c": "2026-09-25T08:03:42+02:00"
+ },
+ {
+  "v": "4.28",
+  "d": "2026-09-25",
+  "t": [
+   "Portal ne obstane več na zagonskem zaslonu: ob težavi pokaže prijavo s pojasnilom.",
+   "Aplikacija deluje tudi prek WiFi tiskalnika brez interneta; ob zagonu ni več praznega zaslona."
+  ],
+  "c": "2026-09-25T07:49:41+02:00"
+ },
+ {
+  "v": "4.27",
+  "d": "2026-09-24",
+  "t": [
+   "Spletna aplikacija uporablja prijavo iz portala; tablica ostane prijavljena, koda le ob menjavi.",
+   "Aplikacija prikaže prave artikle stranke v vrstnem redu cenika.",
+   "Množično dodani artikli so v aplikaciji skriti, ročno dodani eni stranki pa vidni."
+  ],
+  "c": "2026-09-24T19:21:22+02:00"
+ },
+ {
+  "v": "4.26",
+  "d": "2026-09-24",
+  "t": [
+   "Po uvozu se izbrisane stranke ne vrnejo več na sezname."
+  ],
+  "c": "2026-09-24T13:01:41+02:00"
+ },
+ {
+  "v": "4.25",
+  "d": "2026-09-24",
+  "t": [
+   "Aplikacija ne prikazuje več izbrisanih strank; preimenovanje stranke v portalu velja takoj."
+  ],
+  "c": "2026-09-24T13:01:09+02:00"
+ },
+ {
+  "v": "4.24",
+  "d": "2026-09-24",
+  "t": [
+   "Aplikacija: okna, potrditve, obvestila in preklop teme so enaki kot v portalu."
+  ],
+  "c": "2026-09-24T12:55:41+02:00"
+ },
+ {
+  "v": "4.23",
+  "d": "2026-09-24",
+  "t": [
+   "Fakture: orodna vrstica v eni vrsti; obdobje Od–Do je eno polje (tudi v Arhivu).",
+   "Kartica fakture se odpre s klikom kjer koli na kartici.",
+   "Okno se odpira gladkeje."
+  ],
+  "c": "2026-09-24T12:32:19+02:00"
+ },
+ {
+  "v": "4.22",
+  "d": "2026-09-24",
+  "t": [
+   "Aplikacija na tablici: spet preprost zaslon za ustvarjanje spremnih listov, v slogu portala."
+  ],
+  "c": "2026-09-24T12:17:49+02:00"
+ },
+ {
+  "v": "4.21",
+  "d": "2026-09-24",
+  "t": [
+   "Aplikacija pove, kadar stranka nima artiklov, označenih za aplikacijo."
+  ],
+  "c": "2026-09-24T11:31:35+02:00"
+ },
+ {
+  "v": "4.20",
+  "d": "2026-09-24",
+  "t": [
+   "Aplikacija uporablja iste komponente in slog kot portal.",
+   "× za odstranitev profila je viden na zaslonih na dotik; mreža Arhiva ne odreže več datuma."
+  ],
+  "c": "2026-09-24T11:13:25+02:00"
+ },
+ {
+  "v": "4.19",
+  "d": "2026-09-24",
+  "t": [
+   "Aplikacija na tablici in spletna aplikacija: ena koda, videz portala in nov APK.",
+   "PDF iz aplikacije je enak spremnemu listu iz portala; potrjenega lista ni mogoče urejati.",
+   "Programska oprema: prenos APK vedno prinese zadnjo različico."
+  ],
+  "c": "2026-09-24T10:39:02+02:00"
+ },
+ {
+  "v": "4.18",
+  "d": "2026-09-24",
+  "t": [
+   "Enotne glave podstrani: naslov in pod njim ena orodna vrstica (iskanje, glavni gumb, filtri).",
+   "Okno se odpre gladko, brez utripa kartice.",
+   "Telefon: ure v Prisotnosti in datum prijave v Uporabnikih se ne prelomijo več."
+  ],
+  "c": "2026-09-24T09:40:53+02:00"
+ },
+ {
+  "v": "4.17",
+  "d": "2026-09-24",
+  "t": [
+   "Spremni list, osnova za račun in evidenca kg imajo enoten slog z logotipom portala, tudi v PDF.",
+   "Osnova za račun: vsaka stranka na svojem listu A4; besedilo v PDF je mogoče kopirati in iskati.",
+   "Na spremnem listu se natisne le opomba za stranko, interna ne."
+  ],
+  "c": "2026-09-24T09:27:38+02:00"
+ },
+ {
+  "v": "4.16",
+  "d": "2026-08-31",
+  "t": [
+   "Nov razdelek Gorivo: tankanja z računi, izračun porabe in uradna cena dizla z gov.si.",
+   "Arhiv, Stranke, Prisotnost, Fakture in Uporabniki: kartica se odpre v oknu, ki zraste iz nje.",
+   "Nedavno brisani v Arhivu in Dokumentih: izbrisano je mogoče obnoviti; v Arhivu obdobje Od–Do.",
+   "Nov spremni list: postavke se odklenejo šele po potrditvi stranke, datuma in številke lista.",
+   "Statistika: grafi in Evidenca kg sledijo izbranemu obdobju; izvoz Evidence kg v Excel in PDF.",
+   "Fakture: sprememba obdobja takoj osveži vsote; opozorila na neskladja tudi v PDF in Excelu."
+  ],
+  "c": "2026-08-31T01:22:40+02:00"
+ },
+ {
+  "v": "4.15",
+  "d": "2026-08-31",
+  "t": [
+   "Arhiv: filter po mesecu ponudi le mesece, v katerih so spremni listi.",
+   "Pregled: stanje arhiva je na vrhu strani.",
+   "Programska oprema: spletna aplikacija je na prvem mestu."
+  ],
+  "c": "2026-08-31T01:16:33+02:00"
+ },
+ {
+  "v": "4.14",
+  "d": "2026-08-31",
+  "t": [
+   "Pregled: obvestilo, ali je arhiv ažuren in koliko listov še ni pregledanih.",
+   "Zadnji prevzemi pokažejo toliko listov, kolikor jih gre na zaslon."
+  ],
+  "c": "2026-08-31T01:04:04+02:00"
+ },
+ {
+  "v": "4.13",
+  "d": "2026-08-31",
+  "t": [
+   "Nova vloga Admin pod Super adminom; Super admin je samo lastnik.",
+   "Arhiv: filter po mesecu; nov vrstni red razdelkov v meniju.",
+   "Dokumenti: slike v celozaslonskem pregledu; skeniranje lahko doda tudi slike iz datotek."
+  ],
+  "c": "2026-08-31T00:59:23+02:00"
+ },
+ {
+  "v": "4.12",
+  "d": "2026-08-31",
+  "t": [
+   "Dokumenti: nalaganje deluje tudi z imeni map in datotek s šumniki.",
+   "Telefon: stran pod odprtim menijem se ne pomika več."
+  ],
+  "c": "2026-08-31T00:48:49+02:00"
+ },
+ {
+  "v": "4.11",
+  "d": "2026-08-31",
+  "t": [
+   "Gladek prehod med svetlo in temno temo ter med razdelki.",
+   "Nalagalni trak se pokaže le, če nalaganje traja dlje.",
+   "Telefon: tabele v Prisotnosti se pomikajo vodoravno; ločeni Skener je odstranjen (je v Dokumentih)."
+  ],
+  "c": "2026-08-31T00:36:03+02:00"
+ },
+ {
+  "v": "4.9",
+  "d": "2026-08-31",
+  "t": [
+   "Dokumenti: »Skeniraj račun« — več strani s kamero, shranjeno kot en PDF v izbrano mapo.",
+   "Dokumenti: preimenovanje, kopiranje, premikanje in zaklep map; gumba nazaj in naprej.",
+   "Slike se ob nalaganju stisnejo, da zasedejo manj prostora."
+  ],
+  "c": "2026-08-31T00:00:44+02:00"
+ },
+ {
+  "v": "4.8",
+  "d": "2026-08-30",
+  "t": [
+   "Statistika: Evidenca kg ima stolpec €/kg in razvrščanje po kilaži ali €/kg.",
+   "Večji naslovi razdelkov; preklop teme je hipen.",
+   "Prijava: poenostavljen izbor profila."
+  ],
+  "c": "2026-08-30T23:35:49+02:00"
+ },
+ {
+  "v": "4.7",
+  "d": "2026-08-30",
+  "t": [
+   "Razdelek Artikli se zdaj imenuje Cenik & Artikli.",
+   "Stranke: kartica pokaže število artiklov v ceniku in povezavo »Uredi v Ceniku«.",
+   "Vrstni red artiklov v ceniku velja tudi za artikle strank na tablici."
+  ],
+  "c": "2026-08-30T23:26:00+02:00"
+ },
+ {
+  "v": "4.6",
+  "d": "2026-08-30",
+  "t": [
+   "Stranke: artikli se urejajo v Ceniku; s kartice stranke vodi povezava »Cenik ›«.",
+   "Statistika: izbirnik obdobja se začne z »Mesec«."
+  ],
+  "c": "2026-08-30T23:12:55+02:00"
+ },
+ {
+  "v": "4.5",
+  "d": "2026-08-30",
+  "t": [
+   "Admin: nov Dnevnik sprememb (artikli, stranke, arhiv, opombe, vloge) za zadnjih 6 mesecev.",
+   "Arhiv: kartica je obarvana po stanju; rumene in rdeče so bolj opazne.",
+   "Zneski in številke v Fakturah in Ceniku so v enotni pisavi."
+  ],
+  "c": "2026-08-30T23:04:38+02:00"
+ },
+ {
+  "v": "4.4",
+  "d": "2026-08-30",
+  "t": [
+   "Arhiv: stanje lista je označeno z nežnim barvnim trakom namesto pisanega ozadja.",
+   "Admin: pri Dokumentih ločene pravice za branje, nalaganje, brisanje in prenos."
+  ],
+  "c": "2026-08-30T22:50:27+02:00"
+ },
+ {
+  "v": "4.3",
+  "d": "2026-08-30",
+  "t": [
+   "Admin: vloge v zavihkih, za vsak razdelek ena kljukica za vidnost.",
+   "Dokumenti upoštevajo pravice vloge za nalaganje, mape, brisanje in prenos."
+  ],
+  "c": "2026-08-30T22:45:04+02:00"
+ },
+ {
+  "v": "4.2",
+  "d": "2026-08-30",
+  "t": [
+   "Nov razdelek Admin (samo lastnik): vloge in pravice po razdelkih ter preimenovanje vlog.",
+   "Stranski meni pokaže le razdelke, ki jih vloga sme videti.",
+   "Dokumenti: nepodprte datoteke so zavrnjene; ob enakem imenu izbira med kopijo in posodobitvijo."
+  ],
+  "c": "2026-08-30T22:34:50+02:00"
+ },
+ {
+  "v": "4.1",
+  "d": "2026-08-30",
+  "t": [
+   "Dokumenti: klik na datoteko jo prenese z izvirnim imenom, slike se odprejo."
+  ],
+  "c": "2026-08-30T22:22:56+02:00"
+ },
+ {
+  "v": "4.0",
+  "d": "2026-08-30",
+  "t": [
+   "Dokumenti: gumba Nova mapa in Naloži datoteke z ikonama; popravljeno ustvarjanje map."
+  ],
+  "c": "2026-08-30T22:17:59+02:00"
+ },
+ {
+  "v": "3.9",
+  "d": "2026-08-30",
+  "t": [
+   "Dokumenti delujejo kot raziskovalec: mape, nalaganje PDF, Word, Excel in slik, tudi s potegom.",
+   "Statistika: delež kg po strankah tudi za izbrani mesec.",
+   "Nova ikona portala v barvah logotipa."
+  ],
+  "c": "2026-08-30T22:11:58+02:00"
+ },
+ {
+  "v": "3.8",
+  "d": "2026-08-30",
+  "t": [
+   "Statistika: nov 3D krožni diagram deleža kg po strankah z animacijo (3 meseci / Vse).",
+   "Fakture: kartice v mreži so enako visoke."
+  ],
+  "c": "2026-08-30T22:04:41+02:00"
+ },
+ {
+  "v": "3.7",
+  "d": "2026-08-30",
+  "t": [
+   "Profil brez slike ima namesto začetnic znak »SC« v barvah logotipa."
+  ],
+  "c": "2026-08-30T21:48:45+02:00"
+ },
+ {
+  "v": "3.6",
+  "d": "2026-08-30",
+  "t": [
+   "Prijava: glava kot v portalu, s preklopom svetle in temne teme.",
+   "Fakture: izvoz v Excel pred shranjevanjem pokaže predogled tabel."
+  ],
+  "c": "2026-08-30T18:11:21+02:00"
+ },
+ {
+  "v": "3.5",
+  "d": "2026-08-30",
+  "t": [
+   "Prijava: slogan in prijavni obrazec sta skupaj na sredini zaslona.",
+   "Fakture: izvoz v Excel se shrani neposredno, PDF gre prek predogleda."
+  ],
+  "c": "2026-08-30T18:02:42+02:00"
+ },
+ {
+  "v": "3.4",
+  "d": "2026-08-30",
+  "t": [
+   "Nov prijavni zaslon s sloganom »Peremo, vi pa blestite.«",
+   "Predogled dokumenta z gumboma Natisni in Shrani kot PDF za spremni list in osnovo za račun.",
+   "Artikli: naenkrat je odprta le ena skupina."
+  ],
+  "c": "2026-08-30T17:57:24+02:00"
+ },
+ {
+  "v": "3.2",
+  "d": "2026-08-30",
+  "t": [
+   "Fakture: izvoz v Excel in PDF z izbiro obdobja in strank.",
+   "Excel ima povzetek in svoj list za vsako stranko; v PDF je vsaka stranka na svoji strani.",
+   "Prijava: takoj se pokaže pravi zaslon, brez utripa."
+  ],
+  "c": "2026-08-30T17:31:56+02:00"
+ },
+ {
+  "v": "3.1",
+  "d": "2026-08-28",
+  "t": [
+   "Različica portala je vidna v spodnjem delu stranskega menija.",
+   "Nova vloga Zaposleni: v Prisotnosti vidi samo svoje ure; Uporabnike lahko ureja tudi super admin.",
+   "Konzola: obvestilo lahko pride kot pojavno okno z gumbom V redu; nov gumb »Osveži aplikacijo vsem«."
+  ],
+  "c": "2026-08-28T19:08:01+02:00"
+ }
+]
