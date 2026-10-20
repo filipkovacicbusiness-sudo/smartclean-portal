@@ -321,7 +321,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.46 · BETA';
+  var APP_VERZIJA = '4.47 · BETA';
   var NALAGANJE = '<div class="sc-load" aria-hidden="true"><span class="sc-load-line"></span></div>';
   // Stale-while-revalidate: ob ponovnem obisku razdelka NE pobriši vsebine v nalagalnik —
   // obdrži prejšnjo (takojšen prikaz) in jo osveži v ozadju. Trak le ob prvem nalaganju.
@@ -1168,7 +1168,7 @@
       '<div class="pris-card"><div class="pris-h">' +
       '<div><h3 class="sec-h">Tankanja</h3><p class="uc-obd-lbl">poraba računana od polnega do polnega rezervoarja</p></div>' +
       '<span class="pris-hbtns">' + letoSel +
-      (lahkoPise ? '<button type="button" class="cgrp-btn gor-novo">Novo tankanje</button>' : '') + '</span></div>' +
+      (lahkoPise ? '<button type="button" class="cgrp-btn gor-novo tb-ikona" title="Novo tankanje" aria-label="Novo tankanje"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>' : '') + '</span></div>' +
       tbl + '</div>';
 
     var ls = box.querySelector('.gor-leto');
@@ -4003,6 +4003,7 @@
       const sel = $('arhivOrg');
       sel.classList.remove('hidden');
       const _ab = $('arhivActBar'); if (_ab) _ab.classList.remove('hidden');
+      const _kp = $('arhivKosPov'); if (_kp) _kp.classList.remove('hidden');   // »Nedavno brisani« pod seznamom (samo osebje)
       if (!sel.options.length) {
         sel.innerHTML = '<option value="">Vse stranke</option>' + ORGSEZNAM.map(o => `<option value="${o.id}">${escape_(o.name)}</option>`).join('');
         sel.addEventListener('change', risiArhiv);
@@ -4086,17 +4087,27 @@
   // pokaže vrstica s številom izbranih, »Izberi vse« (vidne po filtru) in »Natisni«.
   // Izbira ostane ob menjavi filtrov; izhod: »Prekliči«, Esc ali drug razdelek.
   var ARH_IZB = null, ARH_VIDNI = [], _arhBar = null;
+  // Gumb »Izberi« je simbol: kljukica; med izbiranjem × (prekliči).
+  var IKO_KLJUKICA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>';
+  var IKO_X = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>';
+  function arhIzbiraGumb(vkljuceno) {
+    var b = $('arhivIzberiBtn'); if (!b) return;
+    b.innerHTML = vkljuceno ? IKO_X : IKO_KLJUKICA;
+    var t = vkljuceno ? 'Prekliči izbiro' : 'Izberi več spremnih listov za tisk';
+    b.title = t; b.setAttribute('aria-label', t); b.setAttribute('aria-pressed', vkljuceno ? 'true' : 'false');
+    b.classList.toggle('on', !!vkljuceno);
+  }
   function arhIzbiraZacni() {
     if (_okno) oknoZapri(true);
     ARH_IZB = new Set();
-    var b = $('arhivIzberiBtn'); if (b) b.textContent = 'Prekliči';
+    arhIzbiraGumb(true);
     arhIzbiraBar().classList.add('show');
     risiArhiv();
   }
   function arhIzbiraKonec() {
     if (!ARH_IZB) return;
     ARH_IZB = null;
-    var b = $('arhivIzberiBtn'); if (b) b.textContent = 'Izberi';
+    arhIzbiraGumb(false);
     if (_arhBar) _arhBar.classList.remove('show');
     var l = $('arhivList');
     if (l) {
@@ -4188,6 +4199,7 @@
   async function arhivKos() {
     arhIzbiraKonec();
     var box = $('arhivList'); if (!box) return;
+    { var _kp = $('arhivKosPov'); if (_kp) _kp.classList.add('hidden'); }   // v košu povezava ni potrebna (vrne jo risiArhiv)
     box.innerHTML = NALAGANJE;
     var mejnik = new Date(Date.now() - 30 * 864e5).toISOString();
     var r = await sb.from('delivery_notes').select('id,number,doc_date,org_id,weight_kg,total_pieces,deleted_at')
@@ -6793,6 +6805,7 @@
     try {
       if (!sel || sel._cs || sel.multiple || sel.dataset.noCs === '1') return;
       var wrap = document.createElement('div'); wrap.className = 'cs';
+      if (sel.id) wrap.dataset.za = sel.id;   // za slog (npr. postavitev orodne vrstice na telefonu)
       sel.parentNode.insertBefore(wrap, sel); wrap.appendChild(sel);
       var trig = document.createElement('button'); trig.type = 'button'; trig.className = 'cs-trigger';
       trig.innerHTML = '<span class="cs-val"></span><span class="cs-arr" aria-hidden="true"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>';

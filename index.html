@@ -235,10 +235,9 @@ html[data-theme="light"] .sc-hex{opacity:.5}
           <div><h2>Arhiv spremnih listov</h2><p class="count" id="arhivPod"></p></div>
           <div class="filtri">
             <input type="search" id="arhivIsci" placeholder="Iskanje po številki …" aria-label="Iskanje"/>
-            <button type="button" id="arhivIzberiBtn" class="btn btn-narrow btn-alt" title="Izberi več spremnih listov za tisk">Izberi</button>
+            <button type="button" id="arhivIzberiBtn" class="btn btn-narrow btn-alt tb-ikona" title="Izberi več spremnih listov za tisk" aria-label="Izberi več spremnih listov za tisk" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></button>
             <span class="tb-grupa arh-actbar hidden" id="arhivActBar">
-              <button type="button" id="arhivNovBtn" class="btn btn-narrow">+ Nov spremni list</button>
-              <button type="button" id="arhivKosBtn" class="btn btn-narrow btn-alt">Nedavno brisani</button>
+              <button type="button" id="arhivNovBtn" class="btn btn-narrow tb-ikona" title="Nov spremni list" aria-label="Nov spremni list"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
             </span>
             <select id="arhivOrg" class="hidden"></select>
             <select id="arhivSort" aria-label="Razvrsti">
@@ -260,6 +259,8 @@ html[data-theme="light"] .sc-hex{opacity:.5}
         <div id="arhivKonflikti"></div>
         <div id="novListBox" class="nov-list"></div>
         <div id="arhivList"></div>
+        <!-- obnova izbrisanih: diskretno pod seznamom (gumb v orodni vrstici ni bil potreben) -->
+        <p class="arh-kos-pov hidden" id="arhivKosPov"><button type="button" id="arhivKosBtn" class="link-btn">Nedavno brisani spremni listi</button></p>
       </section>
 
       <section class="sec hidden" id="sec-fakture">
@@ -286,7 +287,7 @@ html[data-theme="light"] .sc-hex{opacity:.5}
           <div><h2>Stranke</h2><p class="count" id="count"></p></div>
           <div class="filtri">
             <input type="search" id="search" placeholder="Iskanje po nazivu …" aria-label="Iskanje strank"/>
-            <button type="button" id="novaStrankaBtn" class="btn btn-narrow hidden">+ Nova stranka</button>
+            <button type="button" id="novaStrankaBtn" class="btn btn-narrow tb-ikona hidden" title="Nova stranka" aria-label="Nova stranka"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
             <select id="strankeSort" aria-label="Razvrsti stranke">
               <option value="promet" selected>Po prometu</option>
               <option value="abeceda">Abecedno</option>
@@ -342,10 +343,10 @@ html[data-theme="light"] .sc-hex{opacity:.5}
         <div class="head"><div><h2>Dokumenti</h2><p class="count" id="dokPod">Datoteke in mape</p></div>
           <div class="filtri">
             <input type="search" id="dokIsci" placeholder="Iskanje …" aria-label="Iskanje po datotekah"/>
-            <button type="button" id="dokSkenirajBtn" class="btn btn-narrow dok-tbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8V6a2 2 0 0 1 2-2h2M17 4h2a2 2 0 0 1 2 2v2M21 16v2a2 2 0 0 1-2 2h-2M7 20H5a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="3.2"/></svg>Skeniraj račun</button>
-            <button type="button" id="dokNovaMapa" class="btn btn-narrow btn-alt dok-tbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 11v5M9.5 13.5h5"/></svg>Nova mapa</button>
-            <button type="button" id="dokNaloziBtn" class="btn btn-narrow dok-tbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M5 20h14"/></svg>Naloži datoteke</button>
-            <button type="button" id="dokKosBtn" class="btn btn-narrow btn-alt dok-tbtn">Nedavno brisani</button>
+            <button type="button" id="dokSkenirajBtn" class="btn btn-narrow dok-tbtn tb-ikona" title="Skeniraj račun" aria-label="Skeniraj račun"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8V6a2 2 0 0 1 2-2h2M17 4h2a2 2 0 0 1 2 2v2M21 16v2a2 2 0 0 1-2 2h-2M7 20H5a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="3.2"/></svg><span class="tb-skrit">Skeniraj račun</span></button>
+            <button type="button" id="dokNovaMapa" class="btn btn-narrow btn-alt dok-tbtn tb-ikona" title="Nova mapa" aria-label="Nova mapa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 11v5M9.5 13.5h5"/></svg><span class="tb-skrit">Nova mapa</span></button>
+            <button type="button" id="dokNaloziBtn" class="btn btn-narrow dok-tbtn tb-ikona" title="Naloži datoteke" aria-label="Naloži datoteke"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M5 20h14"/></svg><span class="tb-skrit">Naloži datoteke</span></button>
+            <button type="button" id="dokKosBtn" class="btn btn-narrow btn-alt dok-tbtn tb-ikona" title="Nedavno brisani" aria-label="Nedavno brisani"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 10v6M14 10v6"/></svg></button>
             <input type="file" id="dokFile" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.heic,.heif,image/*,application/pdf,.csv" hidden/>
             <input type="file" id="dokKamera" accept="image/*" capture="environment" hidden/>
             <input type="file" id="dokKameraLib" accept="image/*" multiple hidden/>
@@ -376,7 +377,7 @@ html[data-theme="light"] .sc-hex{opacity:.5}
       <section class="sec hidden" id="sec-artikli">
         <div class="head"><div><h2>Cenik &amp; Artikli</h2><p class="count" id="artPod">Katalog po skupinah ID — teža in dodeljevanje strankam</p></div>
           <div class="filtri">
-            <button type="button" id="artNovaBtn" class="btn btn-narrow">+ Nov cenik</button>
+            <button type="button" id="artNovaBtn" class="btn btn-narrow tb-ikona" title="Nov cenik" aria-label="Nov cenik"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
             <button type="button" id="artUskladiBtn" class="btn btn-narrow btn-alt" title="Poskrbi, da ima vsaka stranka vse artikle svojega cenika">Uskladi artikle</button>
           </div>
         </div>
