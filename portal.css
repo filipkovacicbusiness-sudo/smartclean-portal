@@ -274,6 +274,8 @@ h3.sec:first-child{margin-top:0;}
 .add-row{display:grid;grid-template-columns:1fr 1fr auto;gap:14px;align-items:end;
   padding-bottom:18px;border-bottom:1px solid var(--line);margin-bottom:18px;}
 .add-row .btn-narrow{margin-top:0;}
+/* obrazec na dnu kartice (pod njim ni seznama): brez ločilne črte in praznega prostora */
+.add-row:last-child,.add-row:has(+ .msg:not(.show):last-child){padding-bottom:0;border-bottom:none;margin-bottom:0;}
 select{width:100%;padding:11px 40px 11px 14px;border:1.5px solid var(--line);border-radius:var(--r-sm);
   background:var(--bg);color:var(--ink);-webkit-appearance:none;-moz-appearance:none;appearance:none;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
@@ -490,15 +492,24 @@ html[data-view="grid"] .lcell .a-row .a-sel{left:auto;right:14px;top:12px;margin
   .filtri{flex-direction:column;align-items:stretch;width:100%;}
   .filtri input,.filtri select,.fak-lab input{max-width:none;width:100%;}
   .fak-lab{width:100%;}
-  .a-row{grid-template-columns:32px 100px 1fr auto 20px;gap:10px;}
-  .a-row .a-cli{display:none;}
   .a-row .num{white-space:nowrap;font-size:var(--fs-13);}
+  /* seznam listov v dveh vrstah: številka + kosi, pod njo stranka + izdal (prej je bila stranka na ozkem zaslonu skrita) */
+  html:not([data-view="grid"]) .a-row:not(.okno-kartica){grid-template-columns:32px minmax(0,1fr) auto 20px;grid-template-areas:"chk num qty chev" "chk cli izd chev";column-gap:12px;row-gap:2px;}
+  html:not([data-view="grid"]) .a-row:not(.okno-kartica) .arh-chk{grid-area:chk;}
+  html:not([data-view="grid"]) .a-row:not(.okno-kartica) .a-num{grid-area:num;min-width:0;}
+  html:not([data-view="grid"]) .a-row:not(.okno-kartica) .a-cli{grid-area:cli;display:block;min-width:0;font-size:var(--fs-13);color:var(--mid);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  html:not([data-view="grid"]) .a-row:not(.okno-kartica) .a-foot{display:contents;}
+  html:not([data-view="grid"]) .a-row:not(.okno-kartica) .a-date{display:none;}
+  html:not([data-view="grid"]) .a-row:not(.okno-kartica) .a-qty{grid-area:qty;justify-self:end;}
+  html:not([data-view="grid"]) .a-row:not(.okno-kartica) .a-izdal,
+  html:not([data-view="grid"]) .a-row:not(.okno-kartica) .a-mer{grid-area:izd;justify-self:end;}
+  html:not([data-view="grid"]) .a-row:not(.okno-kartica) .a-izdal::before{content:none;}
+  html:not([data-view="grid"]) .a-row:not(.okno-kartica) .a-foot.z-mero .a-izdal{display:none;}
+  html:not([data-view="grid"]) .a-row:not(.okno-kartica) .chev{grid-area:chev;}
   .a-det li{max-width:none;}
 }
 @media(max-width:560px){
   .stat-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:22px;}
-  .a-row{grid-template-columns:32px 1fr auto 20px;}
-  .a-row .a-date{display:none;}
 }
 
 /* ══════════ POPRAVEK POSTAVITVE ══════════ */
@@ -1604,12 +1615,22 @@ html[data-view="grid"] :is(#cenikList,.art-skupine) .sc-isolate .cgrp:not(.open)
 @media(max-width:560px){
   .pris-emp-act{display:grid;grid-template-columns:1fr 1fr;gap:6px;justify-content:stretch;}
   .pris-emp-act .cgrp-btn{width:100%;text-align:center;padding:8px 8px;}
-  /* Prisotnost tabele: časi prihodov/odhodov ostanejo vidni; vodoravni scroll, imena v eni vrstici */
+  /* Prisotnost tabele: na telefonu brez drsenja vstran — ime, časi (se zložijo), ure in »+« so vidni hkrati
+     (prej je bil stolpec z urami skrit desno, za vodoravnim drsenjem) */
   #sec-prisotnost .pris-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -4px;}
-  #sec-prisotnost .pris-tbl-dan,#sec-prisotnost .pris-tbl-oseba{min-width:600px;}
+  #sec-prisotnost .pris-tbl-dan,#sec-prisotnost .pris-tbl-oseba{min-width:0;}
+  #sec-prisotnost .pris-tbl-dan th:nth-child(1),#sec-prisotnost .pris-tbl-dan td:nth-child(1){width:30%;}
+  #sec-prisotnost .pris-tbl-oseba th:nth-child(1),#sec-prisotnost .pris-tbl-oseba td:nth-child(1){width:64px;}
+  #sec-prisotnost .pris-tbl-dan th:nth-child(3),#sec-prisotnost .pris-tbl-dan td:nth-child(3),
+  #sec-prisotnost .pris-tbl-oseba th:nth-child(3),#sec-prisotnost .pris-tbl-oseba td:nth-child(3){width:48px;white-space:normal;}
+  #sec-prisotnost .pris-tbl-dan th:nth-child(4),#sec-prisotnost .pris-tbl-dan td:nth-child(4),
+  #sec-prisotnost .pris-tbl-oseba th:nth-child(4),#sec-prisotnost .pris-tbl-oseba td:nth-child(4){width:44px;}
+  #sec-prisotnost .pris-act .cgrp-btn{width:32px;min-height:32px;padding:0;border-radius:50%;font-size:var(--fs-16);}
+  .pris-rocno-t{display:none;}
   #sec-prisotnost .pris-tbl th{font-size:var(--fs-11);padding:6px 6px;white-space:nowrap;}
   #sec-prisotnost .pris-tbl td{padding:8px 6px;font-size:var(--fs-13);}
-  #sec-prisotnost .pris-tbl td:first-child,#sec-prisotnost .pris-tbl th:first-child{white-space:nowrap;max-width:34vw;overflow:hidden;text-overflow:ellipsis;}
+  #sec-prisotnost .pris-tbl th:first-child{white-space:nowrap;}
+  #sec-prisotnost .pris-tbl td:first-child{white-space:normal;overflow-wrap:anywhere;line-height:1.3;}   /* dolgo ime v dveh vrsticah, ne »Blanka Kova…« */
   /* Več intervalov na dan se zloži v stolpcu drug pod drugega. Z nowrap so pri stalni
      širini stolpca (table-layout:fixed) prekrili »Ur« in »+ ročno«. Posamezen interval
      se ne prelomi (.pris-chip ima svoj nowrap). */
@@ -1636,6 +1657,12 @@ html[data-view="grid"] :is(#cenikList,.art-skupine) .sc-isolate .cgrp:not(.open)
 /* Admin — vloge in pravice */
 .adm-top{margin:0 0 14px;}
 .adm-tabs{flex-wrap:wrap;max-width:100%;}
+/* telefon: vloge v eni vrsti (»Super admin« se ne lomi), po potrebi drsenje vstran */
+@media(max-width:560px){
+  .pris-tabs.adm-tabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;}
+  .pris-tabs.adm-tabs::-webkit-scrollbar{display:none;}
+  .pris-tabs.adm-tabs .pris-tab{flex:1 0 auto;white-space:nowrap;padding:8px 12px;}
+}
 .adm-role{margin-bottom:14px;}
 .adm-chk input:disabled+span{opacity:.5;}
 .adm-list{display:flex;flex-direction:column;}
@@ -1969,7 +1996,16 @@ h3.sec,h3.sec-h,.empty h3,.fak-card-h h3,.adm-ime,.stat-num,.auth-claim,
 .str-app-chk:hover{border-color:var(--mid);}
 .str-app-chk:checked{background:var(--ink);border-color:var(--ink);}
 .str-app-chk:checked::after{content:"";position:absolute;left:5px;top:2px;width:3.5px;height:7px;border:solid var(--surface);border-width:0 1.6px 1.6px 0;transform:rotate(45deg);}
-@media(max-width:560px){.str-art-nm{white-space:normal;}.str-art-kos{min-width:56px;}}
+/* telefon: vrstica artikla v dveh vrstah — oznaka + ime čez vso širino, pod njim kosi · teža · app
+   (prej je imenu ostalo ~50 px in se je lomilo po besedah) */
+@media(max-width:560px){
+  .str-art{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;grid-template-areas:"id nm nm nm" "kos kos teza app";column-gap:10px;row-gap:8px;padding:10px 4px;}
+  .str-art .art-id{grid-area:id;}
+  .str-art-nm{grid-area:nm;white-space:normal;}
+  .str-art-kos{grid-area:kos;min-width:0;text-align:left;}
+  .str-art-teza{grid-area:teza;}
+  .str-art-app{grid-area:app;justify-self:end;}
+}
 
 /* samodejno izračunana teža v obrazcu novega lista */
 .ur-kg-auto{display:flex;align-items:center;min-height:44px;padding:0 12px;border:1.5px dashed var(--line);border-radius:var(--r-sm);background:var(--green-m);color:var(--ink);font-variant-numeric:tabular-nums;font-weight:600;}
@@ -2391,6 +2427,9 @@ html.sc-tema-prehod,html.sc-tema-prehod *,html.sc-tema-prehod *::before,html.sc-
   #sec-stranke .head .filtri > #search,#sec-dokumenti .head .filtri > #dokIsci{flex:1 1 140px;min-width:0;width:auto;}
   #sec-stranke .head .filtri > .cs{flex:0 0 auto;width:auto;min-width:128px;}
   #sec-dokumenti .head .filtri .dok-tbtn.tb-ikona{width:44px;}
+  /* Cenik: + in »Uskladi artikle« drug ob drugem, levo (prej je bil drugi gumb raztegnjen do desnega roba) */
+  #sec-artikli .head .filtri{display:flex;flex-direction:row;align-items:center;justify-content:flex-start;gap:8px;}
+  #sec-artikli .head .filtri > #artUskladiBtn{width:auto;flex:none;padding:0 20px;}
 }
 
 /* Prostor za značko »Splošni cenik« le, ko je značka v vrstici (prej 150 px pri vseh — na telefonu je
@@ -2408,3 +2447,18 @@ button > .iko-t:only-child,.a-pop > .iko-t{margin:0;}
 .cenik-nm > .iko-t{color:var(--mid);}
 /* ikona × v vseh zapiralnih gumbih (namesto znaka ×, ki v pisavi ni na sredini) */
 .iko-x{width:1.15em;height:1.15em;display:block;flex:none;margin:auto;pointer-events:none;}
+/* Prisotnost v oknu: glava = ime + stanje (ure danes so v vrstici »Danes«) */
+.okno .okno-kartica.row.pz{grid-template-columns:minmax(0,1fr);}
+.okno .okno-kartica.row.pz .pris-zap-ure{display:none;}
+.okno .okno-kartica .pz-ime{display:flex;flex-direction:column;align-items:flex-start;gap:6px;min-width:0;}
+.okno:focus{outline:none;}   /* fokus na oknu samem (ob odprtju) — brez obroča */
+/* Gorivo, telefon: izbira leta in »+« v isti vrsti (prej je »+« sam padel v novo vrsto) */
+@media(max-width:560px){
+  .pris-hbtns:has(> .gor-novo){flex-wrap:nowrap;}
+  .pris-hbtns:has(> .gor-novo) > :not(.gor-novo){flex:1 1 auto;min-width:0;}
+}
+/* Nastavitve → Videz, telefon: tri enake ploščice v eni vrsti (ikona nad napisom), kot izbira videza v iOS */
+@media(max-width:560px){
+  .tema-izbira{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;}
+  .tema-b{flex-direction:column;justify-content:center;gap:6px;padding:12px 6px;min-height:72px;font-size:var(--fs-13);}
+}

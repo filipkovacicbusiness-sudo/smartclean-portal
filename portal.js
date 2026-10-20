@@ -321,7 +321,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.48 · BETA';
+  var APP_VERZIJA = '4.49 · BETA';
   var NALAGANJE = '<div class="sc-load" aria-hidden="true"><span class="sc-load-line"></span></div>';
   // Stale-while-revalidate: ob ponovnem obisku razdelka NE pobriši vsebine v nalagalnik —
   // obdrži prejšnjo (takojšen prikaz) in jo osveži v ozadju. Trak le ob prvem nalaganju.
@@ -1799,7 +1799,7 @@
       var znak = !z.active ? '<span class="pris-badge out">neaktiven</span>' : (notri ? '<span class="pris-badge in">prisoten · od ' + uraMin(l.ts) + '</span>' : '<span class="pris-badge out">odsoten</span>');
       var pod = upoLbl || (z.card_token ? 'kartica dodeljena' : 'brez kartice');
       var det = '<dl class="pris-zap-dl">' +
-          '<dt>Stanje</dt><dd>' + znak + (notri ? ' <button type="button" class="cgrp-btn ghost pris-odjavi" data-odjavi="' + z.id + '">Odjavi</button>' : '') + '</dd>' +
+          (notri ? '<dt>Stanje</dt><dd>' + znak + ' <button type="button" class="cgrp-btn ghost pris-odjavi" data-odjavi="' + z.id + '">Odjavi</button></dd>' : '') +
           '<dt>Danes</dt><dd>' + (intervali.length ? escape_(intervali.join(', ')) + (danUre ? ' · <b>' + danUre + '</b>' : '') : '<span class="u-sub">ni vpisov</span>') + '</dd>' +
           '<dt>Uporabnik</dt><dd>' + (upoLbl ? escape_(upoLbl) : '<span class="u-sub">ni povezan</span>') + '</dd>' +
           '<dt>Kartica</dt><dd>' + (z.card_token ? 'dodeljena' : '<span class="u-sub">ni dodeljena</span>') + '</dd>' +
@@ -1848,7 +1848,7 @@
             '<td class="pris-dan-c">' + DNEVI_KR[wd] + ' ' + di + '.</td>' +
             '<td class="pris-pairs">' + c.html + '</td>' +
             '<td class="pris-ure">' + (c.sek ? trajanjeH(c.sek) : '—') + '</td>' +
-            '<td class="pris-act"><button type="button" class="cgrp-btn ghost" data-rocniday="' + zsel.id + '|' + dayISO + '">+ ročno</button></td></tr>';
+            '<td class="pris-act"><button type="button" class="cgrp-btn ghost" data-rocniday="' + zsel.id + '|' + dayISO + '" title="Ročni vnos ur">+<span class="pris-rocno-t"> ročno</span></button></td></tr>';
         }
       }
       telo = '<div class="pris-oseba-sel"><select id="prisOsebaSel" class="sc-modal-input">' + (opts || '') + '</select></div>' +
@@ -1872,7 +1872,7 @@
         var c = prisChipiDan(z.id, kljuc);
         dSek += c.sek;
         return '<tr><td>' + escape_(z.ime) + (z.active ? '' : ' <span class="u-sub">(neaktiven)</span>') + '</td><td class="pris-pairs">' + c.html + '</td><td class="pris-ure">' + (c.sek ? trajanjeH(c.sek) : '—') + '</td>' +
-          '<td class="pris-act"><button type="button" class="cgrp-btn ghost" data-rocni="' + z.id + '">+ ročno</button></td></tr>';
+          '<td class="pris-act"><button type="button" class="cgrp-btn ghost" data-rocni="' + z.id + '" title="Ročni vnos ur">+<span class="pris-rocno-t"> ročno</span></button></td></tr>';
       }).join('');
       telo = '<div class="pris-scroll"><table class="pris-tbl pris-tbl-dan"><thead><tr><th>Zaposleni</th><th>Prihod–odhod</th><th>Ur skupaj</th><th></th></tr></thead><tbody>' +
         (dVrst || '<tr><td colspan="4" class="u-sub">Ni podatkov.</td></tr>') + '</tbody>' +
@@ -3276,7 +3276,7 @@
       (ser.rows.length ? '<div class="bars-row" style="margin-top:14px;column-gap:' + gost.gap + 'px">' +
         ser.rows.map(function (o) {
           return '<div class="bars-col" title="' + escape_(o.opis + ' · ' + fmtKg(o.kg)) + '">' +
-            '<span class="bars-val">' + (o.kg ? Math.round(o.kg) : '—') + '</span>' +
+            '<span class="bars-val">' + (o.kg ? Math.round(o.kg) : '&nbsp;') + '</span>' +
             '<div class="bars-bar" style="height:' + Math.round(o.kg / naj * 84) + 'px"></div>' +
             '<span class="bars-lab">' + escape_(o.lab) + '</span></div>';
         }).join('') + '</div>'
@@ -3677,6 +3677,38 @@
     }
     return { okno: okno, notr: notr };
   }
+  // Kopija leži v oknu (zunaj seznama), zato nanjo ne delujejo pravila, ki veljajo le znotraj
+  // seznama (npr. kompaktne vrstice v Prisotnosti: ».pz-seznam .row.pz«) — brez tega je bil prvi
+  // okvir odpiranja in zadnji zapiranja drugačen od kartice (poskok). Zato vsak element kopije
+  // dobi izračunani slog izvirnika (tudi stanje »miška nad njo«).
+  var OKNO_DUH_SLOG = ['display', 'box-sizing', 'grid-template-columns', 'grid-template-rows', 'grid-template-areas',
+    'grid-row-start', 'grid-row-end', 'grid-column-start', 'grid-column-end', 'row-gap', 'column-gap',
+    'flex-direction', 'flex-wrap', 'flex-grow', 'flex-shrink', 'flex-basis', 'align-items', 'align-self', 'justify-content', 'justify-self', 'order',
+    'padding-top', 'padding-right', 'padding-bottom', 'padding-left', 'margin-top', 'margin-right', 'margin-bottom', 'margin-left',
+    'min-width', 'max-width', 'min-height', 'position', 'top', 'right', 'bottom', 'left', 'transform',
+    'font-family', 'font-size', 'font-weight', 'font-style', 'line-height', 'letter-spacing', 'text-align', 'text-transform', 'text-overflow',
+    'white-space', 'overflow-x', 'overflow-y', 'color', 'opacity', 'visibility', 'vertical-align', 'font-variant-numeric',
+    'background-color', 'background-image', 'border-top-width', 'border-right-width', 'border-bottom-width', 'border-left-width',
+    'border-top-style', 'border-right-style', 'border-bottom-style', 'border-left-style',
+    'border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color',
+    'border-top-left-radius', 'border-top-right-radius', 'border-bottom-right-radius', 'border-bottom-left-radius', 'box-shadow',
+    '-webkit-line-clamp', '-webkit-box-orient', 'text-decoration-line'];
+  // Kopija je že v dokumentu: prepišemo le lastnosti, ki se od izvirnika razlikujejo (od zgoraj
+  // navzdol, da otroci podedujejo popravke staršev) — enake ostanejo nedotaknjene, brez zaokroževanja.
+  function oknoDuhSlog(izv, kop, koren) {
+    var a = getComputedStyle(izv), b = getComputedStyle(kop), imaSlog = izv.hasAttribute('style');
+    // element z lastno animacijo (utripajoča pika »na spletu«): ne zamrzni trenutne faze, kopija je mirna
+    var anim = izv.getAnimations && izv.getAnimations().some(function (x) { return x.playState === 'running' && x.effect && x.effect.getComputedTiming().iterations === Infinity; });
+    for (var i = 0; i < OKNO_DUH_SLOG.length && !anim; i++) {
+      var p = OKNO_DUH_SLOG[i];
+      // koren: velikost in mesto določa ovoj; vsebina z lastnim slogom (odvito ime ob hoverju) ostane na začetku
+      if (koren && /^(min-height|margin|top|right|bottom|left|transform)/.test(p)) continue;
+      if (!koren && imaSlog && /^(transform|left|margin)/.test(p)) continue;
+      var v = a.getPropertyValue(p); if (b.getPropertyValue(p) !== v) kop.style.setProperty(p, v);
+    }
+    if (izv instanceof SVGElement) return;
+    for (var j = 0; j < izv.children.length && j < kop.children.length; j++) oknoDuhSlog(izv.children[j], kop.children[j], false);
+  }
   // Natančna kopija kartice na njenem mestu med animacijo: prvi okvir odpiranja in zadnji
   // okvir zapiranja sta videti kot kartica sama — kartica se poveča v okno (in skrči nazaj),
   // namesto da bi nad njo zrasla kopija, ona pa izginila šele na koncu.
@@ -3691,17 +3723,20 @@
     ovoj.setAttribute('aria-hidden', 'true');
     // Videz kartice v trenutku klika (tudi stanje »miška nad njo«: ozadje, obroba, senca),
     // sicer bi kopija ob kliku za trenutek utripnila v videz brez hoverja.
-    var cs = getComputedStyle(k);
     var kop = k.cloneNode(true);
     kop.classList.remove('okno-vir', 'arh-flash');
     ['id', 'data-id', 'data-i', 'aria-expanded', 'style'].forEach(function (a) { kop.removeAttribute(a); });
     kop.querySelectorAll('[style],[data-pot],[tabindex]').forEach(function (el) { el.removeAttribute('style'); el.removeAttribute('data-pot'); el.removeAttribute('tabindex'); });
     kop.setAttribute('tabindex', '-1');
-    kop.style.backgroundColor = cs.backgroundColor; kop.style.backgroundImage = cs.backgroundImage;
-    kop.style.borderColor = cs.borderTopColor + ' ' + cs.borderRightColor + ' ' + cs.borderBottomColor + ' ' + cs.borderLeftColor;
-    kop.style.boxShadow = cs.boxShadow; kop.style.transition = 'none';
+    // brez prehodov: kopija naj takoj prevzame videz kartice (tudi barve »miška nad njo«), ne pa animira do njega
+    kop.style.transition = 'none'; kop.style.animation = 'none';
+    kop.querySelectorAll('*').forEach(function (el) { el.style.transition = 'none'; el.style.animation = 'none'; });
     ovoj.appendChild(kop);
     o.back.appendChild(ovoj);   // nad oknom: prvi okvir odpiranja / zadnji zapiranja je kartica
+    // ob zapiranju je kartica že skrita (okno-vir) — slog beremo, kot da je vidna (isti korak, brez izrisa)
+    var vir = k.classList.contains('okno-vir'); if (vir) k.classList.remove('okno-vir');
+    oknoDuhSlog(k, kop, true);
+    if (vir) k.classList.add('okno-vir');
     return ovoj;
   }
   // moznosti.glava: funkcija(kartica), ki vrne element glave (sicer kopija kartice);
@@ -3714,11 +3749,11 @@
     var back = document.createElement('div'); back.className = 'okno-back';
     var zatemni = document.createElement('div'); zatemni.className = 'okno-zatemni'; back.appendChild(zatemni);
     var panel = document.createElement('div'); panel.className = 'okno';
-    panel.setAttribute('role', 'dialog'); panel.setAttribute('aria-modal', 'true');
+    panel.setAttribute('role', 'dialog'); panel.setAttribute('aria-modal', 'true'); panel.tabIndex = -1;
     var notr = document.createElement('div'); notr.className = 'okno-notr';
     var glava = document.createElement('div');
     var telo = document.createElement('div'); telo.className = 'okno-telo';
-    var x = document.createElement('button'); x.type = 'button'; x.className = 'doc-x okno-x'; x.setAttribute('aria-label', 'Zapri'); x.textContent = '×';
+    var x = document.createElement('button'); x.type = 'button'; x.className = 'doc-x okno-x'; x.setAttribute('aria-label', 'Zapri'); x.innerHTML = IKO_ZAPRI;
     notr.appendChild(glava); notr.appendChild(telo); panel.appendChild(notr); back.appendChild(panel);
     var o = _okno = { back: back, panel: panel, notr: notr, glava: glava, telo: telo, x: x, kartica: kartica, vsebina: vsebina, najdi: najdi,
       id: kartica.dataset.id, dom: { parent: vsebina.parentNode, next: vsebina.nextSibling, id: vsebina.id },
@@ -3764,7 +3799,9 @@
     panel.animate(kl.okno, { duration: 380, easing: 'linear' }).finished.then(konecRasti, konecRasti);
     oknoFokus(o);
   }
-  function oknoFokus(o) { try { o.x.focus({ preventScroll: true }); } catch (e) {} }
+  // Fokus na okno samo (bralnik zaslona prebere naslov okna, Tab gre na prvi gumb v njem).
+  // Prej je bil na gumbu × — Safari je ob odprtju okoli njega izrisal debel obroč.
+  function oknoFokus(o) { try { o.panel.focus({ preventScroll: true }); } catch (e) {} }
   function oknoTipka(e) {
     if (e.key !== 'Escape' || !_okno) return;
     // Najprej naj se zapre tisto, kar je odprto NAD oknom (potrditev, predogled, spustni meni).
