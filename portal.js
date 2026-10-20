@@ -308,7 +308,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.37 · BETA';
+  var APP_VERZIJA = '4.38 · BETA';
   var NALAGANJE = '<div class="sc-load" aria-hidden="true"><span class="sc-load-line"></span></div>';
   // Stale-while-revalidate: ob ponovnem obisku razdelka NE pobriši vsebine v nalagalnik —
   // obdrži prejšnjo (takojšen prikaz) in jo osveži v ozadju. Trak le ob prvem nalaganju.
@@ -1613,27 +1613,12 @@
     });
   }
 
-  // Ročna odjava zaposlenega (če pozabi tapniti odhod). Vpiše dogodek 'out'
-  // (source='manual'). Stanje je le v bazi — Pi in kartica nimata stanja.
-  async function prisOdjavi(empId) {
-    var z = (ZAPOSLENI || []).find(function (x) { return x.id === empId; });
-    if (!z) return;
+  // »Odjavi« (zaposleni je pozabil tapniti odhod): isto okno za vnos ur, odprta izmena
+  // dobi odhod = zdaj — ostane le še Shrani.
+  function prisOdjavi(empId) {
     var l = prisZadnji(empId);
     if (!l || l.type !== 'in') { toast('Ta oseba ni prijavljena.'); return; }
-    var now = new Date();
-    var privzeto = ('0' + now.getHours()).slice(-2) + ':' + ('0' + now.getMinutes()).slice(-2);
-    var cas = await vnesiModal({ naslov: 'Odjavi — ' + z.ime, sporocilo: 'Ura odhoda (HH:MM):', privzeto: privzeto, potrdi: 'Odjavi', preklici: 'Prekliči' });
-    if (cas == null) return;
-    var m = String(cas).trim().match(/^(\d{1,2}):(\d{2})$/);
-    if (!m) { toast('Vpiši uro v obliki HH:MM.'); return; }
-    var hhmm = ('0' + m[1]).slice(-2) + ':' + m[2];
-    var dan = l.ts.slice(0, 10);
-    var tsIso = new Date(dan + 'T' + hhmm + ':00').toISOString();
-    if (new Date(tsIso) <= new Date(l.ts)) { toast('Odhod mora biti po prihodu (' + uraMin(l.ts) + ').'); return; }
-    var ins = await sb.from('att_events').insert({ org_id: z.org_id, employee_id: z.id, type: 'out', source: 'manual', ts: tsIso });
-    if (ins.error) { toast('Napaka: ' + ins.error.message); return; }
-    toast('Odjavljen(a): ' + z.ime);
-    await risiPrisotnost();
+    prisVnosUr(empId, danLocal(l.ts), { fokus: { odhod: true } });
   }
   var _prisTimer = null;
   // Samodejno osveževanje table "Trenutno prisotni" (brez ročnega refresha).
@@ -1694,6 +1679,7 @@
           '<dt>Kartica</dt><dd>' + (z.card_token ? 'dodeljena' : '<span class="u-sub">ni dodeljena</span>') + '</dd>' +
         '</dl>' +
         '<div class="pris-emp-act pris-zap-act">' +
+          '<button type="button" class="cgrp-btn" data-vnosur="' + z.id + '">Vnesi ure</button>' +
           '<button type="button" class="cgrp-btn ghost" data-uredi="' + z.id + '">Uredi</button>' +
           '<button type="button" class="cgrp-btn ghost' + (z.profile_id ? ' on' : '') + '" data-uporabnik="' + z.id + '">' + (z.profile_id ? 'Uporabnik ✓' : 'Poveži uporabnika') + '</button>' +
           '<button type="button" class="cgrp-btn ghost" data-karta="' + z.id + '">' + (z.card_token ? 'Nova kartica' : 'Dodeli kartico') + '</button>' +
@@ -1792,6 +1778,7 @@
     { var ul = box.querySelector('.pris-ure-listi'); if (ul) ul.addEventListener('click', urListiModal); }
     box.querySelectorAll('[data-odjavi]').forEach(function (b) { b.addEventListener('click', function () { prisOdjavi(b.dataset.odjavi); }); });
     box.querySelectorAll('[data-rocni]').forEach(function (b) { b.addEventListener('click', function () { prisRocni(b.dataset.rocni); }); });
+    box.querySelectorAll('[data-vnosur]').forEach(function (b) { b.addEventListener('click', function () { prisVnosUr(b.dataset.vnosur, danes10()); }); });
     box.querySelectorAll('[data-delpair]').forEach(function (b) { b.addEventListener('click', function (e) { e.stopPropagation(); prisIzbrisiPar(b.dataset.delpair); }); });
     box.querySelectorAll('[data-cpair]').forEach(function (cb) { cb.addEventListener('click', function (e) { e.stopPropagation(); }); cb.addEventListener('change', function (e) { e.stopPropagation(); prisPotrdiPar(cb.dataset.cpair, cb.checked); }); });
     box.querySelectorAll('[data-editpair]').forEach(function (b) { b.addEventListener('click', function (e) { e.stopPropagation(); prisUrediPar(b.dataset.editpair); }); });
@@ -1958,102 +1945,215 @@
   function hmLocal(ts) { var d = new Date(ts); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); }
   function danLocal(ts) { var d = new Date(ts); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
   function prisDogById(id) { return (PRISDOG || []).find(function (d) { return d.id === id; }); }
-  // Uredi obstoječi vpis: popravi prihod/odhod. Če odhod izprazniš, se ta odstrani (izmena spet odprta).
+  // ══ VNOS UR — eno okno za vse ročne vpise ══
+  // Prej so bila za isto opravilo tri različna okna (»+ ročno«, »Odjavi«, urejanje vpisa ✎).
+  // Zdaj vse odpre to okno: izmene izbranega dne (obstoječe so že vpisane), ‹ › za prejšnji/
+  // naslednji dan (ob premiku se spremembe shranijo — hitro prepisovanje lista z ur), ure se
+  // tipkajo s številkami (730 → 07:30, 1530 → 15:30), »Zdaj« za odhod današnje izmene.
+  function vuCas(s) {   // '730' '7:30' '7.30' '15' → 'HH:MM'; '' → ''; neveljavno → null
+    s = String(s || '').trim(); if (!s) return '';
+    var h, m, sep = s.match(/^(\d{1,2})\s*[:.,h ]\s*(\d{0,2})$/);
+    if (sep) { h = +sep[1]; m = sep[2] ? +(sep[2].length === 1 ? sep[2] + '0' : sep[2]) : 0; }
+    else if (/^\d{1,4}$/.test(s)) {
+      if (s.length <= 2) { h = +s; m = 0; } else if (s.length === 3) { h = +s[0]; m = +s.slice(1); } else { h = +s.slice(0, 2); m = +s.slice(2); }
+    } else return null;
+    if (h > 23 || m > 59) return null;
+    return ('0' + h).slice(-2) + ':' + ('0' + m).slice(-2);
+  }
+  function vuDanPlus(dan, n) { var d = new Date(dan + 'T12:00:00'); d.setDate(d.getDate() + n); return danLocal(d); }
+  function vuDanNaziv(dan) {
+    var d = new Date(dan + 'T12:00:00');
+    var s = d.toLocaleDateString('sl-SI', { weekday: 'long', day: 'numeric', month: 'numeric', year: 'numeric' });
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+  // Izmene enega dne (lokalni dan), po istih pravilih kot prisPari: odvečen prihod med odprto
+  // izmeno in osamljen odhod se ne prikažeta (in ostaneta nedotaknjena).
+  function vuPari(evs) {
+    var pari = [], odprt = null;
+    evs.slice().sort(function (a, b) { return a.ts < b.ts ? -1 : 1; }).forEach(function (d) {
+      if (d.type === 'in') { if (!odprt) odprt = d; }
+      else if (d.type === 'out' && odprt) { pari.push({ in: odprt, out: d }); odprt = null; }
+    });
+    if (odprt) pari.push({ in: odprt, out: null });
+    return pari;
+  }
+  function prisVnosUr(empId, danArg, opt) {
+    opt = opt || {};
+    var z = (ZAPOSLENI || []).find(function (x) { return x.id === empId; }); if (!z) return;
+    var dan = (danArg && danArg.length === 10) ? danArg : ((_prisMesec || !_prisDan || _prisDan.length !== 10) ? danes10() : _prisDan);
+    var pari = [], spremenjeno = false, shranjeno = false, zaseden = false;
+    var back = document.createElement('div'); back.className = 'sc-modal-back';
+    back.innerHTML = '<div class="sc-modal vu-modal" role="dialog" aria-modal="true" aria-label="Vnos ur">' +
+      '<h4>Vnos ur — ' + escape_(z.ime) + '</h4>' +
+      '<div class="vu-dan"><button type="button" class="pris-nav" data-dan="-1" aria-label="Prejšnji dan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button>' +
+      '<label class="vu-dan-l"><span class="vu-dan-t"></span><input type="date" class="vu-dan-in" aria-label="Datum"></label>' +
+      '<button type="button" class="pris-nav" data-dan="1" aria-label="Naslednji dan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button></div>' +
+      '<div class="vu-glava"><span>Prihod</span><span>Odhod</span></div>' +
+      '<div class="vu-vrste"></div>' +
+      '<button type="button" class="pris-int-add vu-dodaj">+ Dodaj izmeno</button>' +
+      '<div class="vu-skupaj"></div>' +
+      '<p class="vu-opis">Ure vpiši s številkami: 730 = 07:30, 1530 = 15:30. Čas med izmenama je pavza. Odhod lahko pustiš prazen, dokler izmena traja.</p>' +
+      '<div class="fx-msg msg" role="alert"></div>' +
+      '<div class="sc-modal-acts"><button type="button" class="sc-modal-btn ghost" data-no>Zapri</button><button type="button" class="sc-modal-btn primary" data-yes>Shrani</button></div></div>';
+    document.body.appendChild(back);
+    requestAnimationFrame(function () { back.classList.add('show'); });
+    var q = function (s) { return back.querySelector(s); };
+    var lst = q('.vu-vrste'), msg = q('.fx-msg'), dIn = q('.vu-dan-in');
+    function sporoci(t) { msg.className = 'fx-msg msg' + (t ? ' bad show' : ''); msg.textContent = t || ''; }
+    function vrstaHtml(i, inv, outv) {
+      var polje = function (cls, v, lab) { return '<input type="text" class="vu-cas ' + cls + ' sc-modal-input" inputmode="numeric" autocomplete="off" maxlength="5" placeholder="––:––" value="' + (v || '') + '" aria-label="' + lab + '">'; };
+      return '<div class="vu-vrsta" data-i="' + i + '">' + polje('vu-in', inv, 'Prihod') + '<span class="pris-int-sep">–</span>' + polje('vu-out', outv, 'Odhod') +
+        '<button type="button" class="vu-zdaj" hidden>Zdaj</button>' +
+        '<button type="button" class="pris-int-del vu-x" aria-label="Odstrani izmeno">×</button></div>';
+    }
+    function vrste() { return [].slice.call(lst.querySelectorAll('.vu-vrsta')); }
+    function osveziStanje() {
+      var danes = dan === danes10(), sek = 0;
+      vrste().forEach(function (r) {
+        var a = vuCas(r.querySelector('.vu-in').value), b = vuCas(r.querySelector('.vu-out').value);
+        r.querySelector('.vu-zdaj').hidden = !(danes && a && !r.querySelector('.vu-out').value);
+        if (a && b && b > a) sek += (new Date('2000-01-01T' + b) - new Date('2000-01-01T' + a)) / 1000;
+      });
+      q('.vu-skupaj').textContent = sek ? 'Skupaj ' + trajanjeH(sek) : '';
+    }
+    function risiVrste(fokus) {
+      var html = pari.map(function (p, i) { return vrstaHtml(i, hmLocal(p.in.ts), p.out ? hmLocal(p.out.ts) : ''); }).join('');
+      lst.innerHTML = html + vrstaHtml('n', '', '');   // vedno ena prazna za novo izmeno
+      q('.vu-dan-t').textContent = vuDanNaziv(dan); dIn.value = dan;
+      spremenjeno = false; sporoci(''); osveziStanje();
+      var el = null;
+      if (fokus && fokus.id) { var ix = pari.findIndex(function (p) { return p.in.id === fokus.id || (p.out && p.out.id === fokus.id); }); if (ix >= 0) el = lst.querySelector('[data-i="' + ix + '"] .vu-in'); }
+      if (fokus && fokus.odhod) {   // »Odjavi«: odprta izmena dobi odhod = zdaj, ostane le še Shrani
+        var od = pari.findIndex(function (p) { return !p.out; });
+        if (od >= 0) { var o = lst.querySelector('[data-i="' + od + '"] .vu-out'); o.value = dan === danes10() ? hmLocal(new Date()) : ''; el = o; spremenjeno = true; osveziStanje(); }
+      }
+      if (!el) { var prazna = vrste().map(function (r) { return r.querySelector('.vu-in'); }).filter(function (x) { return !x.value; })[0]; el = prazna; }
+      if (el && !matchMedia('(hover:none) and (pointer:coarse)').matches) setTimeout(function () { try { el.focus(); el.select(); } catch (e) {} }, 60);
+      else if (el && fokus) setTimeout(function () { try { el.focus(); } catch (e) {} }, 60);
+    }
+    async function naloziDan(fokus) {
+      zaseden = true; lst.innerHTML = '<p class="u-sub" style="margin:6px 2px">Nalagam …</p>';
+      var od = new Date(dan + 'T00:00:00').toISOString(), doo = new Date(vuDanPlus(dan, 1) + 'T00:00:00').toISOString();
+      var r = await sb.from('att_events').select('id,employee_id,terminal_id,ts,type,source,potrjeno').eq('employee_id', z.id).gte('ts', od).lt('ts', doo).order('ts', { ascending: true });
+      zaseden = false;
+      if (r.error) { lst.innerHTML = ''; sporoci('Napaka pri nalaganju: ' + r.error.message); return; }
+      pari = vuPari(r.data || []);
+      risiVrste(fokus);
+    }
+    // Shrani izbrani dan: posodobi spremenjene, dodaj nove, izbriši odstranjene izmene.
+    async function shrani() {
+      var izm = [];
+      var rv = vrste();
+      for (var i = 0; i < rv.length; i++) {
+        var r = rv[i], vi = r.querySelector('.vu-in').value, vo = r.querySelector('.vu-out').value;
+        var a = vuCas(vi), b = vuCas(vo);
+        if (a === null || b === null) { sporoci('Ura »' + (a === null ? vi : vo) + '« ni pravilna. Vpiši npr. 730 ali 15:30.'); (a === null ? r.querySelector('.vu-in') : r.querySelector('.vu-out')).focus(); return false; }
+        if (!a && !b) continue;
+        if (!a) { sporoci('Vsaka izmena potrebuje prihod.'); r.querySelector('.vu-in').focus(); return false; }
+        if (b && b <= a) { sporoci('Odhod mora biti za prihodom (' + a + '–' + b + ').'); r.querySelector('.vu-out').focus(); return false; }
+        izm.push({ i: r.dataset.i, in: a, out: b });
+      }
+      izm.sort(function (x, y) { return x.in < y.in ? -1 : 1; });
+      for (var k = 0; k < izm.length; k++) {
+        if (!izm[k].out && k < izm.length - 1) { sporoci('Brez odhoda je lahko le zadnja izmena dneva.'); return false; }
+        if (k && izm[k].in < izm[k - 1].out) { sporoci('Izmeni ' + izm[k - 1].in + '–' + izm[k - 1].out + ' in ' + izm[k].in + '–' + (izm[k].out || '…') + ' se prekrivata.'); return false; }
+      }
+      var ts = function (hm) { return new Date(dan + 'T' + hm + ':00').toISOString(); };
+      var ops = [], vstavi = [], ohranjeni = {};
+      izm.forEach(function (x) {
+        var p = (x.i !== 'n' && pari[+x.i]) ? pari[+x.i] : null;
+        if (!p) {
+          vstavi.push({ org_id: z.org_id, employee_id: z.id, type: 'in', source: 'manual', ts: ts(x.in) });
+          if (x.out) vstavi.push({ org_id: z.org_id, employee_id: z.id, type: 'out', source: 'manual', ts: ts(x.out) });
+          return;
+        }
+        ohranjeni[x.i] = true;
+        if (hmLocal(p.in.ts) !== x.in) ops.push(sb.from('att_events').update({ ts: ts(x.in) }).eq('id', p.in.id));
+        if (p.out && !x.out) ops.push(sb.from('att_events').delete().eq('id', p.out.id));
+        else if (p.out && hmLocal(p.out.ts) !== x.out) ops.push(sb.from('att_events').update({ ts: ts(x.out) }).eq('id', p.out.id));
+        else if (!p.out && x.out) vstavi.push({ org_id: z.org_id, employee_id: z.id, type: 'out', source: 'manual', ts: ts(x.out) });
+      });
+      var brisi = [];
+      pari.forEach(function (p, i) { if (!ohranjeni[i]) { brisi.push(p.in.id); if (p.out) brisi.push(p.out.id); } });
+      if (brisi.length) ops.push(sb.from('att_events').delete().in('id', brisi));
+      if (vstavi.length) ops.push(sb.from('att_events').insert(vstavi));
+      if (!ops.length) return true;   // nič spremenjenega
+      var gumb = q('[data-yes]'); gumb.disabled = true;
+      var res = await Promise.all(ops);
+      gumb.disabled = false;
+      var nap = res.filter(function (x) { return x && x.error; })[0];
+      if (nap) { sporoci('Napaka pri shranjevanju: ' + nap.error.message); await naloziDan(); return false; }
+      shranjeno = true;
+      try { logDodaj('Prisotnost', 'Vnos ur', z.ime + ' · ' + dan + ' · ' + (izm.map(function (x) { return x.in + '–' + (x.out || '…'); }).join(', ') || 'brez izmen')); } catch (e) {}
+      try { await naloziPrisDog(); prisRender(); } catch (e) {}
+      return true;
+    }
+    async function pojdiNa(novDan) {
+      if (zaseden || !novDan) return;
+      if (spremenjeno) { if (!(await shrani())) return; toast('Shranjeno · ' + vuDanNaziv(dan)); }
+      dan = novDan; naloziDan();
+    }
+    function zapri() {
+      back.classList.remove('show'); document.removeEventListener('keydown', onKey);
+      setTimeout(function () { if (back.parentNode) back.parentNode.removeChild(back); }, 180);
+    }
+    function onKey(e) { if (e.key === 'Escape') zapri(); }
+    document.addEventListener('keydown', onKey);
+    q('[data-no]').addEventListener('click', zapri);
+    back.addEventListener('click', function (e) { if (e.target === back) zapri(); });
+    back.querySelectorAll('[data-dan]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var d = parseInt(b.dataset.dan, 10), n = vuDanPlus(dan, d);
+        if (new Date(n + 'T12:00:00').getDay() === 0) n = vuDanPlus(n, d);   // nedelja se preskoči (kot na listu za ure)
+        pojdiNa(n);
+      });
+    });
+    dIn.addEventListener('change', function () { if (dIn.value && dIn.value !== dan) pojdiNa(dIn.value); else dIn.value = dan; });
+    dIn.addEventListener('click', function () { try { if (dIn.showPicker) dIn.showPicker(); } catch (e) {} });   // računalnik: klik kjerkoli odpre koledar
+    q('.vu-dodaj').addEventListener('click', function () {
+      var n = lst.querySelectorAll('.vu-vrsta[data-i^="n"]').length;
+      lst.insertAdjacentHTML('beforeend', vrstaHtml('n' + n, '', '')); osveziStanje();
+      var v = vrste(); v[v.length - 1].querySelector('.vu-in').focus();
+    });
+    lst.addEventListener('input', function (e) {
+      var t = e.target; if (!t.classList || !t.classList.contains('vu-cas')) return;
+      spremenjeno = true; sporoci('');
+      // 4 številke brez dvopičja → oblikuj (1530 → 15:30) in skoči na naslednje polje
+      if (/^\d{4}$/.test(t.value) && vuCas(t.value)) {
+        t.value = vuCas(t.value);
+        var vsa = [].slice.call(lst.querySelectorAll('.vu-cas')), ix = vsa.indexOf(t);
+        if (vsa[ix + 1]) vsa[ix + 1].focus();
+      }
+      osveziStanje();
+    });
+    lst.addEventListener('focusout', function (e) {
+      var t = e.target; if (!t.classList || !t.classList.contains('vu-cas')) return;
+      var v = vuCas(t.value); if (v) t.value = v;
+      t.classList.toggle('napaka', v === null); osveziStanje();
+    });
+    lst.addEventListener('keydown', function (e) { if (e.key === 'Enter' && e.target.classList && e.target.classList.contains('vu-cas')) { e.preventDefault(); q('[data-yes]').click(); } });
+    lst.addEventListener('click', function (e) {
+      var zd = e.target.closest('.vu-zdaj');
+      if (zd) { var o = zd.parentNode.querySelector('.vu-out'); o.value = hmLocal(new Date()); spremenjeno = true; osveziStanje(); return; }
+      var x = e.target.closest('.vu-x'); if (!x) return;
+      var r = x.closest('.vu-vrsta');
+      if (r.dataset.i.charAt(0) === 'n' && lst.querySelectorAll('.vu-vrsta[data-i^="n"]').length === 1) { r.querySelector('.vu-in').value = ''; r.querySelector('.vu-out').value = ''; }
+      else r.parentNode.removeChild(r);
+      spremenjeno = true; osveziStanje();
+    });
+    q('[data-yes]').addEventListener('click', async function () {
+      if (zaseden) return;
+      if (!spremenjeno) { zapri(); return; }
+      if (await shrani()) { toast('Ure shranjene · ' + z.ime); zapri(); }
+    });
+    naloziDan(opt.fokus);
+  }
+  // Vsi trije vstopi odprejo isto okno.
+  function prisRocni(empId, danArg) { prisVnosUr(empId, danArg); }
   function prisUrediPar(idsStr) {
     var ids = String(idsStr || '').split(',').filter(Boolean);
-    var inEv = prisDogById(ids[0]); var outEv = ids[1] ? prisDogById(ids[1]) : null;
-    if (!inEv) { toast('Vpisa ni več.'); return; }
-    var z = (ZAPOSLENI || []).find(function (x) { return x.id === inEv.employee_id; }); if (!z) return;
-    var back = document.createElement('div'); back.className = 'sc-modal-back';
-    back.innerHTML = '<div class="sc-modal" role="dialog" aria-modal="true"><h4>Uredi vpis — ' + escape_(z.ime) + '</h4>' +
-      '<label class="pris-lab">Datum</label><input type="date" class="pris-r-dan sc-modal-input" value="' + danLocal(inEv.ts) + '">' +
-      '<div class="pris-r-cas"><div><label class="pris-lab">Prihod</label><input type="time" class="pris-r-in sc-modal-input" value="' + hmLocal(inEv.ts) + '"></div>' +
-      '<div><label class="pris-lab">Odhod <span class="u-sub">(neobvezno)</span></label><input type="time" class="pris-r-out sc-modal-input" value="' + (outEv ? hmLocal(outEv.ts) : '') + '"></div></div>' +
-      '<p class="u-sub" style="margin:8px 0 0">Če odhod izprazniš, se odstrani (izmena ostane odprta).</p>' +
-      '<div class="sc-modal-acts"><button type="button" class="sc-modal-btn ghost" data-no>Prekliči</button><button type="button" class="sc-modal-btn primary" data-yes>Shrani</button></div></div>';
-    document.body.appendChild(back);
-    requestAnimationFrame(function () { back.classList.add('show'); });
-    function zapri() { back.classList.remove('show'); setTimeout(function () { if (back.parentNode) back.parentNode.removeChild(back); }, 180); }
-    back.querySelector('[data-no]').addEventListener('click', zapri);
-    back.addEventListener('click', function (e) { if (e.target === back) zapri(); });
-    back.querySelector('[data-yes]').addEventListener('click', async function () {
-      var nd = back.querySelector('.pris-r-dan').value;
-      var nin = back.querySelector('.pris-r-in').value;
-      var nout = back.querySelector('.pris-r-out').value;
-      if (!nd || !nin) { toast('Vpiši datum in prihod.'); return; }
-      if (nout && nout <= nin) { toast('Odhod mora biti za prihodom.'); return; }
-      var ops = [sb.from('att_events').update({ ts: new Date(nd + 'T' + nin).toISOString() }).eq('id', inEv.id)];
-      if (nout) {
-        if (outEv) ops.push(sb.from('att_events').update({ ts: new Date(nd + 'T' + nout).toISOString() }).eq('id', outEv.id));
-        else ops.push(sb.from('att_events').insert({ org_id: z.org_id, employee_id: z.id, type: 'out', source: 'manual', ts: new Date(nd + 'T' + nout).toISOString() }));
-      } else if (outEv) {
-        ops.push(sb.from('att_events').delete().eq('id', outEv.id));
-      }
-      var res = await Promise.all(ops);
-      if (res.some(function (r) { return r.error; })) { toast('Napaka pri shranjevanju.'); return; }
-      toast('Vpis posodobljen.'); zapri(); await risiPrisotnost();
-    });
-  }
-  // Ročni vnos ur — VEČ intervalov (izmen) na en dan; vmesni čas = pavza.
-  // Glavni način, dokler kartični sistem ni v uporabi.
-  function prisRocni(empId, danArg) {
-    var z = (ZAPOSLENI || []).find(function (x) { return x.id === empId; }); if (!z) return;
-    var back = document.createElement('div'); back.className = 'sc-modal-back';
-    var dan = (danArg && danArg.length === 10) ? danArg : ((_prisMesec || !_prisDan || _prisDan.length !== 10) ? danes10() : _prisDan);
-    function rowHtml(inv, outv) {
-      return '<div class="pris-int-row">' +
-        '<input type="time" class="pris-int-in sc-modal-input" value="' + (inv || '') + '" aria-label="Prihod">' +
-        '<span class="pris-int-sep">–</span>' +
-        '<input type="time" class="pris-int-out sc-modal-input" value="' + (outv || '') + '" aria-label="Odhod">' +
-        '<button type="button" class="pris-int-del" title="Odstrani interval" aria-label="Odstrani interval">×</button>' +
-        '</div>';
-    }
-    back.innerHTML = '<div class="sc-modal" role="dialog" aria-modal="true"><h4>Ročni vnos ur — ' + escape_(z.ime) + '</h4>' +
-      '<label class="pris-lab">Datum</label><input type="date" class="pris-r-dan sc-modal-input" value="' + dan + '">' +
-      '<label class="pris-lab" style="margin-top:12px">Intervali (izmene) — prihod – odhod</label>' +
-      '<div class="pris-intervali">' + rowHtml() + '</div>' +
-      '<button type="button" class="pris-int-add">+ Dodaj interval</button>' +
-      '<p class="u-sub" style="margin:10px 0 0">Vsak interval je ena izmena. Vmesni čas (npr. 9:00–13:00) šteje kot <b>pavza</b> in se NE všteje v ure. Zadnji odhod lahko pustiš prazen (izmena še traja).</p>' +
-      '<div class="sc-modal-acts"><button type="button" class="sc-modal-btn ghost" data-no>Prekliči</button><button type="button" class="sc-modal-btn primary" data-yes>Shrani</button></div></div>';
-    document.body.appendChild(back);
-    requestAnimationFrame(function () { back.classList.add('show'); });
-    function zapri() { back.classList.remove('show'); setTimeout(function () { if (back.parentNode) back.parentNode.removeChild(back); }, 180); }
-    back.querySelector('[data-no]').addEventListener('click', zapri);
-    back.addEventListener('click', function (e) { if (e.target === back) zapri(); });
-    var lst = back.querySelector('.pris-intervali');
-    back.querySelector('.pris-int-add').addEventListener('click', function () { lst.insertAdjacentHTML('beforeend', rowHtml()); });
-    lst.addEventListener('click', function (e) {
-      var b = e.target.closest('.pris-int-del'); if (!b) return;
-      var row = b.closest('.pris-int-row'), vse = lst.querySelectorAll('.pris-int-row');
-      if (vse.length > 1) row.parentNode.removeChild(row);
-      else { row.querySelector('.pris-int-in').value = ''; row.querySelector('.pris-int-out').value = ''; }
-    });
-    back.querySelector('[data-yes]').addEventListener('click', async function () {
-      var d = back.querySelector('.pris-r-dan').value;
-      if (!d) { toast('Vpiši datum.'); return; }
-      var rows = [].slice.call(lst.querySelectorAll('.pris-int-row')), intervali = [];
-      for (var i = 0; i < rows.length; i++) {
-        var vin = rows[i].querySelector('.pris-int-in').value, vout = rows[i].querySelector('.pris-int-out').value;
-        if (!vin && !vout) continue;                                  // prazna vrstica → preskoči
-        if (!vin) { toast('Vsak interval potrebuje prihod.'); return; }
-        if (vout && vout <= vin) { toast('Odhod mora biti za prihodom (' + vin + '–' + vout + ').'); return; }
-        intervali.push({ in: vin, out: vout });
-      }
-      if (!intervali.length) { toast('Vpiši vsaj en interval.'); return; }
-      intervali.sort(function (a, b) { return a.in < b.in ? -1 : 1; });
-      for (var k = 1; k < intervali.length; k++) {                    // prekrivanje ni dovoljeno
-        if (intervali[k - 1].out && intervali[k].in < intervali[k - 1].out) { toast('Intervala se prekrivata — popravi ure.'); return; }
-      }
-      var vstavi = [];
-      intervali.forEach(function (iv) {
-        vstavi.push({ org_id: z.org_id, employee_id: z.id, type: 'in', source: 'manual', ts: new Date(d + 'T' + iv.in).toISOString() });
-        if (iv.out) vstavi.push({ org_id: z.org_id, employee_id: z.id, type: 'out', source: 'manual', ts: new Date(d + 'T' + iv.out).toISOString() });
-      });
-      var ins = await sb.from('att_events').insert(vstavi);
-      if (ins.error) { toast('Napaka: ' + ins.error.message); return; }
-      try { logDodaj('Prisotnost', 'Ročni vnos', z.ime + ' · ' + d + ' · ' + intervali.map(function (iv) { return iv.in + '–' + (iv.out || '…'); }).join(', ')); } catch (e) {}
-      toast('Vpisano · ' + intervali.length + ' ' + (intervali.length === 1 ? 'interval' : 'intervalov') + '.'); zapri(); await risiPrisotnost();
-    });
+    var ev = prisDogById(ids[0]); if (!ev) { toast('Vpisa ni več.'); return; }
+    prisVnosUr(ev.employee_id, danLocal(ev.ts), { fokus: { id: ev.id } });
   }
 
   /* ══════════ ARTIKLI (katalog po skupinah ID + teža + dodeljevanje) ══════════ */
