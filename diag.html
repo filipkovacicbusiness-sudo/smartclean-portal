@@ -17,6 +17,13 @@
   button{font:inherit;padding:12px 18px;border-radius:999px;border:1.5px solid #0a0a0a;background:#0a0a0a;color:#fff;margin:14px 8px 0 0;}
   button.alt{background:#fff;color:#0a0a0a;}
   #povzetek{max-width:720px;margin:0 0 14px;padding:12px 14px;border-radius:12px;background:#f4f4f4;font-weight:600;}
+  /* Preizkusni tisk: na zaslonu skrit, na papirju edini. */
+  #tiskTest{display:none;}
+  @media print{
+    body>*{display:none!important;}
+    body>#tiskTest{display:block!important;padding:20mm;font:14pt/1.5 Arial,sans-serif;color:#000;}
+    #tiskTest h2{font-size:22pt;margin:0 0 8mm;} #tiskTest .okvir{border:2px solid #000;border-radius:4mm;padding:8mm;margin-top:10mm;font-size:18pt;font-weight:bold;}
+  }
 </style>
 <script src="config.js"></script>
 </head>
@@ -27,6 +34,9 @@
 <table id="t"></table>
 <button type="button" id="pocisti">Počisti predpomnilnik portala</button>
 <button type="button" class="alt" id="portal">Odpri portal</button>
+<button type="button" class="alt" id="tiskaj">Preizkusni tisk</button>
+<div id="tiskTest"><h2>SmartClean — preizkusni tisk</h2><div id="tiskPodatki"></div>
+  <div class="okvir">Če to stran vidiš na papirju, tiskanje s te naprave deluje.</div></div>
 <script>
 (function () {
   var t = document.getElementById('t'), tezave = [], cakam = 0;
@@ -140,6 +150,15 @@
     if (window.Promise && dela.length) Promise.all(dela).then(function () { setTimeout(naprej, 400); }, naprej); else naprej();
   };
   document.getElementById('portal').onclick = function () { location.href = './'; };
+  // Preizkusni tisk: natisne kratko stran brez portala. Če pride na papir, sta naprava in
+  // povezava s tiskalnikom v redu (težava je potem v portalu); če ne, je težava v napravi/omrežju.
+  document.getElementById('tiskaj').onclick = function () {
+    var ua = navigator.userAgent || '';
+    document.getElementById('tiskPodatki').innerHTML = 'Natisnjeno: ' + new Date().toLocaleString('sl-SI') + '<br>Naprava: ' +
+      ua.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+    if (typeof window.print !== 'function') { alert('Ta brskalnik ne zna tiskati. Odpri stran v Chromu ali Safariju.'); return; }
+    try { window.print(); } catch (e) { alert('Tiskanje se ni začelo: ' + e.message); }
+  };
 })();
 </script>
 </body>

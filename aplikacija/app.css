@@ -410,3 +410,13 @@ body,.topbar,.panel,.art,.list,.st-tile,.seg,.seg-b,input,textarea,.btn,.pill-bt
   transition:background-color .32s ease,border-color .32s ease,color .28s ease;}
 @media(max-width:820px){ .field input,.field textarea,.in,input[type=date]{font-size:16px;} }
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
+
+/* ══════════ TISK DOKUMENTA na telefonu/tablici v brskalniku (glej natisniVGlavnem v app.js) ══════════
+   Na zaslonu skrito; pri tisku je vidna SAMO plast z dokumentom, aplikacija se ne natisne. */
+#sc-tisk{display:none}
+@media print{
+  html.sc-tisk-on,html.sc-tisk-on body{background:#fff!important;height:auto!important;min-height:0!important;max-height:none!important;overflow:visible!important;position:static!important;margin:0!important;padding:0!important;transform:none!important;scrollbar-gutter:auto!important}
+  html.sc-tisk-on body::before,html.sc-tisk-on body::after{display:none!important}
+  html.sc-tisk-on body>:not(#sc-tisk){display:none!important}
+  html.sc-tisk-on #sc-tisk{display:block!important}
+}

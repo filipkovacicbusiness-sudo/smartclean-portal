@@ -2331,3 +2331,15 @@ html[data-view="list"] .u-mreza .lcell .row > span:first-child{padding-right:0;}
 html[data-view="grid"] .fak-grid .fak-card:not(.open):hover{transform:translateY(-2px);}
 .fak-grid .fak-card:focus-visible{outline:2px solid var(--green-l);outline-offset:3px;}
 
+
+/* ══════════ TISK DOKUMENTA (predogled → Natisni na telefonu/tablici, ⌘P ob odprtem predogledu) ══════════
+   Dokument je v plasti #sc-tisk (glej tiskPlastPostavi v portal.js). Na zaslonu je skrita;
+   pri tisku je vidna SAMO ona — portal (meni, predogled, ozadje) se ne natisne. */
+#sc-tisk{display:none;}
+@media print{
+  html.sc-tisk-on,html.sc-tisk-on body{background:#fff!important;height:auto!important;min-height:0!important;max-height:none!important;
+    overflow:visible!important;position:static!important;margin:0!important;padding:0!important;transform:none!important;scrollbar-gutter:auto!important;}
+  html.sc-tisk-on body::before,html.sc-tisk-on body::after{display:none!important;}
+  html.sc-tisk-on body>:not(#sc-tisk){display:none!important;}
+  html.sc-tisk-on #sc-tisk{display:block!important;}
+}

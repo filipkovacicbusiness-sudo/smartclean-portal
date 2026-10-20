@@ -809,7 +809,48 @@ function printLists(arr, enIzvod){
   var html = dokZaListe(arr, enIzvod ? 1 : 2);
   var P = pdfPlugin();
   if(P){ P.print({ html: html, jobName: "Spremni list " + arr[0].stevilka }).catch(function(){ toast("Tiskanje ni uspelo."); }); return; }
+  if(jeMobilna()){ natisniVGlavnem(html); return; }
   natisniPrekIframe(html);
+}
+/* Telefon / tablica v brskalniku: iz iframe-a natisne prav le računalnik — Safari na iPhonu
+   in Chrome na Androidu natisneta aplikacijo za njim ali prazno stran. Zato gre dokument v
+   skrito plast glavnega okna (shadow DOM, slog aplikacije nanj ne vpliva) in natisne se
+   glavno okno; pri tisku je vidna samo plast (app.css → html.sc-tisk-on). Plast ostane do
+   naslednjega tiska (največ 10 min): Android lahko predogled tiska izriše še enkrat. */
+function jeMobilna(){
+  var ua = navigator.userAgent || "";
+  return /Android|iPhone|iPad|iPod|Mobile/i.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);   /* iPad se predstavi kot Mac */
+}
+var _tiskPlast = null, _tiskUra = null;
+function tiskPlastOdstrani(){
+  document.documentElement.classList.remove("sc-tisk-on");
+  if(_tiskPlast){ [_tiskPlast.host, _tiskPlast.slog].forEach(function(n){ if(n && n.parentNode) n.parentNode.removeChild(n); }); }
+  _tiskPlast = null; if(_tiskUra){ clearTimeout(_tiskUra); _tiskUra = null; }
+}
+function natisniVGlavnem(doc){
+  tiskPlastOdstrani();
+  try{
+    var d = new DOMParser().parseFromString(doc, "text/html");
+    var css = Array.prototype.map.call(d.querySelectorAll("style"), function(s){ return s.textContent; }).join("\n");
+    var glob = [];
+    /* @font-face in @page v shadow DOM ne delujeta → v glavni dokument */
+    css = css.replace(/@font-face\s*\{[^}]*\}/g, function(m){ glob.push(m); return ""; })
+      .replace(/@page\s*\{[^}]*\}/g, function(m){ glob.push(m); return ""; })
+      .replace(/(^|[\s,{}>+~(])(html|body)(?=[\s,{.:#\[>+~)])/g, "$1.dok-$2");
+    var slog = document.createElement("style"); slog.id = "sc-tisk-slog"; slog.textContent = glob.join("\n");
+    document.head.appendChild(slog);
+    var host = document.createElement("div"); host.id = "sc-tisk"; host.setAttribute("aria-hidden", "true");
+    host.attachShadow({ mode: "open" }).innerHTML = "<style>:host{all:initial;display:block}" + css + "</style><div class=\"dok-html\"><div class=\"dok-body\">" + d.body.innerHTML + "</div></div>";
+    document.body.appendChild(host);
+    document.documentElement.classList.add("sc-tisk-on");
+    _tiskPlast = { host: host, slog: slog };
+    _tiskUra = setTimeout(tiskPlastOdstrani, 600000);
+  }catch(e){ tiskPlastOdstrani(); natisniPrekIframe(doc); return; }
+  /* pisave (logotip) naložene pred tiskom — nikoli nadomestna pisava */
+  var f = document.fonts, t = "SmartClean AaČčŠšŽž0123", pis = Promise.resolve();
+  try{ if(f && f.load) pis = Promise.all([f.load("400 12px Archivo", t), f.load("700 12px Archivo", t), f.load("700 32px \"Playfair Display\"", t)]); }catch(_){}
+  var tiskaj = function(){ try{ window.print(); }catch(e){ toast("Tiskanje ni uspelo."); } };
+  Promise.race([pis, new Promise(function(r){ setTimeout(r, 3000); })]).then(tiskaj, tiskaj);
 }
 /* Brskalnik: natisni čist dokument prek skritega iframe-a (na iOS je »visibility« trik tiskal prazno). */
 function natisniPrekIframe(doc){

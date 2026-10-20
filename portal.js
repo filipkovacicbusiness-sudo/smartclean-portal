@@ -308,7 +308,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.35 · BETA';
+  var APP_VERZIJA = '4.36 · BETA';
   var NALAGANJE = '<div class="sc-load" aria-hidden="true"><span class="sc-load-line"></span></div>';
   // Stale-while-revalidate: ob ponovnem obisku razdelka NE pobriši vsebine v nalagalnik —
   // obdrži prejšnjo (takojšen prikaz) in jo osveži v ozadju. Trak le ob prvem nalaganju.
@@ -5334,6 +5334,55 @@
     }
   }
 
+  /* ══════════ TISK V GLAVNEM OKNU (telefoni, tablice) ══════════
+     Iz iframe-a natisne dokument pravilno le brskalnik na računalniku. Safari na iPhonu/iPadu in
+     Chrome na Androidu natisneta portal za predogledom ali prazno stran. Zato je dokument, dokler
+     je predogled odprt, tudi v skriti plasti #sc-tisk glavnega okna (shadow DOM — slog portala
+     nanj ne vpliva). Pri tisku je vidna samo ta plast (portal.css → html.sc-tisk-on) — tudi ko
+     tiskaš iz menija brskalnika (iPhone: Deli → Natisni, računalnik: ⌘P / Ctrl+P). */
+  var _tisk = null;
+  function jeMobilnaNaprava() {
+    var ua = navigator.userAgent || '';
+    return /Android|iPhone|iPad|iPod|Mobile/i.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);   // iPad se predstavi kot Mac
+  }
+  function tiskNativni() { try { var C = window.Capacitor; return (C && C.Plugins && C.Plugins.PralnicaPrint) || null; } catch (e) { return null; } }
+  function tiskPlastPostavi(docHtml) {
+    tiskPlastOdstrani();
+    try {
+      var d = new DOMParser().parseFromString(docHtml || '', 'text/html');
+      var css = Array.prototype.map.call(d.querySelectorAll('style'), function (s) { return s.textContent; }).join('\n');
+      var glob = [];
+      // @font-face in @page v shadow DOM ne delujeta → v glavni dokument.
+      css = css.replace(/@font-face\s*\{[^}]*\}/g, function (m) { glob.push(m); return ''; })
+        .replace(/@page\s*\{[^}]*\}/g, function (m) { glob.push(m); return ''; })
+        // html / body dokumenta → ovoja v plasti
+        .replace(/(^|[\s,{}>+~(])(html|body)(?=[\s,{.:#\[>+~)])/g, '$1.dok-$2');
+      var slog = document.createElement('style'); slog.id = 'sc-tisk-slog'; slog.textContent = glob.join('\n');
+      document.head.appendChild(slog);
+      var host = document.createElement('div'); host.id = 'sc-tisk'; host.setAttribute('aria-hidden', 'true');
+      host.attachShadow({ mode: 'open' }).innerHTML = '<style>:host{all:initial;display:block}' + css + '</style><div class="dok-html"><div class="dok-body">' + d.body.innerHTML + '</div></div>';
+      document.body.appendChild(host);
+      document.documentElement.classList.add('sc-tisk-on');
+      _tisk = { host: host, slog: slog };
+    } catch (e) { tiskPlastOdstrani(); }
+  }
+  function tiskPlastOdstrani() {
+    document.documentElement.classList.remove('sc-tisk-on');
+    if (_tisk) { [_tisk.host, _tisk.slog].forEach(function (n) { if (n && n.parentNode) n.parentNode.removeChild(n); }); }
+    _tisk = null;
+  }
+  // Pisave dokumenta (logotip!) morajo biti naložene pred tiskom — nikoli nadomestna pisava.
+  function tiskPisave() {
+    var f = document.fonts; if (!f || !f.load) return Promise.resolve();
+    var t = 'SmartClean AaČčŠšŽž0123';
+    var vse = Promise.all([f.load('400 12px Archivo', t), f.load('700 12px Archivo', t), f.load('700 32px "Playfair Display"', t)]).then(function () { return f.ready; });
+    return Promise.race([vse, new Promise(function (r) { setTimeout(r, 4000); })]).catch(function () {});
+  }
+  function tiskGlavno() {
+    if (!_tisk) { toast('Tiskanje ni uspelo — zapri predogled in poskusi znova.'); return; }
+    tiskPisave().then(function () { try { window.print(); } catch (e) { toast('Tiskanje ni uspelo.'); } });
+  }
+
   /* ══════════ PREDOGLED DOKUMENTA (skupni pop-up: natisni / shrani) ══════════ */
   function predogledDokument(opt) {
     opt = opt || {};
@@ -5365,16 +5414,22 @@
     fr.addEventListener('load', function () { prilagodiA4(); setTimeout(prilagodiA4, 60); });
     window.addEventListener('resize', prilagodiA4);
     fr.srcdoc = opt.docHtml || '';
+    tiskPlastPostavi(opt.docHtml);
     requestAnimationFrame(function () { back.classList.add('show'); setTimeout(prilagodiA4, 40); });
     var done = false;
-    function zapri() { if (done) return; done = true; window.removeEventListener('resize', prilagodiA4); back.classList.remove('show'); document.removeEventListener('keydown', onKey); setTimeout(function () { if (back.parentNode) back.parentNode.removeChild(back); }, 180); }
+    function zapri() { if (done) return; done = true; tiskPlastOdstrani(); window.removeEventListener('resize', prilagodiA4); back.classList.remove('show'); document.removeEventListener('keydown', onKey); setTimeout(function () { if (back.parentNode) back.parentNode.removeChild(back); }, 180); }
     function onKey(e) { if (e.key === 'Escape') zapri(); }
     back.querySelector('.doc-x').addEventListener('click', zapri);
     back.addEventListener('click', function (e) { if (e.target === back) zapri(); });
     document.addEventListener('keydown', onKey);
     back.querySelector('[data-print]').addEventListener('click', function () {
-      // Natisni šele, ko so pisave dokumenta (tudi logotip) naložene — nikoli nadomestna pisava.
-      var natisni = function () { try { fr.contentWindow.focus(); fr.contentWindow.print(); } catch (e) { toast('Tiskanje ni uspelo.'); } };
+      // Aplikacija na tablici: domači tisk Androida (WebView window.print() ne pozna).
+      var P = tiskNativni();
+      if (P) { P.print({ html: opt.docHtml || '', jobName: opt.naslov || 'SmartClean' }).catch(function () { toast('Tiskanje ni uspelo.'); }); return; }
+      // Telefon / tablica v brskalniku: tisk glavnega okna (iz iframe-a ne deluje).
+      if (jeMobilnaNaprava()) { tiskGlavno(); return; }
+      // Računalnik: iframe (preverjeno). Natisni šele, ko so pisave dokumenta (tudi logotip) naložene.
+      var natisni = function () { try { fr.contentWindow.focus(); fr.contentWindow.print(); } catch (e) { tiskGlavno(); } };
       try { var fd = fr.contentDocument && fr.contentDocument.fonts; if (fd && fd.ready) { fd.ready.then(natisni, natisni); return; } } catch (e) {}
       natisni();
     });
