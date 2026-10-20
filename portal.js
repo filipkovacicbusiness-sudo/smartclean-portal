@@ -511,6 +511,7 @@
   var IKO_T_POZOR = ikoT('<path d="M10.3 4.2 2.6 17.6A2 2 0 0 0 4.3 20.5h15.4a2 2 0 0 0 1.7-2.9L13.7 4.2a2 2 0 0 0-3.4 0z"/><path d="M12 9.5v4.2M12 16.9v.1"/>');
   var IKO_T_SVINC = ikoT('<path d="M4 20h4L18.5 9.5a2.1 2.1 0 0 0-3-3L5 17z"/><path d="m13.5 8.5 3 3"/>');
   var IKO_T_PLUS = ikoT('<path d="M12 5v14M5 12h14"/>');
+  var IKO_ZAPRI = '<svg class="iko-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M17 7 7 17M7 7l10 10"/></svg>';
   var IKO_T_MAPA = ikoT('<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>');
   // Oceni postavko: RDEČ, če ni izbran artikel; ORANŽEN, če je artikel brez količine.
   function _ocenaPostavke(row) {
@@ -870,7 +871,7 @@
     };
     var back = document.createElement('div'); back.className = 'sc-modal-back';
     back.innerHTML = '<div class="sc-modal spr-modal" role="dialog" aria-modal="true" aria-label="Posodobitve">' +
-      '<div class="spr-glava"><h4>Posodobitve</h4><button type="button" class="spr-x" aria-label="Zapri">×</button></div>' +
+      '<div class="spr-glava"><h4>Posodobitve</h4><button type="button" class="spr-x" aria-label="Zapri">' + IKO_ZAPRI + '</button></div>' +
       '<p class="spr-pod">Trenutna različica ' + escape_(APP_VERZIJA) + '</p>' +
       '<div class="spr-seznam">' + (Array.isArray(seznam) ? seznam : []).map(function (x) {
         var tr = String(x.v) === zdaj;
@@ -2486,7 +2487,7 @@
       '<div class="art-edit-r">' +
       '<label class="ae-lab">Šifra (ID)<input type="text" class="ae-id" maxlength="5" placeholder="ID"></label>' +
       '<label class="ae-lab">Cena (€)<input type="text" inputmode="decimal" class="ae-cena" placeholder="0,00"></label>' +
-      '<button type="button" class="btn-mini ae-save">Shrani</button><button type="button" class="cenik-x ae-cancel" title="prekliči">×</button></div></div>';
+      '<button type="button" class="btn-mini ae-save">Shrani</button><button type="button" class="cenik-x ae-cancel" title="prekliči">' + IKO_ZAPRI + '</button></div></div>';
     row.querySelector('.ae-nm').value = rec.naziv || '';
     row.querySelector('.ae-id').value = normId(rec.koda);
     row.querySelector('.ae-cena').value = String(rec.cena1 != null ? rec.cena1 : '').replace('.', ',');
@@ -4211,7 +4212,7 @@
     var r = await sb.from('delivery_notes').select('id,number,doc_date,org_id,weight_kg,total_pieces,deleted_at')
       .not('deleted_at', 'is', null).gte('deleted_at', mejnik).order('deleted_at', { ascending: false });
     var arr = (r && !r.error) ? (r.data || []) : [];
-    var html = '<div class="cgrp-bar"><button type="button" class="cgrp-btn" id="kosNazajArhiv">← Nazaj na arhiv</button></div>' +
+    var html = '<div class="cgrp-bar"><button type="button" class="cgrp-btn ghost" id="kosNazajArhiv">← Nazaj na arhiv</button></div>' +
       '<h3 class="sec-h" style="margin:6px 0 10px">Nedavno brisani spremni listi <span class="u-sub">(obnovljivi 30 dni)</span></h3>';
     if (r && r.error) html += '<div class="msg bad show">Napaka: ' + escape_(r.error.message) + '</div>';
     else if (!arr.length) html += '<div class="empty"><h3>Koš je prazen</h3><p>Zadnjih 30 dni ni brisanih spremnih listov.</p></div>';
@@ -5678,7 +5679,7 @@
     var xlsxBtn = opt.xlsx ? '<button type="button" class="sc-modal-btn primary" data-xlsx>Shrani kot Excel</button>' : '';
     var pdfBtn = opt.pdf ? '<button type="button" class="sc-modal-btn primary" data-pdf>Shrani kot PDF</button>' : '';
     back.innerHTML = '<div class="sc-modal doc-modal" role="dialog" aria-modal="true">' +
-      '<div class="doc-head"><h4></h4><button type="button" class="doc-x" aria-label="Zapri">×</button></div>' +
+      '<div class="doc-head"><h4></h4><button type="button" class="doc-x" aria-label="Zapri">' + IKO_ZAPRI + '</button></div>' +
       '<div class="doc-stage"><div class="doc-scaler"><iframe class="doc-frame" title="Predogled"></iframe></div></div>' +
       '<div class="sc-modal-acts doc-acts"><button type="button" class="sc-modal-btn ghost" data-print>Natisni</button>' + xlsxBtn + pdfBtn + '</div></div>';
     back.querySelector('h4').textContent = opt.naslov || 'Predogled';
@@ -6316,7 +6317,7 @@
     row.innerHTML = '<div class="cenik-edit-form"><input type="text" class="cenik-nm-in" placeholder="Naziv artikla">' +
       '<div class="cenik-edit-r"><label class="cenik-mini-lab">ID<input type="text" class="cenik-id-in" maxlength="5" placeholder="PV001"></label>' +
       '<label class="cenik-mini-lab">Cena €<input type="text" class="cenik-in" inputmode="decimal" placeholder="0,00"></label>' +
-      '<button type="button" class="btn-mini cenik-save">Shrani</button><button type="button" class="cenik-x cenik-cancel" title="prekliči">×</button></div></div>';
+      '<button type="button" class="btn-mini cenik-save">Shrani</button><button type="button" class="cenik-x cenik-cancel" title="prekliči">' + IKO_ZAPRI + '</button></div></div>';
     const nmIn = row.querySelector('.cenik-nm-in'), cIn = row.querySelector('.cenik-in'), idIn = row.querySelector('.cenik-id-in');
     nmIn.value = rec.naziv || ''; cIn.value = String(rec.cena1).replace('.', ','); idIn.value = normId(rec.koda);
     nmIn.focus();
@@ -6369,7 +6370,7 @@
   function cenikNov(orgId, btn) {
     const bar = btn.closest('.cgrp-bar');
     if (bar.nextElementSibling && bar.nextElementSibling.classList && bar.nextElementSibling.classList.contains('cenik-nov')) { cenikRender(); return; }
-    bar.insertAdjacentHTML('afterend', '<div class="cenik-nov"><input type="text" class="cenik-nov-nm" placeholder="Naziv novega artikla"><div class="cenik-nov-r"><input type="text" class="cenik-nov-c" inputmode="decimal" placeholder="Cena €"><button type="button" class="btn-mini cenik-nov-save">Ustvari</button><button type="button" class="cenik-x cenik-nov-cancel">×</button></div></div>');
+    bar.insertAdjacentHTML('afterend', '<div class="cenik-nov"><input type="text" class="cenik-nov-nm" placeholder="Naziv novega artikla"><div class="cenik-nov-r"><input type="text" class="cenik-nov-c" inputmode="decimal" placeholder="Cena €"><button type="button" class="btn-mini cenik-nov-save">Ustvari</button><button type="button" class="cenik-x cenik-nov-cancel">' + IKO_ZAPRI + '</button></div></div>');
     const wrap = bar.nextElementSibling;
     const nmIn = wrap.querySelector('.cenik-nov-nm'), cIn = wrap.querySelector('.cenik-nov-c');
     nmIn.focus();
@@ -6607,7 +6608,7 @@
     { const ro = await sb.from('orgs').select('id,name,legal_name,deleted_at').not('deleted_at', 'is', null).gte('deleted_at', mejnik).order('deleted_at', { ascending: false }); if (!ro.error) orgsDel = ro.data || []; }
     const ra = await sb.from('pricelist').select('sifra,koda,naziv,em,cena1,deleted_at').not('deleted_at', 'is', null).gte('deleted_at', mejnik).order('deleted_at', { ascending: false });
     const arr = ra.error ? [] : (ra.data || []);
-    let html = '<div class="cgrp-bar"><button type="button" class="cgrp-btn" id="kosNazaj">← Nazaj na cenik</button></div>';
+    let html = '<div class="cgrp-bar"><button type="button" class="cgrp-btn ghost" id="kosNazaj">← Nazaj na cenik</button></div>';
     if (orgsDel.length) {
       html += '<h3 class="sec-h" style="margin:6px 0 8px">Izbrisane stranke</h3><div class="cenik" style="margin-bottom:18px">' + orgsDel.map(function (o) {
         return '<div class="cenik-row"><div class="cenik-nm">' + escape_(o.name) + '</div>' +
@@ -7686,7 +7687,7 @@
   // Poln zaslon pregled slike (namesto novega zavihka — brez glitchev na mobilnem).
   function dokLightbox(url, ime) {
     var back = document.createElement('div'); back.className = 'dok-lb';
-    back.innerHTML = '<button type="button" class="dok-lb-x" aria-label="Zapri">×</button>' +
+    back.innerHTML = '<button type="button" class="dok-lb-x" aria-label="Zapri">' + IKO_ZAPRI + '</button>' +
       '<img src="' + escape_(url) + '" alt="' + escape_(ime || '') + '">' +
       (ime ? '<div class="dok-lb-cap">' + escape_(ime) + '</div>' : '');
     document.body.appendChild(back);
@@ -7997,7 +7998,7 @@
     var r = await sb.from('documents').select('id,ime,mapa,storage_path,je_mapa,deleted_at')
       .not('deleted_at', 'is', null).gte('deleted_at', mejnik).order('deleted_at', { ascending: false });
     var arr = (r && !r.error) ? (r.data || []) : [];
-    var html = '<div class="cgrp-bar"><button type="button" class="cgrp-btn" id="kosNazajDok">← Nazaj na dokumente</button></div>' +
+    var html = '<div class="cgrp-bar"><button type="button" class="cgrp-btn ghost" id="kosNazajDok">← Nazaj na dokumente</button></div>' +
       '<h3 class="sec-h" style="margin:6px 0 10px">Nedavno brisano <span class="u-sub">(obnovljivo 30 dni)</span></h3>';
     if (r && r.error) html += '<div class="msg bad show">Napaka: ' + escape_(r.error.message) + '</div>';
     else if (!arr.length) html += '<div class="empty"><h3>Koš je prazen</h3><p>Zadnjih 30 dni ni brisanih dokumentov.</p></div>';
@@ -8164,7 +8165,7 @@
     function dodajDatoteke(files) { Array.prototype.slice.call(files || []).forEach(function (f) { if (!/^image\//.test(f.type || '') && !/\.(jpe?g|png|heic|heif|webp|gif)$/i.test(f.name || '')) return; var rd = new FileReader(); rd.onload = function () { _skenSlike.push(rd.result); osvezi(); }; rd.readAsDataURL(f); }); }
     function osvezi() {
       var wrap = back.querySelector('#skenStrani');
-      wrap.innerHTML = _skenSlike.map(function (s, i) { return '<div class="sken-th"><img src="' + s + '" alt="stran ' + (i + 1) + '"><button type="button" class="sken-th-x" data-i="' + i + '" aria-label="Odstrani">×</button><span class="sken-th-n">' + (i + 1) + '</span></div>'; }).join('') || '<div class="sken-prazno">Ni zajetih strani.</div>';
+      wrap.innerHTML = _skenSlike.map(function (s, i) { return '<div class="sken-th"><img src="' + s + '" alt="stran ' + (i + 1) + '"><button type="button" class="sken-th-x" data-i="' + i + '" aria-label="Odstrani">' + IKO_ZAPRI + '</button><span class="sken-th-n">' + (i + 1) + '</span></div>'; }).join('') || '<div class="sken-prazno">Ni zajetih strani.</div>';
       wrap.querySelectorAll('.sken-th-x').forEach(function (b) { b.addEventListener('click', function () { _skenSlike.splice(+b.dataset.i, 1); osvezi(); }); });
       back.querySelector('#skenShrani').disabled = !_skenSlike.length;
     }
@@ -8786,7 +8787,7 @@
         '<button type="button" class="pp-tile" data-email="' + escape_(p.email) + '">' +
         ppAvatarHtml(p, 'pp-av') + badge +
         '<span class="pp-nm">' + escape_(p.name || p.email) + '</span></button>' +
-        '<button type="button" class="pp-tile-x" data-forget="' + escape_(p.email) + '" aria-label="Odstrani profil" title="Odstrani profil">×</button>' +
+        '<button type="button" class="pp-tile-x" data-forget="' + escape_(p.email) + '" aria-label="Odstrani profil" title="Odstrani profil">' + IKO_ZAPRI + '</button>' +
         '</div>';
     }).join('');
     html += '<button type="button" class="pp-tile pp-add" id="ppAdd"><span class="pp-av pp-plus">+</span><span class="pp-nm">Drug uporabnik</span></button>';
@@ -9226,7 +9227,7 @@
     el.innerHTML = '<span class="obv-ic">' + OBV_IKONA + '</span>' +
       '<div class="obv-body">' + (o.naslov ? '<div class="obv-nas">' + escape_(o.naslov) + '</div>' : '') +
       '<div class="obv-txt">' + escape_(o.sporocilo || '') + '</div></div>' +
-      '<button type="button" class="obv-x" aria-label="Zapri">×</button>';
+      '<button type="button" class="obv-x" aria-label="Zapri">' + IKO_ZAPRI + '</button>';
     el.querySelector('.obv-x').addEventListener('click', function () { obvOznaciVerjeno(o.id); el.remove(); });
     wrap.appendChild(el);
   }
