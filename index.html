@@ -29,7 +29,9 @@ html.sc-booting,html.sc-booting body{overflow:hidden!important;overscroll-behavi
 <meta name="theme-color" content="#0a0a0a"/>
 <meta name="mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<!-- Brez »black-translucent«: iOS 26 zamegli vse, kar stran nariše pod uro (efekt Liquid Glass, ni ga mogoče
+     izklopiti). Brez te oznake je vrstica z uro polna, v barvi teme (theme-color), stran pa se začne pod njo —
+     tako priporoča Apple (WebKit 317153). Velja šele za na novo dodano ikono na začetni zaslon. -->
 <meta name="apple-mobile-web-app-title" content="SmartClean"/>
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=2"/>
 <link rel="icon" href="favicon.ico?v=2" sizes="any"/>
@@ -197,6 +199,8 @@ html[data-theme="light"] .sc-hex{opacity:.5}
       </div>
     </div>
   </header>
+  <!-- naslov razdelka, ko se veliki naslov pomakne s zaslona (telefon/tablica) -->
+  <div class="pg-mini" id="pgMini" aria-hidden="true"><span id="pgMiniT"></span></div>
 
   <div class="shell">
     <nav class="side" id="side" aria-label="Razdelki"></nav>

@@ -30,6 +30,8 @@
     const p = temaPref();
     const eff = p === 'auto' ? (autoTemna() ? 'dark' : 'light') : (p === 'light' ? 'light' : 'dark');
     var de = document.documentElement;
+    // iPhone (začetni zaslon): vrstica z uro je v barvi teme — ob preklopu jo posodobi
+    try { var mc = document.querySelector('meta[name="theme-color"]'); if (mc) mc.setAttribute('content', eff === 'light' ? '#ffffff' : '#0a0a0a'); } catch (e) {}
     if (de.dataset.theme && de.dataset.theme !== eff) {
       // Gladka animacija preklopa teme brez zatikanja:
       // View Transitions naredi GPU-navzkrižno pretapljanje (smooth), fallback je hipen preklop.
@@ -308,7 +310,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.39 · BETA';
+  var APP_VERZIJA = '4.40 · BETA';
   var NALAGANJE = '<div class="sc-load" aria-hidden="true"><span class="sc-load-line"></span></div>';
   // Stale-while-revalidate: ob ponovnem obisku razdelka NE pobriši vsebine v nalagalnik —
   // obdrži prejšnjo (takojšen prikaz) in jo osveži v ozadju. Trak le ob prvem nalaganju.
@@ -791,6 +793,24 @@
   }, { passive: true });
 
   /* ══════════ USMERJANJE ══════════ */
+  /* ── Naslov razdelka ostane viden med pomikanjem (telefon/tablica ≤ 900 px) ── */
+  var _pgMiniRaf = 0;
+  function pgMiniOsvezi() {
+    _pgMiniRaf = 0;
+    var el = $('pgMini'); if (!el) return;
+    var ozko = window.matchMedia && matchMedia('(max-width:900px)').matches;
+    var h2 = ozko ? document.querySelector('.sec:not(.hidden) .head h2') : null;
+    var tb = document.querySelector('.topbar'), meja = tb ? tb.getBoundingClientRect().bottom : 64;
+    var t = h2 ? h2.textContent.trim() : '';
+    var pokazi = !!(t && h2.getBoundingClientRect().bottom < meja + 2);
+    if (pokazi && $('pgMiniT').textContent !== t) $('pgMiniT').textContent = t;
+    el.classList.toggle('vidna', pokazi);
+  }
+  function pgMiniZahtevaj() { if (!_pgMiniRaf) _pgMiniRaf = requestAnimationFrame(pgMiniOsvezi); }
+  window.addEventListener('scroll', pgMiniZahtevaj, { passive: true });
+  window.addEventListener('resize', pgMiniZahtevaj);
+  { const pm = $('pgMini'); if (pm) pm.addEventListener('click', function () { try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (e) { window.scrollTo(0, 0); } }); }
+
   function pojdi(kam) {
     if (_okno) oknoZapri(true);
     // Admin & Konzola: samo lastnik.
@@ -815,6 +835,7 @@
     });
     if (meni._drsnik) meni._drsnik();
     window.scrollTo(0, 0);
+    pgMiniZahtevaj();
     if (kam !== 'arhiv') arhIzbiraKonec();   // način »Izberi« velja le v Arhivu
     if (kam === 'domov') risiPregled();
     if (kam === 'arhiv') risiArhiv();
@@ -1977,11 +1998,26 @@
     if (odprt) pari.push({ in: odprt, out: null });
     return pari;
   }
-  function prisVnosUr(empId, danArg, opt) {
+  // Izmene enega dne iz baze (neodvisno od naloženega obdobja v PRISDOG).
+  async function vuNaloziPari(empId, dan) {
+    var od = new Date(dan + 'T00:00:00').toISOString(), doo = new Date(vuDanPlus(dan, 1) + 'T00:00:00').toISOString();
+    var r = await sb.from('att_events').select('id,employee_id,terminal_id,ts,type,source,potrjeno').eq('employee_id', empId).gte('ts', od).lt('ts', doo).order('ts', { ascending: true });
+    if (r.error) throw r.error;
+    return vuPari(r.data || []);
+  }
+  var _vuOdpiram = false;
+  async function prisVnosUr(empId, danArg, opt) {
     opt = opt || {};
     var z = (ZAPOSLENI || []).find(function (x) { return x.id === empId; }); if (!z) return;
     var dan = (danArg && danArg.length === 10) ? danArg : ((_prisMesec || !_prisDan || _prisDan.length !== 10) ? danes10() : _prisDan);
-    var pari = [], spremenjeno = false, shranjeno = false, zaseden = false;
+    // Najprej podatki, nato okno — odpre se takoj v končni velikosti (prej je raslo po nalaganju).
+    if (_vuOdpiram) return;
+    _vuOdpiram = true;
+    var pari;
+    try { pari = await vuNaloziPari(z.id, dan); }
+    catch (e) { toast('Ur ni bilo mogoče naložiti: ' + ((e && e.message) || e)); return; }
+    finally { _vuOdpiram = false; }
+    var spremenjeno = false, shranjeno = false, zaseden = false;
     var back = document.createElement('div'); back.className = 'sc-modal-back';
     back.innerHTML = '<div class="sc-modal vu-modal" role="dialog" aria-modal="true" aria-label="Vnos ur">' +
       '<h4>Vnos ur — ' + escape_(z.ime) + '</h4>' +
@@ -1996,7 +2032,7 @@
       '<div class="fx-msg msg" role="alert"></div>' +
       '<div class="sc-modal-acts"><button type="button" class="sc-modal-btn ghost" data-no>Zapri</button><button type="button" class="sc-modal-btn primary" data-yes>Shrani</button></div></div>';
     document.body.appendChild(back);
-    requestAnimationFrame(function () { back.classList.add('show'); });
+    requestAnimationFrame(function () { back.classList.add('show'); });   // vrstice se izrišejo še v tem koraku (risiVrste spodaj)
     var q = function (s) { return back.querySelector(s); };
     var lst = q('.vu-vrste'), msg = q('.fx-msg'), dIn = q('.vu-dan-in');
     function sporoci(t) { msg.className = 'fx-msg msg' + (t ? ' bad show' : ''); msg.textContent = t || ''; }
@@ -2031,13 +2067,12 @@
       if (el && !matchMedia('(hover:none) and (pointer:coarse)').matches) setTimeout(function () { try { el.focus(); el.select(); } catch (e) {} }, 60);
       else if (el && fokus) setTimeout(function () { try { el.focus(); } catch (e) {} }, 60);
     }
+    // Menjava dneva: stare vrstice ostanejo (zbledele), dokler ne pridejo nove — brez praznega »Nalagam …«.
     async function naloziDan(fokus) {
-      zaseden = true; lst.innerHTML = '<p class="u-sub" style="margin:6px 2px">Nalagam …</p>';
-      var od = new Date(dan + 'T00:00:00').toISOString(), doo = new Date(vuDanPlus(dan, 1) + 'T00:00:00').toISOString();
-      var r = await sb.from('att_events').select('id,employee_id,terminal_id,ts,type,source,potrjeno').eq('employee_id', z.id).gte('ts', od).lt('ts', doo).order('ts', { ascending: true });
-      zaseden = false;
-      if (r.error) { lst.innerHTML = ''; sporoci('Napaka pri nalaganju: ' + r.error.message); return; }
-      pari = vuPari(r.data || []);
+      zaseden = true; lst.classList.add('vu-nalaga');
+      try { pari = await vuNaloziPari(z.id, dan); }
+      catch (e) { sporoci('Napaka pri nalaganju: ' + ((e && e.message) || e)); return; }
+      finally { zaseden = false; lst.classList.remove('vu-nalaga'); }
       risiVrste(fokus);
     }
     // Shrani izbrani dan: posodobi spremenjene, dodaj nove, izbriši odstranjene izmene.
@@ -2146,7 +2181,7 @@
       if (!spremenjeno) { zapri(); return; }
       if (await shrani()) { toast('Ure shranjene · ' + z.ime); zapri(); }
     });
-    naloziDan(opt.fokus);
+    risiVrste(opt.fokus);   // podatki so že naloženi
   }
   // Vsi trije vstopi odprejo isto okno.
   function prisRocni(empId, danArg) { prisVnosUr(empId, danArg); }

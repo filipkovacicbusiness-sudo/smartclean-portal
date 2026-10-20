@@ -1725,6 +1725,22 @@ html[data-theme="dark"] .pris-chip-x:hover{background:rgba(255,138,122,.16);colo
 .vu-skupaj{margin:12px 2px 0;font-weight:700;font-variant-numeric:tabular-nums;min-height:1.2em;}
 .sc-modal p.vu-opis{margin:8px 0 12px;font-size:.8rem;}
 .vu-modal .fx-msg:empty{display:none;}
+.vu-vrste.vu-nalaga{opacity:.45;pointer-events:none;transition:opacity .15s;}
+
+/* ── Naslov razdelka med pomikanjem (telefon/tablica ≤ 900 px) ──
+   Ko veliki naslov (npr. »Arhiv spremnih listov«) zdrsne pod zgornjo vrstico, se pod njo
+   pokaže tanka vrstica z istim naslovom v manjši pisavi. Tap nanjo → na vrh strani. */
+.pg-mini{display:none;}
+@media(max-width:900px){
+  .pg-mini{display:flex;align-items:center;position:fixed;left:0;right:0;top:calc(64px + env(safe-area-inset-top));z-index:13;
+    height:44px;padding:0 calc(16px + env(safe-area-inset-right)) 0 calc(16px + env(safe-area-inset-left));
+    background:var(--bg);border-bottom:1px solid var(--line);
+    font-family:var(--serif);font-size:1.2rem;font-weight:450;letter-spacing:-.022em;color:var(--ink);
+    transform:translateY(-100%);opacity:0;pointer-events:none;transition:transform .22s ease,opacity .18s ease;}
+  .pg-mini.vidna{transform:none;opacity:1;pointer-events:auto;cursor:pointer;}
+  .pg-mini span{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+}
+@media print{.pg-mini{display:none!important;}}
 @media(max-width:600px){
   .pris-emp{flex-direction:column;align-items:stretch;gap:9px;}
   .pris-emp .pris-nm{white-space:normal;overflow:visible;text-overflow:clip;}

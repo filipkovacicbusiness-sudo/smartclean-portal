@@ -10,7 +10,9 @@
 <meta name="theme-color" content="#0a0a0a" />
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<!-- Brez »black-translucent«: iOS 26 zamegli vse, kar stran nariše pod uro (efekt Liquid Glass, ni ga mogoče
+     izklopiti). Brez te oznake je vrstica z uro polna, v barvi teme (theme-color), stran pa se začne pod njo —
+     tako priporoča Apple (WebKit 317153). Velja šele za na novo dodano ikono na začetni zaslon. -->
 <meta name="apple-mobile-web-app-title" content="{{KRATKO_IME}}" />
 <link rel="apple-touch-icon" href="icon-192.png" />
 <link rel="icon" type="image/png" href="icon-192.png" />
