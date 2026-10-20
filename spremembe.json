@@ -1,5 +1,14 @@
 [
  {
+  "v": "4.46",
+  "d": "2026-10-20",
+  "c": "2026-10-20T20:57:36+02:00",
+  "t": [
+   "Meni na telefonu je ves na zaslonu, brez pomikanja (postavke se prilagodijo višini zaslona).",
+   "iPhone (začetni zaslon): ob menjavi teme se pas ob uri spremeni skupaj s stranjo (mehak prehod)."
+  ]
+ },
+ {
   "v": "4.45",
   "d": "2026-10-20",
   "c": "2026-10-20T20:51:01+02:00",

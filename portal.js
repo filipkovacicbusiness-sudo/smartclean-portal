@@ -35,9 +35,18 @@
     // iPhone (začetni zaslon): vrstica z uro je v barvi teme — ob preklopu jo posodobi
     try { var mc = document.querySelector('meta[name="theme-color"]'); if (mc) mc.setAttribute('content', eff === 'light' ? '#ffffff' : '#0a0a0a'); } catch (e) {}
     if (de.dataset.theme && de.dataset.theme !== eff) {
+      var _mirno = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      // Aplikacija z začetnega zaslona (iPhone): BREZ View Transition — med prelivanjem iOS ne posodobi
+      // pasu ob uri (ta je barvo zamenjal šele po koncu). Namesto tega mehak barvni prehod vseh
+      // elementov hkrati (tudi traku #sc-vrh), da se pas ob uri spreminja skupaj s stranjo.
+      if (de.classList.contains('sc-sam') && !_mirno) {
+        de.classList.add('sc-tema-prehod');
+        de.dataset.theme = eff;
+        clearTimeout(de._temaUra); de._temaUra = setTimeout(function () { de.classList.remove('sc-tema-prehod'); }, 480);
+      }
       // Gladka animacija preklopa teme brez zatikanja:
       // View Transitions naredi GPU-navzkrižno pretapljanje (smooth), fallback je hipen preklop.
-      if (document.startViewTransition && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      else if (document.startViewTransition && !_mirno) {
         de.classList.add('sc-notrans');
         try {
           var vt = document.startViewTransition(function () { de.dataset.theme = eff; });
@@ -312,7 +321,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.45 · BETA';
+  var APP_VERZIJA = '4.46 · BETA';
   var NALAGANJE = '<div class="sc-load" aria-hidden="true"><span class="sc-load-line"></span></div>';
   // Stale-while-revalidate: ob ponovnem obisku razdelka NE pobriši vsebine v nalagalnik —
   // obdrži prejšnjo (takojšen prikaz) in jo osveži v ozadju. Trak le ob prvem nalaganju.

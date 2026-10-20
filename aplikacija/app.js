@@ -363,7 +363,12 @@ function applyTheme(animiraj){
   var dark = pref === "auto" ? autoDark() : (pref !== "light");
   var eff = dark ? "dark" : "light", de = document.documentElement;
   if(animiraj && de.getAttribute("data-theme") && de.getAttribute("data-theme") !== eff){
-    if(document.startViewTransition && !oknoMirno()){
+    /* začetni zaslon (iPhone): brez View Transition — iOS bi pas ob uri zamenjal šele po prelivanju */
+    if(de.classList.contains("sc-sam") && !oknoMirno()){
+      var m0 = document.querySelector('meta[name="theme-color"]'); if(m0) m0.setAttribute("content", dark ? "#0a0a0a" : "#ffffff");
+      de.classList.add("sc-tema-prehod"); de.setAttribute("data-theme", eff);
+      clearTimeout(de._temaUra); de._temaUra = setTimeout(function(){ de.classList.remove("sc-tema-prehod"); }, 480);
+    }else if(document.startViewTransition && !oknoMirno()){
       de.classList.add("sc-notrans");
       try{
         var vt = document.startViewTransition(function(){ de.setAttribute("data-theme", eff); });

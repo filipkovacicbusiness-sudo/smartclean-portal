@@ -481,3 +481,7 @@ html.sc-sam.sc-pod-uro[data-theme="light"] #sc-vrh{background:#0a0a0a;}
   .auth-tipk .auth-box .sub{display:none;}
   .auth-foot{margin-top:auto;}
 }
+
+/* Menjava teme v aplikaciji z začetnega zaslona: mehak barvni prehod vseh elementov hkrati (glej uporabiTemo / applyTheme) */
+html.sc-tema-prehod,html.sc-tema-prehod *,html.sc-tema-prehod *::before,html.sc-tema-prehod *::after{
+  transition:background-color .34s ease,color .34s ease,border-color .34s ease,fill .34s ease,stroke .34s ease,box-shadow .34s ease!important;}

@@ -530,6 +530,10 @@ html.sc-sam.sc-pod-uro[data-theme="light"] #sc-vrh{background:#0a0a0a;}
   .auth-tipk .auth-box .sub{display:none;}
   .auth-foot{margin-top:auto;}
 }
+
+/* Menjava teme v aplikaciji z začetnega zaslona: mehak barvni prehod vseh elementov hkrati (glej uporabiTemo / applyTheme) */
+html.sc-tema-prehod,html.sc-tema-prehod *,html.sc-tema-prehod *::before,html.sc-tema-prehod *::after{
+  transition:background-color .34s ease,color .34s ease,border-color .34s ease,fill .34s ease,stroke .34s ease,box-shadow .34s ease!important;}
 </style>
 </head>
 <body>
@@ -696,7 +700,7 @@ html.sc-sam.sc-pod-uro[data-theme="light"] #sc-vrh{background:#0a0a0a;}
    Podatki ostanejo v istih ključih kot v prejšnjih različicah (pralnica:*),
    zato posodobitev ne izgubi ničesar.
    ══════════════════════════════════════════════════════════════════════ */
-var VARIANTA = "tablica", APP_VERZIJA = "10.9";
+var VARIANTA = "tablica", APP_VERZIJA = "11.0";
 var LASTNIK = "filip@eflitte.si";
 var DOK_BIZ = ["BSMART d.o.o.", "Škalska cesta 6, 3210 Slovenske Konjice", "+386 41 209 676", "+386 68 693 988", "blanka.kovacic1@gmail.com"];
 var PRIVZETI_PORTAL = "https://anrhtgbckxrccnafcmsz.supabase.co";
@@ -1051,7 +1055,12 @@ function applyTheme(animiraj){
   var dark = pref === "auto" ? autoDark() : (pref !== "light");
   var eff = dark ? "dark" : "light", de = document.documentElement;
   if(animiraj && de.getAttribute("data-theme") && de.getAttribute("data-theme") !== eff){
-    if(document.startViewTransition && !oknoMirno()){
+    /* začetni zaslon (iPhone): brez View Transition — iOS bi pas ob uri zamenjal šele po prelivanju */
+    if(de.classList.contains("sc-sam") && !oknoMirno()){
+      var m0 = document.querySelector('meta[name="theme-color"]'); if(m0) m0.setAttribute("content", dark ? "#0a0a0a" : "#ffffff");
+      de.classList.add("sc-tema-prehod"); de.setAttribute("data-theme", eff);
+      clearTimeout(de._temaUra); de._temaUra = setTimeout(function(){ de.classList.remove("sc-tema-prehod"); }, 480);
+    }else if(document.startViewTransition && !oknoMirno()){
       de.classList.add("sc-notrans");
       try{
         var vt = document.startViewTransition(function(){ de.setAttribute("data-theme", eff); });
