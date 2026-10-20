@@ -382,7 +382,7 @@ html.sc-notrans,html.sc-notrans *,html.sc-notrans *::before,html.sc-notrans *::a
 @media (max-width:820px){ .auth-top .wordmark{font-size:1.4rem;} }   /* kot v portalu */
 /* ozka glava: kot v portalu (≤720 px) — brez imena v vrstici */
 @media(max-width:720px){
-  .topbar-in{gap:10px;padding:0 16px;}
+  .topbar-in{gap:10px;padding:env(safe-area-inset-top) 16px 0;}   /* zgoraj prostor za uro/baterijo (začetni zaslon iPhona) */
   .tools{gap:9px;}
   .who{display:none;}
   .link-btn{font-size:.79rem;}
