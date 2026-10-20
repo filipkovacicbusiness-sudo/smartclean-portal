@@ -26,6 +26,7 @@
     var m = document.querySelector('meta[name="theme-color"]'); if(m) m.setAttribute("content", t === "light" ? "#ffffff" : "#0a0a0a");
   }catch(e){}
   try{ document.documentElement.classList.add("sc-booting"); }catch(e){}
+  try{ if(window.navigator.standalone === true || (window.matchMedia && matchMedia("(display-mode: standalone)").matches)) document.documentElement.classList.add("sc-sam"); }catch(e){}
   window.scBootDone = function(){
     try{ document.documentElement.classList.remove("sc-booting"); }catch(e){}
     var b = document.getElementById("scBoot"); if(!b || b.__d) return; b.__d = 1;
@@ -49,6 +50,8 @@
 <style>{{CSS}}</style>
 </head>
 <body>
+<div id="sc-vrh" aria-hidden="true"></div>
+<script>try{ var _v = document.getElementById("sc-vrh"); if(_v && _v.getBoundingClientRect().height > 20) document.documentElement.classList.add("sc-pod-uro"); }catch(e){}</script>
 <div id="scBoot" aria-hidden="true"><div class="scBoot-in"><div class="wordmark">Smart<span>Clean</span></div><div class="scBoot-bar"><i></i></div></div></div>
 
 <!-- ══════════ PRIJAVA ══════════ -->

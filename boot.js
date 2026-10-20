@@ -11,6 +11,12 @@
     if (mc) mc.setAttribute('content', eff === 'light' ? '#ffffff' : '#0a0a0a');
   } catch (e) {}
 
+  // 1b) Aplikacija z začetnega zaslona: trajen trak na vrhu (#sc-vrh, glej index.html) — pred prvim izrisom.
+  try {
+    if (window.navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches))
+      document.documentElement.classList.add('sc-sam');
+  } catch (e) {}
+
   // 2) Med splashem zakleni pomikanje strani.
   try { document.documentElement.classList.add('sc-booting'); } catch (e) {}
 

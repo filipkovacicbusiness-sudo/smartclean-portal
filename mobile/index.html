@@ -26,6 +26,7 @@
     var m = document.querySelector('meta[name="theme-color"]'); if(m) m.setAttribute("content", t === "light" ? "#ffffff" : "#0a0a0a");
   }catch(e){}
   try{ document.documentElement.classList.add("sc-booting"); }catch(e){}
+  try{ if(window.navigator.standalone === true || (window.matchMedia && matchMedia("(display-mode: standalone)").matches)) document.documentElement.classList.add("sc-sam"); }catch(e){}
   window.scBootDone = function(){
     try{ document.documentElement.classList.remove("sc-booting"); }catch(e){}
     var b = document.getElementById("scBoot"); if(!b || b.__d) return; b.__d = 1;
@@ -231,8 +232,7 @@ html.sc-booting,html.sc-booting body{overflow:hidden!important;}
 /* iPhone (začetni zaslon, »black-translucent«): ura in baterija sta VEDNO beli. V svetli temi bi bili
    bela na belem (nevidni) — zato pod njima temen pas v višini varnega območja. V Safariju in na
    računalniku je to območje 0 px, pas se ne vidi. */
-:root[data-theme="light"] body::after{content:"";position:fixed;left:0;right:0;top:0;height:env(safe-area-inset-top);
-  background:#0a0a0a;z-index:2147483647;pointer-events:none;}
+/* (temni pas pod uro je zdaj trak #sc-vrh — en sam element na vrhu, glej index.html / app.html) */
 .topbar .topbar-in{max-width:none;}
 .tools{margin-left:auto;display:flex;align-items:center;gap:12px;}
 .who{display:inline-flex;flex-direction:column;align-items:flex-end;line-height:1.15;gap:1px;min-width:0;}
@@ -506,9 +506,23 @@ body,.topbar,.panel,.art,.list,.st-tile,.seg,.seg-b,input,textarea,.btn,.pill-bt
 #scBoot .scBoot-t{font-size:.82rem;color:rgba(255,255,255,.55);opacity:0;transition:opacity .4s ease;}
 :root[data-theme="light"] #scBoot .scBoot-t{color:rgba(10,10,10,.5);}
 #scBoot .scBoot-t.vidno{opacity:1;}
+
+/* iOS 26/27, aplikacija na začetnem zaslonu: sistem vzame barvo s pritrjenega elementa na vrhu strani.
+   Ko se ta element PRVIČ zamenja (npr. zagonski zaslon → zgornja vrstica), vrh do zaprtja aplikacije
+   zamegljuje in tega ni mogoče več popraviti. Zato EN trak, od prvega izrisa nad vsem in nikoli
+   zamenjan; barva se le spremeni s temo (preverjeno na napravi: github.com/mbryantms/folio/pull/1026). */
+#sc-vrh{display:none;}
+html.sc-sam #sc-vrh{display:block;position:fixed;top:0;left:0;right:0;height:max(12px,env(safe-area-inset-top));
+  background:#0a0a0a;z-index:2147483647;}   /* brez pointer-events:none: iOS vrh »tipa« kot dotik; pod 12 px traku ni gumbov */
+html.sc-sam[data-theme="light"] #sc-vrh{background:#ffffff;}
+/* stara ikona (»black-translucent«): stran sega pod uro, ki je vedno bela → v svetli temi temen trak */
+html.sc-sam.sc-pod-uro[data-theme="light"] #sc-vrh{background:#0a0a0a;}
+@media print{#sc-vrh{display:none!important;}}
 </style>
 </head>
 <body>
+<div id="sc-vrh" aria-hidden="true"></div>
+<script>try{ var _v = document.getElementById("sc-vrh"); if(_v && _v.getBoundingClientRect().height > 20) document.documentElement.classList.add("sc-pod-uro"); }catch(e){}</script>
 <div id="scBoot" aria-hidden="true"><div class="scBoot-in"><div class="wordmark">Smart<span>Clean</span></div><div class="scBoot-bar"><i></i></div></div></div>
 
 <!-- ══════════ PRIJAVA ══════════ -->
@@ -670,7 +684,7 @@ body,.topbar,.panel,.art,.list,.st-tile,.seg,.seg-b,input,textarea,.btn,.pill-bt
    Podatki ostanejo v istih ključih kot v prejšnjih različicah (pralnica:*),
    zato posodobitev ne izgubi ničesar.
    ══════════════════════════════════════════════════════════════════════ */
-var VARIANTA = "splet", APP_VERZIJA = "10.7";
+var VARIANTA = "splet", APP_VERZIJA = "10.8";
 var LASTNIK = "filip@eflitte.si";
 var DOK_BIZ = ["BSMART d.o.o.", "Škalska cesta 6, 3210 Slovenske Konjice", "+386 41 209 676", "+386 68 693 988", "blanka.kovacic1@gmail.com"];
 var PRIVZETI_PORTAL = "https://anrhtgbckxrccnafcmsz.supabase.co";

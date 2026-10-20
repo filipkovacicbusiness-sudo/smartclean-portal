@@ -183,8 +183,7 @@ html.sc-booting,html.sc-booting body{overflow:hidden!important;}
 /* iPhone (začetni zaslon, »black-translucent«): ura in baterija sta VEDNO beli. V svetli temi bi bili
    bela na belem (nevidni) — zato pod njima temen pas v višini varnega območja. V Safariju in na
    računalniku je to območje 0 px, pas se ne vidi. */
-:root[data-theme="light"] body::after{content:"";position:fixed;left:0;right:0;top:0;height:env(safe-area-inset-top);
-  background:#0a0a0a;z-index:2147483647;pointer-events:none;}
+/* (temni pas pod uro je zdaj trak #sc-vrh — en sam element na vrhu, glej index.html / app.html) */
 .topbar .topbar-in{max-width:none;}
 .tools{margin-left:auto;display:flex;align-items:center;gap:12px;}
 .who{display:inline-flex;flex-direction:column;align-items:flex-end;line-height:1.15;gap:1px;min-width:0;}
@@ -458,3 +457,15 @@ body,.topbar,.panel,.art,.list,.st-tile,.seg,.seg-b,input,textarea,.btn,.pill-bt
 #scBoot .scBoot-t{font-size:.82rem;color:rgba(255,255,255,.55);opacity:0;transition:opacity .4s ease;}
 :root[data-theme="light"] #scBoot .scBoot-t{color:rgba(10,10,10,.5);}
 #scBoot .scBoot-t.vidno{opacity:1;}
+
+/* iOS 26/27, aplikacija na začetnem zaslonu: sistem vzame barvo s pritrjenega elementa na vrhu strani.
+   Ko se ta element PRVIČ zamenja (npr. zagonski zaslon → zgornja vrstica), vrh do zaprtja aplikacije
+   zamegljuje in tega ni mogoče več popraviti. Zato EN trak, od prvega izrisa nad vsem in nikoli
+   zamenjan; barva se le spremeni s temo (preverjeno na napravi: github.com/mbryantms/folio/pull/1026). */
+#sc-vrh{display:none;}
+html.sc-sam #sc-vrh{display:block;position:fixed;top:0;left:0;right:0;height:max(12px,env(safe-area-inset-top));
+  background:#0a0a0a;z-index:2147483647;}   /* brez pointer-events:none: iOS vrh »tipa« kot dotik; pod 12 px traku ni gumbov */
+html.sc-sam[data-theme="light"] #sc-vrh{background:#ffffff;}
+/* stara ikona (»black-translucent«): stran sega pod uro, ki je vedno bela → v svetli temi temen trak */
+html.sc-sam.sc-pod-uro[data-theme="light"] #sc-vrh{background:#0a0a0a;}
+@media print{#sc-vrh{display:none!important;}}

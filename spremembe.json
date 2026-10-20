@@ -1,5 +1,14 @@
 [
  {
+  "v": "4.42",
+  "d": "2026-10-20",
+  "c": "2026-10-20T20:25:07+02:00",
+  "t": [
+   "iPhone (aplikacija na začetnem zaslonu): vrh strani ni več zatemnjen — en trajen trak v barvi strani.",
+   "Enako v spletni aplikaciji za spremne liste (10.8)."
+  ]
+ },
+ {
   "v": "4.41",
   "d": "2026-10-20",
   "c": "2026-10-20T20:17:05+02:00",

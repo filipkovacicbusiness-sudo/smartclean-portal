@@ -1344,8 +1344,7 @@ html{-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent;}
 /* iPhone (začetni zaslon, »black-translucent«): ura in baterija sta VEDNO beli. V svetli temi bi bili
    bela na belem (nevidni) — zato pod njima temen pas v višini varnega območja. V Safariju in na
    računalniku je to območje 0 px, pas se ne vidi. */
-:root[data-theme="light"] body::after{content:"";position:fixed;left:0;right:0;top:0;height:env(safe-area-inset-top);
-  background:#0a0a0a;z-index:2147483647;pointer-events:none;}
+/* (temni pas pod uro je zdaj trak #sc-vrh — en sam element na vrhu, glej index.html / app.html) */
 /* Telefon / tablica: vrstica na vrhu je NEPROSOJNA. Prosojna z zameglitvijo je pod uro in
    baterijo kazala zamegljeno vsebino, ki se pomika pod njo (»zgornji del ekrana je zamegljen«). */
 @media (hover:none) and (pointer:coarse){

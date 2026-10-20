@@ -2,6 +2,8 @@
 (function () {
 
   const $ = id => document.getElementById(id);
+  // Stara ikona na začetnem zaslonu (»black-translucent«): trak na vrhu je višji od 12 px (sega pod uro).
+  try { var _vrh = document.getElementById('sc-vrh'); if (_vrh && _vrh.getBoundingClientRect().height > 20) document.documentElement.classList.add('sc-pod-uro'); } catch (e) {}
   const cfg = window.SC_CONFIG || {};
   const createClient = window.supabase.createClient;
   function escape_(s) {
@@ -310,7 +312,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.41 · BETA';
+  var APP_VERZIJA = '4.42 · BETA';
   var NALAGANJE = '<div class="sc-load" aria-hidden="true"><span class="sc-load-line"></span></div>';
   // Stale-while-revalidate: ob ponovnem obisku razdelka NE pobriši vsebine v nalagalnik —
   // obdrži prejšnjo (takojšen prikaz) in jo osveži v ozadju. Trak le ob prvem nalaganju.
