@@ -1941,6 +1941,17 @@ function pokaziZaklepShrambe(){
   $("zsOdpri").onclick = function(){ try{ pdfPlugin().requestPermission(); }catch(e){} };
 }
 
+/* Prijava na nizkih telefonih: ob dotiku polja se slogan skrije, da polja ostanejo nad tipkovnico
+   (iPhone bi sicer stran ob vsakem polju premaknil gor in nazaj dol). Samo ob dotiku. */
+(function(){
+  var a = $("prijava"); if(!a) return;
+  var dotik = 0, ura = null;
+  function jePolje(x){ return x && /^(INPUT|TEXTAREA|SELECT)$/.test(x.tagName); }
+  a.addEventListener("touchstart", function(e){ if(jePolje(e.target)) dotik = Date.now(); }, { passive: true, capture: true });
+  a.addEventListener("focusin", function(e){ if(!jePolje(e.target)) return; clearTimeout(ura); if(Date.now() - dotik < 1200 && window.innerHeight < 780) a.classList.add("auth-tipk"); });
+  a.addEventListener("focusout", function(){ clearTimeout(ura); ura = setTimeout(function(){ if(!jePolje(document.activeElement) || !a.contains(document.activeElement)) a.classList.remove("auth-tipk"); }, 300); });
+})();
+
 /* ══════════ ZAGON ══════════ */
 (async function init(){
   setTimeout(function(){

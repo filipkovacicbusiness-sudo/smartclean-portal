@@ -2449,3 +2449,24 @@ html[data-view] .pz-seznam .row .num::before{content:none;}
 .spr-v ul{margin:0;padding-left:18px;}
 .spr-v li{font-size:.88rem;line-height:1.45;color:var(--ink);margin:2px 0;}
 .spr-v li::marker{color:var(--mid);}
+
+/* ══ Prijava na telefonu: brez pomikanja in brez skakanja ob tipkovnici ══
+   Prej je bil obrazec na sredini zaslona: tipkovnica ga je prekrila in iPhone je stran premikal gor
+   in dol (ob vsakem polju); na manjših telefonih se je prijava dala pomikati. Zdaj je vse zgoraj in
+   v celoti na zaslonu; na nizkih zaslonih se ob vpisu slogan skrije (.auth-tipk), da polja ostanejo
+   nad tipkovnico in iPhone strani ne premika. */
+@media (max-width:560px){
+  .auth{height:100vh;height:100dvh;min-height:0;overflow:hidden;}
+  .auth-main{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:0;
+    padding:clamp(14px,2.4vh,24px) 18px 16px;overflow-y:auto;overscroll-behavior:contain;}
+  .auth-hero{align-self:center;padding-bottom:clamp(14px,2.4vh,22px);max-height:160px;overflow:hidden;
+    transition:max-height .25s ease,opacity .18s ease,padding .25s ease;}
+  .auth-claim{font-size:clamp(1.65rem,7.4vw,2.1rem);}
+  .auth-slot{flex:none;}
+  .auth-box h1{font-size:clamp(1.55rem,6.6vw,1.9rem);}
+  .auth-box .sub{margin-bottom:14px;}
+  .auth .field{margin-bottom:12px;}
+  #auth.auth-tipk .auth-hero{max-height:0;opacity:0;padding-bottom:0;}
+  #auth.auth-tipk .auth-box .sub{display:none;}
+  .auth-foot{margin-top:auto;padding:10px 0 4px;}
+}

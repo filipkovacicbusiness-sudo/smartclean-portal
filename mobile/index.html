@@ -518,6 +518,18 @@ html.sc-sam[data-theme="light"] #sc-vrh{background:#ffffff;}
 /* stara ikona (»black-translucent«): stran sega pod uro, ki je vedno bela → v svetli temi temen trak */
 html.sc-sam.sc-pod-uro[data-theme="light"] #sc-vrh{background:#0a0a0a;}
 @media print{#sc-vrh{display:none!important;}}
+
+/* Prijava na telefonu: brez pomikanja in brez skakanja ob tipkovnici (kot v portalu). Vse zgoraj in v
+   celoti na zaslonu; na nizkih zaslonih se ob vpisu slogan skrije (.auth-tipk), da polja ostanejo nad tipkovnico. */
+@media (max-width:560px){
+  .auth{overflow:hidden;}
+  .auth-main{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:clamp(14px,2.4vh,24px) 16px 16px;overflow-y:auto;overscroll-behavior:contain;}
+  .auth-hero{align-self:center;padding-bottom:clamp(14px,2.4vh,22px);max-height:160px;overflow:hidden;transition:max-height .25s ease,opacity .18s ease,padding .25s ease;}
+  .auth-slot{flex:none;width:100%;}
+  .auth-tipk .auth-hero{max-height:0;opacity:0;padding-bottom:0;}
+  .auth-tipk .auth-box .sub{display:none;}
+  .auth-foot{margin-top:auto;}
+}
 </style>
 </head>
 <body>
@@ -684,7 +696,7 @@ html.sc-sam.sc-pod-uro[data-theme="light"] #sc-vrh{background:#0a0a0a;}
    Podatki ostanejo v istih ključih kot v prejšnjih različicah (pralnica:*),
    zato posodobitev ne izgubi ničesar.
    ══════════════════════════════════════════════════════════════════════ */
-var VARIANTA = "splet", APP_VERZIJA = "10.8";
+var VARIANTA = "splet", APP_VERZIJA = "10.9";
 var LASTNIK = "filip@eflitte.si";
 var DOK_BIZ = ["BSMART d.o.o.", "Škalska cesta 6, 3210 Slovenske Konjice", "+386 41 209 676", "+386 68 693 988", "blanka.kovacic1@gmail.com"];
 var PRIVZETI_PORTAL = "https://anrhtgbckxrccnafcmsz.supabase.co";
@@ -2616,6 +2628,17 @@ function pokaziZaklepShrambe(){
   document.body.appendChild(el);
   $("zsOdpri").onclick = function(){ try{ pdfPlugin().requestPermission(); }catch(e){} };
 }
+
+/* Prijava na nizkih telefonih: ob dotiku polja se slogan skrije, da polja ostanejo nad tipkovnico
+   (iPhone bi sicer stran ob vsakem polju premaknil gor in nazaj dol). Samo ob dotiku. */
+(function(){
+  var a = $("prijava"); if(!a) return;
+  var dotik = 0, ura = null;
+  function jePolje(x){ return x && /^(INPUT|TEXTAREA|SELECT)$/.test(x.tagName); }
+  a.addEventListener("touchstart", function(e){ if(jePolje(e.target)) dotik = Date.now(); }, { passive: true, capture: true });
+  a.addEventListener("focusin", function(e){ if(!jePolje(e.target)) return; clearTimeout(ura); if(Date.now() - dotik < 1200 && window.innerHeight < 780) a.classList.add("auth-tipk"); });
+  a.addEventListener("focusout", function(){ clearTimeout(ura); ura = setTimeout(function(){ if(!jePolje(document.activeElement) || !a.contains(document.activeElement)) a.classList.remove("auth-tipk"); }, 300); });
+})();
 
 /* ══════════ ZAGON ══════════ */
 (async function init(){

@@ -469,3 +469,15 @@ html.sc-sam[data-theme="light"] #sc-vrh{background:#ffffff;}
 /* stara ikona (»black-translucent«): stran sega pod uro, ki je vedno bela → v svetli temi temen trak */
 html.sc-sam.sc-pod-uro[data-theme="light"] #sc-vrh{background:#0a0a0a;}
 @media print{#sc-vrh{display:none!important;}}
+
+/* Prijava na telefonu: brez pomikanja in brez skakanja ob tipkovnici (kot v portalu). Vse zgoraj in v
+   celoti na zaslonu; na nizkih zaslonih se ob vpisu slogan skrije (.auth-tipk), da polja ostanejo nad tipkovnico. */
+@media (max-width:560px){
+  .auth{overflow:hidden;}
+  .auth-main{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:clamp(14px,2.4vh,24px) 16px 16px;overflow-y:auto;overscroll-behavior:contain;}
+  .auth-hero{align-self:center;padding-bottom:clamp(14px,2.4vh,22px);max-height:160px;overflow:hidden;transition:max-height .25s ease,opacity .18s ease,padding .25s ease;}
+  .auth-slot{flex:none;width:100%;}
+  .auth-tipk .auth-hero{max-height:0;opacity:0;padding-bottom:0;}
+  .auth-tipk .auth-box .sub{display:none;}
+  .auth-foot{margin-top:auto;}
+}

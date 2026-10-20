@@ -312,7 +312,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.42 · BETA';
+  var APP_VERZIJA = '4.43 · BETA';
   var NALAGANJE = '<div class="sc-load" aria-hidden="true"><span class="sc-load-line"></span></div>';
   // Stale-while-revalidate: ob ponovnem obisku razdelka NE pobriši vsebine v nalagalnik —
   // obdrži prejšnjo (takojšen prikaz) in jo osveži v ozadju. Trak le ob prvem nalaganju.
@@ -785,6 +785,24 @@
     document.body.classList.toggle('meni-odprt', on);
   });
   $('scrim').addEventListener('click', zapriMeni);
+  // ── Prijava na nizkih telefonih: ob dotiku polja se slogan skrije, da polja ostanejo nad tipkovnico ──
+  // (iPhone bi sicer stran ob vsakem polju premaknil gor in nazaj dol). Samo ob dotiku — ne ob
+  // samodejnem fokusu ob odprtju; med poljema (Naprej) razred ostane.
+  (function () {
+    var a = $('auth'); if (!a) return;
+    var dotik = 0, ura = null;
+    var jePolje = function (x) { return x && /^(INPUT|TEXTAREA|SELECT)$/.test(x.tagName); };
+    a.addEventListener('touchstart', function (e) { if (jePolje(e.target)) dotik = Date.now(); }, { passive: true, capture: true });
+    a.addEventListener('focusin', function (e) {
+      if (!jePolje(e.target)) return;
+      clearTimeout(ura);
+      if (Date.now() - dotik < 1200 && window.innerHeight < 780) a.classList.add('auth-tipk');
+    });
+    a.addEventListener('focusout', function () {
+      clearTimeout(ura);
+      ura = setTimeout(function () { if (!jePolje(document.activeElement) || !a.contains(document.activeElement)) a.classList.remove('auth-tipk'); }, 300);
+    });
+  })();
   // ── Različica v meniju: pritisk pokaže vse posodobitve (spremembe.json, ob objavi dodaj vnos) ──
   var _spremembeOdpiram = false;
   async function odpriSpremembe() {
