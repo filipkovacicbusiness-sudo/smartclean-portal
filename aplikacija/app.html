@@ -30,7 +30,16 @@
     b.classList.add("scBoot-hide");
     setTimeout(function(){ if(b.parentNode) b.parentNode.removeChild(b); }, 560);
   };
-  setTimeout(function(){ try{ window.scBootDone(); }catch(e){} }, 8000);
+  /* splash ostane, dokler se ne pokaže prijava ali aplikacija (prej je po 8 s izginil in pri
+     počasni povezavi ostal prazen zaslon); po 5 s pove, kaj se dogaja; varovalo 32 s je v app.js */
+  setTimeout(function(){ var b = document.getElementById("scBoot"); if(!b || b.__d) return;
+    var t = document.createElement("div"); t.className = "scBoot-t"; t.textContent = "Povezujem s portalom …";
+    var i = b.querySelector(".scBoot-in"); if(i){ i.appendChild(t); requestAnimationFrame(function(){ t.classList.add("vidno"); }); } }, 5000);
+  (function cakaj(n){ setTimeout(function(){
+    var p = document.getElementById("prijava"), a = document.getElementById("app");
+    if(n < 24 && p && a && p.hidden && a.hidden){ cakaj(n + 1); return; }
+    try{ window.scBootDone(); }catch(e){}
+  }, n ? 1000 : 8000); })(0);
 })();
 </script>
 <!-- Pisave so vgrajene (base64): delujejo brez povezave in v natisnjenih/PDF dokumentih. -->
@@ -63,9 +72,9 @@
         <p class="sub" id="prijavaSub">Vpišite se s podatki za portal SmartClean.</p>
         <form id="acctForm" autocomplete="on" novalidate>
           <div class="field"><label for="acctEmail">E-poštni naslov</label>
-            <input type="email" id="acctEmail" inputmode="email" autocapitalize="none" autocorrect="off" autocomplete="username" /></div>
+            <input type="email" id="acctEmail" inputmode="email" autocapitalize="none" autocorrect="off" autocomplete="username" enterkeyhint="next" /></div>
           <div class="field"><label for="acctPass">Geslo</label>
-            <input type="password" id="acctPass" autocomplete="current-password" /></div>
+            <input type="password" id="acctPass" autocomplete="current-password" autocapitalize="none" autocorrect="off" spellcheck="false" /></div>
           <button type="submit" class="btn lg" id="acctBtn">Prijavi se</button>
           <div class="msg bad" id="acctErr" role="alert"></div>
         </form>
@@ -103,7 +112,7 @@
         <h2 id="vnosNaslov">Nov spremni list</h2>
         <button class="pill-btn" type="button" id="pocistiBtn">Počisti</button>
       </div>
-      <button class="stranka-btn prazen" type="button" id="strankaBtn"><span class="sb-ime" id="strankaIme">Izberi stranko</span><span class="chev">›</span></button>
+      <button class="stranka-btn prazen" type="button" id="strankaBtn"><span class="sb-ime" id="strankaIme">Izberi stranko</span><span class="chev" aria-hidden="true">›</span></button>
       <div class="vnos-telo" id="vnosTelo"></div>
     </section>
 
@@ -117,7 +126,7 @@
           <div class="isci">
             <span class="isci-lbl">Išči</span>
             <button class="pill-btn" type="button" id="isciSt">Številka</button>
-            <span class="isci-datum"><button class="pill-btn" type="button" id="isciDat" tabindex="-1">Datum</button><input type="date" id="isciDatum" aria-label="Išči po datumu" /></span>
+            <span class="isci-datum"><button class="pill-btn" type="button" id="isciDat" tabindex="-1" aria-hidden="true">Datum</button><input type="date" id="isciDatum" aria-label="Išči po datumu" /></span>
             <button class="pill-btn" type="button" id="isciStr">Stranka</button>
           </div>
         </div>
@@ -132,7 +141,7 @@
 <div class="okno-back" id="oknoKp"><div class="okno" role="dialog" aria-modal="true" aria-labelledby="kpT">
   <div class="okno-h"><span class="t" id="kpT">Vnos kosov</span><button class="okno-x" type="button" data-zapri aria-label="Zapri">×</button></div>
   <div class="okno-b">
-    <div class="kp-glava"><div class="kp-art"><div class="ime" id="kpIme">—</div><div class="zdaj" id="kpZdaj"></div></div><div class="kp-disp prazen" id="kpDisp">0</div></div>
+    <div class="kp-glava"><div class="kp-art"><div class="ime" id="kpIme">—</div><div class="zdaj" id="kpZdaj"></div></div><div class="kp-disp prazen" id="kpDisp" aria-live="polite">0</div></div>
     <div class="kp-grid" id="kpGrid"></div>
   </div>
 </div></div>
@@ -140,7 +149,7 @@
 <div class="okno-back" id="oknoStranke"><div class="okno siroko" role="dialog" aria-modal="true" aria-labelledby="stT">
   <div class="okno-h"><span class="t" id="stT">Izberi stranko</span><button class="okno-x" type="button" data-zapri aria-label="Zapri">×</button></div>
   <div class="okno-b">
-    <div class="field st-isci"><input type="search" class="in" id="stIsci" placeholder="Išči stranko" autocomplete="off" /></div>
+    <div class="field st-isci"><input type="search" class="in" id="stIsci" placeholder="Išči stranko" aria-label="Išči stranko" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" enterkeyhint="search" /></div>
     <div class="st-grid" id="stGrid"></div>
   </div>
 </div></div>

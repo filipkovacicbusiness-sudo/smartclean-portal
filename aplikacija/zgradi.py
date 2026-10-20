@@ -25,7 +25,7 @@ import sys
 import tempfile
 import zipfile
 
-VERZIJA = "10.4"
+VERZIJA = "10.5"
 
 KOREN = pathlib.Path(__file__).resolve().parent.parent
 IZVOR = KOREN / "aplikacija"

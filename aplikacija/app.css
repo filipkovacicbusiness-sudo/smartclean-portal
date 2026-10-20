@@ -295,7 +295,9 @@ html.okno-zaklep{overflow:hidden;}
 .okno-x:hover{color:var(--ink);border-color:var(--ink);}
 .okno-b{flex:1 1 auto;min-height:0;padding:18px 22px 22px;overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;}
 .okno-akc{display:flex;gap:10px;padding:14px 22px calc(18px + env(safe-area-inset-bottom));border-top:1px solid var(--line);flex:none;}
-.okno-akc .btn{flex:1;white-space:nowrap;padding-left:12px;padding-right:12px;}
+.okno-akc .btn{flex:1 1 auto;min-width:0;white-space:nowrap;padding-left:12px;padding-right:12px;}
+/* ozki telefoni (≤375 px): »Brez tiskanja · Natisni 1× · Natisni 2×« se ne odreže, gre v dve vrsti */
+.okno-akc{flex-wrap:wrap;}
 
 /* potrditev: kot potrdiModal v portalu (.sc-modal) */
 .sc-modal-back{position:fixed;inset:0;z-index:60;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.42);
@@ -408,7 +410,9 @@ html.sc-notrans,html.sc-notrans *,html.sc-notrans *::before,html.sc-notrans *::a
   .okno-x{right:12px;}
   .okno-b{padding:14px 16px 18px;}
   .okno-akc{padding:12px 16px 14px;}
-  .st-grid{grid-template-columns:1fr 1fr;}
+  .st-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+  /* iskanje stranke: okno ostane zgoraj — prej se je ob tipkanju krčilo, centriralo in zadetki so šli pod tipkovnico */
+  #oknoStranke{align-items:flex-start;}
   .kp-key{height:58px;}
 }
 /* mehak prehod med stanji (kot »mehak prehod med temama« v portalu) */
@@ -427,3 +431,28 @@ body,.topbar,.panel,.art,.list,.st-tile,.seg,.seg-b,input,textarea,.btn,.pill-bt
   html.sc-tisk-on body>:not(#sc-tisk){display:none!important}
   html.sc-tisk-on #sc-tisk{display:block!important}
 }
+
+/* ══ Popravki po pregledu (telefon) ══ */
+/* Kopija elementa pri animaciji okna je podedovala razrede starša (.panel, .pv-vrsta): odmik,
+   okvir in ozadje — ob koncu zapiranja je gumb za trenutek »skočil«. */
+.okno-duh{padding:0!important;border:0!important;background:none!important;box-shadow:none!important;min-height:0!important;}
+/* dolga imena brez presledkov ne razširijo stolpca */
+.art .an,.stranka-btn .sb-ime,.st-tile{overflow-wrap:anywhere;}
+/* površina za prst ≥ 44 px (videz ostane enak) */
+.okno-x::before{content:"";position:absolute;inset:-7px;}
+.icon-btn::after{content:"";position:absolute;inset:-4px;}
+.uskl .link-btn{padding:12px 8px;margin:-12px -8px;}
+/* aktiven gumb (npr. »Uredi opombe (1)«) ob lebdenju ni več skril besedila */
+.pill-btn.on:hover:not(:disabled){background:var(--green);border-color:var(--green);color:var(--btn-ink);}
+/* na dotik: »lebdenje« po tapu ne ostane (prazna vrstica artikla ni več videti polna), tap pa da odziv */
+@media (hover:none){
+  .art:hover:not(.polno){background:var(--surface);border-color:var(--line);}
+  .list:hover:not(.ureja){border-color:var(--line);}
+  .pill-btn:hover:not(:disabled):not(.on){background:transparent;border-color:var(--line);}
+  .stranka-btn:hover:not(:disabled){border-color:var(--line);}
+  .art:active,.list:active,.st-tile:active,.pill-btn:active:not(:disabled),.btn:active:not(:disabled),.stranka-btn:active:not(:disabled){opacity:.72;}
+}
+/* zagonski zaslon: pri počasni povezavi pove, kaj se dogaja */
+#scBoot .scBoot-t{font-size:.82rem;color:rgba(255,255,255,.55);opacity:0;transition:opacity .4s ease;}
+:root[data-theme="light"] #scBoot .scBoot-t{color:rgba(10,10,10,.5);}
+#scBoot .scBoot-t.vidno{opacity:1;}
