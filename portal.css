@@ -2470,3 +2470,44 @@ html[data-view] .pz-seznam .row .num::before{content:none;}
   #auth.auth-tipk .auth-box .sub{display:none;}
   .auth-foot{margin-top:auto;padding:10px 0 4px;}
 }
+
+/* ══ Zamegljeno ozadje za okni (potrditve, posodobitve, okna kartic) ══
+   Zameglitev se pojavi in izgine skupaj s potemnitvijo (opacity) in hkrati zraste od 0 do 10 px —
+   mehak prehod v obe smeri. */
+.sc-modal-back{-webkit-backdrop-filter:blur(0px);backdrop-filter:blur(0px);
+  transition:opacity .26s ease,-webkit-backdrop-filter .34s ease,backdrop-filter .34s ease;}
+.sc-modal-back.show{-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);}
+.okno-zatemni{-webkit-backdrop-filter:blur(0px);backdrop-filter:blur(0px);
+  transition:opacity .3s ease,-webkit-backdrop-filter .36s ease,backdrop-filter .36s ease;}
+.okno-back.show .okno-zatemni{-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);}
+@media(prefers-reduced-motion:reduce){.sc-modal-back,.okno-zatemni{transition:opacity .12s ease;}}
+
+/* ══ Nov spremni list / urejanje: postavke kot stolpec v Excelu ══
+   Prej se je izbirnik artikla raztegnil po dolžini imena (stolpec 1fr = »vsaj vsebina«), vrstice so
+   bile širše od okna in vsaka drugačna — zaslon se je premikal levo-desno. */
+.ur-post{grid-template-columns:28px auto minmax(0,1fr) 92px 34px;}
+.ur-post > *{min-width:0;}
+.ur-post .cs{min-width:0;max-width:none;}
+.ur-form{overflow-x:clip;}   /* clip (ne hidden): hidden bi naredil lasten drsni okvir in spodnja vrstica ne bi ostala pritrjena */
+.ur-grid.nl-2{grid-template-columns:repeat(2,minmax(0,1fr));}
+.nl-izdal{font-size:.82rem;color:var(--mid);margin:-2px 0 10px;}
+.nl-izdal b{color:var(--ink);font-weight:600;}
+/* nov list: prazne količine niso napaka (se ne shranijo) — brez rumenih okvirjev povsod */
+.nov-list .ur-post input[data-pk].post-warn{border-color:var(--line)!important;box-shadow:none!important;}
+/* spodnja vrstica okna: seštevek + gumba, vedno vidna (prej šele po vseh postavkah) */
+.u-acts.nl-akc{position:sticky;bottom:0;z-index:3;display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:8px;
+  margin:14px 0 0;padding:10px 0 calc(6px + env(safe-area-inset-bottom));background:var(--surface);border-top:1px solid var(--line);}
+.u-acts.nl-akc > button{padding-left:18px;padding-right:18px;}
+.nl-sum{font-size:.86rem;color:var(--mid);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.nl-sum b,.nl-sum output{color:var(--ink);font-weight:700;}
+@media (max-width:560px){
+  .ur-post{grid-template-columns:auto minmax(0,1fr) 64px 38px;gap:6px;}
+  .ur-post .ur-grip{display:none;}                 /* razvrščanje s potegom le na računalniku */
+  .ur-pid{min-width:0;padding:3px 5px;font-size:.66rem;}
+  .ur-post input[data-pk]{padding:0 4px;height:44px;}
+  .ur-post .ur-del{height:44px;}
+  .ur-post .cs-trigger{height:44px;padding:0 10px;}
+  .u-acts.nl-akc{grid-template-columns:minmax(0,1fr) auto auto;}
+}
+/* teža v spodnji vrstici je le besedilo (drugje je okvirček polja) */
+.nl-sum .ur-kg-auto{display:inline;border:0;padding:0;margin:0;background:none;width:auto;min-height:0;height:auto;font:inherit;font-weight:700;color:var(--ink);box-shadow:none;}

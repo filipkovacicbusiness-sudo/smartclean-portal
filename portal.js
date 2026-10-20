@@ -312,7 +312,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.43 · BETA';
+  var APP_VERZIJA = '4.44 · BETA';
   var NALAGANJE = '<div class="sc-load" aria-hidden="true"><span class="sc-load-line"></span></div>';
   // Stale-while-revalidate: ob ponovnem obisku razdelka NE pobriši vsebine v nalagalnik —
   // obdrži prejšnjo (takojšen prikaz) in jo osveži v ozadju. Trak le ob prvem nalaganju.
@@ -516,22 +516,45 @@
     var o = sel.options[sel.selectedIndex] || null;
     pid.textContent = (o && o.value) ? (o.getAttribute('data-koda') || '') : '';
   }
-  // Tipkovnica v polju za količino: Backspace/Delete pobriše CELO število (ne le zadnje števke),
-  // Enter skoči na količino naslednjega artikla (hitrejši vnos).
+  // Vnos količin kot v Excelu: stolpec količin je ena »kolona«.
+  //  Enter / ↓ / Tab → naslednja vrstica · Shift+Enter / ↑ / Shift+Tab → prejšnja
+  //  (↑↓ prej spreminjala število — nevarno), Backspace/Delete pobriše CELO število,
+  //  lepljenje stolpca iz Excela se razporedi po vrsticah navzdol.
+  function _pkSosed(inp, smer) {
+    var el = inp && inp.closest ? inp.closest('.ur-post') : null;
+    while (el) {
+      el = smer > 0 ? el.nextElementSibling : el.previousElementSibling;
+      if (el && el.classList && el.classList.contains('ur-post')) return el.querySelector('[data-pk]');
+    }
+    return null;
+  }
+  function _pkPojdi(inp, smer) { var n = _pkSosed(inp, smer); if (!n) return false; n.focus(); try { n.select(); } catch (e) {} return true; }
   function _pkEnter(e) {
     if (e.key === 'Backspace' || e.key === 'Delete') {
       e.preventDefault();
       if (e.target.value !== '') { e.target.value = ''; e.target.dispatchEvent(new Event('input', { bubbles: true })); }
       return;
     }
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); _pkPojdi(e.target, e.key === 'ArrowDown' ? 1 : -1); return; }
+    if (e.key === 'Tab') { if (_pkPojdi(e.target, e.shiftKey ? -1 : 1)) e.preventDefault(); return; }
     if (e.key !== 'Enter') return;
     e.preventDefault();
-    var row = e.target.closest ? e.target.closest('.ur-post') : null; if (!row) return;
-    var next = row.nextElementSibling;
-    while (next && !(next.classList && next.classList.contains('ur-post'))) next = next.nextElementSibling;
-    var pk = next ? next.querySelector('[data-pk]') : null;
-    if (pk) { pk.focus(); try { pk.select(); } catch (e2) {} } else { try { e.target.blur(); } catch (e3) {} }
+    if (!_pkPojdi(e.target, e.shiftKey ? -1 : 1)) { try { e.target.blur(); } catch (e3) {} }
   }
+  document.addEventListener('paste', function (e) {
+    var t = e.target; if (!(t && t.matches && t.matches('.ur-post input[data-pk]'))) return;
+    var txt = ((e.clipboardData || window.clipboardData) || { getData: function () { return ''; } }).getData('text') || '';
+    var vr = txt.split(/[\r\n\t]+/).map(function (x) { return x.trim(); }).filter(function (x) { return x !== ''; });
+    if (vr.length < 2) return;   // ena vrednost: običajno lepljenje
+    e.preventDefault();
+    var inp = t, n = 0;
+    for (var i = 0; i < vr.length && inp; i++) {
+      var v = parseInt(vr[i].replace(/[^\d]/g, ''), 10);
+      inp.value = isNaN(v) ? '' : String(v); inp.dispatchEvent(new Event('input', { bubbles: true })); n++;
+      if (i < vr.length - 1) inp = _pkSosed(inp, 1);
+    }
+    toast('Prilepljeno: ' + n + (n === 1 ? ' količina' : (n === 2 ? ' količini' : (n < 5 ? ' količine' : ' količin'))) + (n < vr.length ? ' (zmanjkalo je vrstic)' : ''));
+  });
   // Ob fokusu količine se CELOTNO število označi — jasno se vidi, katero celico urejaš,
   // tipkanje pa število nadomesti (kot v Excelu). setTimeout, da klik ne razveljavi označbe.
   document.addEventListener('focusin', function (e) {
@@ -4500,6 +4523,11 @@
       try { pBox.inert = false; } catch (_) {}
       if (dodaj) dodaj.disabled = false;
       kosi.forEach(function (k) { k.el.classList.remove('dv-treba'); });
+      // takoj na prvo količino — vnos se nadaljuje brez dodatnega klika (kot v Excelu)
+      setTimeout(function () {
+        var p1 = pBox.querySelector('.ur-post input[data-pk]');
+        if (p1) { try { p1.focus({ preventScroll: true }); p1.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (_) {} }
+      }, 60);
     };
     const kos = function (el, ime, besedilo) {
       if (!el) return;
@@ -4540,18 +4568,17 @@
     const orgOpt = ORGSEZNAM.map(o => `<option value="${o.id}"${o.id === n.org_id ? ' selected' : ''}>${escape_(o.name)}</option>`).join('');
     box.innerHTML = `<div class="ur-form">
       <label class="ur-f"><span>Stranka</span><select data-org>${orgOpt}</select></label>
-      <div class="ur-grid ur-grid-3">
+      <div class="ur-grid nl-2">
         <label class="ur-f"><span>Št.</span><input type="number" data-seq value="${st.seq}"></label>
         <label class="ur-f" hidden><span>Leto</span><input type="number" data-leto value="${st.leto}"></label>
         <label class="ur-f"><span>Datum</span><input type="date" data-datum value="${escape_(dnes)}"></label>
-        <label class="ur-f"><span>Teža (samodejno)</span><output class="ur-kg-auto" data-teza-auto>—</output></label>
       </div>
-      <label class="ur-f"><span>Izdal (izvirni — se ne spreminja)</span><input type="text" data-izdal value="${escape_(n.issued_name || '')}" readonly style="opacity:.6;cursor:not-allowed"></label>
+      <p class="nl-izdal">Izdal: <b>${escape_(n.issued_name || '—')}</b> <span>(izvirni, se ne spreminja)</span><input type="hidden" data-izdal value="${escape_(n.issued_name || '')}"></p>
       <div class="ur-f"><span>Vrsta prevoza</span>${segPrevoz(n.transport)}</div>
       <p class="u-sub" style="margin:10px 0 4px">Postavke — izberi artikel (z ID) iz kataloga stranke</p>
       <div data-postavke></div>
       <button type="button" class="ur-add" data-dodaj>+ Dodaj postavko</button>
-      <div class="u-acts" style="margin-top:14px"><button type="button" class="ur-save" data-shrani>Shrani</button><button type="button" data-preklici>Prekliči</button></div>
+      <div class="u-acts nl-akc"><div class="nl-sum"><b data-sum-kos>0 kos</b> · <output class="ur-kg-auto" data-teza-auto>—</output></div><button type="button" class="ur-save" data-shrani>Shrani</button><button type="button" data-preklici>Prekliči</button></div>
       <p class="u-sub ur-msg" data-msg></p></div>`;
     const pBox = box.querySelector('[data-postavke]');
     await nalozArtSez(box);
@@ -4575,7 +4602,7 @@
     const dodajVrstico = (naziv = '', kosov = '', artId = '') => {
       const row = document.createElement('div');
       row.className = 'ur-post';
-      row.innerHTML = `<button type="button" class="ur-grip dnd-handle" title="povleci za razvrščanje" aria-label="razvrsti">${DND_ICON}</button><span class="ur-pid" data-pid aria-hidden="true"></span><select data-pn class="ur-pn" aria-label="Artikel"></select><input type="number" inputmode="numeric" min="0" step="1" aria-label="Količina (kosov)" data-pk placeholder="kos" value="${kosov}"><button type="button" class="ur-del" data-del title="odstrani">×</button>`;
+      row.innerHTML = `<button type="button" class="ur-grip dnd-handle" tabindex="-1" title="povleci za razvrščanje" aria-label="razvrsti">${DND_ICON}</button><span class="ur-pid" data-pid aria-hidden="true"></span><select data-pn class="ur-pn" aria-label="Artikel"></select><input type="number" inputmode="numeric" min="0" step="1" aria-label="Količina (kosov)" data-pk placeholder="kos" value="${kosov}"><button type="button" class="ur-del" data-del tabindex="-1" title="odstrani">×</button>`;
       napolniPn(row.querySelector('[data-pn]'), naziv, artId);
       _osveziPid(row);
       row.querySelector('[data-del]').addEventListener('click', () => { row.remove(); osveziKg(); });
@@ -4913,6 +4940,8 @@
     return { kg: kg, ima: ima };
   }
   function osveziKgPrikaz(box) {
+    var sk = box.querySelector('[data-sum-kos]');
+    if (sk) { var n = 0; box.querySelectorAll('[data-pk]').forEach(function (i) { var v = parseInt(i.value, 10); if (v > 0) n += v; }); sk.textContent = stevilo(n) + ' kos'; }
     var el = box.querySelector('[data-teza-auto]'); if (!el) return;
     var r = vsotaKgPostavk(box);
     el.textContent = r.ima ? tezaFmt(r.kg) : '—';
@@ -4945,15 +4974,14 @@
     const orgOpt = '<option value="">— izberi stranko —</option>' + ORGSEZNAM.map(o => `<option value="${o.id}">${escape_(o.name)}</option>`).join('');
     box.innerHTML = `<div class="ur-form">
       <label class="ur-f"><span>Stranka</span><select data-org>${orgOpt}</select></label>
-      <div class="ur-grid ur-grid-3">
+      <div class="ur-grid nl-2">
         <label class="ur-f"><span>Št.</span><input type="number" data-seq value="${maxSeq + 1}"></label>
         <label class="ur-f" hidden><span>Leto</span><input type="number" data-leto value="${letos}"></label>
         <label class="ur-f"><span>Datum</span><input type="date" data-datum value="${dnes}"></label>
-        <label class="ur-f"><span>Teža (samodejno)</span><output class="ur-kg-auto" data-teza-auto>—</output></label>
       </div>
-      <label class="ur-f"><span>Izdal (samodejno — prijavljeni uporabnik)</span><input type="text" data-izdal value="${escape_(JAZIME || '')}" readonly style="opacity:.6;cursor:not-allowed"></label>
+      <p class="nl-izdal">Izdal: <b>${escape_(JAZIME || '—')}</b><input type="hidden" data-izdal value="${escape_(JAZIME || '')}"></p>
       <div class="ur-f"><span>Vrsta prevoza</span>${segPrevoz('redni')}</div>
-      <p class="u-sub" style="margin:10px 0 4px">Postavke — seznam se samodejno napolni z artikli stranke; vpiši samo količine. Prazne se ne shranijo.</p>
+      <p class="u-sub" style="margin:10px 0 4px">Postavke — artikli stranke so že na seznamu; vpiši samo količine (prazne se ne shranijo). Enter ali ↓ = naslednja vrstica.</p>
       <div data-postavke></div>
       <button type="button" class="ur-add" data-dodaj>+ Dodaj postavko (izven seznama)</button>
       <p class="u-sub" style="margin:12px 0 4px">Opombi (neobvezno)</p>
@@ -4961,7 +4989,7 @@
         <label class="ur-f"><span>Za stranko — natisne se na spremni list</span><textarea class="ur-opomba-txt" data-opomba-stranka rows="2" maxlength="600" placeholder="Vidno stranki, natisne se …"></textarea></label>
         <label class="ur-f"><span>Interno — samo osebje, se NE natisne</span><textarea class="ur-opomba-txt" data-opomba-interno rows="2" maxlength="600" placeholder="Vidno samo osebju …"></textarea></label>
       </div>
-      <div class="u-acts" style="margin-top:14px"><button type="button" class="ur-save" data-shrani>Ustvari</button><button type="button" data-preklici>Prekliči</button></div>
+      <div class="u-acts nl-akc"><div class="nl-sum"><b data-sum-kos>0 kos</b> · <output class="ur-kg-auto" data-teza-auto>—</output></div><button type="button" class="ur-save" data-shrani>Ustvari</button><button type="button" data-preklici>Prekliči</button></div>
       <p class="u-sub ur-msg" data-msg></p></div>`;
     const pBox = box.querySelector('[data-postavke]');
     await nalozArtSez(box);
@@ -4981,7 +5009,7 @@
     const dodajVrstico = (naziv = '', kosov = '') => {
       const row = document.createElement('div');
       row.className = 'ur-post';
-      row.innerHTML = `<button type="button" class="ur-grip dnd-handle" title="povleci za razvrščanje" aria-label="razvrsti">${DND_ICON}</button><span class="ur-pid" data-pid aria-hidden="true"></span><select data-pn class="ur-pn" aria-label="Artikel"></select><input type="number" inputmode="numeric" min="0" step="1" aria-label="Količina (kosov)" data-pk placeholder="kos" value="${kosov}"><button type="button" class="ur-del" data-del title="odstrani">×</button>`;
+      row.innerHTML = `<button type="button" class="ur-grip dnd-handle" tabindex="-1" title="povleci za razvrščanje" aria-label="razvrsti">${DND_ICON}</button><span class="ur-pid" data-pid aria-hidden="true"></span><select data-pn class="ur-pn" aria-label="Artikel"></select><input type="number" inputmode="numeric" min="0" step="1" aria-label="Količina (kosov)" data-pk placeholder="kos" value="${kosov}"><button type="button" class="ur-del" data-del tabindex="-1" title="odstrani">×</button>`;
       napolniPn(row.querySelector('[data-pn]'), naziv);
       _osveziPid(row);
       row.querySelector('[data-del]').addEventListener('click', () => { row.remove(); osveziKg(); });
@@ -6760,6 +6788,7 @@
       var trig = document.createElement('button'); trig.type = 'button'; trig.className = 'cs-trigger';
       trig.innerHTML = '<span class="cs-val"></span><span class="cs-arr" aria-hidden="true"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>';
       wrap.appendChild(trig);
+      if (sel.closest && sel.closest('.ur-post')) trig.tabIndex = -1;   // vrstica postavke: Tab/puščice iPhona med količinami
       sel._cs = true; sel.classList.add('cs-native');
       var valEl = trig.querySelector('.cs-val');
       function syncVal() { var o = sel.options[sel.selectedIndex]; csNapis(valEl, o ? o.textContent : ''); }
