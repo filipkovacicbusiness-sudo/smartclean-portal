@@ -101,10 +101,11 @@ Deno.serve(async (req) => {
   if (!u || !u.user) return odgovor({ ok: false, error: "no_auth" }, 401);
 
   const admin = createClient(url, service);
+  // Lastnik po e-pošti iz prijave (Supabase Auth), ne iz profila — profil bi se dal ponarediti.
   const { data: prof } = await admin.from("profiles")
-    .select("email, super_admin").eq("id", u.user.id).maybeSingle();
-  const email = String((prof && prof.email) || u.user.email || "").toLowerCase();
-  const sme = email === "filip@eflitte.si" || !!(prof && prof.super_admin);
+    .select("super_admin, active").eq("id", u.user.id).maybeSingle();
+  const email = String(u.user.email || "").toLowerCase();
+  const sme = email === "filip@eflitte.si" || !!(prof && prof.super_admin && prof.active);
   if (!sme) return odgovor({ ok: false, error: "forbidden" }, 403);
 
   // ── vir ────────────────────────────────────────────────────────────────
