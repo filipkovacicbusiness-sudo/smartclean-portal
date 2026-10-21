@@ -1201,7 +1201,11 @@ function prikaziSpletnoPrijavo(msg, email){
   $("acctErr").textContent = msg || ""; $("acctPass").value = "";
   if(email) $("acctEmail").value = email;
 }
+/* vstop lahko sprožita zagon in obrazec hkrati: velja le zadnji (počasnejši starejši
+   ga ne sme povoziti, npr. z »Ni povezave« čez že prijavljeno sejo) */
+var _spletVstopGen = 0;
 async function spletVstop(){
+  var gen = ++_spletVstopGen, star = function(){ return gen !== _spletVstopGen; };
   var pp = await dbJson(SPLET_PROFIL_KEY, null);
   try{
     var prof;
@@ -1212,13 +1216,16 @@ async function spletVstop(){
       var s2 = null;
       try{ s2 = await spletnaSeja(true); }catch(_){ throw new Error("ni povezave"); }
       if(!s2) throw e1;
+      if(star()) return;
       portalAuth = izSeje(s2);
       prof = await portalProfil();
     }
+    if(star()) return;
     if(!prof.dostop){ prikaziSpletnoPrijavo(NI_DOSTOPA, prof.email); return; }
     pp = { uid: prof.id, email: prof.email, name: prof.full_name || prof.email, dostop: true };
     await dbWrite(SPLET_PROFIL_KEY, JSON.stringify(pp));
   }catch(e){
+    if(star()) return;
     /* brez omrežja: vstop z zadnjimi znanimi podatki istega računa, sinhronizacija dohiti */
     var ss = shranjenaSeja();
     if(jeOmrezna(e) && pp && pp.dostop && ss && ss.user.id === pp.uid){}
@@ -1229,6 +1236,7 @@ async function spletVstop(){
       prikaziSpletnoPrijavo("Prijava je potekla ali je bila preklicana — prijavite se znova."); return;
     }
   }
+  if(star()) return;
   aktivniEmail = pp.email;
   doLogin({ name: pp.name });
   try{ zaziviRealtime(); }catch(e){}
@@ -1302,10 +1310,10 @@ function pozabiProfil(em, izvor){
 }
 /* Po vsaki osvežitvi žetona ga zapiši tudi v profil — sicer bi profil hranil že porabljen
    žeton in bi ga Supabase ob naslednjem vstopu zavrnil (prijava z geslom znova). */
-function posodobiProfilZeton(){
+async function posodobiProfilZeton(){
   if(SPLET || !aktivniEmail || !portalAuth || !portalAuth.refresh_token) return;
   var p = savedProfs.find(function(x){ return x.email === aktivniEmail; });
-  if(p && p.refresh_token !== portalAuth.refresh_token){ p.refresh_token = portalAuth.refresh_token; saveProfs(); }
+  if(p && p.refresh_token !== portalAuth.refresh_token){ p.refresh_token = portalAuth.refresh_token; await saveProfs(); }
 }
 async function portalProfil(){
   var ur;
@@ -1374,7 +1382,7 @@ async function izberiProfil(em, tile){
   var naprej = vstopiSPinom;
   try{
     aktivniEmail = p.email;
-    portalAuth = { refresh_token: p.refresh_token, access_token: null, expires_at: 0 };
+    portalAuth = { refresh_token: zetonProfila(p), access_token: null, expires_at: 0, email: p.email };
     await portalRefresh();
     var prof = await portalProfil();
     p.name = prof.full_name || p.name; p.avatar = prof.avatar_url || ""; p.pin = prof.app_pin || ""; p.dostop = prof.dostop; p.uid = prof.id || p.uid;
@@ -1386,7 +1394,7 @@ async function izberiProfil(em, tile){
     /* brez omrežja: naprava je že prijavljena → vstop z zadnjimi znanimi podatki, sinhronizacija dohiti */
     if(/ni povezave/i.test(m) && p.refresh_token){
       if(p.dostop === false){ prikaziProfile(NI_DOSTOPA); return false; }
-      portalAuth = { refresh_token: p.refresh_token, access_token: null, expires_at: 0 };
+      portalAuth = { refresh_token: zetonProfila(p), access_token: null, expires_at: 0, email: p.email };
       naprej(p); return true;
     }
     showAccountLogin("Prijava je potekla — vpiši geslo za " + (p.name || p.email) + ".", p.email);
@@ -1408,7 +1416,7 @@ function vstopi(p, brezSinh){
 function vstopiZadnjega(p){
   if(p.dostop === false) return false;
   aktivniEmail = p.email;
-  portalAuth = { refresh_token: p.refresh_token, access_token: null, expires_at: 0 };
+  portalAuth = { refresh_token: zetonProfila(p), access_token: null, expires_at: 0, email: p.email };
   vstopi(p, true);
   (async function(){
     try{
@@ -1494,8 +1502,13 @@ document.querySelectorAll('input[type="password"]').forEach(function(inp){
    ponovno pošiljanje posodobi, ne podvoji. */
 var portalAuth = null, syncTecev = false, syncZadnje = "";
 function portalNastavljen(){ return !!(settings.portalUrl && settings.portalKey); }
-async function loadPortalAuth(){ if(SPLET) return; portalAuth = await dbJson(PORTAL_AUTH_KEY, null); }
-async function savePortalAuth(){ if(SPLET) return; try{ await dbWrite(PORTAL_AUTH_KEY, JSON.stringify(portalAuth || null)); }catch(e){} }
+/* Žeton za osvežitev se ob vsaki uporabi zamenja. Najprej se zapiše v PORTAL_AUTH (z
+   e-pošto), šele nato v profil — če se aplikacija zapre vmes, ima profil že porabljen
+   žeton. Zato ob vstopu velja novejši iz PORTAL_AUTH, če pripada istemu računu. */
+var _zadnjaSeja = null;
+async function loadPortalAuth(){ if(SPLET) return; portalAuth = await dbJson(PORTAL_AUTH_KEY, null); _zadnjaSeja = portalAuth; }
+async function savePortalAuth(){ if(SPLET) return; _zadnjaSeja = portalAuth; try{ await dbWrite(PORTAL_AUTH_KEY, JSON.stringify(portalAuth || null)); }catch(e){} }
+function zetonProfila(p){ return (_zadnjaSeja && _zadnjaSeja.email && _zadnjaSeja.email === p.email && _zadnjaSeja.refresh_token) || p.refresh_token; }
 
 async function portalLogin(email, geslo){
   var r;
@@ -1506,7 +1519,7 @@ async function portalLogin(email, geslo){
   }catch(e){ throw new Error("ni povezave"); }
   var j = await r.json().catch(function(){ return {}; });
   if(!r.ok) throw new Error(j.error_description || j.msg || j.message || ("prijava ni uspela (" + r.status + ")"));
-  portalAuth = { access_token: j.access_token, refresh_token: j.refresh_token, expires_at: Date.now() + ((j.expires_in || 3600) * 1000) - 60000 };
+  portalAuth = { access_token: j.access_token, refresh_token: j.refresh_token, expires_at: Date.now() + ((j.expires_in || 3600) * 1000) - 60000, email: email };
   await savePortalAuth();
   return true;
 }
@@ -1544,9 +1557,9 @@ async function portalRefreshEnkrat(){
     if(resnicno){ portalAuth = null; await savePortalAuth(); try{ risiSyncGumb(); }catch(_){} throw new Error("seja je potekla, prijavi se znova"); }
     throw new Error("ni povezave");
   }
-  portalAuth = { access_token: j.access_token, refresh_token: j.refresh_token, expires_at: Date.now() + ((j.expires_in || 3600) * 1000) - 60000 };
+  portalAuth = { access_token: j.access_token, refresh_token: j.refresh_token, expires_at: Date.now() + ((j.expires_in || 3600) * 1000) - 60000, email: portalAuth.email || aktivniEmail || null };
   await savePortalAuth();
-  posodobiProfilZeton();
+  await posodobiProfilZeton();
   try{ realtimeAuth(); }catch(e){}
   return true;
 }

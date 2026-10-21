@@ -245,7 +245,7 @@ h3.sec:first-child{margin-top:0;}
 @media(max-width:560px){
   .row{grid-template-columns:minmax(0,1fr) auto 22px;}   /* minmax(0,…): dolgo ime ne potisne kg in › čez rob */
   .row > span:first-child{min-width:0;}
-  .row-name,.row-legal{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .row-name,.row-legal{overflow-wrap:anywhere;}
   .row-pct{display:none;}
   .arts ul{columns:1;}
   .head{align-items:stretch;} .search{max-width:none;width:100%;flex:1 1 100%;}
@@ -292,7 +292,7 @@ select:focus{border-color:var(--green-l);outline:none;}
 .pill-super{background:var(--ink);color:var(--bg);}
 .u-acts button{width:100%;font-size:var(--fs-13);padding:0 12px;border:1px solid var(--line);
   border-radius:var(--r-full);background:none;color:var(--mid);cursor:pointer;transition:all .18s;
-  text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:calc(var(--ctrl-h-md) - 2px);}
+  text-align:center;overflow-wrap:anywhere;line-height:1.25;min-height:var(--ctrl-h-md);padding-top:6px;padding-bottom:6px;}
 .u-acts button:hover{border-color:var(--mid);color:var(--ink);}
 .u-acts button.danger:hover{border-color:var(--coral);color:var(--coral);}
 .u-off{opacity:.5;}
@@ -448,7 +448,7 @@ html[data-view="grid"] .lcell .a-row .a-sel{left:auto;right:14px;top:12px;margin
   opacity:0;visibility:hidden;transform:translate(-50%,16px);
   transition:opacity .2s ease,transform .2s ease,visibility 0s linear .2s;}
 .arh-izbira.show{opacity:1;visibility:visible;transform:translate(-50%,0);transition:opacity .2s ease,transform .2s ease,visibility 0s;}
-.arh-izb-n{flex:1;min-width:150px;margin-right:6px;font-size:var(--fs-14);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.arh-izb-n{flex:1;min-width:150px;margin-right:6px;font-size:var(--fs-14);font-weight:600;overflow-wrap:anywhere;}
 .arh-izbira .btn{white-space:nowrap;}
 @media (max-width:560px){
   /* telefon: število zgoraj, gumba pod njim (drugače ga gumba izrineta) */
@@ -475,7 +475,7 @@ html[data-view="grid"] .lcell .a-row .a-sel{left:auto;right:14px;top:12px;margin
 /* Vsaka postavka v ENI vrstici (predolgo ime → …), da so ločnice na enakih višinah. */
 .a-det li{font-size:var(--fs-14);height:34px;padding:0;display:flex;align-items:center;justify-content:space-between;gap:12px;
   color:var(--ink);border-bottom:1px solid var(--line);max-width:none;break-inside:avoid;-webkit-column-break-inside:avoid;white-space:nowrap;}
-.a-det li span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.a-det li span{min-width:0;overflow-wrap:anywhere;}
 .a-det li b{color:var(--ink);font-weight:700;font-variant-numeric:tabular-nums;flex:0 0 auto;}
 .a-row[aria-expanded="true"] .chev{transform:rotate(90deg);}
 
@@ -499,7 +499,7 @@ html[data-view="grid"] .lcell .a-row .a-sel{left:auto;right:14px;top:12px;margin
   html:not([data-view="grid"]) .a-row:not(.okno-kartica){grid-template-columns:32px minmax(0,1fr) auto 20px;grid-template-areas:"chk num qty chev" "chk cli izd chev";column-gap:12px;row-gap:2px;}
   html:not([data-view="grid"]) .a-row:not(.okno-kartica) .arh-chk{grid-area:chk;}
   html:not([data-view="grid"]) .a-row:not(.okno-kartica) .a-num{grid-area:num;min-width:0;}
-  html:not([data-view="grid"]) .a-row:not(.okno-kartica) .a-cli{grid-area:cli;display:block;min-width:0;font-size:var(--fs-13);color:var(--mid);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  html:not([data-view="grid"]) .a-row:not(.okno-kartica) .a-cli{grid-area:cli;display:block;min-width:0;font-size:var(--fs-13);color:var(--mid);overflow-wrap:anywhere;}
   html:not([data-view="grid"]) .a-row:not(.okno-kartica) .a-foot{display:contents;}
   html:not([data-view="grid"]) .a-row:not(.okno-kartica) .a-date{display:none;}
   html:not([data-view="grid"]) .a-row:not(.okno-kartica) .a-qty{grid-area:qty;justify-self:end;}
@@ -586,11 +586,11 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
 /* Po meri izdelan izbirnik artikla (ID v okvirčku levo, kot katalog) */
 .ur-post .ur-pn[hidden]{display:none!important;}   /* surova izbira je le vir podatkov — nikoli vidna (prepreči »2× izberi artikel«) */
 .ur-artbtn-txt{flex:1 1 auto;min-width:0;display:flex;align-items:center;gap:8px;overflow:hidden;}
-.ur-artbtn-ph{color:var(--mid);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ur-artbtn-ph{color:var(--mid);overflow-wrap:anywhere;}
 .ur-opt-id{font-family:var(--mono);font-size:var(--fs-12);color:var(--mid);border:1px solid var(--line);
   border-radius:var(--r-sm);padding:1px 6px;white-space:nowrap;flex:0 0 auto;}
 .ur-opt-id.prazno{border-color:transparent;padding:1px 0;}
-.ur-opt-nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ur-opt-nm{min-width:0;overflow-wrap:anywhere;}
 @keyframes urMenuIn{from{opacity:0;transform:translateY(-6px) scale(.985);}to{opacity:1;transform:translateY(0) scale(1);}}
 .ur-artopt{display:flex;align-items:center;gap:8px;width:100%;text-align:left;border:none;background:none;
   color:var(--ink);padding:8px 8px;border-radius:var(--r-sm);cursor:pointer;font-size:var(--fs-14);}
@@ -935,15 +935,15 @@ html[data-view="grid"] .lcell .a-row{grid-template-columns:1fr;gap:6px;margin-bo
 html[data-view="grid"] .lcell .row .chev,
 html[data-view="grid"] .lcell .a-row .chev{display:none;}
 html[data-view="grid"] .lcell .row-pct{display:none;}
-html[data-view="grid"] .row-name{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.35;}
-html[data-view="grid"] .row-legal{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.35;}
+html[data-view="grid"] .row-name{display:block;overflow-wrap:anywhere;line-height:1.35;}
+html[data-view="grid"] .row-legal{display:block;overflow-wrap:anywhere;line-height:1.35;}
 /* rezerviraj natanko 2 vrstici za naziv+podjetje, da so vse kartice enako visoke */
 html[data-view="grid"] .lcell .row > span:first-child{display:block;height:2.7em;overflow:hidden;}
 html[data-view="grid"] .lcell .row > span:first-child br{display:none;}
 html[data-view="grid"] .lcell .a-row .num,
 html[data-view="grid"] .lcell .a-row .a-cli,
 html[data-view="grid"] .lcell .a-row .a-date{display:block;text-align:left;}
-html[data-view="grid"] .lcell .a-row .a-cli{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+html[data-view="grid"] .lcell .a-row .a-cli{overflow-wrap:anywhere;}
 html[data-view="grid"] .lcell .arts,
 html[data-view="grid"] .lcell .a-det{margin-bottom:0;}
 html[data-view="grid"] .lcell .row[aria-expanded="true"],
@@ -964,7 +964,7 @@ html[data-view="grid"] .fak-grid .fak-card:not(.open){overflow:hidden;display:fl
 /* v mreži: naziv čez celo širino, podnapis rezerviran na 2 vrstici — kartice enako visoke, vsebina navpično centrirana */
 html[data-view="grid"] .fak-grid .fak-card:not(.open) .fak-card-h{flex-direction:column;align-items:stretch;justify-content:center;gap:4px;}
 html[data-view="grid"] .fak-grid .fak-card:not(.open) .fak-chev{display:none;}
-html[data-view="grid"] .fak-grid .fak-card:not(.open) h3{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.25;}
+html[data-view="grid"] .fak-grid .fak-card:not(.open) h3{overflow-wrap:anywhere;line-height:1.25;}
 html[data-view="grid"] .fak-grid .fak-card:not(.open) .u-sub{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.35;min-height:2.7em;}
 
 /* enakomerna višina cenikovih skupin v mreži */
@@ -975,7 +975,7 @@ html[data-view="grid"] :is(#cenikList,.art-skupine) .cgrp-sub{display:-webkit-bo
 
 /* enakomerna višina cenikovih vrstic v seznamu (rezerviraj mesto za naslov podjetja) */
 html[data-view="list"] :is(#cenikList,.art-skupine) .cgrp-name{min-height:2.95em;justify-content:center;}
-html[data-view="list"] :is(#cenikList,.art-skupine) .cgrp-sub{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+html[data-view="list"] :is(#cenikList,.art-skupine) .cgrp-sub{overflow-wrap:anywhere;}
 
 /* ── ENOTNI OKVIRČKI V MREŽI (isti size in font povsod) ───────────── */
 html[data-view="grid"] .rows,
@@ -1001,7 +1001,7 @@ html[data-view="list"] .lcell .row{align-items:center;}
 html[data-view="list"] .lcell .row > span:first-child br{display:none;}
 html[data-view="list"] .row-name,
 html[data-view="list"] .row-legal{display:block;}
-html[data-view="list"] .row-legal{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+html[data-view="list"] .row-legal{overflow-wrap:anywhere;}
 /* Enotna višina kartic strank v seznamu: značka »Splošni cenik« ne sme večati vrstice —
    postavimo jo absolutno v prazni prostor desno od naziva. */
 html[data-view="list"] .lcell .row > span:first-child{display:flex;flex-direction:column;justify-content:center;min-height:3.3em;position:relative;padding-right:150px;}
@@ -1088,7 +1088,7 @@ main.main{padding-top:44px;}
   padding:8px 12px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface);cursor:pointer;transition:.12s;}
 .cenik-pick-item:hover{border-color:var(--green-l);background:var(--green-m);}
 .cenik-pick-item .pk-id{font-family:var(--mono);font-size:var(--fs-12);color:var(--mid);border:1px solid var(--line);border-radius:var(--r-sm);padding:1px 6px;white-space:nowrap;}
-.cenik-pick-item .pk-nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cenik-pick-item .pk-nm{min-width:0;overflow-wrap:anywhere;}
 .cenik-pick-item .pk-c{font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--mid);}
 
 /* v mreži naj se odprta skupina razširi (drugače je vsebina odrezana zaradi fiksne višine) */
@@ -1143,9 +1143,9 @@ html[data-view="grid"] .row.has-sc > span:first-child,html[data-view="grid"] .ro
 
 /* Vklop/izklop vidnosti artikla v aplikaciji (tablici) */
 
-/* Naziv stranke: ena vrstica (maska) + drseči trak ob hoverju (kot glasbene aplikacije) */
-.row-name{display:block;max-width:100%;overflow:hidden;white-space:nowrap;}
-.row-nm{display:inline-block;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom;transition:transform .8s ease;will-change:transform;}
+/* Naziv stranke: cel, po potrebi v več vrsticah (nič odrezanega) */
+.row-name{display:block;max-width:100%;overflow-wrap:anywhere;}
+.row-nm{display:inline;overflow-wrap:anywhere;}
 
 /* Potrditveno okno v portalu (namesto brskalnikovega confirm) */
 .sc-modal-back{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.42);opacity:0;transition:opacity .18s ease;}
@@ -1207,7 +1207,7 @@ html[data-view="grid"] .row.has-sc > span:first-child,html[data-view="grid"] .ro
   padding:11px 14px;border:1.5px solid var(--line);border-radius:var(--r-sm);background:var(--bg);color:var(--ink);
   font-family:var(--sans);font-size:var(--fs-16);line-height:1.2;text-align:left;cursor:pointer;min-width:0;}
 .cs-open .cs-trigger,.cs-trigger:focus{border-color:var(--green-l);outline:none;}
-.cs-val{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cs-val{min-width:0;overflow-wrap:anywhere;}
 /* narisana ↓/↑ (csNapis) — sredina puščice na sredini velikih črk, ne na osnovni črti */
 .cs-smer{display:inline-block;width:.9em;height:.9em;margin-left:.28em;vertical-align:-.1em;}
 .cs-arr{flex:0 0 auto;color:var(--mid);display:inline-flex;transition:transform .18s ease;}
@@ -1216,7 +1216,7 @@ html[data-view="grid"] .row.has-sc > span:first-child,html[data-view="grid"] .ro
   background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);padding:6px;
   box-shadow:var(--shadow);}
 .cs-opt{padding:8px 12px;border-radius:var(--r-sm);font-family:var(--sans);font-size:var(--fs-15);color:var(--ink);cursor:pointer;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  overflow-wrap:anywhere;}
 .cs-opt:hover{background:var(--green-m);}
 .cs-opt.sel{background:var(--green-m);font-weight:600;}
 .cs-opt.dis{color:var(--mid);cursor:default;}
@@ -1266,7 +1266,7 @@ html{scrollbar-gutter:stable;-webkit-text-size-adjust:100%;-webkit-tap-highlight
 /* STRANKE */
 html[data-view="grid"] .lcell:not(.open) .row > span:first-child{display:flex;flex-direction:column;gap:2px;align-items:stretch;height:auto;overflow:visible;min-width:0;max-width:100%;}
 html[data-view="grid"] .lcell:not(.open) .row-name{height:1.4em;line-height:1.4;min-width:0;max-width:100%;text-align:left;}
-html[data-view="grid"] .lcell:not(.open) .row-legal{display:block;height:1.3em;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:var(--fs-12);min-width:0;max-width:100%;text-align:left;}
+html[data-view="grid"] .lcell:not(.open) .row-legal{display:block;line-height:1.3;overflow-wrap:anywhere;font-size:var(--fs-12);min-width:0;max-width:100%;text-align:left;}
 html[data-view="grid"] .lcell:not(.open) .row.has-sc > span:first-child,html[data-view="grid"] .lcell:not(.open) .row.has-tag > span:first-child{height:auto;}
 html[data-view="grid"] .lcell:not(.open) .row .num{margin-top:auto;text-align:left;align-self:stretch;}
 html[data-view="grid"] .lcell:not(.open) .row .sc-tag{margin-top:2px;align-self:flex-start;}
@@ -1274,8 +1274,8 @@ html[data-view="grid"] .lcell:not(.open) .row .sc-tag{margin-top:2px;align-self:
 html[data-view="grid"] :is(#cenikList,.art-skupine) .cgrp-head-row,
 html[data-view="grid"] :is(#cenikList,.art-skupine) .cgrp-h{align-items:flex-start;}
 html[data-view="grid"] :is(#cenikList,.art-skupine) .cgrp-name{display:flex;flex-direction:column;gap:2px;justify-content:flex-start;min-width:0;max-width:100%;}
-html[data-view="grid"] :is(#cenikList,.art-skupine) .cgrp-nm{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;height:1.4em;line-height:1.4;font-weight:600;min-width:0;max-width:100%;}
-html[data-view="grid"] :is(#cenikList,.art-skupine) .cgrp-sub{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;height:1.3em;line-height:1.3;-webkit-line-clamp:none;min-width:0;max-width:100%;}
+html[data-view="grid"] :is(#cenikList,.art-skupine) .cgrp-nm{display:block;overflow-wrap:anywhere;line-height:1.4;font-weight:600;min-width:0;max-width:100%;}
+html[data-view="grid"] :is(#cenikList,.art-skupine) .cgrp-sub{display:block;overflow-wrap:anywhere;line-height:1.3;min-width:0;max-width:100%;}
 html[data-view="grid"] :is(#cenikList,.art-skupine) .cgrp .sc-tag{margin-top:2px;}
 
 /* ── Mreža: kot ⌄ v spodnjem desnem kotu; v Ceniki št. artiklov spodaj levo ── */
@@ -1303,14 +1303,14 @@ html[data-view="grid"] :is(#cenikList,.art-skupine) .cgrp:not(.open) .cgrp-name{
 html[data-view="grid"] .lcell:not(.open) .row-name,
 html[data-view="grid"] .lcell:not(.open) .a-row .a-num,
 html[data-view="grid"] :is(#cenikList,.art-skupine) .cgrp:not(.open) .cgrp-nm{
-  display:block;font-family:var(--sans);font-size:var(--fs-16);font-weight:600;line-height:1.4;height:1.4em;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;max-width:100%;color:var(--ink);text-align:left;}
+  display:block;font-family:var(--sans);font-size:var(--fs-16);font-weight:600;line-height:1.4;
+  overflow-wrap:anywhere;min-width:0;max-width:100%;color:var(--ink);text-align:left;}
 /* ── Podnaslov ── */
 html[data-view="grid"] .lcell:not(.open) .row-legal,
 html[data-view="grid"] .lcell:not(.open) .a-row .a-cli,
 html[data-view="grid"] :is(#cenikList,.art-skupine) .cgrp:not(.open) .cgrp-sub{
-  display:block;font-family:var(--sans);font-size:var(--fs-12);font-weight:400;line-height:1.3;height:1.3em;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;-webkit-line-clamp:none;min-width:0;max-width:100%;color:var(--mid);text-align:left;}
+  display:block;font-family:var(--sans);font-size:var(--fs-12);font-weight:400;line-height:1.3;
+  overflow-wrap:anywhere;min-width:0;max-width:100%;color:var(--mid);text-align:left;}
 /* ── Meritev spodaj levo ── */
 html[data-view="grid"] .lcell:not(.open) .row .num,
 html[data-view="grid"] .lcell:not(.open) .a-row .a-foot,
@@ -1320,13 +1320,13 @@ html[data-view="grid"] :is(#cenikList,.art-skupine) .cgrp:not(.open) .cgrp-count
   font-family:var(--mono);font-size:var(--fs-12);font-weight:400;color:var(--mid);text-align:left;
   font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;align-self:auto;}
 html[data-view="grid"] .lcell:not(.open) .a-row .a-foot .num{font-size:var(--fs-12);color:var(--mid);text-align:left;font-weight:400;}
-/* Noga ploščice: od leve (osnovno pravilo .a-foot jo poravna desno — ob dolgem imenu izdajatelja
-   je zato odrezalo datum na levi). Datum in količina ostaneta cela, ime se skrajša s »…«. */
+/* Noga ploščice: od leve. Ploščica je ozka, zato izdajatelj ni v nogi (viden je v seznamu in
+   v odprtem listu) — datum in količina ostaneta cela, nič se ne odreže. */
 html[data-view="grid"] .lcell:not(.open) .a-row .a-foot{justify-content:flex-start;}
 html[data-view="grid"] .lcell:not(.open) .a-row .a-foot .a-date,
 html[data-view="grid"] .lcell:not(.open) .a-row .a-foot .a-qty,
 html[data-view="grid"] .lcell:not(.open) .a-row .a-foot .a-mer{flex:none;}
-html[data-view="grid"] .lcell:not(.open) .a-row .a-foot .a-izdal{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;}
+html[data-view="grid"] .lcell:not(.open) .a-row .a-foot .a-izdal{display:none;}
 html[data-view="grid"] .lcell:not(.open) .a-row .a-foot .a-qty::before,
 html[data-view="grid"] .lcell:not(.open) .a-row .a-foot .a-mer::before{content:'· ';}
 html[data-view="grid"] .lcell:not(.open) .a-row .a-foot .a-mer{font-weight:600;color:var(--ink);}
@@ -1334,7 +1334,7 @@ html[data-view="grid"] .lcell:not(.open) .a-row .a-foot .a-mer{font-weight:600;c
    količina pa se po potrebi skrajša s »…« (cela je vidna v seznamu in v odprtem listu). */
 html[data-view="grid"] .lcell:not(.open) .a-row .a-foot.z-mero .a-izdal{display:none;}
 html[data-view="grid"] .lcell:not(.open) .a-row .a-foot.z-mero .a-mer{order:1;}
-html[data-view="grid"] .lcell:not(.open) .a-row .a-foot.z-mero .a-qty{order:2;flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;}
+html[data-view="grid"] .lcell:not(.open) .a-row .a-foot.z-mero .a-qty{order:2;flex:0 1 auto;min-width:0;overflow-wrap:anywhere;}
 /* ── Puščica spodaj desno ── */
 html[data-view="grid"] .lcell:not(.open) .row .chev,
 html[data-view="grid"] .lcell:not(.open) .a-row .chev,
@@ -1365,7 +1365,7 @@ html[data-view="grid"] :is(#cenikList,.art-skupine) .sc-isolate .cgrp:not(.open)
 .art-row{display:grid;grid-template-columns:74px 1fr 76px 140px;gap:10px;align-items:center;padding:8px 16px;border-bottom:1px solid var(--line);font-size:var(--fs-14);}
 .art-row:last-child{border-bottom:none;}
 .art-r-id{font-family:var(--mono);font-size:var(--fs-12);color:var(--mid);}
-.art-r-nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink);}
+.art-r-nm{min-width:0;overflow-wrap:anywhere;color:var(--ink);}
 .art-r-cena{font-family:var(--mono);font-size:var(--fs-13);color:var(--ink);text-align:right;font-variant-numeric:tabular-nums;}
 .art-r-acts{display:inline-flex;gap:4px;justify-content:flex-end;}
 .art-r-edit,.art-r-del{border:none;background:none;cursor:pointer;color:var(--mid);width:var(--ctrl-h-sm);height:var(--ctrl-h-sm);border-radius:var(--r-full);font-size:var(--fs-15);display:inline-flex;align-items:center;justify-content:center;line-height:1;}
@@ -1469,7 +1469,7 @@ html[data-view="grid"] :is(#cenikList,.art-skupine) .sc-isolate .cgrp:not(.open)
 .uc-leg-list{flex:1;min-width:130px;display:flex;flex-direction:column;gap:4px;}
 .uc-leg{display:flex;align-items:center;gap:8px;font-size:var(--fs-12);}
 .uc-dot{width:10px;height:10px;border-radius:3px;flex:0 0 auto;}
-.uc-leg-nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink);}
+.uc-leg-nm{flex:1;min-width:0;overflow-wrap:anywhere;color:var(--ink);}
 .uc-leg-v{font-family:var(--mono);color:var(--mid);flex:0 0 auto;font-variant-numeric:tabular-nums;}
 .uc-stat{display:flex;flex-direction:column;justify-content:center;}
 .uc-big{font-size:2.3rem;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;line-height:1.1;margin:8px 0 6px;}
@@ -1578,7 +1578,7 @@ html[data-view="grid"] :is(#cenikList,.art-skupine) .sc-isolate .cgrp:not(.open)
 .vu-dan .pris-nav{flex:none;}
 .vu-dan-l{position:relative;flex:1;min-width:0;display:flex;align-items:center;justify-content:center;height:44px;padding:0 10px;
   border:1.5px solid var(--line);border-radius:var(--r-sm);background:var(--bg);font-weight:600;font-size:var(--fs-15);cursor:pointer;text-align:center;}
-.vu-dan-t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.vu-dan-t{overflow-wrap:anywhere;}
 /* izbirnik datuma je neviden čez cel gumb: tap odpre koledar naprave */
 .vu-dan-in{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:var(--fs-16);border:0;padding:0;}
 .vu-glava{display:grid;grid-template-columns:1fr 14px 1fr 36px;gap:8px;font-size:var(--fs-12);color:var(--mid);margin:0 0 6px;padding:0 2px;}
@@ -1609,7 +1609,7 @@ html[data-view="grid"] :is(#cenikList,.art-skupine) .sc-isolate .cgrp:not(.open)
     font-family:var(--serif);font-size:var(--fs-20);font-weight:450;letter-spacing:-.022em;color:var(--ink);
     transform:translateY(-100%);opacity:0;pointer-events:none;transition:transform .22s ease,opacity .18s ease;}
   .pg-mini.vidna{transform:none;opacity:1;pointer-events:auto;cursor:pointer;}
-  .pg-mini span{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .pg-mini span{min-width:0;overflow-wrap:anywhere;}
 }
 @media print{.pg-mini{display:none!important;}}
 @media(max-width:560px){
@@ -1657,11 +1657,11 @@ html[data-view="grid"] :is(#cenikList,.art-skupine) .sc-isolate .cgrp:not(.open)
 /* Admin — vloge in pravice */
 .adm-top{margin:0 0 14px;}
 .adm-tabs{flex-wrap:wrap;max-width:100%;}
-/* telefon: vloge v eni vrsti (»Super admin« se ne lomi), po potrebi drsenje vstran */
+/* telefon: vse vloge vidne brez drsenja — mreža 3 + 2 (nič odrezanega) */
 @media(max-width:560px){
-  .pris-tabs.adm-tabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;}
-  .pris-tabs.adm-tabs::-webkit-scrollbar{display:none;}
-  .pris-tabs.adm-tabs .pris-tab{flex:1 0 auto;white-space:nowrap;padding:8px 12px;}
+  .pris-tabs.adm-tabs{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));border-radius:var(--r-md);}
+  .pris-tabs.adm-tabs .pris-tab{grid-column:span 2;white-space:nowrap;padding:8px 6px;border-radius:var(--r-sm);}
+  .pris-tabs.adm-tabs .pris-tab:nth-child(n+4){grid-column:span 3;}
 }
 .adm-role{margin-bottom:14px;}
 .adm-chk input:disabled+span{opacity:.5;}
@@ -1727,7 +1727,7 @@ html[data-view="grid"] :is(#cenikList,.art-skupine) .sc-isolate .cgrp:not(.open)
 .dok-ic-excel{color:#59a14f;}
 .dok-ic-file{color:var(--mid);}
 .dok-ic-img{width:64px;height:56px;border:1px solid var(--line);}
-.dok-nm{font-size:var(--fs-13);font-weight:600;color:var(--ink);line-height:1.3;max-width:100%;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:break-word;}
+.dok-nm{font-size:var(--fs-13);font-weight:600;color:var(--ink);line-height:1.3;max-width:100%;overflow-wrap:anywhere;display:block;word-break:break-word;}
 .dok-sub{font-size:var(--fs-11);color:var(--mid);}
 /* ⋯ meni gumb na kartici */
 .dok-more{position:absolute;top:6px;right:6px;width:30px;height:30px;border:1px solid var(--line);background:var(--surface);color:var(--mid);border-radius:var(--r-full);display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:0;transition:opacity .14s,color .14s,border-color .14s;box-shadow:var(--shadow);}
@@ -1979,7 +1979,7 @@ h3.sec,h3.sec-h,.empty h3,.fak-card-h h3,.adm-ime,.stat-num,.auth-claim,
 .str-art{display:flex;align-items:center;gap:10px;padding:8px 4px;border-bottom:1px solid var(--line);}
 .str-art:last-child{border-bottom:none;}
 .str-art .art-id{flex:0 0 auto;}
-.str-art-nm{flex:1 1 auto;min-width:0;font-size:var(--fs-15);color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.str-art-nm{flex:1 1 auto;min-width:0;font-size:var(--fs-15);color:var(--ink);overflow-wrap:anywhere;}
 .str-art-teza{flex:0 0 auto;display:inline-flex;align-items:center;gap:4px;font-variant-numeric:tabular-nums;}
 .str-teza-in{width:66px;padding:6px 8px;border:1.5px solid var(--line);border-radius:var(--r-sm);background:var(--bg);color:var(--ink);font-size:var(--fs-15);text-align:right;font-variant-numeric:tabular-nums;font-family:var(--sans);}
 .str-teza-in:focus{border-color:var(--green-l);outline:none;}
@@ -2048,7 +2048,7 @@ h3.sec,h3.sec-h,.empty h3,.fak-card-h h3,.adm-ime,.stat-num,.auth-claim,
 .gor-s{border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);padding:14px 16px;min-width:0;}
 .gor-s>span{display:block;font-size:var(--fs-12);color:var(--mid);}
 .gor-s>b{display:block;margin-top:4px;font-size:var(--fs-20);font-weight:700;font-variant-numeric:tabular-nums;
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  overflow-wrap:anywhere;}
 .gor-s>small{display:block;margin-top:4px;font-size:var(--fs-12);color:var(--mid);}
 @media(max-width:900px){.gor-stat{grid-template-columns:repeat(2,1fr);}}
 @media(max-width:560px){.gor-stat{gap:10px;}.gor-s{padding:12px 14px;border-radius:var(--radius);}}
@@ -2279,7 +2279,7 @@ html[data-view="grid"] .fak-grid .fak-card:not(.open):hover{transform:translateY
 .pz-seznam{display:flex;flex-direction:column;gap:6px;}
 .pz-seznam .row.pz{grid-template-columns:minmax(0,1fr) auto 16px;gap:12px;padding:10px 14px;margin:0;min-height:0;}
 .pz-seznam .pz-ime{display:flex;align-items:center;gap:10px;min-width:0;}
-.pz-seznam .pz-ime .row-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.pz-seznam .pz-ime .row-name{min-width:0;overflow-wrap:anywhere;}
 .pz-seznam .pris-zap-ure{font-size:var(--fs-14);color:var(--mid);white-space:nowrap;font-variant-numeric:tabular-nums;}
 .pz-st{flex:none;display:inline-flex;align-items:center;gap:6px;font-size:var(--fs-12);font-weight:600;color:var(--mid);white-space:nowrap;}
 .pz-st::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor;opacity:.45;}
@@ -2366,7 +2366,7 @@ html[data-view] .pz-seznam .row .num::before{content:none;}
 .u-acts.nl-akc{position:sticky;bottom:0;z-index:3;display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:8px;
   margin:14px 0 0;padding:10px 0 calc(6px + env(safe-area-inset-bottom));background:var(--surface);border-top:1px solid var(--line);}
 .u-acts.nl-akc > button{padding-left:18px;padding-right:18px;}
-.nl-sum{font-size:var(--fs-14);color:var(--mid);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.nl-sum{font-size:var(--fs-14);color:var(--mid);font-variant-numeric:tabular-nums;overflow-wrap:anywhere;}
 .nl-sum b,.nl-sum output{color:var(--ink);font-weight:700;}
 @media (max-width:560px){
   .ur-post{grid-template-columns:auto minmax(0,1fr) 64px 38px;gap:6px;}
@@ -2507,3 +2507,15 @@ html[data-theme="dark"] .doc-stage{background:color-mix(in srgb,var(--ink) 6%,va
 .fak-nep{display:inline-flex;align-items:center;gap:2px;border:0;background:none;padding:2px 0;font:600 var(--fs-13)/1.3 var(--sans);color:var(--st-warn-ink);cursor:pointer;text-align:left;}
 .fak-nep:hover{text-decoration:underline;text-underline-offset:3px;}
 .fak-nep .iko-t{color:var(--st-warn);}
+/* Telefon: zgornja vrstica se zvezno skrči z zaslonom — nič ne zleze čez rob (tudi pri 320 px);
+   pri 375 px in več ostane kot prej. */
+@media(max-width:560px){
+  .topbar-in{gap:clamp(6px,2.67vw,10px);padding-left:calc(clamp(12px,6.4vw,24px) + env(safe-area-inset-left));padding-right:calc(clamp(12px,6.4vw,24px) + env(safe-area-inset-right));}
+  .topbar .wordmark{font-size:clamp(1.15rem,6.6vw,1.55rem);}
+  .tools{gap:clamp(4px,2.13vw,8px);}
+  .topbar .icon-btn,.topbar .burger{width:clamp(32px,9.6vw,36px);height:clamp(32px,9.6vw,36px);}
+}
+/* Nič odrezanega: imena v Prisotnosti se prelomijo, ime vloge se skrči ob oznaki */
+.pz-seznam .pz-ime .row-name{overflow:visible;text-overflow:clip;white-space:normal;overflow-wrap:anywhere;}
+.adm-ime{min-width:0;width:100%;}
+.adm-role-key{flex:none;}

@@ -323,7 +323,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.56 · BETA';
+  var APP_VERZIJA = '4.57 · BETA';
   var NALAGANJE = '<div class="sc-load" aria-hidden="true"><span class="sc-load-line"></span></div>';
   // Stale-while-revalidate: ob ponovnem obisku razdelka NE pobriši vsebine v nalagalnik —
   // obdrži prejšnjo (takojšen prikaz) in jo osveži v ozadju. Trak le ob prvem nalaganju.
@@ -1778,7 +1778,8 @@
   function prisAuto() {
     var sec = document.getElementById('sec-prisotnost');
     if (!sec || sec.classList.contains('hidden')) return;      // ni odprto
-    if (document.querySelector('.sc-modal-back')) return;      // odprt modal → ne moti
+    if (document.hidden) return;                                // zavihek v ozadju → ne obremenjuj baze
+    if (_okno || document.querySelector('.sc-modal-back')) return;   // odprto okno ali modal → ne moti
     var ae = document.activeElement;                            // uporabnik nekaj tipka → ne moti
     if (ae && sec.contains(ae) && /INPUT|SELECT|TEXTAREA/.test(ae.tagName)) return;
     naloziPrisotnost().then(function () {
@@ -1797,7 +1798,10 @@
       if (!_prisDan) _prisDan = danes10();
       prisRender();
       box.dataset.loaded = '1';
-      if (!_prisTimer) _prisTimer = setInterval(prisAuto, 12000);
+      if (!_prisTimer) {
+        _prisTimer = setInterval(prisAuto, 12000);
+        document.addEventListener('visibilitychange', function () { if (!document.hidden) prisAuto(); });   // ob vrnitvi takoj sveže
+      }
     } catch (e) {
       if (!box.dataset.loaded) box.innerHTML = '<div class="pris-card"><p class="u-sub">Napake pri nalaganju: ' + escape_(e && e.message ? e.message : e) + '</p></div>';
     }
@@ -1854,7 +1858,7 @@
     var blok1 = '<div class="pris-card pris-zap-card"><div class="pris-h"><h3 class="sec-h">Zaposleni</h3>' +
       '<span class="pris-count" title="Prisotni / aktivni">' + prisotnihN + ' / ' + aktivnihN + ' prisotnih</span></div>' +
       (zapKartice ? '<div class="pris-zap pz-seznam">' + zapKartice + '</div>' : '<p class="u-sub" style="padding:10px 2px">Še ni zaposlenih.</p>') +
-      '<div class="pris-add"><input type="text" class="pris-new" placeholder="Ime in priimek novega zaposlenega"><button type="button" class="cgrp-btn pris-add-btn">' + IKO_T_PLUS + 'Dodaj</button></div></div>';
+      '<div class="pris-add"><input type="text" class="pris-new" placeholder="Ime in priimek"><button type="button" class="cgrp-btn pris-add-btn">' + IKO_T_PLUS + 'Dodaj</button></div></div>';
 
     // ── Blok 2: evidenca (dan/mesec/oseba) ──
     var mesecni = (_prisView === 'mesec' || _prisView === 'oseba');
@@ -3443,6 +3447,16 @@
 
   /* ══════════ SPREMNI LISTI ══════════ */
   async function naloziListe() {
+    // Stranka bere prek pogleda brez internih stolpcev (66_listi_stranke.sql): interna
+    // opomba, pisna opomba osebja in dnevnik popravkov ne pridejo v njen brskalnik.
+    if (!OSEBJE && !MOJPROFIL.super_admin) {
+      const rs = await vseVrstice((od, do_) => sb.from('listi_stranke').select('id,number,doc_date,total_pieces,weight_kg,org_id,issued_name,popravil,popravljeno_at,source,transport,potrjeno,legacy_id,opomba_stranka').order('doc_date', { ascending: false }).order('id', { ascending: false }).range(od, do_));
+      LISTI_NAPAKA = !!(rs && rs.error);
+      LISTI = (rs && !rs.error && rs.data) ? rs.data : [];
+      VSEHLISTOV = LISTI.length;
+      STAR_SET = new Set();
+      return;
+    }
     // Beri VSE liste po straneh (brez 1000-vrstičnega limita — mora delati še čez leta).
     // Stabilna paginacija: doc_date + id kot razločevalo.
     const _kol = 'id,number,doc_date,total_pieces,weight_kg,org_id,issued_name,popravil,popravljeno_at,popravki,source,transport,potrjeno,legacy_id,opomba,opomba_avtor,opomba_at,opomba_stranka,opomba_evidenca';
@@ -6976,7 +6990,6 @@
     </button><div class="arts" id="a${i}"></div></div>`;
     }).join('') + '</div>';
     document.querySelectorAll('#content .row').forEach(b => { b.addEventListener('click', () => toggle(b)); strankaPredNalozi(b); });
-    pripniMarquee('content');
     oknoPoIzrisu();
     requestAnimationFrame(function () { window.scrollTo(0, _sy); });
   }
@@ -6984,21 +6997,6 @@
   { const ss = $('strankeSort'); if (ss) { ss.value = custOrderMode(); ss.addEventListener('change', function () { try { localStorage.setItem('sc-cust-order', ss.value); } catch (e) {} shraniNastavitve(); render(); }); } }
   { const b = $('novaStrankaBtn'); if (b) b.addEventListener('click', () => novaStranka()); }
 
-  // Ob hoverju na kartico se predolgo ime »odvije« (marquee, kot v glasbenih aplikacijah).
-  function pripniMarquee(contId) {
-    var cont = $(contId); if (!cont || cont._mqPripet) return; cont._mqPripet = true;
-    function odvij(row, on) {
-      var nm = row.querySelector('.row-nm'), mask = row.querySelector('.row-name'); if (!nm || !mask) return;
-      if (on) {
-        nm.style.maxWidth = 'none';
-        var over = nm.scrollWidth - mask.clientWidth;
-        if (over > 2) { nm.style.textOverflow = 'clip'; nm.style.transitionDuration = Math.max(0.5, over / 70) + 's'; nm.style.transform = 'translateX(-' + (over + 4) + 'px)'; }
-        else { nm.style.maxWidth = ''; }
-      } else { nm.style.transform = ''; nm.style.textOverflow = ''; nm.style.maxWidth = ''; }
-    }
-    cont.addEventListener('mouseover', function (e) { var row = e.target.closest('.row'); if (row && cont.contains(row)) odvij(row, true); });
-    cont.addEventListener('mouseout', function (e) { var row = e.target.closest('.row'); if (row && !row.contains(e.relatedTarget)) odvij(row, false); });
-  }
   // Stranka se odpre v OKNU (prej se je razprla v mreži). Artikli se naložijo PRED
   // odprtjem — okno zraste naravnost v končno velikost, namesto da bi se odprlo prazno
   // (»Nalagam …«) in se artikli pojavili šele za njim.
@@ -7653,7 +7651,7 @@
      Namestitveni paket leži poleg spletne različice, ne v kodi portala.
      Če ga še ni, to tu tudi piše — namesto strani 404. */
   // ?v= ob vsaki novi različici aplikacije (aplikacija/zgradi.py): brskalnik in predpomnilnik vzameta nov paket.
-  var APK_POT = 'tablica/Pralnica-sync.apk?v=11.4';
+  var APK_POT = 'tablica/Pralnica-sync.apk?v=11.5';
 
   function wirePwa(scope) {
     var pb = (scope || document).querySelector('#pwaInstall');
