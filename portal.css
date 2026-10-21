@@ -2796,3 +2796,8 @@ html[data-theme="dark"] .doc-stage{background:color-mix(in srgb,var(--ink) 6%,va
   .v5 #sec-arhiv .filtri .cs[data-za="arhivOrg"]{flex:1 1 auto;}
   .v5 #sec-arhiv .filtri .cs[data-za="arhivSort"]{flex:none;}
 }
+
+/* ── Meni na telefonu: več prostora nad Safarijevo spodnjo vrstico in nad kretnjo domov ── */
+@media(max-width:900px){
+  .v5 .side{padding-bottom:calc(28px + env(safe-area-inset-bottom));}
+}
