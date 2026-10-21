@@ -635,6 +635,7 @@ async function confirmReview(){
     $("rvTelo").insertAdjacentHTML("beforeend", '<div class="rv-ok"><span class="dot ok"></span>Shranjen na napravi' + (portalAuth ? " in se pošilja v portal." : ".") + '</div>');
     $("rvPotrdiAkc").hidden = true; $("rvTiskAkc").hidden = false;
     savePdfs(ent);
+    pripraviPdf(ent);   /* iPhone (začetni zaslon): PDF za meni Deli, preden tapneš »Natisni« */
     try{ syncPush(true); }catch(e){}
   }finally{ _shranjujem = false; }
 }
@@ -896,6 +897,7 @@ function openSheet(id, izvor){
   }
   ifr.onload = function(){ prilagodi(); try{ ifr.contentDocument.fonts.ready.then(prilagodi); }catch(_){} };
   ifr.srcdoc = dokZaListe([e], 1);
+  pripraviPdf(e);
   odpriOkno("oknoPredogled", izvor);
   requestAnimationFrame(prilagodi);
   _pdPrilagodi = prilagodi;
@@ -905,12 +907,77 @@ window.addEventListener("resize", function(){ if(_pdPrilagodi && _okna.oknoPredo
 obZaprtju.oknoPredogled = function(){ _pdPrilagodi = null; setTimeout(function(){ if(!_okna.oknoPredogled) $("pdOkvir").innerHTML = ""; }, 900); };
 $("pdTisk").onclick = function(){ var e = entryById(previewId); if(e) printLists([e], $("pdEna").checked); };
 
+/* iPhone / iPad, aplikacija na začetnem zaslonu: iOS tam window.print() prezre (preverjeno v
+   simulatorju iOS 27 — ni dialoga, tudi takoj ob dotiku). Natisne se prek menija Deli: pravi PDF
+   (ista koda kot portal: ../pdfgen.js + ../spremni-pdf.js) → navigator.share → »Natisni«.
+   PDF se pripravi vnaprej (shranjen list, predogled), ker iOS meni Deli odpre le neposredno ob dotiku. */
+function jeIosSam(){
+  var ua = navigator.userAgent || "";
+  var ios = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+  var sam = navigator.standalone === true || !!(window.matchMedia && matchMedia("(display-mode: standalone)").matches);
+  return ios && sam && VARIANTA === "splet" && !!navigator.share;
+}
+function naloziSkript(pot){
+  return new Promise(function(res, rej){ var sc = document.createElement("script"); sc.src = pot; sc.onload = res; sc.onerror = function(){ rej(new Error(pot + " se ni naložil")); }; document.head.appendChild(sc); });
+}
+var _pdfMod = null;
+function naloziPdf(){
+  if(window.PDFDoc && window.SpremniPdf) return Promise.resolve();
+  if(!_pdfMod){
+    _pdfMod = (window.PDFDoc ? Promise.resolve() : naloziSkript("../pdfgen.js"))
+      .then(function(){ return window.SpremniPdf ? null : naloziSkript("../spremni-pdf.js"); })
+      .then(function(){ if(!window.PDFDoc || !window.SpremniPdf) throw new Error("PDF modula nista na voljo"); window.SpremniPdf.BIZ = DOK_BIZ; });
+    _pdfMod.catch(function(){ _pdfMod = null; });
+  }
+  return _pdfMod;
+}
+function pdfPodatki(e){
+  var popAt = e.portalPopravljenoAt || e.popravljeno_at;
+  return {
+    stevilka: e.stevilka,
+    naziv: e.strankaPodjetje || e.strankaNaziv || "—",
+    nazivSek: (e.strankaPodjetje && e.strankaNaziv && e.strankaNaziv !== e.strankaPodjetje) ? e.strankaNaziv : "",
+    oddaja: "Oddaja: " + fmtDateHuman(e.datum) + (e.izdal ? "  ·  Izdal: " + e.izdal : "") + "  ·  " + (e.prevoz === "izredni" ? "Izredni prevoz" : "Redni prevoz"),
+    postavke: (e.postavke || []).map(function(p){ return { naziv: p.naziv, kosov: stevilo(p.kosov) }; }),
+    kg: (e.kg !== "" && e.kg != null && Number(e.kg) > 0) ? tezaFmt(e.kg) : "",
+    opomba: e.opombaStranka || "",   /* interna opomba se NE tiska */
+    popravek: popAt ? "Popravljeno v portalu · " + (e.popravil || "osebje") + " · " + fmtDateHuman(String(popAt).slice(0, 10)) : ""
+  };
+}
+/* PDF enega lista v 1 ali 2 izvodih (vsak izvod svoja stran), kot natisne tablica */
+var _pdfListi = {};
+function pripraviPdf(e){
+  if(!e || !jeIosSam() || pdfPlugin()) return;
+  [1, 2].forEach(function(izv){
+    var k = e.id + "|" + izv + "|" + (e.rev || 0) + "|" + (e.portalPopravljenoAt || "");
+    if(_pdfListi[k]) return;
+    var c = _pdfListi[k] = { file: null, err: null };
+    naloziPdf().then(function(){
+      var doc = new PDFDoc();
+      for(var i = 0; i < izv; i++){ doc.addPage(); window.SpremniPdf.stran(doc, pdfPodatki(e)); }
+      c.file = new File([doc.build()], "spremni_list_" + pdfName(e).replace(/\.pdf$/, "") + (izv > 1 ? "_2x" : "") + ".pdf", { type: "application/pdf" });
+    }).catch(function(er){ c.err = er; });
+  });
+}
+function deliPdfList(e, izv){
+  var c = _pdfListi[e.id + "|" + izv + "|" + (e.rev || 0) + "|" + (e.portalPopravljenoAt || "")];
+  if(!c){ pripraviPdf(e); toast("Pripravljam PDF — tapni še enkrat."); return; }
+  if(!c.file){ toast(c.err ? "PDF ni uspel: " + (c.err.message || c.err) : "PDF se še pripravlja — tapni še enkrat."); return; }
+  if(navigator.canShare && !navigator.canShare({ files: [c.file] })){ toast("Ta naprava ne zna deliti PDF-ja."); return; }
+  navigator.share({ files: [c.file], title: "Spremni list " + e.stevilka }).catch(function(er){ if(er && er.name !== "AbortError") toast("Meni Deli se ni odprl: " + (er.message || er.name)); });
+}
+/* iPhone na začetnem zaslonu: namig pod gumbi za tisk + moduli za PDF vnaprej (v ozadju) */
+if(jeIosSam()){
+  Array.prototype.forEach.call(document.querySelectorAll(".tisk-namig"), function(p){ p.hidden = false; });
+  setTimeout(function(){ naloziPdf().catch(function(){}); }, 2500);
+}
 function pdfPlugin(){ try{ if(window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.PralnicaPrint) return Capacitor.Plugins.PralnicaPrint; }catch(e){} return null; }
 function printLists(arr, enIzvod){
   if(!arr || !arr.length){ toast("Ni spremnih listov za tiskanje."); return; }
   var html = dokZaListe(arr, enIzvod ? 1 : 2);
   var P = pdfPlugin();
   if(P){ P.print({ html: html, jobName: "Spremni list " + arr[0].stevilka }).catch(function(){ toast("Tiskanje ni uspelo."); }); return; }
+  if(jeIosSam() && arr.length === 1){ deliPdfList(arr[0], enIzvod ? 1 : 2); return; }
   if(jeMobilna()){ natisniVGlavnem(html); return; }
   natisniPrekIframe(html);
 }

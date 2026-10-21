@@ -6,7 +6,7 @@
    različici bi sicer tablica dobila star paket iz predpomnilnika). */
 var CACHE = 'sc-portal';
 var PRECACHE = ['./boot.js', './portal.css', './portal.js', './start.js', './supabase.js', './index.html',
-  './pdfgen.js'];   // lena modula za PDF — prednaloži, da PDF deluje tudi brez povezave
+  './pdfgen.js', './spremni-pdf.js'];   // lena modula za PDF — prednaloži, da PDF deluje tudi brez povezave
 self.addEventListener('install', function (e) {
   e.waitUntil(
     caches.open(CACHE).then(function (c) {
