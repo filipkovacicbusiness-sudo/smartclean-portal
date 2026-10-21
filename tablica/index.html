@@ -709,7 +709,7 @@ html.sc-tema-prehod,html.sc-tema-prehod *,html.sc-tema-prehod *::before,html.sc-
    Podatki ostanejo v istih ključih kot v prejšnjih različicah (pralnica:*),
    zato posodobitev ne izgubi ničesar.
    ══════════════════════════════════════════════════════════════════════ */
-var VARIANTA = "tablica", APP_VERZIJA = "11.3";
+var VARIANTA = "tablica", APP_VERZIJA = "11.4";
 var LASTNIK = "filip@eflitte.si";
 var DOK_BIZ = ["BSMART d.o.o.", "Škalska cesta 6, 3210 Slovenske Konjice", "+386 41 209 676", "+386 68 693 988", "blanka.kovacic1@gmail.com"];
 var PRIVZETI_PORTAL = "https://anrhtgbckxrccnafcmsz.supabase.co";
@@ -2264,7 +2264,7 @@ async function api(pot, opt, drugic){
   if(r.status === 401 && !drugic){ await portalRefresh(); return api(pot, opt, true); }
   var t = await zRokom(r.text(), 25000), j = null;   // fetchT ustavi štoparico ob glavi; telo ima svojo mejo
   try{ j = t ? JSON.parse(t) : null; }catch(_){ j = null; }
-  if(!r.ok){ var e = new Error((j && (j.message || j.hint)) || ("napaka " + r.status)); e.status = r.status; e.code = j && j.code; throw e; }
+  if(!r.ok){ var e = new Error((j && (j.message || j.hint)) || ("napaka " + r.status)); e.status = r.status; e.code = j && j.code; e.hint = j && j.hint; throw e; }
   return j;
 }
 /* vse vrstice po straneh (privzeta meja Supabase je 1000) */
@@ -2304,13 +2304,6 @@ function zaziviRealtime(){
 }
 
 /* Postavke zamenja v ENI transakciji na strežniku (migracija 59); rezerva: stari način. */
-async function zamenjajPostavke(noteId, post){
-  try{ await api("rpc/app_zamenjaj_postavke", { method: "POST", body: { p_note: noteId, p_postavke: post } }); return; }
-  catch(err){ var ni = err && (err.status === 404 || err.code === "PGRST202" || /app_zamenjaj_postavke/i.test(err.message || "")); if(!ni) throw err; }
-  await api("delivery_note_items?note_id=eq." + noteId, { method: "DELETE" });
-  if(post.length) await api("delivery_note_items", { method: "POST", body: post });
-}
-
 /* časa iz baze (»…123+00:00«) in naprave (»…123Z«) se primerjata po vrednosti, ne kot niza */
 function istiCas(a, b){ if(!a || !b) return !a && !b; var x = Date.parse(a), y = Date.parse(b); return isNaN(x) || isNaN(y) ? a === b : x === y; }
 /* ── pošiljanje enega spremnega lista ── */
@@ -2346,18 +2339,20 @@ async function posljiEnega(e){
       if(!_isti){ var _ez = new Error("številka " + e.stevilka + " je v portalu že zasedena"); _ez.stevilkaZasedena = true; throw _ez; }
     }
   }
-  var noteId;
+  /* potrjen list: velja različica iz portala, naslednji prenos jo povrne */
+  var zavrniPotrjen = function(){
+    e.potrjeno = true; e.zaklenjen = true; e.syncedAt = e.syncedAt || new Date().toISOString();
+    e.osveziIzPortala = true;
+    e.syncNapaka = null; _zavrnjenoPotrjeno.push(e.stevilka);
+    return true;
+  };
+  var noteId = null, portalP = null;
   if(obst.length){
     noteId = obst[0].id; e.portalId = noteId;
     /* potrjenega lista aplikacija NIKOLI ne spreminja — velja različica iz portala */
-    if(obst[0].potrjeno === true){
-      e.potrjeno = true; e.zaklenjen = true; e.syncedAt = e.syncedAt || new Date().toISOString();
-      e.osveziIzPortala = true;   // naslednji prenos povrne portalno vsebino
-      e.syncNapaka = null; _zavrnjenoPotrjeno.push(e.stevilka);
-      return true;
-    }
+    if(obst[0].potrjeno === true) return zavrniPotrjen();
     /* prekrivanje: portalna različica se je spremenila od znane osnove → ne povozi, zapiši spor */
-    var portalP = obst[0].popravljeno_at || null, baza = e.portalPopravljenoAt || null;
+    portalP = obst[0].popravljeno_at || null; var baza = e.portalPopravljenoAt || null;
     /* list je bil že poslan (portalId) → tudi prazna osnova je osnova: popravek v portalu se ne povozi */
     if(e.popravil && (baza || e.portalId) && portalP && !istiCas(portalP, baza)){
       await api("delivery_note_conflicts", { method: "POST", body: {
@@ -2370,29 +2365,26 @@ async function posljiEnega(e){
       e.vSporu = true; e.syncedAt = new Date().toISOString(); e.syncNapaka = "prekrivanje — reši v portalu";
       return true;
     }
-    var popravek = Object.assign({}, vrstica); delete popravek.source;   // izvor lista (portal/tablica) ostane, kot je
-    await api("delivery_notes?id=eq." + noteId, { method: "PATCH", body: popravek });
-    e.portalPopravljenoAt = vrstica.popravljeno_at || portalP || e.portalPopravljenoAt || null;
-  }else{
-    var nova = await api("delivery_notes", { method: "POST", body: vrstica, prefer: "return=representation" });
-    noteId = nova[0].id; e.portalId = noteId;
-    e.portalPopravljenoAt = vrstica.popravljeno_at || e.portalPopravljenoAt || null;
   }
-  /* dnevnik urejanj in opombe — best-effort (starejša baza stolpcev morda nima) */
-  /* starejša baza stolpca morda nima (to se prezre); omrežna napaka pa list pusti v vrsti */
-  var bestEffort = function(_e){ if(/ni povezave/i.test((_e && _e.message) || "") || (_e && _e.status >= 500)) throw _e; };
-  if(e.popravki){ try{ await api("delivery_notes?id=eq." + noteId, { method: "PATCH", body: { popravki: e.popravki } }); }catch(_e){ bestEffort(_e); } }
-  try{ await api("delivery_notes?id=eq." + noteId, { method: "PATCH", body: { opomba_stranka: (e.opombaStranka || "") || null, opomba_evidenca: (e.opombaEvidenca || "") || null } }); }catch(_e){ bestEffort(_e); }
   /* 4. postavke (enaki artikli združeni) */
-  var post = (e.postavke || []).filter(function(p){ return p && p.naziv; }).map(function(p, i){
+  var post = (e.postavke || []).filter(function(p){ return p && p.naziv; }).map(function(p){
     var ime = String(p.naziv).trim();
-    return { note_id: noteId, article_id: (p.uuid && poId[p.uuid] ? p.uuid : null) || (p.id && poLegacy[p.id]) || poImenu[ime.toLowerCase()] || null, article_name: ime, pieces: Number(p.kosov) || 0, sort_order: i };
+    return { article_id: (p.uuid && poId[p.uuid] ? p.uuid : null) || (p.id && poLegacy[p.id]) || poImenu[ime.toLowerCase()] || null, article_name: ime, pieces: Number(p.kosov) || 0 };
   });
   var videni = {}, zdruzene = [];
   post.forEach(function(r){ var k = r.article_id ? ("a" + r.article_id) : ("n" + String(r.article_name || "").toLowerCase());
     if(videni[k]) videni[k].pieces += (r.pieces || 0); else { videni[k] = r; zdruzene.push(r); } });
-  zdruzene.forEach(function(r, ix){ r.sort_order = ix; });
-  await zamenjajPostavke(noteId, zdruzene);
+  /* 5. list, dnevnik urejanj, opombi in postavke v ENI transakciji (65_shrani_list.sql):
+     ob izpadu povezave list nikoli ne ostane v portalu brez postavk; isti list iz
+     dveh zavihkov ali po izgubljenem odgovoru se posodobi, ne podvoji */
+  var lst = Object.assign({}, vrstica);
+  if(noteId) delete lst.source;   // izvor lista (portal/tablica) ostane, kot je
+  if(e.popravki) lst.popravki = e.popravki;
+  lst.opomba_stranka = e.opombaStranka || null; lst.opomba_evidenca = e.opombaEvidenca || null;
+  try{ noteId = await api("rpc/app_shrani_list", { method: "POST", body: { p_id: noteId, p_list: lst, p_postavke: zdruzene } }); }
+  catch(err){ if(err && err.hint === "potrjen") return zavrniPotrjen(); throw err; }
+  e.portalId = noteId;
+  e.portalPopravljenoAt = vrstica.popravljeno_at || portalP || e.portalPopravljenoAt || null;
   return true;
 }
 

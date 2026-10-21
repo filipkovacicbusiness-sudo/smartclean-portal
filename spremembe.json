@@ -1,5 +1,15 @@
 [
  {
+  "v": "4.56",
+  "d": "2026-10-21",
+  "c": "2026-10-21T13:40:00+02:00",
+  "t": [
+   "Zanesljivost: spremni list in njegove postavke se shranijo v enem koraku — ob izpadu povezave list nikoli več ne ostane v portalu brez postavk (aplikacija, nov list, urejanje, prekrivanja, uvoz).",
+   "Isti list, poslan dvakrat (dva zavihka ali izgubljen odgovor), se posodobi in ne podvoji; če ga v portalu medtem potrdijo, ga aplikacija zaklene in ne prepiše.",
+   "Aplikacija: skritih 160 artiklov, ki so bili strankam dodani množično in jih niso nikoli uporabile (vrnejo se samodejno ob prvi uporabi)."
+  ]
+ },
+ {
   "v": "4.55",
   "d": "2026-10-21",
   "c": "2026-10-21T12:45:00+02:00",

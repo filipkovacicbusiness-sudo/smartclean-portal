@@ -323,7 +323,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.55 · BETA';
+  var APP_VERZIJA = '4.56 · BETA';
   var NALAGANJE = '<div class="sc-load" aria-hidden="true"><span class="sc-load-line"></span></div>';
   // Stale-while-revalidate: ob ponovnem obisku razdelka NE pobriši vsebine v nalagalnik —
   // obdrži prejšnjo (takojšen prikaz) in jo osveži v ozadju. Trak le ob prvem nalaganju.
@@ -3991,12 +3991,9 @@
     if (!ok) return;
     try {
       if (keep === 'tablica' && k.note_id) {
-        var patch = { weight_kg: k.weight_kg, transport: (k.transport === 'izredni' ? 'izredni' : 'redni'), issued_name: k.issued_name, popravil: k.popravil, popravljeno_at: new Date().toISOString() };
-        var e1 = (await sb.from('delivery_notes').update(patch).eq('id', k.note_id)).error; if (e1) throw e1;
-        try { await sb.from('delivery_notes').update({ popravki: k.popravki }).eq('id', k.note_id); } catch (_p) {}
-        await sb.from('delivery_note_items').delete().eq('note_id', k.note_id);
-        var items = (Array.isArray(k.postavke) ? k.postavke : []).filter(function (p) { return p && p.naziv; }).map(function (p, i) { return { note_id: k.note_id, article_name: String(p.naziv), pieces: Number(p.kosov) || 0, sort_order: i }; });
-        if (items.length) { var e2 = (await sb.from('delivery_note_items').insert(items)).error; if (e2) throw e2; }
+        var patch = { weight_kg: k.weight_kg, transport: (k.transport === 'izredni' ? 'izredni' : 'redni'), issued_name: k.issued_name, popravil: k.popravil, popravljeno_at: new Date().toISOString(), popravki: k.popravki || null };
+        var items = (Array.isArray(k.postavke) ? k.postavke : []).filter(function (p) { return p && p.naziv; }).map(function (p, i) { return { article_name: String(p.naziv), pieces: Number(p.kosov) || 0, sort_order: i }; });
+        var e1 = (await sb.rpc('app_shrani_list', { p_id: k.note_id, p_list: patch, p_postavke: items, p_tudi_potrjen: true })).error; if (e1) throw e1;
         delete _POST_CACHE[k.note_id];   // osveži predpomnjene postavke tega lista
         pozabiPostavke(k.note_id);
         logDodaj('Arhiv', 'Urejeno', 'Prekrivanje rešeno (tablica) · ' + (k.number || ''));
@@ -4371,8 +4368,7 @@
     var ok = await potrdiModal({ naslov: 'Izbriši dokončno', sporocilo: 'Dokončno izbrišem ta spremni list? Tega ni mogoče razveljaviti.', potrdi: 'Izbriši dokončno', preklici: 'Prekliči', nevarno: true });
     if (!ok) return;
     try {
-      var r1 = await sb.from('delivery_note_items').delete().eq('note_id', id); if (r1.error) throw r1.error;
-      var r2 = await sb.from('delivery_notes').delete().eq('id', id); if (r2.error) throw r2.error;
+      var r2 = await sb.from('delivery_notes').delete().eq('id', id); if (r2.error) throw r2.error;   // postavke izbriše baza (ON DELETE CASCADE)
       delete _POST_CACHE[id];
       pozabiPostavke(id);
       logDodaj('Arhiv', 'Izbrisano dokončno', 'Spremni list dokončno izbrisan iz koša');
@@ -4554,9 +4550,7 @@
         if (r.error) throw r.error;
       } else {
         // Rezerva, če migracija 50 (deleted_at) še ni zagnana → staro dokončno brisanje.
-        var r1 = await sb.from('delivery_note_items').delete().eq('note_id', box._id);
-        if (r1.error) throw r1.error;
-        var r2 = await sb.from('delivery_notes').delete().eq('id', box._id);
+        var r2 = await sb.from('delivery_notes').delete().eq('id', box._id);   // postavke izbriše baza (ON DELETE CASCADE)
         if (r2.error) throw r2.error;
       }
       pozabiPostavke(box._id);
@@ -4840,25 +4834,20 @@
           if (ins && ins.data) { p.artId = ins.data.id; if (CLANI) CLANI.push({ id: ins.data.id, org_id: org_id, name: p.naziv, cena_sifra: p.sifra, sort_order: null }); }
         }
       }
-      let r = await sb.from('delivery_notes').update({
+      const rows = postavke.map(p => ({
+        article_name: p.naziv,
+        article_id: p.artId || poImenu[p.naziv.toLowerCase()] || null,
+        pieces: p.kosov
+      }));
+      // list in postavke v eni transakciji (65_shrani_list.sql)
+      const r = await sb.rpc('app_shrani_list', { p_id: box._id, p_tudi_potrjen: true, p_postavke: rows, p_list: {
         org_id, doc_seq: seq, doc_year: leto, doc_date,
         weight_kg: _kgAuto,
         transport: beriPrevoz(box),
         popravil: JAZIME || 'osebje',
         popravljeno_at: new Date().toISOString()
-      }).eq('id', box._id);
+      } });
       if (r.error) throw r.error;
-      r = await sb.from('delivery_note_items').delete().eq('note_id', box._id);
-      if (r.error) throw r.error;
-      if (postavke.length) {
-        const rows = postavke.map((p, i) => ({
-          note_id: box._id, article_name: p.naziv,
-          article_id: p.artId || poImenu[p.naziv.toLowerCase()] || null,
-          pieces: p.kosov, sort_order: i
-        }));
-        r = await sb.from('delivery_note_items').insert(rows);
-        if (r.error) throw r.error;
-      }
       delete _POST_CACHE[box._id];   // KLJUČNO: sicer ponovni prikaz/urejanje pokaže stare postavke in jih ob shranjevanju zapiše nazaj
       pozabiPostavke(box._id);
       logDodaj('Arhiv', 'Urejeno', 'Spremni list ' + ((box._note && box._note.number) || ''));
@@ -5187,7 +5176,9 @@
           if (ins && ins.data) { p.artId = ins.data.id; if (CLANI) CLANI.push({ id: ins.data.id, org_id: org_id, name: p.naziv, cena_sifra: p.sifra, sort_order: null }); }
         }
       }
-      const { data: nova, error } = await sb.from('delivery_notes').insert({
+      const rows = postavke.map(p => ({ article_name: p.naziv, article_id: p.artId || poImenu[p.naziv.toLowerCase()] || null, pieces: p.kosov }));
+      // list in postavke v eni transakciji (65_shrani_list.sql)
+      const { data: novId, error } = await sb.rpc('app_shrani_list', { p_id: null, p_postavke: rows, p_list: {
         org_id, doc_seq: seq, doc_year: leto, doc_date,
         weight_kg: _kgAuto,
         transport: beriPrevoz(box),
@@ -5195,13 +5186,9 @@
         opomba_stranka: opStranka || null,
         opomba_evidenca: opInterno || null,
         legacy_id: 'portal-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7)
-      }).select('id').single();
+      } });
       if (error) throw error;
-      if (postavke.length) {
-        const rows = postavke.map((p, i) => ({ note_id: nova.id, article_name: p.naziv, article_id: p.artId || poImenu[p.naziv.toLowerCase()] || null, pieces: p.kosov, sort_order: i }));
-        const r2 = await sb.from('delivery_note_items').insert(rows);
-        if (r2.error) throw r2.error;
-      }
+      const nova = { id: novId };
       logDodaj('Arhiv', 'Dodano', 'Spremni list ' + seq + '/' + leto + ' · ' + (ORGIME[org_id] || ''));
       toast('Spremni list ustvarjen');
       await naloziListe();
@@ -7623,43 +7610,20 @@
           source: 'tablet',
           legacy_id: e.id || e.stevilka + '@' + e.datum
         };
-        let noteId = zeIma[vrstica.legacy_id];
-        if (noteId) {
-          const {
-            error
-          } = await sb.from('delivery_notes').update(vrstica).eq('id', noteId);
-          if (error) {
-            por.tezav.push('list ' + e.stevilka + ': ' + error.message);
-            continue;
-          }
-          pozabiPostavke();
-          por.posodobljenih++;
-          await sb.from('delivery_note_items').delete().eq('note_id', noteId);
-        } else {
-          const {
-            data,
-            error
-          } = await sb.from('delivery_notes').insert(vrstica).select('id').single();
-          if (error) {
-            por.tezav.push('list ' + e.stevilka + ': ' + (/duplicate|unique/i.test(error.message) ? 'številka ' + seq + '/' + leto + ' je v bazi že zasedena' : error.message));
-            continue;
-          }
-          noteId = data.id;
-          por.listov++;
-        }
-        const post = (e.postavke || []).filter(p => p && p.naziv).map((p, i) => ({
-          note_id: noteId,
+        const post = (e.postavke || []).filter(p => p && p.naziv).map(p => ({
           article_id: p.id && artPoOrg[org].legacy[p.id] || artPoOrg[org].ime[(p.naziv || '').trim().toLowerCase()] || null,
           article_name: p.naziv,
-          pieces: Number(p.kosov) || 0,
-          sort_order: i
+          pieces: Number(p.kosov) || 0
         }));
-        if (post.length) {
-          const {
-            error
-          } = await sb.from('delivery_note_items').insert(post);
-          if (error) por.tezav.push('list ' + e.stevilka + ': postavk ni bilo mogoče dodati');else por.postavk += post.length;
+        // list in postavke v eni transakciji (65_shrani_list.sql)
+        const obstaja = !!zeIma[vrstica.legacy_id];
+        const { error } = await sb.rpc('app_shrani_list', { p_id: zeIma[vrstica.legacy_id] || null, p_list: vrstica, p_postavke: post, p_tudi_potrjen: true });
+        if (error) {
+          por.tezav.push('list ' + e.stevilka + ': ' + (/duplicate|unique/i.test(error.message) ? 'številka ' + seq + '/' + leto + ' je v bazi že zasedena' : error.message));
+          continue;
         }
+        if (obstaja) { pozabiPostavke(); por.posodobljenih++; } else por.listov++;
+        por.postavk += post.length;
       }
 
       /* ── 4. poročilo ────────────────────────────────────────────── */
@@ -7689,7 +7653,7 @@
      Namestitveni paket leži poleg spletne različice, ne v kodi portala.
      Če ga še ni, to tu tudi piše — namesto strani 404. */
   // ?v= ob vsaki novi različici aplikacije (aplikacija/zgradi.py): brskalnik in predpomnilnik vzameta nov paket.
-  var APK_POT = 'tablica/Pralnica-sync.apk?v=11.3';
+  var APK_POT = 'tablica/Pralnica-sync.apk?v=11.4';
 
   function wirePwa(scope) {
     var pb = (scope || document).querySelector('#pwaInstall');
