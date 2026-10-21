@@ -2462,3 +2462,17 @@ button > .iko-t:only-child,.a-pop > .iko-t{margin:0;}
   .tema-izbira{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;}
   .tema-b{flex-direction:column;justify-content:center;gap:6px;padding:12px 6px;min-height:72px;font-size:var(--fs-13);}
 }
+
+/* ── 4.50 simboli namesto besed: tiskalnik, svinčnik, koš (okno lista, predogled, izbira, ure, fakture) ── */
+.u-acts.a-ikone{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px;}
+.u-acts.a-ikone button{width:var(--ctrl-h);height:var(--ctrl-h);padding:0;line-height:1;border-radius:50%;flex:none;
+  display:inline-flex;align-items:center;justify-content:center;color:var(--ink);}
+.u-acts.a-ikone button svg{width:20px;height:20px;}
+.u-acts.a-ikone button.danger{color:var(--st-bad);}
+.sc-modal-btn.doc-tisk{width:var(--ctrl-h);padding:0;border-radius:50%;flex:none;}
+.sc-modal-btn svg,.cgrp-btn > svg,.btn-mini > svg,.btn.arh-tisk svg{width:18px;height:18px;flex:none;}
+.sc-modal-btn.doc-tisk svg{width:20px;height:20px;}
+.btn.arh-tisk{gap:6px;}
+.arh-tisk-n:empty{display:none;}
+.doc-namig{margin:10px 2px 0;font-size:var(--fs-13);color:var(--mid);line-height:1.4;}
+.sc-modal-btn.nalaga,.btn.nalaga{cursor:progress;animation:nalagaPulz .7s ease-in-out infinite alternate;}

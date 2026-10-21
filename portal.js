@@ -321,7 +321,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.49 · BETA';
+  var APP_VERZIJA = '4.50 · BETA';
   var NALAGANJE = '<div class="sc-load" aria-hidden="true"><span class="sc-load-line"></span></div>';
   // Stale-while-revalidate: ob ponovnem obisku razdelka NE pobriši vsebine v nalagalnik —
   // obdrži prejšnjo (takojšen prikaz) in jo osveži v ozadju. Trak le ob prvem nalaganju.
@@ -512,6 +512,11 @@
   var IKO_T_SVINC = ikoT('<path d="M4 20h4L18.5 9.5a2.1 2.1 0 0 0-3-3L5 17z"/><path d="m13.5 8.5 3 3"/>');
   var IKO_T_PLUS = ikoT('<path d="M12 5v14M5 12h14"/>');
   var IKO_ZAPRI = '<svg class="iko-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M17 7 7 17M7 7l10 10"/></svg>';
+  function ikoG(pot) { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + pot + '</svg>'; }
+  var IKO_TISK = ikoG('<path d="M7 8.5V3.5h10v5"/><rect x="3.5" y="8.5" width="17" height="8.5" rx="2"/><path d="M7 14h10v6.5H7z"/><path d="M17 11.5h.01"/>');
+  var IKO_UREDI = ikoG('<path d="M4 20h4L18.5 9.5a2.1 2.1 0 0 0-3-3L5 17z"/><path d="m13.5 8.5 3 3"/>');
+  var IKO_KOS = ikoG('<path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 10v6M14 10v6"/>');
+  var IKO_PRENOS = ikoG('<path d="M12 4v12M7 11l5 5 5-5"/><path d="M5 20h14"/>');
   var IKO_T_MAPA = ikoT('<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>');
   // Oceni postavko: RDEČ, če ni izbran artikel; ORANŽEN, če je artikel brez količine.
   function _ocenaPostavke(row) {
@@ -1694,7 +1699,7 @@
     if (!(await pdfPripravljen())) return;
     var doc = new PDFDoc();
     osebe.forEach(function (z) { doc.addPage(); urPdfStran(doc, z, mesec); });
-    doc.save('listi_ure_' + mesec + '.pdf');
+    pdfIzhod(doc, 'listi_ure_' + mesec + '.pdf');
   }
   // Okno: mesec + zaposleni (aktivni izbrani) → predogled (Natisni / Shrani kot PDF).
   function urListiModal() {
@@ -1880,7 +1885,7 @@
         '</table></div>';
     }
     var blok2 = '<div class="pris-card"><div class="pris-h"><h3 class="sec-h">Evidenca</h3>' +
-      '<span class="pris-hbtns"><button type="button" class="cgrp-btn ghost pris-ure-listi">Natisni liste za ure</button>' +
+      '<span class="pris-hbtns"><button type="button" class="cgrp-btn ghost pris-ure-listi" title="Natisni liste za ure">' + IKO_TISK + 'Listi za ure</button>' +
       '<button type="button" class="cgrp-btn ghost pris-izvoz">Izvozi ' + escape_(_mesecLabel(_prisDan.slice(0, 7))) + '</button></span></div>' +
       '<div class="pris-barvrsta">' +
         '<div class="pris-datum">' +
@@ -3412,7 +3417,7 @@
     doc.text(M + 6, osn, 'Skupaj', { size: 10 * PT, bold: true, color: DPDF.INK });
     doc.text(cKg, osn, fmtKg(d.kgSkup), { size: 10 * PT, bold: true, align: 'right', color: DPDF.INK });
     doc.text(cEur, osn, _ucEurStr(d.eurTot), { size: 10 * PT, bold: true, align: 'right', color: DPDF.INK });
-    doc.save(ucKgFileBase(d) + '.pdf');
+    pdfIzhod(doc, ucKgFileBase(d) + '.pdf');
   }
 
   /* ══════════ SPREMNI LISTI ══════════ */
@@ -4166,7 +4171,7 @@
     d.className = 'arh-izbira'; d.setAttribute('role', 'toolbar'); d.setAttribute('aria-label', 'Izbrani spremni listi');
     d.innerHTML = '<span class="arh-izb-n" aria-live="polite"></span>' +
       '<button type="button" class="btn btn-narrow btn-alt" data-vse>Izberi vse</button>' +
-      '<button type="button" class="btn btn-narrow" data-tisk>Natisni</button>';
+      '<button type="button" class="btn btn-narrow arh-tisk" data-tisk title="Natisni izbrane" aria-label="Natisni izbrane">' + IKO_TISK + '<span class="arh-tisk-n"></span></button>';
     document.body.appendChild(d);
     d.querySelector('[data-vse]').addEventListener('click', function () {
       if (!ARH_IZB) return;
@@ -4187,7 +4192,7 @@
     var n = ARH_IZB.size, vsi = ARH_VIDNI.length && ARH_VIDNI.every(l => ARH_IZB.has(l.id));
     _arhBar.querySelector('.arh-izb-n').textContent = n ? 'Izbrano: ' + sklonListov(n) : 'Izberi spremne liste';
     var bv = _arhBar.querySelector('[data-vse]'); bv.textContent = vsi ? 'Počisti' : 'Izberi vse'; bv.disabled = !ARH_VIDNI.length;
-    var bt = _arhBar.querySelector('[data-tisk]'); if (!bt._tece) { bt.disabled = !n; bt.textContent = n ? 'Natisni (' + n + ')' : 'Natisni'; }
+    var bt = _arhBar.querySelector('[data-tisk]'); if (!bt._tece) { bt.disabled = !n; bt.querySelector('.arh-tisk-n').textContent = n ? String(n) : ''; }
   }
   function arhIzbiraPreklopi(btn) {
     var id = btn.dataset.id; if (!id || !ARH_IZB) return;
@@ -4201,7 +4206,7 @@
   async function arhIzbiraNatisni() {
     if (!ARH_IZB || !ARH_IZB.size) return;
     var bt = _arhBar.querySelector('[data-tisk]');
-    bt._tece = true; bt.disabled = true; bt.textContent = 'Pripravljam …';
+    bt._tece = true; bt.disabled = true; bt.classList.add('nalaga');   // ikona ostane, gumb utripa
     try {
       var stK = l => { var d = String(l.number || '').split('/'); return (parseInt(d[1], 10) || 0) * 1e7 + (parseInt(d[0], 10) || 0); };
       var listi = LISTI.filter(l => ARH_IZB.has(l.id)).sort((a, b) => stK(a) - stK(b));
@@ -4211,7 +4216,7 @@
       var en = boxi.length === 1, naslov = en ? 'Spremni list ' + (listi[0].number || '') : sklonListov(boxi.length);
       predogledDokument({ naslov: naslov, docHtml: dokHtml(en ? naslov : 'Spremni listi', boxi.map(spremniTeloHtml)), pdf: function () { return spremniPdfDownload(boxi); } });
     } catch (e) { toast('Napaka: ' + ((e && e.message) || e)); }
-    finally { bt._tece = false; arhIzbiraRisi(); }
+    finally { bt._tece = false; bt.classList.remove('nalaga'); arhIzbiraRisi(); }
   }
   // Postavke več listov naenkrat (predpomnilnik ima le prvih 80 iz seznama).
   async function arhPostavke(ids) {
@@ -4384,8 +4389,8 @@
     const izdalV = `<p class="u-sub" style="margin-top:8px">${prevozV}${n.issued_name ? ' · Izdal: ' + escape_(n.issued_name) : ''}</p>`;
     const popravek = n.popravljeno_at ? `<div class="ur-popravek">${IKO_T_SVINC}Popravljeno · ${escape_(n.popravil || 'osebje')} · ${datumcas(n.popravljeno_at)}${n.popravki ? '<div class="ur-popravki">' + escape_(n.popravki).replace(/\n/g, '<br>') + '</div>' : ''}</div>` : '';
     const ustvarjenoV = n.source === 'portal' ? `<p class="ur-ustvarjeno">${IKO_T_PLUS}Ustvarjeno v portalu${n.issued_name ? ' · ' + escape_(n.issued_name) : ''}</p>` : '';
-    const gumbi = '<div class="u-acts" style="margin-top:12px"><button type="button" data-natisni>Natisni</button>' +
-      (OSEBJE ? '<button type="button" data-uredi>Uredi</button><button type="button" class="danger" data-izbrisi>Izbriši</button>' : '') + '</div>';
+    const gumbi = '<div class="u-acts a-ikone"><button type="button" data-natisni title="Natisni" aria-label="Natisni">' + IKO_TISK + '</button>' +
+      (OSEBJE ? '<button type="button" data-uredi title="Uredi" aria-label="Uredi">' + IKO_UREDI + '</button><button type="button" class="danger" data-izbrisi title="Izbriši" aria-label="Izbriši">' + IKO_KOS + '</button>' : '') + '</div>';
     box.innerHTML = '<div class="a-det-in"><div class="a-det-pad">' + seznam + izdalV + ustvarjenoV + popravek + opombeAppHtml(n) + opombaHtml(n) + gumbi + '</div></div>';
     box.querySelector('[data-natisni]').addEventListener('click', () => natisniList(box));
     if (OSEBJE) {
@@ -5428,7 +5433,7 @@
             ${prevoz}
             ${denar}
           </div>
-          <div class="fak-body-acts"><button type="button" class="btn-mini fak-print" data-fakprint="${gi}">Natisni osnovo za račun</button></div>
+          <div class="fak-body-acts"><button type="button" class="btn-mini fak-print" data-fakprint="${gi}" title="Natisni osnovo za račun">${IKO_TISK}Osnova za račun</button></div>
         </div>
       </div>
     </div>`;
@@ -5488,6 +5493,21 @@
       document.head.appendChild(sc);
     });
     return _pdfP;
+  }
+  // PDF iz graditeljev (spremni listi, fakture, ure, kg) gre v prenos — razen ko ga predogled
+  // zajame kot datoteko (pdfKotDatoteka) za meni Deli na iPhonu (tam window.print() ne deluje).
+  var _pdfZajem = null;
+  function pdfIzhod(doc, ime) {
+    if (_pdfZajem) { var z = _pdfZajem; _pdfZajem = null; z(new File([doc.build()], ime, { type: 'application/pdf' })); return; }
+    doc.save(ime);
+  }
+  function pdfKotDatoteka(gradi) {
+    return new Promise(function (resolve, reject) {
+      _pdfZajem = resolve;
+      Promise.resolve().then(gradi).then(function () {
+        if (_pdfZajem === resolve) { _pdfZajem = null; reject(new Error('PDF ni nastal')); }
+      }, function (e) { if (_pdfZajem === resolve) _pdfZajem = null; reject(e); });
+    });
   }
   async function pdfPripravljen() {
     try { await zagotoviPdf(); return true; }
@@ -5596,7 +5616,7 @@
       if (g.neskladje) { y += 10 * PT; y = dpdfOdstavek(doc, y, 'Pozor: seštevek postavk je ' + stevilo(g.kosovPostavke) + ' kosov, spremni listi pa navajajo ' + stevilo(g.kosov) + '.', { size: 10 * PT, color: DPDF.POZOR }); }
       if (money && g.brezCene) { y += 6 * PT; y = dpdfOdstavek(doc, y, 'Opomba: ' + stevilo(g.brezCene) + ' artiklov še nima cene (poveži jih v razdelku Stranke). Ti niso vključeni v znesek.', { size: 10 * PT, color: DPDF.POZOR }); }
     });
-    doc.save('fakture_' + od + '_' + doo + '.pdf');
+    pdfIzhod(doc, 'fakture_' + od + '_' + doo + '.pdf');
   }
   // Spremni list → prava .pdf datoteka, isti slog kot predogled (in aplikacija na tablici).
   // En list ali seznam izbranih (Arhiv → Izberi): vsak se začne na svoji strani, ena datoteka.
@@ -5606,7 +5626,7 @@
     var doc = new PDFDoc();
     seznam.forEach(function (box) { doc.addPage(); spremniPdfStran(doc, box); });
     var ime = function (b) { return String(((b && b._note) || {}).number || 'brez').replace(/[\/\\:]+/g, '-'); };   // »1664/2026« → 1664-2026 (poševnica ni dovoljena v imenu datoteke)
-    doc.save(seznam.length === 1 ? 'spremni_list_' + ime(seznam[0]) + '.pdf' : 'spremni_listi_' + ime(seznam[0]) + '_do_' + ime(seznam[seznam.length - 1]) + '.pdf');
+    pdfIzhod(doc, seznam.length === 1 ? 'spremni_list_' + ime(seznam[0]) + '.pdf' : 'spremni_listi_' + ime(seznam[0]) + '_do_' + ime(seznam[seznam.length - 1]) + '.pdf');
   }
   function spremniPdfStran(doc, box) {
     var n = box._note || {}, items = box._items || [];
@@ -5671,6 +5691,14 @@
     var ua = navigator.userAgent || '';
     return /Android|iPhone|iPad|iPod|Mobile/i.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);   // iPad se predstavi kot Mac
   }
+  // iPhone / iPad, portal kot aplikacija na začetnem zaslonu: iOS tam window.print() prezre
+  // (preverjeno v simulatorju iOS 27: ni dialoga, ni dogodka beforeprint — tudi takoj ob dotiku).
+  function jeIosSam() {
+    var ua = navigator.userAgent || '';
+    var ios = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+    var sam = navigator.standalone === true || !!(window.matchMedia && matchMedia('(display-mode: standalone)').matches);
+    return ios && sam;
+  }
   function tiskNativni() { try { var C = window.Capacitor; return (C && C.Plugins && C.Plugins.PralnicaPrint) || null; } catch (e) { return null; } }
   function tiskPlastPostavi(docHtml) {
     tiskPlastOdstrani();
@@ -5701,24 +5729,28 @@
   function tiskPisave() {
     var f = document.fonts; if (!f || !f.load) return Promise.resolve();
     var t = 'SmartClean AaČčŠšŽž0123';
+    try { if (f.check('400 12px Archivo', t) && f.check('700 12px Archivo', t) && f.check('700 32px "Playfair Display"', t)) return null; } catch (e) {}
     var vse = Promise.all([f.load('400 12px Archivo', t), f.load('700 12px Archivo', t), f.load('700 32px "Playfair Display"', t)]).then(function () { return f.ready; });
     return Promise.race([vse, new Promise(function (r) { setTimeout(r, 4000); })]).catch(function () {});
   }
   function tiskGlavno() {
     if (!_tisk) { toast('Tiskanje ni uspelo — zapri predogled in poskusi znova.'); return; }
-    tiskPisave().then(function () { try { window.print(); } catch (e) { toast('Tiskanje ni uspelo.'); } });
+    var tiskaj = function () { try { window.print(); } catch (e) { toast('Tiskanje ni uspelo.'); } };
+    var p = tiskPisave();
+    if (!p) { tiskaj(); return; }   // pisave so že naložene: dialog takoj (prej 2–3 s čakanja)
+    p.then(tiskaj);
   }
 
   /* ══════════ PREDOGLED DOKUMENTA (skupni pop-up: natisni / shrani) ══════════ */
   function predogledDokument(opt) {
     opt = opt || {};
     var back = document.createElement('div'); back.className = 'sc-modal-back';
-    var xlsxBtn = opt.xlsx ? '<button type="button" class="sc-modal-btn primary" data-xlsx>Shrani kot Excel</button>' : '';
-    var pdfBtn = opt.pdf ? '<button type="button" class="sc-modal-btn primary" data-pdf>Shrani kot PDF</button>' : '';
+    var xlsxBtn = opt.xlsx ? '<button type="button" class="sc-modal-btn primary" data-xlsx title="Shrani kot Excel">' + IKO_PRENOS + 'Excel</button>' : '';
+    var pdfBtn = opt.pdf ? '<button type="button" class="sc-modal-btn primary" data-pdf title="Shrani kot PDF">' + IKO_PRENOS + 'PDF</button>' : '';
     back.innerHTML = '<div class="sc-modal doc-modal" role="dialog" aria-modal="true">' +
       '<div class="doc-head"><h4></h4><button type="button" class="doc-x" aria-label="Zapri">' + IKO_ZAPRI + '</button></div>' +
       '<div class="doc-stage"><div class="doc-scaler"><iframe class="doc-frame" title="Predogled"></iframe></div></div>' +
-      '<div class="sc-modal-acts doc-acts"><button type="button" class="sc-modal-btn ghost" data-print>Natisni</button>' + xlsxBtn + pdfBtn + '</div></div>';
+      '<div class="sc-modal-acts doc-acts"><button type="button" class="sc-modal-btn ghost doc-tisk" data-print title="Natisni" aria-label="Natisni">' + IKO_TISK + '</button>' + xlsxBtn + pdfBtn + '</div></div>';
     back.querySelector('h4').textContent = opt.naslov || 'Predogled';
     document.body.appendChild(back);
     var fr = back.querySelector('.doc-frame');
@@ -5741,6 +5773,24 @@
     window.addEventListener('resize', prilagodiA4);
     fr.srcdoc = opt.docHtml || '';
     tiskPlastPostavi(opt.docHtml);
+    // Aplikacija na začetnem zaslonu iPhona: tisk in PDF gresta prek menija Deli (»Natisni«,
+    // »Shrani v Datoteke«). PDF se pripravi takoj ob odprtju predogleda, ker iOS meni Deli
+    // odpre le neposredno ob dotiku — ne po čakanju na izdelavo PDF-ja.
+    var iosDeli = !tiskNativni() && jeIosSam() && !!opt.pdf && !!navigator.share;
+    var pdfDat = null, pdfNapaka = null;
+    if (iosDeli) {
+      back.querySelector('.doc-acts').insertAdjacentHTML('beforebegin', '<p class="doc-namig">Odpre se meni Deli — izberi <b>Natisni</b> ali <b>Shrani v Datoteke</b>.</p>');
+      back.querySelectorAll('[data-print],[data-pdf]').forEach(function (b) { b.disabled = true; b.classList.add('nalaga'); });
+      pdfKotDatoteka(opt.pdf).then(function (f) { pdfDat = f; }, function (e) { pdfNapaka = e; })
+        .then(function () { back.querySelectorAll('[data-print],[data-pdf]').forEach(function (b) { b.disabled = false; b.classList.remove('nalaga'); }); });
+    }
+    function deliPdf() {
+      if (!pdfDat) { toast(pdfNapaka ? 'PDF ni uspel: ' + (pdfNapaka.message || pdfNapaka) : 'PDF se še pripravlja …'); return; }
+      if (navigator.canShare && !navigator.canShare({ files: [pdfDat] })) { toast('Ta naprava ne zna deliti PDF-ja.'); return; }
+      navigator.share({ files: [pdfDat], title: opt.naslov || 'SmartClean' }).catch(function (e) {
+        if (e && e.name !== 'AbortError') toast('Meni Deli se ni odprl: ' + (e.message || e.name));
+      });
+    }
     requestAnimationFrame(function () { back.classList.add('show'); setTimeout(prilagodiA4, 40); });
     var done = false;
     function zapri() { if (done) return; done = true; tiskPlastOdstrani(); window.removeEventListener('resize', prilagodiA4); back.classList.remove('show'); document.removeEventListener('keydown', onKey); setTimeout(function () { if (back.parentNode) back.parentNode.removeChild(back); }, 180); }
@@ -5749,8 +5799,10 @@
     back.addEventListener('click', function (e) { if (e.target === back) zapri(); });
     document.addEventListener('keydown', onKey);
     back.querySelector('[data-print]').addEventListener('click', function () {
+      if (iosDeli) { deliPdf(); return; }
       // Aplikacija na tablici: domači tisk Androida (WebView window.print() ne pozna).
       var P = tiskNativni();
+      if (!P && jeIosSam()) { toast('Na začetnem zaslonu iPhona tega dokumenta ni mogoče natisniti — odpri portal v Safariju.'); return; }
       if (P) { P.print({ html: opt.docHtml || '', jobName: opt.naslov || 'SmartClean' }).catch(function () { toast('Tiskanje ni uspelo.'); }); return; }
       // Telefon / tablica v brskalniku: tisk glavnega okna (iz iframe-a ne deluje).
       if (jeMobilnaNaprava()) { tiskGlavno(); return; }
@@ -5762,6 +5814,7 @@
     var pb = back.querySelector('[data-pdf]');
     if (pb) pb.addEventListener('click', async function () {
       if (!opt.pdf) return;
+      if (iosDeli) { deliPdf(); return; }
       var t = this.textContent; this.disabled = true; this.textContent = 'Pripravljam …';
       try { await opt.pdf(); } catch (e) { toast('PDF ni uspel: ' + (e && e.message ? e.message : e)); }
       this.disabled = false; this.textContent = t;

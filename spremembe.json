@@ -1,5 +1,15 @@
 [
  {
+  "v": "4.50",
+  "d": "2026-10-21",
+  "c": "2026-10-21T10:35:00+02:00",
+  "t": [
+   "iPhone (portal na začetnem zaslonu): tiskalnik odpre meni Deli s spremnim listom kot PDF — tam izberi Natisni. iOS v aplikaciji na začetnem zaslonu neposrednega tiska ne dovoli, zato se prej ni zgodilo nič.",
+   "Simboli namesto besed: tiskalnik, svinčnik in koš v oknu spremnega lista; v predogledu tiskalnik in PDF; »Listi za ure« in »Osnova za račun« s tiskalnikom.",
+   "Safari in računalnik: dialog za tisk se odpre takoj (prej je čakal 2–3 s)."
+  ]
+ },
+ {
   "v": "4.49",
   "d": "2026-10-20",
   "c": "2026-10-20T22:47:00+02:00",
