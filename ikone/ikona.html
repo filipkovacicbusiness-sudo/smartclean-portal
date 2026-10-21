@@ -1,0 +1,49 @@
+<!doctype html><html><head><meta charset="utf-8">
+<style>
+@font-face{font-family:PF;src:url(../fonts/playfair-display-latin-700-normal.woff2) format('woff2');font-weight:700;}
+html,body{margin:0;padding:0;background:transparent;}
+svg{display:block;}
+</style></head><body><div id="o"></div>
+<script>
+// Ikona SmartClean: monogram »SC« v pisavi logotipa (Playfair Display 700, razmik -0,03em),
+// barve logotipa: temna različica (portal) in svetla (aplikacija za spremne liste).
+const T = {
+  dark:  { bg: ['#14261d', '#0b1410', '#050806'], glow: 'rgba(110,211,161,.20)', s: ['#ffffff', '#dfe8e3'], c: ['#8be3b8', '#55bd8c'], sh: 'rgba(0,0,0,.55)', rob: 'rgba(255,255,255,.07)' },
+  light: { bg: ['#ffffff', '#f6f9f7', '#e7efea'], glow: 'rgba(26,102,68,.06)', s: ['#16302a', '#0a1913'], c: ['#24845a', '#145a3b'], sh: 'rgba(13,31,23,.10)', rob: 'rgba(13,31,23,.06)' }
+};
+function squircle(n, r0) { // superelipsa (kot iOS), n = velikost
+  const a = n / 2, e = 5, pts = [];
+  for (let i = 0; i <= 360; i++) { const t = i * Math.PI / 180, c = Math.cos(t), s = Math.sin(t);
+    pts.push([a + a * Math.sign(c) * Math.pow(Math.abs(c), 2 / e), a + a * Math.sign(s) * Math.pow(Math.abs(s), 2 / e)]); }
+  return 'M' + pts.map(p => p[0].toFixed(2) + ',' + p[1].toFixed(2)).join('L') + 'Z';
+}
+// oblika: full (iOS, maskable), squircle (namizje, favicon), circle (Android round), none (Android ospredje)
+window.risi = async function (o) {
+  await document.fonts.load('700 100px PF');
+  const N = 1024, t = T[o.tema], id = 'g' + Math.random().toString(36).slice(2, 7);
+  const oblika = o.oblika === 'squircle' ? `<path d="${squircle(N)}"/>` : o.oblika === 'circle' ? `<circle cx="${N/2}" cy="${N/2}" r="${N/2}"/>` : `<rect width="${N}" height="${N}"/>`;
+  const ozadje = o.oblika === 'none' ? '' :
+    `<g clip-path="url(#${id}k)"><rect width="${N}" height="${N}" fill="url(#${id}b)"/><rect width="${N}" height="${N}" fill="url(#${id}r)"/>` +
+    (o.oblika !== 'full' ? `<g fill="none" stroke="${t.rob}" stroke-width="${N * 0.006}">${oblika}</g>` : '') + `</g>`;
+  document.getElementById('o').innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="${N}" height="${N}" viewBox="0 0 ${N} ${N}">
+    <defs>
+      <clipPath id="${id}k">${oblika}</clipPath>
+      <linearGradient id="${id}b" x1="0" y1="0" x2="0.35" y2="1"><stop offset="0" stop-color="${t.bg[0]}"/><stop offset=".55" stop-color="${t.bg[1]}"/><stop offset="1" stop-color="${t.bg[2]}"/></linearGradient>
+      <radialGradient id="${id}r" cx=".5" cy="-.08" r=".85"><stop offset="0" stop-color="${t.glow}"/><stop offset="1" stop-color="${t.glow.replace(/[\d.]+\)$/, '0)')}"/></radialGradient>
+      <linearGradient id="${id}s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${t.s[0]}"/><stop offset="1" stop-color="${t.s[1]}"/></linearGradient>
+      <linearGradient id="${id}c" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${t.c[0]}"/><stop offset="1" stop-color="${t.c[1]}"/></linearGradient>
+      <filter id="${id}f" x="-20%" y="-20%" width="140%" height="160%"><feDropShadow dx="0" dy="${N * (o.tema === 'light' ? 0.004 : 0.008)}" stdDeviation="${N * (o.tema === 'light' ? 0.006 : 0.012)}" flood-color="${t.sh}"/></filter>
+    </defs>${ozadje}
+    <text id="${id}t" font-family="PF" font-weight="700" font-size="400" letter-spacing="-12" x="0" y="0" filter="${o.oblika === 'none' && o.tema === 'light' ? '' : `url(#${id}f)`}"><tspan fill="url(#${id}s)">S</tspan><tspan fill="url(#${id}c)">C</tspan></text></svg>`;
+  // velikost in optična sredina po dejanskih obrisih črk
+  const tx = document.getElementById(id + 't'), bb = tx.getBBox();
+  const m = document.createElement('canvas').getContext('2d'); m.font = '700 400px PF'; m.letterSpacing = '-12px';
+  const mm = m.measureText('SC'), w = mm.actualBoundingBoxLeft + mm.actualBoundingBoxRight, h = mm.actualBoundingBoxAscent + mm.actualBoundingBoxDescent;
+  const k = (o.sirina * N) / w, fs = 400 * k;
+  tx.setAttribute('font-size', fs.toFixed(2)); tx.setAttribute('letter-spacing', (-0.03 * fs).toFixed(2));
+  const x = N / 2 - (w * k) / 2 + mm.actualBoundingBoxLeft * k;
+  const y = N / 2 + (h * k) / 2 - mm.actualBoundingBoxDescent * k - N * (o.dvig || 0);
+  tx.setAttribute('x', x.toFixed(2)); tx.setAttribute('y', y.toFixed(2));
+  return { w: w * k / N, h: h * k / N };
+};
+</script></body></html>

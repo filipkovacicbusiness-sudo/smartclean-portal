@@ -1,5 +1,16 @@
 [
  {
+  "v": "4.64",
+  "d": "2026-10-21",
+  "c": "2026-10-21T17:30:00+02:00",
+  "t": [
+   "Nova ikona: monogram SC v pisavi logotipa (Playfair Display) in v barvah logotipa — temna za portal, svetla za aplikacijo za spremne liste, da ju na telefonu ločiš na prvi pogled.",
+   "Ikona je pripravljena za vse naprave: iPhone (začetni zaslon), Android (prilagodljiva ikona), zavihek brskalnika in namestitev na računalnik.",
+   "Spletna aplikacija na začetnem zaslonu se imenuje »Spremni listi«.",
+   "Aplikacija za tablico 11.8 (nova ikona)."
+  ]
+ },
+ {
   "v": "4.63",
   "d": "2026-10-21",
   "c": "2026-10-21T17:00:00+02:00",

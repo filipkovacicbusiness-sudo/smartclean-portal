@@ -25,7 +25,7 @@ import sys
 import tempfile
 import zipfile
 
-VERZIJA = "11.7"
+VERZIJA = "11.8"
 
 KOREN = pathlib.Path(__file__).resolve().parent.parent
 IZVOR = KOREN / "aplikacija"
@@ -50,7 +50,7 @@ SW = """/* SmartClean — service worker ({ime}). ZGRAJENO z aplikacija/zgradi.p
 /* HTML = network-first (vedno sveža koda, brez povezave iz predpomnilnika),
    lastne statične datoteke = cache-first. Klici na Supabase se NIKOLI ne predpomnijo. */
 const CACHE = "{cache}-v{verzija}";
-const CORE = ["index.html", "manifest.json", "icon-192.png", "icon-512.png", "supabase.js"];
+const CORE = ["index.html", "manifest.json", "icon-192.png", "icon-512.png", "icon-maskable-512.png", "apple-touch-icon.png", "supabase.js"];
 
 self.addEventListener("install", (e) => {{
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(CORE)).then(() => self.skipWaiting()));
@@ -119,7 +119,7 @@ def zgradi_splet():
         zamenjave = {
             "{{OPOZORILO}}": "ZGRAJENO iz aplikacija/ (python3 aplikacija/zgradi.py) — ne urejaj ročno.",
             "{{NASLOV}}": r["naslov"],
-            "{{KRATKO_IME}}": "SmartClean",
+            "{{KRATKO_IME}}": "Spremni listi",
             "{{PISAVE}}": pis,
             "{{CSS}}": css,
         }
@@ -131,18 +131,19 @@ def zgradi_splet():
         (cilj / "index.html").write_text(html, encoding="utf-8")
         (cilj / "sw.js").write_text(SW.format(ime=r["ime"], cache=r["cache"], verzija=VERZIJA.replace(".", "-")), encoding="utf-8")
         manifest = {
-            "name": r["ime"], "short_name": "SmartClean",
+            "name": r["ime"], "short_name": "Spremni listi",
             "description": "Vnos in tiskanje spremnih listov — SmartClean.",
             "start_url": "index.html", "scope": ".", "display": "standalone", "orientation": "any",
             "background_color": "#0a0a0a", "theme_color": "#0a0a0a",
             "icons": [
                 {"src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
-                {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"},
+                {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+                {"src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"},
             ],
         }
         (cilj / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-        if mapa == "tablica":   # ista ikona kot mobile (SC), namesto stare
-            for ik in ("icon-192.png", "icon-512.png"):
+        if mapa == "tablica":   # ista ikona kot mobile (svetla SC — aplikacija; portal ima temno)
+            for ik in IKONE_APP:
                 shutil.copyfile(KOREN / "mobile" / ik, cilj / ik)
         print("zgrajeno:", mapa + "/index.html", f"({len(html) // 1024} kB)")
 
@@ -182,8 +183,15 @@ def podpisni_kljuc(okolje):
 # Datoteke v assets/public, ki jih nova koda ne uporablja več.
 APK_ODSTRANI = {"assets/public/xlsx.full.min.js", "assets/public/logo.png", "assets/public/logo-white.png",
                 "assets/public/logo.svg", "assets/public/eflitte-logo.svg"}
+IKONE_APP = ("icon-192.png", "icon-512.png", "icon-maskable-512.png", "apple-touch-icon.png")
 APK_ZAMENJAJ = {f"assets/public/{ime}": KOREN / "tablica" / ime for ime in
-                ("index.html", "manifest.json", "sw.js", "icon-192.png", "icon-512.png", "supabase.js")}
+                ("index.html", "manifest.json", "sw.js", "supabase.js") + IKONE_APP}
+# Ikona v zaganjalniku Androida (ikone/ikona.html → aplikacija/ikone): ospredje prilagodljive ikone,
+# stara (do Androida 7) in okrogla. Ozadje prilagodljive ikone je barva v resources.arsc (IKONA_OZADJE).
+APK_ZAMENJAJ.update({f"res/mipmap-{d}-v4/{ime}.png": IZVOR / "ikone" / f"{d}-{ime}.png"
+                     for d in ("mdpi", "hdpi", "xhdpi", "xxhdpi", "xxxhdpi")
+                     for ime in ("ic_launcher_foreground", "ic_launcher", "ic_launcher_round")})
+IKONA_OZADJE = (bytes.fromhex("0800001c0a0a0aff"), bytes.fromhex("0800001cf4f8f2ff"))   # Res_value ARGB8: #0a0a0a → #f2f8f4
 
 
 def zgradi_apk():
@@ -203,6 +211,8 @@ def zgradi_apk():
                 if ime in APK_ODSTRANI:
                     continue
                 podatki = APK_ZAMENJAJ[ime].read_bytes() if ime in APK_ZAMENJAJ else zin.read(ime)
+                if ime == "resources.arsc" and podatki.count(IKONA_OZADJE[0]) == 1:
+                    podatki = podatki.replace(*IKONA_OZADJE)   # ozadje ikone (color/ic_launcher_background), enkrat
                 nov = zipfile.ZipInfo(ime, date_time=info.date_time)
                 nov.compress_type = info.compress_type   # resources.arsc mora ostati nestisnjen
                 nov.external_attr = info.external_attr

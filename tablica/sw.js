@@ -1,8 +1,8 @@
 /* SmartClean — service worker (SmartClean tablica). ZGRAJENO z aplikacija/zgradi.py — ne urejaj ročno. */
 /* HTML = network-first (vedno sveža koda, brez povezave iz predpomnilnika),
    lastne statične datoteke = cache-first. Klici na Supabase se NIKOLI ne predpomnijo. */
-const CACHE = "pralnica-tablica-v11-7";
-const CORE = ["index.html", "manifest.json", "icon-192.png", "icon-512.png", "supabase.js"];
+const CACHE = "pralnica-tablica-v11-8";
+const CORE = ["index.html", "manifest.json", "icon-192.png", "icon-512.png", "icon-maskable-512.png", "apple-touch-icon.png", "supabase.js"];
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(CORE)).then(() => self.skipWaiting()));
