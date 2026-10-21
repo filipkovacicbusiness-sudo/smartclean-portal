@@ -25,7 +25,7 @@ import sys
 import tempfile
 import zipfile
 
-VERZIJA = "11.1"
+VERZIJA = "11.2"
 
 KOREN = pathlib.Path(__file__).resolve().parent.parent
 IZVOR = KOREN / "aplikacija"
@@ -57,7 +57,8 @@ self.addEventListener("install", (e) => {{
 }});
 self.addEventListener("activate", (e) => {{
   e.waitUntil(caches.keys()
-    .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+    // samo lastne stare različice (portal na isti domeni ima svoj »sc-portal«)
+    .then((keys) => Promise.all(keys.filter((k) => k !== CACHE && k.indexOf("{cache}-v") === 0).map((k) => caches.delete(k))))
     .then(() => self.clients.claim()));
 }});
 self.addEventListener("fetch", (e) => {{
@@ -69,11 +70,22 @@ self.addEventListener("fetch", (e) => {{
   const path = url.pathname;
   const isHTML = req.mode === "navigate" || (req.headers.get("accept") || "").includes("text/html") || path.endsWith("/") || path.endsWith("index.html");
   if (isHTML) {{
-    e.respondWith(fetch(req).then((resp) => {{
-      const copy = resp.clone();
-      caches.open(CACHE).then((c) => c.put("index.html", copy)).catch(() => {{}});
-      return resp;
-    }}).catch(() => caches.match("index.html")));
+    // Šibka povezava (pralnica): če strežnik ne odgovori v 4 s, se odpre shranjena kopija
+    // (aplikacija je ena datoteka, zato ni mešanja starega in novega). Nova različica se vseeno
+    // shrani, ko prispe — velja ob naslednjem odprtju.
+    e.respondWith(new Promise((resolve) => {{
+      let gotovo = false;
+      const shranjena = () => caches.match("index.html");
+      const t = setTimeout(() => {{ shranjena().then((h) => {{ if (h && !gotovo) {{ gotovo = true; resolve(h); }} }}); }}, 4000);
+      fetch(req).then((resp) => {{
+        clearTimeout(t);
+        if (resp && resp.ok) {{ const copy = resp.clone(); caches.open(CACHE).then((c) => c.put("index.html", copy)).catch(() => {{}}); }}
+        if (!gotovo) {{ gotovo = true; resolve(resp); }}
+      }}).catch(() => {{
+        clearTimeout(t);
+        shranjena().then((h) => {{ if (!gotovo) {{ gotovo = true; resolve(h || Response.error()); }} }});
+      }});
+    }}));
     return;
   }}
   e.respondWith(caches.match(req).then((hit) => hit || fetch(req).then((resp) => {{

@@ -271,7 +271,9 @@
     // Odjava VEDNO popolnoma ukine sejo (kot pri velikih). Ob vrnitvi te spusti noter
     // biometrija (strežniški WebAuthn izda novo sejo) ali geslo. Osvežitev strani te
     // NE odjavi — to ureja obnovitev seje ob nalaganju.
-    try { await sb.auth.signOut(); } catch (e) {}
+    // samo ta naprava (scope local): privzeto (global) je ukinilo VSE seje uporabnika — tudi tablico
+    // v pralnici, ki je nato nehala pošiljati liste, dokler je nekdo ni znova prijavil
+    try { await sb.auth.signOut({ scope: 'local' }); } catch (e) {}
     location.reload();
   });
 
@@ -321,7 +323,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.53 · BETA';
+  var APP_VERZIJA = '4.54 · BETA';
   var NALAGANJE = '<div class="sc-load" aria-hidden="true"><span class="sc-load-line"></span></div>';
   // Stale-while-revalidate: ob ponovnem obisku razdelka NE pobriši vsebine v nalagalnik —
   // obdrži prejšnjo (takojšen prikaz) in jo osveži v ozadju. Trak le ob prvem nalaganju.
@@ -3455,8 +3457,10 @@
     if (r.error) {
       r = await vseVrstice((od, do_) => sb.from('delivery_notes').select('id,number,doc_date,total_pieces,weight_kg,org_id,issued_name,popravil,popravljeno_at,source,transport,potrjeno,legacy_id').is('deleted_at', null).order('doc_date', { ascending: false }).order('id', { ascending: false }).range(od, do_));
     }
-    // Rezerva 2: če stolpca deleted_at še ni (migracija 50 ni zagnana) → beri brez tega filtra.
-    if (r.error) {
+    // Rezerva 2: SAMO če stolpca deleted_at res ni (migracija 50 ni zagnana) → beri brez tega filtra.
+    // Prej je ta preklop sprožila katerakoli napaka — tudi izpad povezave — in brisanje je nato
+    // liste brisalo DOKONČNO (brez koša), čeprav je okno obljubljalo 30-dnevno obnovo.
+    if (r.error && /deleted_at/i.test(r.error.message || '') && /column|stolp|exist/i.test(r.error.message || '')) {
       _softDelDN = false;
       r = await vseVrstice((od, do_) => sb.from('delivery_notes').select('id,number,doc_date,total_pieces,weight_kg,org_id,issued_name,popravil,popravljeno_at,source,transport,potrjeno,legacy_id').order('doc_date', { ascending: false }).order('id', { ascending: false }).range(od, do_));
     }
@@ -7696,7 +7700,7 @@
      Namestitveni paket leži poleg spletne različice, ne v kodi portala.
      Če ga še ni, to tu tudi piše — namesto strani 404. */
   // ?v= ob vsaki novi različici aplikacije (aplikacija/zgradi.py): brskalnik in predpomnilnik vzameta nov paket.
-  var APK_POT = 'tablica/Pralnica-sync.apk?v=10.9';
+  var APK_POT = 'tablica/Pralnica-sync.apk?v=11.2';
 
   function wirePwa(scope) {
     var pb = (scope || document).querySelector('#pwaInstall');
@@ -7729,7 +7733,7 @@
 
     p.innerHTML = '<div class="prog-grid">' +
       _progCard(IKO_WEB, 'Spletni pogled', 'Deluje v vsakem brskalniku, brez namestitve — telefon, tablica ali računalnik.', _odpri) +
-      _progCard(IKO_DL, 'Tablica (Android)', 'Namestitveni paket za vnos in tiskanje spremnih listov na tablici (različica 10.9). Namesti se čez obstoječo; le če je na tablici še različica 8 ali starejša, jo najprej odstrani — shranjeni listi ostanejo.', '<a class="btn prog-act apk-dl" href="' + escape_(url) + '" download>' + IKO_DL + 'Prenesi<span class="apk-mb"></span></a>', 'apkTablet') +
+      _progCard(IKO_DL, 'Tablica (Android)', 'Namestitveni paket za vnos in tiskanje spremnih listov na tablici (različica 11.2). Namesti se čez obstoječo; le če je na tablici še različica 8 ali starejša, jo najprej odstrani — shranjeni listi ostanejo.', '<a class="btn prog-act apk-dl" href="' + escape_(url) + '" download>' + IKO_DL + 'Prenesi<span class="apk-mb"></span></a>', 'apkTablet') +
       _progCard(IKO_TEL, 'Telefon', 'Odpre se v brskalniku; dodaj na začetni zaslon za občutek prave aplikacije.', _odpri) +
       '</div>';
 
@@ -9388,9 +9392,25 @@
   async function preberiReload() {
     try { var r = await sb.from('app_config').select('vrednost').eq('kljuc', 'reload').maybeSingle(); if (r && r.data) _reloadVal = r.data.vrednost; } catch (e) {}
   }
+  // Med urejanjem (odprto okno, potrditev, vnos v polje) osvežitev počaka — prej je takoj
+  // osvežila stran in napol vpisan spremni list ali opomba sta se izgubila.
+  function zaposlenZDelom() {
+    var a = document.activeElement;
+    return !!(_okno || document.querySelector('.sc-modal-back') || (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && a.type !== 'search'));
+  }
+  var _osveziCaka = null;
   async function osveziAplikacijo() {
-    try { if ('serviceWorker' in navigator) { var regs = await navigator.serviceWorker.getRegistrations(); for (var i = 0; i < regs.length; i++) { try { await regs[i].unregister(); } catch (e) {} } } } catch (e) {}
-    try { if (window.caches) { var ks = await caches.keys(); await Promise.all(ks.map(function (k) { return caches.delete(k); })); } } catch (e) {}
+    if (zaposlenZDelom()) {
+      if (!_osveziCaka) {
+        toast('Na voljo je nova različica portala — osvežim, ko zaključiš urejanje.');
+        _osveziCaka = setInterval(function () { if (!zaposlenZDelom()) { clearInterval(_osveziCaka); _osveziCaka = null; osveziAplikacijo(); } }, 4000);
+      }
+      return;
+    }
+    // samo portal (/): aplikacija za spremne liste (/mobile) ima na isti domeni svoj service worker
+    // in predpomnilnik — prej sta bila izbrisana tudi ta in na iPhonu se brez povezave ni odprla
+    try { if ('serviceWorker' in navigator) { var regs = await navigator.serviceWorker.getRegistrations(); for (var i = 0; i < regs.length; i++) { if (regs[i].scope === location.origin + '/') { try { await regs[i].unregister(); } catch (e) {} } } } } catch (e) {}
+    try { if (window.caches) { var ks = await caches.keys(); await Promise.all(ks.filter(function (k) { return k.indexOf('sc-portal') === 0; }).map(function (k) { return caches.delete(k); })); } } catch (e) {}
     location.reload();
   }
   async function preveriReload() {
@@ -9544,6 +9564,8 @@
         showAuthPane('newPwForm');
         document.querySelector('.auth-box .sub').textContent = 'Vpišite novo geslo za svoj račun.';
       }
+      // Seja je bila ukinjena drugje (drug zavihek, potečen žeton): namesto praznih seznamov prijava.
+      if (event === 'SIGNED_OUT' && $('app') && $('app').classList.contains('show')) { setTimeout(function () { location.reload(); }, 50); return; }
       // Face ID: ob prijavi/osvežitvi posodobi žeton tega uporabnika, da ostane veljaven.
       if ((event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN') && session) { try { bioOsveziZetone(session); } catch (e) {} }
     });

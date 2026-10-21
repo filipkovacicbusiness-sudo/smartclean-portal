@@ -43,7 +43,7 @@ button:disabled{cursor:default;}
 
 /* ── zagonski zaslon: enak kot v portalu ── */
 html.sc-booting,html.sc-booting body{overflow:hidden!important;}
-#scBoot{position:fixed;inset:0;z-index:999;display:flex;align-items:center;justify-content:center;background:#0a0a0a;transition:opacity .5s ease;overflow:hidden;}
+#scBoot{position:fixed;top:0;right:0;bottom:0;left:0;z-index:999;display:flex;align-items:center;justify-content:center;background:#0a0a0a;transition:opacity .5s ease;overflow:hidden;}
 :root[data-theme="light"] #scBoot{background:#ffffff;}
 #scBoot.scBoot-hide{opacity:0;pointer-events:none;}
 #scBoot .scBoot-in{display:flex;flex-direction:column;align-items:center;gap:20px;animation:scBootIn .6s cubic-bezier(.22,.61,.36,1) both;}
@@ -116,7 +116,7 @@ html.sc-booting,html.sc-booting body{overflow:hidden!important;}
 @keyframes vrti{to{transform:rotate(360deg)}}
 
 /* ── prijava (kot v portalu) ── */
-.auth{position:fixed;inset:0;z-index:50;display:flex;flex-direction:column;background:var(--bg);overflow:auto;}
+.auth{position:fixed;top:0;right:0;bottom:0;left:0;z-index:50;display:flex;flex-direction:column;background:var(--bg);overflow:auto;}
 .auth[hidden]{display:none!important;}
 .auth-top{border-bottom:1px solid var(--line);flex:none;}
 .topbar-in{margin:0 auto;padding:0 24px;height:64px;display:flex;align-items:center;gap:14px;padding-top:env(safe-area-inset-top);box-sizing:content-box;}
@@ -157,7 +157,7 @@ html.sc-booting,html.sc-booting body{overflow:hidden!important;}
 @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 
 /* PIN */
-.pin{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;background:var(--bg);padding:24px;animation:fadeIn .22s ease both;}
+.pin{position:fixed;top:0;right:0;bottom:0;left:0;z-index:60;display:flex;align-items:center;justify-content:center;background:var(--bg);padding:24px;animation:fadeIn .22s ease both;}
 .pin-in{width:100%;max-width:320px;text-align:center;}
 .pin-in .pp-av{margin:0 auto 12px;}
 .pin-ime{font-size:1.1rem;font-weight:600;margin-bottom:4px;}
@@ -250,7 +250,7 @@ html.sc-booting,html.sc-booting body{overflow:hidden!important;}
 .isci{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
 .isci-lbl{font-size:.82rem;color:var(--mid);margin-right:2px;}
 .isci-datum{position:relative;display:inline-flex;}
-.isci-datum input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer;}
+.isci-datum input{position:absolute;top:0;right:0;bottom:0;left:0;opacity:0;width:100%;height:100%;cursor:pointer;}
 .isci-chip{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;padding:8px 8px 8px 14px;border-radius:100px;background:var(--green-m);font-size:.88rem;font-weight:500;}
 .listi{list-style:none;display:flex;flex-direction:column;gap:8px;}
 .list{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:12px;padding:13px 14px 13px 18px;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);}
@@ -275,10 +275,10 @@ html.sc-booting,html.sc-booting body{overflow:hidden!important;}
    odprl, in se vanj vrne; zatemnitev je ločena plast; samo transform + opacity ── */
 /* Zaprto okno je display:none (ne visibility:hidden). Chrome je vsebini okna, ki se je med
    hitrim zapri → odpri še animirala, pustil podedovano »hidden«: okno je bilo belo in prazno. */
-.okno-back{position:fixed;inset:0;z-index:55;display:none;align-items:center;justify-content:center;padding:24px;
+.okno-back{position:fixed;top:0;right:0;bottom:0;left:0;z-index:55;display:none;align-items:center;justify-content:center;padding:24px;
   overscroll-behavior:contain;}
 .okno-back.odprto{display:flex;}
-.okno-zatemni{position:fixed;inset:0;background:rgba(0,0,0,.42);opacity:0;transition:opacity .3s ease;pointer-events:none;}
+.okno-zatemni{position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(0,0,0,.42);opacity:0;transition:opacity .3s ease;pointer-events:none;}
 .okno-back.show .okno-zatemni{opacity:1;}
 .okno{position:relative;width:100%;max-width:440px;max-height:calc(100vh - 48px);max-height:calc(100dvh - 48px);display:flex;flex-direction:column;overflow:hidden;
   background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:18px;box-shadow:0 24px 70px rgba(0,0,0,.28);transform-origin:0 0;}
@@ -301,7 +301,7 @@ html.okno-zaklep{overflow:hidden;}
 .okno-akc{flex-wrap:wrap;}
 
 /* potrditev: kot potrdiModal v portalu (.sc-modal) */
-.sc-modal-back{position:fixed;inset:0;z-index:60;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.42);
+.sc-modal-back{position:fixed;top:0;right:0;bottom:0;left:0;z-index:60;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.42);
   opacity:0;transition:opacity .18s ease;}
 .sc-modal-back.vidno{display:flex;}   /* kot okna: display, ne visibility (glej .okno-back) */
 .sc-modal-back.show{opacity:1;}
@@ -440,8 +440,8 @@ body,.topbar,.panel,.art,.list,.st-tile,.seg,.seg-b,input,textarea,.btn,.pill-bt
 /* dolga imena brez presledkov ne razširijo stolpca */
 .art .an,.stranka-btn .sb-ime,.st-tile{overflow-wrap:anywhere;}
 /* površina za prst ≥ 44 px (videz ostane enak) */
-.okno-x::before{content:"";position:absolute;inset:-7px;}
-.icon-btn::after{content:"";position:absolute;inset:-4px;}
+.okno-x::before{content:"";position:absolute;top:-7px;right:-7px;bottom:-7px;left:-7px;}
+.icon-btn::after{content:"";position:absolute;top:-4px;right:-4px;bottom:-4px;left:-4px;}
 .uskl .link-btn{padding:12px 8px;margin:-12px -8px;}
 /* aktiven gumb (npr. »Uredi opombe (1)«) ob lebdenju ni več skril besedila */
 .pill-btn.on:hover:not(:disabled){background:var(--green);border-color:var(--green);color:var(--btn-ink);}
@@ -490,3 +490,15 @@ html.sc-tema-prehod,html.sc-tema-prehod *,html.sc-tema-prehod *::before,html.sc-
 .btn .ik-tisk{width:19px;height:19px;flex:none;}
 .tisk-namig{flex:1 1 100%;margin:2px 2px 0;font-size:.8125rem;color:var(--mid);line-height:1.4;}
 .tisk-namig[hidden]{display:none;}
+
+/* številčnica: Potrdi (shrani in zapri) + Naprej (shrani in naslednji artikel) */
+.kp-akc{grid-column:1/-1;display:flex;gap:10px;margin-top:4px;}
+.kp-akc .btn{flex:1 1 0;padding:16px;font-size:1.05rem;}
+.kp-akc .btn[hidden]{display:none;}
+.kp-glava.kp-nov .ime{animation:kpNov .32s ease;}
+@keyframes kpNov{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:none;}}
+@media (prefers-reduced-motion:reduce){.kp-glava.kp-nov .ime{animation:none;}}
+.kp-akc .btn{margin-top:0;}
+/* izbira stranke: »Nedavno« (zadnje 4) nad vsemi strankami */
+.st-h{grid-column:1/-1;margin:6px 2px 0;font-size:.8125rem;font-weight:600;color:var(--mid);}
+.st-h:first-child{margin-top:0;}

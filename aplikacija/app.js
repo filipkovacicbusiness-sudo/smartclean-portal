@@ -39,9 +39,28 @@ function capFS(){
   return null;
 }
 function fileFor(key){ return key.replace(/[^a-z0-9]+/gi, "_") + ".json"; }
+/* Prijavni žetoni in PIN-i (profili, seja) so v ZASEBNI mapi aplikacije (DATA), ne v javni mapi
+   Documents, kjer jih je lahko prebrala vsaka aplikacija ali računalnik prek kabla. Spremni listi
+   ostanejo v Documents (preživijo ponovno namestitev). */
+function dirFor(key){ return (key === PROFILES_KEY || key === PORTAL_AUTH_KEY) ? "DATA" : "DOCUMENTS"; }
 function dbRead(key){
   var FS = capFS();
   if(FS){
+    var dir = dirFor(key);
+    if(dir === "DATA"){
+      /* selitev: prvič preberi še iz Documents, zapiši v zasebno mapo in javno kopijo izbriši */
+      return FS.readFile({ path: fileFor(key), directory: "DATA", encoding: "utf8" })
+        .then(function(r){ return r && r.data != null ? r.data : null; })
+        .catch(function(){
+          return FS.readFile({ path: fileFor(key), directory: "DOCUMENTS", encoding: "utf8" }).then(function(r){
+            var v = r && r.data != null ? r.data : null;
+            if(v == null) return null;
+            return FS.writeFile({ path: fileFor(key), directory: "DATA", encoding: "utf8", data: v, recursive: true })
+              .then(function(){ return FS.deleteFile({ path: fileFor(key), directory: "DOCUMENTS" }).catch(function(){}); })
+              .catch(function(){}).then(function(){ return v; });
+          }).catch(function(){ return null; });
+        });
+    }
     return FS.readFile({ path: fileFor(key), directory: "DOCUMENTS", encoding: "utf8" })
       .then(function(r){ return r && r.data != null ? r.data : null; })
       .catch(function(e){
@@ -57,13 +76,43 @@ function dbWrite(key, val){
   if(shrambaZaklenjena) return Promise.resolve(false);
   var FS = capFS();
   if(FS){
-    return FS.writeFile({ path: fileFor(key), directory: "DOCUMENTS", encoding: "utf8", data: val, recursive: true })
-      .then(function(){ return true; }).catch(function(){ return false; });
+    /* Najprej celotna vsebina v začasno datoteko, nato zamenjava (rename na Androidu zamenja v enem
+       koraku). Prej se je pisalo čez staro datoteko: zaprta aplikacija ali ugasnjena tablica med
+       pisanjem je pustila okrnjeno datoteko, ki se je prebrala kot prazen seznam — neposlani listi
+       so se izgubili. */
+    var dir = dirFor(key), pot = fileFor(key), tmp = pot + ".tmp";
+    var naravnost = function(){ return FS.writeFile({ path: pot, directory: dir, encoding: "utf8", data: val, recursive: true })
+      .then(function(){ return FS.deleteFile({ path: tmp, directory: dir }).catch(function(){}).then(function(){ return true; }); }).catch(function(){ return false; }); };
+    return FS.writeFile({ path: tmp, directory: dir, encoding: "utf8", data: val, recursive: true })
+      .then(function(){ return FS.rename({ from: tmp, to: pot, directory: dir, toDirectory: dir }); })
+      .then(function(){ return true; }, naravnost);
   }
   if(LS){ try{ localStorage.setItem(key, val); return Promise.resolve(true); }catch(e){} }
   return Promise.resolve(false);
 }
-async function dbJson(key, privzeto){ try{ var v = await dbRead(key); return v ? JSON.parse(v) : privzeto; }catch(e){ return privzeto; } }
+var _obnovljenoIzKopije = "";
+async function dbJson(key, privzeto){
+  var okvara = false;
+  try{ var v = await dbRead(key); if(v) return JSON.parse(v); }catch(e){ okvara = true; }
+  var FS = capFS(); if(!FS) return privzeto;
+  var dir = dirFor(key);
+  /* 1) začasna datoteka (pisanje se je prekinilo tik pred zamenjavo) */
+  try{ var t = await FS.readFile({ path: fileFor(key) + ".tmp", directory: dir, encoding: "utf8" }); if(t && t.data){ var o = JSON.parse(t.data); _obnovljenoIzKopije = "začasne datoteke"; return o; } }catch(e){}
+  if(!okvara) return privzeto;   /* datoteke ni (prvi zagon) — običajno */
+  /* 2) okvarjena datoteka: shrani jo za ročno obnovo, spremne liste vzemi iz najnovejše dnevne kopije */
+  try{ await FS.rename({ from: fileFor(key), to: fileFor(key) + ".okvara-" + Date.now(), directory: dir, toDirectory: dir }); }catch(e){}
+  if(key === STORE_KEY){
+    try{
+      var r = await FS.readdir({ path: "backup", directory: "DOCUMENTS" });
+      var imena = ((r && r.files) || []).map(function(f){ return typeof f === "string" ? f : (f && f.name) || ""; })
+        .filter(function(n){ return /^spremni_listi_dan_\d{4}-\d{2}-\d{2}\.json$/.test(n); }).sort().reverse();
+      for(var i = 0; i < imena.length; i++){
+        try{ var b = await FS.readFile({ path: "backup/" + imena[i], directory: "DOCUMENTS", encoding: "utf8" }); var arr = JSON.parse(b.data); if(Array.isArray(arr)){ _obnovljenoIzKopije = "varnostne kopije " + imena[i].slice(18, 28); return arr; } }catch(e){}
+      }
+    }catch(e){}
+  }
+  return privzeto;
+}
 
 /* Dnevna varnostna kopija (ena datoteka na dan, zadnjih 30 dni). Prej je nastala nova
    kopija CELEGA arhiva ob vsakem shranjenem listu — tisoče datotek na leto. */
@@ -98,7 +147,15 @@ var searchMode = "", searchQuery = "", searchDate = "", searchClientId = "", cli
 var previewId = null, reviewEntryId = null, kpArt = null, kpBuf = "", kpMode = "entry";
 var pdfPermOK = false, askedPerm = false;
 
-async function loadEntries(){ entries = await dbJson(STORE_KEY, []); if(!Array.isArray(entries)) entries = []; }
+async function loadEntries(){
+  _obnovljenoIzKopije = "";
+  entries = await dbJson(STORE_KEY, []); if(!Array.isArray(entries)) entries = [];
+  if(_obnovljenoIzKopije){
+    var vir = _obnovljenoIzKopije;
+    setTimeout(function(){ try{ toast("Shramba je bila poškodovana — spremni listi so obnovljeni iz " + vir + "."); }catch(_){} }, 1500);
+    saveEntries();   /* obnovljeno takoj zapiši kot veljavno datoteko */
+  }
+}
 var _shrambaOpozorilo = 0;
 async function saveEntries(){
   var ok = false; try{ ok = await dbWrite(STORE_KEY, JSON.stringify(entries)); }catch(e){}
@@ -229,8 +286,7 @@ function oknoPospravi(o){
   if(o.mrtev) return;
   o.mrtev = true;
   if(_okna[o.id] !== o) return;
-  o.panel.getAnimations().forEach(function(a){ a.cancel(); });
-  o.notr.getAnimations().forEach(function(a){ a.cancel(); });
+  if(o.panel.getAnimations){ o.panel.getAnimations().forEach(function(a){ a.cancel(); }); o.notr.getAnimations().forEach(function(a){ a.cancel(); }); }
   o.back.querySelectorAll(".okno-duh").forEach(function(d){ d.remove(); });
   o.back.classList.remove("odprto", "show");
   [o.kartica, o.cilj].forEach(function(k){ if(k) k.classList.remove("okno-vir"); });
@@ -249,7 +305,7 @@ function odpriOkno(id, izvor){
   oknoZaklep();
   back.classList.add("odprto");
   void back.offsetWidth; back.classList.add("show");   // zatemnitev začne takoj
-  if(oknoMirno() || !panel.animate) return;
+  if(oknoMirno() || !panel.animate || !panel.getAnimations) return;   /* Chrome < 84 (stara tablica): brez animacije, okno deluje */
   if(!o.kartica){   // brez izvora: pojavi se kot potrditveno okno portala
     panel.animate([{ opacity: 0, transform: "translateY(10px) scale(.98)" }, { opacity: 1, transform: "none" }], { duration: 200, easing: "ease" });
     return;
@@ -274,12 +330,11 @@ function zapriOkno(id){
   var f = obZaprtju[id]; if(f){ try{ f(); }catch(e){} }
   var konec = function(){ oknoPospravi(o); };
   o.back.classList.remove("show");
-  if(oknoMirno() || !o.panel.animate){ konec(); return; }
+  if(oknoMirno() || !o.panel.animate || !o.panel.getAnimations){ konec(); return; }
   setTimeout(konec, 800);
   var k = o.najdi && o.najdi();
   if(k && k.isConnected && !jeViden(k)){ try{ k.scrollIntoView({ block: "center" }); }catch(e){} }
-  o.panel.getAnimations().forEach(function(a){ a.cancel(); });
-  o.notr.getAnimations().forEach(function(a){ a.cancel(); });
+  if(o.panel.getAnimations){ o.panel.getAnimations().forEach(function(a){ a.cancel(); }); o.notr.getAnimations().forEach(function(a){ a.cancel(); }); }
   if(!jeViden(k)){   // izvora ni več → okno samo izgine
     o.panel.animate([{ opacity: 1, transform: "none" }, { opacity: 0, transform: "translateY(8px) scale(.98)" }], { duration: 200, easing: "ease", fill: "forwards" }).finished.then(konec, konec);
     return;
@@ -490,8 +545,15 @@ function osveziVse(){ setClientLabel(); updatePanelMode(); renderEntry(); render
 function fillClientGrid(){
   var q = normaliziraj($("stIsci").value), izbran = clientPickerMode === "search" ? searchClientId : selectedId;
   var seznam = strankeUrejene().filter(function(c){ return !q || normaliziraj(c.naziv).indexOf(q) >= 0 || normaliziraj(c.podjetje).indexOf(q) >= 0; });
+  function ploscica(c){ return '<button type="button" class="st-tile' + (c.id === izbran ? " sel" : "") + '" data-c="' + esc(c.id) + '">' + esc(c.naziv) + '</button>'; }
+  /* brez iskanja: zadnje 4 stranke (iz zadnjih listov) na vrhu, nato vse po abecedi */
+  var nedavne = [];
+  if(!q && clientPickerMode !== "search" && seznam.length > 6){
+    entries.slice().sort(function(a, b){ return String(b.ustvarjeno || b.datum || "").localeCompare(String(a.ustvarjeno || a.datum || "")); })
+      .some(function(e){ var c = strankaLista(e); if(c && nedavne.indexOf(c) < 0 && seznam.indexOf(c) >= 0) nedavne.push(c); return nedavne.length >= 4; });
+  }
   $("stGrid").innerHTML = seznam.length
-    ? seznam.map(function(c){ return '<button type="button" class="st-tile' + (c.id === izbran ? " sel" : "") + '" data-c="' + esc(c.id) + '">' + esc(c.naziv) + '</button>'; }).join("")
+    ? (nedavne.length ? '<p class="st-h">Nedavno</p>' + nedavne.map(ploscica).join("") + '<p class="st-h">Vse stranke</p>' : "") + seznam.map(ploscica).join("")
     : '<div class="st-prazno">' + (CLIENTS.length ? "Ni zadetkov." : (pullTecev || katalogTecev ? "Nalagam stranke iz portala …" : "Seznam strank je prazen — potrebna je povezava s portalom.")) + '</div>';
   $("stGrid").querySelectorAll("[data-c]").forEach(function(b){ b.onclick = function(){ pickClient(b.getAttribute("data-c")); }; });
 }
@@ -521,7 +583,8 @@ function buildKeypad(){
     if(k === "back") return '<button type="button" class="kp-key util" data-k="back" aria-label="Briši">⌫</button>';
     if(k === "C") return '<button type="button" class="kp-key util" data-k="C">C</button>';
     return '<button type="button" class="kp-key" data-k="' + k + '">' + k + '</button>';
-  }).join("") + '<button type="button" class="btn" data-k="enter" id="kpEnter">Potrdi</button>';
+  }).join("") + '<div class="kp-akc"><button type="button" class="btn ghost" data-k="enter" id="kpEnter">Potrdi</button>' +
+    '<button type="button" class="btn" data-k="next" id="kpNaprej">Naprej <span aria-hidden="true">›</span></button></div>';
   $("kpGrid").querySelectorAll("[data-k]").forEach(function(b){ b.onclick = function(){ kpPress(b.getAttribute("data-k")); }; });
 }
 var kpSpremenjeno = false;   // pritisnjena katerakoli tipka (tudi »C«) → Potrdi zapiše, kar je na zaslonu
@@ -532,7 +595,19 @@ function openKeypad(artId, izvor){
   $("kpIme").textContent = a ? a.naziv : "—";
   $("kpZdaj").textContent = cur ? ("Zdaj: " + cur + " kos") : "Še ni vpisano";
   $("kpEnter").textContent = "Potrdi";
+  kpNaprejStanje();
   kpRenderDisp(); odpriOkno("oknoKp", izvor);
+}
+/* »Naprej«: naslednji artikel v istem vrstnem redu kot na zaslonu (brez zapiranja številčnice) */
+function kpNaslednji(){
+  var v = Array.prototype.map.call(document.querySelectorAll("#vnosTelo [data-art]"), function(b){ return b.getAttribute("data-art"); });
+  var i = v.indexOf(kpArt); return (i >= 0 && i < v.length - 1) ? v[i + 1] : null;
+}
+function kpNaprejStanje(){
+  var n = $("kpNaprej"); if(!n) return;
+  var ima = kpMode === "entry" && !!kpNaslednji();
+  n.hidden = !ima;
+  $("kpEnter").className = ima ? "btn ghost" : "btn";
 }
 function openSearchKeypad(izvor){
   kpMode = "search"; kpBuf = searchMode === "id" ? searchQuery.replace(/[^0-9]/g, "") : "";
@@ -540,6 +615,7 @@ function openSearchKeypad(izvor){
   $("kpIme").textContent = "Številka spremnega lista";
   $("kpZdaj").textContent = "Rezultati se osvežujejo sproti";
   $("kpEnter").textContent = "Zapri";
+  kpNaprejStanje();
   kpRenderDisp(); odpriOkno("oknoKp", izvor);
 }
 obZaprtju.oknoKp = function(){ kpArt = null; kpBuf = ""; kpMode = "entry"; };
@@ -549,6 +625,19 @@ function kpRenderDisp(){
   d.innerHTML = (kpBuf === "" ? "0" : esc(kpBuf)) + (kpMode === "entry" ? '<span class="e">kos</span>' : "");
 }
 function kpPress(k){
+  if(k === "next" && kpMode === "entry" && kpArt){
+    var nx = kpNaslednji();
+    if(kpBuf !== "" || kpSpremenjeno){ draftQty[kpArt] = parseInt(kpBuf, 10) || 0; updatePill(kpArt); renderSummary(); }
+    if(!nx){ zapriOkno("oknoKp"); return; }
+    kpArt = nx; kpBuf = ""; kpSpremenjeno = false;
+    var a = artById(nx), cur = draftQty[nx] || 0;
+    $("kpIme").textContent = a ? a.naziv : "—";
+    $("kpZdaj").textContent = cur ? ("Zdaj: " + cur + " kos") : "Še ni vpisano";
+    kpNaprejStanje(); kpRenderDisp();
+    var g = $("kpIme").closest(".kp-glava"); if(g){ g.classList.remove("kp-nov"); void g.offsetWidth; g.classList.add("kp-nov"); }
+    try{ var row = document.querySelector('#vnosTelo [data-art="' + CSS.escape(nx) + '"]'); if(row) row.scrollIntoView({ block: "nearest" }); }catch(_){}
+    return;
+  }
   if(k === "enter"){
     /* prej: »C« in nato Potrdi je pustil stare kose, čeprav je zaslon kazal 0 */
     if(kpMode === "entry" && kpArt && (kpBuf !== "" || kpSpremenjeno)){ var id = kpArt; draftQty[id] = parseInt(kpBuf, 10) || 0; updatePill(id); renderSummary(); }
@@ -567,7 +656,7 @@ document.addEventListener("keydown", function(ev){
   if(top !== "oknoKp") return;
   if(/^[0-9]$/.test(ev.key)){ kpPress(ev.key); ev.preventDefault(); }
   else if(ev.key === "Backspace"){ kpPress("back"); ev.preventDefault(); }
-  else if(ev.key === "Enter"){ kpPress("enter"); ev.preventDefault(); }
+  else if(ev.key === "Enter"){ kpPress(kpMode === "entry" && kpNaslednji() ? "next" : "enter"); ev.preventDefault(); }
 });
 
 /* opombe */
@@ -946,11 +1035,13 @@ function pdfPodatki(e){
 }
 /* PDF enega lista v 1 ali 2 izvodih (vsak izvod svoja stran), kot natisne tablica */
 var _pdfListi = {};
+/* ključ = vsebina dokumenta (številka, stranka, postavke …) + izvodi — po »Nova št.« ali popravku nov PDF */
+function pdfKljuc(e, izv){ return izv + "|" + JSON.stringify(pdfPodatki(e)); }
 function pripraviPdf(e){
   if(!e || !jeIosSam() || pdfPlugin()) return;
   [1, 2].forEach(function(izv){
-    var k = e.id + "|" + izv + "|" + (e.rev || 0) + "|" + (e.portalPopravljenoAt || "");
-    if(_pdfListi[k]) return;
+    var k = pdfKljuc(e, izv);
+    if(_pdfListi[k] && !_pdfListi[k].err) return;   /* neuspela izdelava se ob naslednjem dotiku ponovi */
     var c = _pdfListi[k] = { file: null, err: null };
     naloziPdf().then(function(){
       var doc = new PDFDoc();
@@ -960,9 +1051,12 @@ function pripraviPdf(e){
   });
 }
 function deliPdfList(e, izv){
-  var c = _pdfListi[e.id + "|" + izv + "|" + (e.rev || 0) + "|" + (e.portalPopravljenoAt || "")];
+  var c = _pdfListi[pdfKljuc(e, izv)];
   if(!c){ pripraviPdf(e); toast("Pripravljam PDF — tapni še enkrat."); return; }
-  if(!c.file){ toast(c.err ? "PDF ni uspel: " + (c.err.message || c.err) : "PDF se še pripravlja — tapni še enkrat."); return; }
+  if(!c.file){
+    if(c.err){ pripraviPdf(e); toast("PDF ni uspel — poskušam znova, tapni še enkrat."); return; }
+    toast("PDF se še pripravlja — tapni še enkrat."); return;
+  }
   if(navigator.canShare && !navigator.canShare({ files: [c.file] })){ toast("Ta naprava ne zna deliti PDF-ja."); return; }
   navigator.share({ files: [c.file], title: "Spremni list " + e.stevilka }).catch(function(er){ if(er && er.name !== "AbortError") toast("Meni Deli se ni odprl: " + (er.message || er.name)); });
 }
@@ -976,7 +1070,11 @@ function printLists(arr, enIzvod){
   if(!arr || !arr.length){ toast("Ni spremnih listov za tiskanje."); return; }
   var html = dokZaListe(arr, enIzvod ? 1 : 2);
   var P = pdfPlugin();
-  if(P){ P.print({ html: html, jobName: "Spremni list " + arr[0].stevilka }).catch(function(){ toast("Tiskanje ni uspelo."); }); return; }
+  if(P){
+    if(Date.now() < _tiskamDo) return;   /* tablica: dvojni dotik ne pošlje lista dvakrat (prej brez zaščite) */
+    _tiskamDo = Date.now() + 3500;
+    P.print({ html: html, jobName: "Spremni list " + arr[0].stevilka }).catch(function(){ _tiskamDo = 0; toast("Tiskanje ni uspelo."); }); return;
+  }
   if(jeIosSam() && arr.length === 1){ deliPdfList(arr[0], enIzvod ? 1 : 2); return; }
   if(jeMobilna()){ natisniVGlavnem(html); return; }
   natisniPrekIframe(html);

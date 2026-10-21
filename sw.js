@@ -19,7 +19,9 @@ self.addEventListener('install', function (e) {
 });
 self.addEventListener('activate', function (e) {
   e.waitUntil(caches.keys().then(function (ks) {
-    return Promise.all(ks.map(function (k) { if (k !== CACHE) return caches.delete(k); }));
+    // samo LASTNI stari predpomnilniki — aplikacija za spremne liste (/mobile, »pralnica-…«) je na isti
+    // domeni; prej je portal izbrisal njen predpomnilnik in se na iPhonu brez povezave ni zagnala
+    return Promise.all(ks.map(function (k) { if (k !== CACHE && k.indexOf('sc-portal') === 0) return caches.delete(k); }));
   }).then(function () {
     // stare kopije APK iz predpomnilnika (prej cache-first) odstrani
     return caches.open(CACHE).then(function (c) { return c.keys().then(function (zahteve) {
