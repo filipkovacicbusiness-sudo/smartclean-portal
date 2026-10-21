@@ -2493,3 +2493,15 @@ html[data-theme="dark"] .doc-stage{background:color-mix(in srgb,var(--ink) 6%,va
 .pris-chip-x .iko-x{width:12px;height:12px;}
 .art-r-del svg,.art-r-edit svg{width:16px;height:16px;}
 .vu-x .iko-x{width:16px;height:16px;}
+/* 4.52: filter »Samo nepotrjeni« (oznaka z ×), skupno potrjevanje, pasica na Domov kot gumb */
+.arh-ozn-vrsta{margin:0 0 12px;}
+.arh-ozn-vrsta[hidden]{display:none;}
+.arh-ozn{display:inline-flex;align-items:center;gap:8px;min-height:var(--ctrl-h-md);padding:0 8px 0 14px;border:1px solid color-mix(in srgb,var(--st-warn) 45%,var(--line));
+  border-radius:var(--r-full);background:color-mix(in srgb,var(--st-warn) 10%,var(--surface));color:var(--ink);font:600 var(--fs-13)/1.2 var(--sans);cursor:pointer;}
+.arh-ozn .iko-x{width:16px;height:16px;margin:0;opacity:.7;}
+.arh-ozn:hover .iko-x{opacity:1;}
+.arh-izbira .arh-potrdi{gap:6px;}
+.arh-izbira .arh-potrdi svg{width:18px;height:18px;flex:none;color:var(--st-ok);}
+.preg-status.ps-klik{cursor:pointer;width:100%;text-align:left;font:inherit;color:inherit;}
+.preg-status.ps-klik::after{content:"";width:8px;height:8px;margin-left:auto;flex:none;border-right:1.6px solid var(--mid);border-bottom:1.6px solid var(--mid);transform:rotate(-45deg);}
+.preg-status.ps-klik:hover{border-color:var(--st-warn);}

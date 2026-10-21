@@ -321,7 +321,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.51 · BETA';
+  var APP_VERZIJA = '4.52 · BETA';
   var NALAGANJE = '<div class="sc-load" aria-hidden="true"><span class="sc-load-line"></span></div>';
   // Stale-while-revalidate: ob ponovnem obisku razdelka NE pobriši vsebine v nalagalnik —
   // obdrži prejšnjo (takojšen prikaz) in jo osveži v ozadju. Trak le ob prvem nalaganju.
@@ -1428,6 +1428,7 @@
     return (ORGSEZNAM && ORGSEZNAM[0]) ? ORGSEZNAM[0].id : null;
   }
   function novCardToken() { var a = new Uint8Array(16); crypto.getRandomValues(a); return [].map.call(a, function (b) { return ('0' + b.toString(16)).slice(-2); }).join(''); }
+  function isoLokalno(d) { return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
   function danes10() { var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
   function uraMin(ts) { return new Date(ts).toLocaleTimeString('sl-SI', { hour: '2-digit', minute: '2-digit' }); }
   function trajanjeH(sek) { var m = Math.round(sek / 60); var h = Math.floor(m / 60); m = m % 60; if (!h) return m + 'min'; if (!m) return h + 'h'; return h + 'h ' + m + 'min'; }
@@ -1964,7 +1965,7 @@
       '<input type="month" id="prisDatumMoj" value="' + mk + '">' +
       '<button type="button" class="pris-nav" data-mnav="1" aria-label="Naslednji"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>' +
       '</div></div>' + telo + '</div>';
-    function skoci(delta) { var d = new Date(mk + '-01T00:00:00'); d.setMonth(d.getMonth() + delta); _prisDan = d.toISOString().slice(0, 10); prisRender(); }
+    function skoci(delta) { var d = new Date(mk + '-01T00:00:00'); d.setMonth(d.getMonth() + delta); _prisDan = isoLokalno(d); prisRender(); }   // lokalni datum (toISOString je v UTC: 1. 11. → 31. 10.)
     var dm = $('prisDatumMoj'); if (dm) dm.addEventListener('change', function () { var v = this.value; if (v) { _prisDan = v + '-01'; prisRender(); } });
     box.querySelectorAll('[data-mnav]').forEach(function (b) { b.addEventListener('click', function () { skoci(parseInt(b.dataset.mnav, 10)); }); });
     requestAnimationFrame(function () { window.scrollTo(0, _sy); });
@@ -3530,6 +3531,13 @@
     var reduce = false; try { reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion:reduce)').matches; } catch (e) {}
     if (reduce) el.textContent = stevilo(ure); else _countUp(el, ure, 'int');
   }
+  // Po potrditvi na Domov: osveži pasico in seznam (le če je Domov odprt).
+  // 1 list še ni potrjen · 2 lista še nista potrjena · 3 listi še niso potrjeni · 5 listov še ni potrjenih
+  function nepotrjeniBesedilo(n) {
+    var m = n % 100;
+    return stevilo(n) + (m === 1 ? ' list še ni potrjen' : m === 2 ? ' lista še nista potrjena' : (m === 3 || m === 4) ? ' listi še niso potrjeni' : ' listov še ni potrjenih');
+  }
+  function risiPregledStatus() { if ($('sec-domov') && !$('sec-domov').classList.contains('hidden') && !_okno) risiPregled(); }
   function risiPregled() {
     $('domovNaslov').textContent = OSEBJE ? (pozdrav() + ', ' + prvoIme()) : MOJEPODJETJE ? MOJEPODJETJE.name : 'Vaš pregled';
     $('domovPod').textContent = OSEBJE ? ORGSEZNAM.length + ' strank v bazi' : MOJEPODJETJE ? [MOJEPODJETJE.legal_name, MOJEPODJETJE.address].filter(Boolean).join(' · ') : '';
@@ -3544,15 +3552,15 @@
     const pred90 = new Date(zdaj.getTime() - 90 * 864e5);
     const aktivnih = new Set(LISTI.filter(l => new Date(l.doc_date) >= pred90).map(l => l.org_id)).size;
     const kartice = OSEBJE ? [
-      { lab: 'Ta mesec', num: kgMesec, fmt: 'tona' },
-      { lab: 'Oddelanih ur', pending: 'ure' },
-      { lab: 'Dostav ta mesec', num: vMesecu.length, fmt: 'int' },
-      { lab: 'Kosov opranih', num: kosovSkupaj, fmt: 'int' }
+      { lab: 'Teža ta mesec', num: kgMesec, fmt: 'tona' },
+      { lab: 'Ur ta mesec', pending: 'ure' },
+      { lab: 'Spremnih listov ta mesec', num: vMesecu.length, fmt: 'int' },
+      { lab: 'Kosov ta mesec', num: kosovMesec, fmt: 'int' }   // vse štiri za tekoči mesec (prej kosi za vse čase)
     ] : [
-      { lab: 'Prevzemov', num: VSEHLISTOV, fmt: 'int', sub: 'skupaj' },
+      { lab: 'Spremnih listov', num: VSEHLISTOV, fmt: 'int', sub: 'skupaj' },
       { lab: 'Ta mesec', num: vMesecu.length, fmt: 'int', sub: stevilo(kosovMesec) + ' kosov' },
-      { lab: 'Kosov skupaj', num: kosovSkupaj, fmt: 'int', sub: 'v vseh prevzemih' },
-      { lab: 'Zadnji prevzem', text: zadnji ? datum(zadnji.doc_date) : '—', sub: zadnji ? stevilo(zadnji.total_pieces) + ' kosov' : 'še ni podatkov' }
+      { lab: 'Kosov skupaj', num: kosovSkupaj, fmt: 'int', sub: 'v vseh spremnih listih' },
+      { lab: 'Zadnji spremni list', text: zadnji ? datum(zadnji.doc_date) : '—', sub: zadnji ? stevilo(zadnji.total_pieces) + ' kosov' : 'še ni podatkov' }
     ];
     $('statGrid').innerHTML = kartice.map(function (k) {
       var num;
@@ -3605,13 +3613,22 @@
       var azuren = zadnjiDatum && zadnjiDatum >= pricakovan;
       var nepotrjeni = LISTI.filter(function (l) { return (l.total_pieces > 0) && l.potrjeno !== true && !STAR_SET.has(l.id); }).length;
       if (!azuren) statusHtml = '<div class="preg-status ps-warn"><span class="ps-ik">' + IKO_KLICAJ + '</span><span>Zadnji spremni list je od <b>' + (zadnjiDatum ? datum(zadnjiDatum) : '—') + '</b> — morda manjkajo novejši.</span></div>';
-      else if (nepotrjeni > 0) statusHtml = '<div class="preg-status ps-warn"><span class="ps-ik">' + IKO_TOCKA + '</span><span>Vsi dodani · <b>' + nepotrjeni + '</b> ' + (nepotrjeni === 1 ? 'list še ni pregledan' : 'listov še ni pregledanih') + ' (potrjenih).</span></div>';
+      else if (nepotrjeni > 0) statusHtml = '<div class="preg-status ps-warn ps-klik" role="button" tabindex="0" data-nepotrjeni title="Pokaži nepotrjene"><span class="ps-ik">' + IKO_TOCKA + '</span><span><b>' + nepotrjeniBesedilo(nepotrjeni) + '</b> · pokaži in potrdi</span></div>';
       else statusHtml = '<div class="preg-status ps-ok"><span class="ps-ik">' + IKO_KLJUKICA + '</span><span>Vse pregledano in dodano · zadnji list <b>' + (zadnjiDatum ? datum(zadnjiDatum) : '—') + '</b>.</span></div>';
     }
-    if ($('domovStatus')) $('domovStatus').innerHTML = statusHtml;
+    if ($('domovStatus')) {
+      $('domovStatus').innerHTML = statusHtml;
+      var _np = $('domovStatus').querySelector('[data-nepotrjeni]');
+      if (_np) { var _odpri = function () { ARH_NEPOTRJENI = true; pojdi('arhiv'); }; _np.addEventListener('click', _odpri); _np.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); _odpri(); } }); }
+    }
     var kolikoNaj = Math.max(6, Math.min(40, Math.floor((window.innerHeight - 230) / 62)));
     const zadnjiListi = razvrsceni.slice(0, kolikoNaj);
-    $('zadnji').innerHTML = '<h3 class="sec-h">Zadnji prevzemi</h3>' + tabelaListov(zadnjiListi, false);
+    $('zadnji').innerHTML = '<h3 class="sec-h">Zadnji spremni listi</h3>' + tabelaListov(zadnjiListi, true);
+    $('zadnji').querySelectorAll('.a-row').forEach(b => b.addEventListener('click', () => odpriList(b)));
+    $('zadnji').querySelectorAll('.arh-chk.clk').forEach(c => {
+      c.addEventListener('click', e => { e.stopPropagation(); potrdiList(c).then(risiPregledStatus); });
+      c.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); potrdiList(c).then(risiPregledStatus); } });
+    });
     prednaloziPostavke(zadnjiListi);
   }
 
@@ -4072,7 +4089,7 @@
     if (_od && _do && _od > _do) { const _t = _od; _od = _do; _do = _t; }
     { const xb = $('arhivObdX'); if (xb) xb.classList.toggle('hidden', !(_od || _do)); }
     const vDan = d => { const s = String(d || '').slice(0, 10); return (!_od || s >= _od) && (!_do || s <= _do); };
-    const vrstice = LISTI.filter(l => (!org || l.org_id === org) && vDan(l.doc_date) && (!q || (l.number || '').toLowerCase().includes(q) || (ORGIME[l.org_id] || '').toLowerCase().includes(q)));
+    const vrstice = LISTI.filter(l => (!org || l.org_id === org) && vDan(l.doc_date) && (!ARH_NEPOTRJENI || jeZaPotrditev(l)) && (!q || (l.number || '').toLowerCase().includes(q) || (ORGIME[l.org_id] || '').toLowerCase().includes(q)));
     const sortv = ($('arhivSort') && $('arhivSort').value) || 'st_desc';
     const imeStr = l => (OSEBJE ? (ORGIME[l.org_id] || '') : (l.issued_name || ''));
     const stK = l => { const d = String(l.number || '').split('/'); return (parseInt(d[1], 10) || 0) * 1e7 + (parseInt(d[0], 10) || 0); };
@@ -4097,7 +4114,8 @@
     $('arhivPod').textContent = LISTI.length ? vrstice.length + ' od ' + stevilo(VSEHLISTOV) + ' spremnih listov' + (ceneManjkajo ? (_arhCeneNapaka ? ' · vrednosti ni bilo mogoče izračunati' : ' · računam vrednosti …') : '') : 'v bazi še ni spremnih listov';
     // ── strani: največ ARH_NA_STRAN listov naenkrat (prej vsi na eni strani — pri tisočih počasno).
     // Iskanje, filtri in razvrščanje veljajo za CEL arhiv; ob njihovi spremembi nazaj na 1. stran.
-    const kljucF = [q, org, _od, _do, sortv].join('|');
+    const kljucF = [q, org, _od, _do, sortv, ARH_NEPOTRJENI].join('|');
+    arhFilterOznaka(vrstice.length);
     if (kljucF !== _arhKljuc) { _arhKljuc = kljucF; _arhStran = 0; }
     const nStrani = Math.max(1, Math.ceil(vrstice.length / ARH_NA_STRAN));
     if (_arhStran > nStrani - 1) _arhStran = nStrani - 1;
@@ -4105,6 +4123,18 @@
     const zac = _arhStran * ARH_NA_STRAN, stran = vrstice.slice(zac, zac + ARH_NA_STRAN);
     ARH_VIDNI = stran;   // »Izberi vse« = listi na tej strani
     if (ARH_IZB) { const _obst = new Set(LISTI.map(l => l.id)); ARH_IZB.forEach(id => { if (!_obst.has(id)) ARH_IZB.delete(id); }); }   // medtem izbrisani
+    if (!vrstice.length && LISTI.length && !LISTI_NAPAKA && ARH_NEPOTRJENI && !q && !org && !_od && !_do) {
+      $('arhivList').innerHTML = '<div class="rows"><div class="empty"><h3>Vse je potrjeno</h3><p>Ni nepotrjenih spremnih listov.</p><button type="button" class="btn btn-narrow btn-alt" data-pocisti>Pokaži vse liste</button></div></div>';
+      $('arhivList').querySelector('[data-pocisti]').addEventListener('click', () => { ARH_NEPOTRJENI = false; risiArhiv(); });
+    } else if (!vrstice.length && LISTI.length && !LISTI_NAPAKA) {
+      // iskanje/filtri ne najdejo ničesar (prej: »Spremnih listov še ni« — zavajajoče)
+      $('arhivList').innerHTML = '<div class="rows"><div class="empty"><h3>Ni zadetkov</h3><p>Noben spremni list ne ustreza iskanju in izbranim filtrom.</p><button type="button" class="btn btn-narrow btn-alt" data-pocisti>Počisti filtre</button></div></div>';
+      $('arhivList').querySelector('[data-pocisti]').addEventListener('click', () => {
+        ['arhivIsci', 'arhivOd', 'arhivDo'].forEach(i => { const e = $(i); if (e) e.value = ''; });
+        const o = $('arhivOrg'); if (o) { o.value = ''; o.dispatchEvent(new Event('change')); }
+        ARH_NEPOTRJENI = false; risiArhiv();
+      });
+    } else
     $('arhivList').innerHTML = tabelaListov(stran, true, (sortv === 'kg_desc' || sortv === 'kg_asc') ? 'kg' : (poCeni && !ceneManjkajo ? 'cena' : null)) + arhStraniHtml(nStrani, zac, vrstice.length);
     $('arhivList').querySelectorAll('[data-str]').forEach(b => b.addEventListener('click', () => {
       _arhStran = parseInt(b.dataset.str, 10) || 0; risiArhiv();
@@ -4124,6 +4154,14 @@
     arhIzbiraRisi();
     oknoPoIzrisu();
   }
+  function arhFilterOznaka(n) {
+    var el = $('arhivFiltOzn');
+    if (!el) { el = document.createElement('div'); el.id = 'arhivFiltOzn'; el.className = 'arh-ozn-vrsta'; $('arhivList').parentNode.insertBefore(el, $('arhivList')); }
+    if (!ARH_NEPOTRJENI) { el.innerHTML = ''; el.hidden = true; return; }
+    el.hidden = false;
+    el.innerHTML = '<button type="button" class="arh-ozn" title="Prikaži vse liste">Samo nepotrjeni · ' + stevilo(n) + IKO_ZAPRI + '</button>';
+    el.firstChild.addEventListener('click', function () { ARH_NEPOTRJENI = false; risiArhiv(); });
+  }
   async function potrdiList(chk) {
     const id = chk.dataset.pot; if (!id) return;
     const naVkljuceno = !chk.classList.contains('on');
@@ -4142,11 +4180,14 @@
   // pokaže vrstica s številom izbranih, »Izberi vse« (vidne po filtru) in »Natisni«.
   // Izbira ostane ob menjavi filtrov; izhod: »Prekliči«, Esc ali drug razdelek.
   var ARH_IZB = null, ARH_VIDNI = [], _arhBar = null;
+  // Filter »Samo nepotrjeni« (vklopi ga pasica na Domov); viden kot oznaka z × nad seznamom.
+  var ARH_NEPOTRJENI = false;
+  function jeZaPotrditev(l) { return (l.total_pieces > 0) && l.potrjeno !== true && !STAR_SET.has(l.id); }
   // Gumb »Izberi« je simbol: kljukica; med izbiranjem × (prekliči).
   function arhIzbiraGumb(vkljuceno) {
     var b = $('arhivIzberiBtn'); if (!b) return;
     b.innerHTML = vkljuceno ? IKO_X : IKO_KLJUKICA;
-    var t = vkljuceno ? 'Prekliči izbiro' : 'Izberi več spremnih listov za tisk';
+    var t = vkljuceno ? 'Prekliči izbiro' : 'Izberi več spremnih listov (tisk ali potrditev)';
     b.title = t; b.setAttribute('aria-label', t); b.setAttribute('aria-pressed', vkljuceno ? 'true' : 'false');
     b.classList.toggle('on', !!vkljuceno);
   }
@@ -4175,6 +4216,7 @@
     d.className = 'arh-izbira'; d.setAttribute('role', 'toolbar'); d.setAttribute('aria-label', 'Izbrani spremni listi');
     d.innerHTML = '<span class="arh-izb-n" aria-live="polite"></span>' +
       '<button type="button" class="btn btn-narrow btn-alt" data-vse>Izberi vse</button>' +
+      (OSEBJE ? '<button type="button" class="btn btn-narrow btn-alt arh-potrdi" data-potrdi title="Potrdi izbrane">' + IKO_KLJUKICA + '<span>Potrdi</span></button>' : '') +
       '<button type="button" class="btn btn-narrow arh-tisk" data-tisk title="Natisni izbrane" aria-label="Natisni izbrane">' + IKO_TISK + '<span class="arh-tisk-n"></span></button>';
     document.body.appendChild(d);
     d.querySelector('[data-vse]').addEventListener('click', function () {
@@ -4188,6 +4230,7 @@
       arhIzbiraRisi();
     });
     d.querySelector('[data-tisk]').addEventListener('click', arhIzbiraNatisni);
+    var bp = d.querySelector('[data-potrdi]'); if (bp) bp.addEventListener('click', arhIzbiraPotrdi);
     _arhBar = d;
     return d;
   }
@@ -4196,6 +4239,8 @@
     var n = ARH_IZB.size, vsi = ARH_VIDNI.length && ARH_VIDNI.every(l => ARH_IZB.has(l.id));
     _arhBar.querySelector('.arh-izb-n').textContent = n ? 'Izbrano: ' + sklonListov(n) : 'Izberi spremne liste';
     var bv = _arhBar.querySelector('[data-vse]'); bv.textContent = vsi ? 'Počisti' : 'Izberi vse'; bv.disabled = !ARH_VIDNI.length;
+    var bp = _arhBar.querySelector('[data-potrdi]');
+    if (bp && !bp._tece) { var np = LISTI.filter(l => ARH_IZB.has(l.id) && jeZaPotrditev(l)).length; bp.disabled = !np; bp.querySelector('span').textContent = np ? 'Potrdi ' + np : 'Potrdi'; }
     var bt = _arhBar.querySelector('[data-tisk]'); if (!bt._tece) { bt.disabled = !n; bt.querySelector('.arh-tisk-n').textContent = n ? String(n) : ''; }
   }
   function arhIzbiraPreklopi(btn) {
@@ -4205,6 +4250,22 @@
     btn.closest('.lcell').classList.toggle('izbran', on);
     btn.setAttribute('aria-pressed', on ? 'true' : 'false');
     arhIzbiraRisi();
+  }
+  // Potrdi vse izbrane, ki jih je mogoče potrditi (ne prazni, ne stari zapisi) — en klic v bazo.
+  async function arhIzbiraPotrdi() {
+    if (!ARH_IZB) return;
+    var bp = _arhBar.querySelector('[data-potrdi]');
+    var ids = LISTI.filter(l => ARH_IZB.has(l.id) && jeZaPotrditev(l)).map(l => l.id);
+    if (!ids.length) return;
+    bp._tece = true; bp.disabled = true; bp.classList.add('nalaga');
+    try {
+      var r = await sb.from('delivery_notes').update({ potrjeno: true }).in('id', ids);
+      if (r.error) { toast('Potrjevanje ni uspelo. Poskusi znova.'); console.warn(r.error); return; }
+      LISTI.forEach(l => { if (ids.indexOf(l.id) >= 0) l.potrjeno = true; });
+      ids.forEach(id => ARH_IZB.delete(id));
+      logDodaj('Arhiv', 'Potrjeno', sklonListov(ids.length));
+      toast('Potrjeno: ' + sklonListov(ids.length) + '.');
+    } finally { bp._tece = false; bp.classList.remove('nalaga'); risiArhiv(); }
   }
   // Izbrani listi v enem dokumentu (vsak na svoji strani A4), po številki naraščajoče.
   async function arhIzbiraNatisni() {
@@ -4348,7 +4409,8 @@
       btn._nalagam = false; btn.classList.remove('nalaga');
       if (!btn.isConnected || _okno) return;   // vmes izrisano na novo ali že odprto
     }
-    oknoOdpri(btn, box, () => document.querySelector('#arhivList .a-row[data-id="' + String(id).replace(/"/g, '\\"') + '"]'));
+    const kont = btn.closest('#zadnji') ? '#zadnji' : '#arhivList';   // tudi zadnji listi na Domov
+    oknoOdpri(btn, box, () => document.querySelector(kont + ' .a-row[data-id="' + String(id).replace(/"/g, '\\"') + '"]'));
   }
 
   // Po shranjevanju se arhiv izriše na novo in razprta kartica se ob tem zapre.
@@ -4568,7 +4630,7 @@
     const sIn = box.querySelector('[data-seq]');
     const lIn = box.querySelector('[data-leto]');
     const dodaj = box.querySelector('[data-dodaj]');
-    const dnes = new Date().toISOString().slice(0, 10);
+    const dnes = danes10();   // lokalni datum (UTC bi med 0. in 2. uro vrnil včeraj)
 
     const vrata = document.createElement('div');
     vrata.className = 'ur-dv';
@@ -4638,7 +4700,7 @@
   async function urediList(box) {
     const n = box._note;
     const st = razcleniStevilko(n.number);
-    const dnes = n.doc_date || new Date().toISOString().slice(0, 10);
+    const dnes = n.doc_date || danes10();
     const orgOpt = ORGSEZNAM.map(o => `<option value="${o.id}"${o.id === n.org_id ? ' selected' : ''}>${escape_(o.name)}</option>`).join('');
     box.innerHTML = `<div class="ur-form">
       <label class="ur-f"><span>Stranka</span><select data-org>${orgOpt}</select></label>
@@ -4988,7 +5050,7 @@
     const letos = new Date().getFullYear();
     let maxSeq = 0;
     LISTI.forEach(l => { const d = String(l.number || '').split('/'); if ((parseInt(d[1], 10) || 0) === letos) { const sq = parseInt(d[0], 10) || 0; if (sq > maxSeq) maxSeq = sq; } });
-    const dnes = new Date().toISOString().slice(0, 10);
+    const dnes = danes10();   // lokalni datum (UTC bi med 0. in 2. uro vrnil včeraj)
     const orgOpt = '<option value="">— izberi stranko —</option>' + ORGSEZNAM.map(o => `<option value="${o.id}">${escape_(o.name)}</option>`).join('');
     box.innerHTML = `<div class="ur-form">
       <label class="ur-f"><span>Stranka</span><select data-org>${orgOpt}</select></label>
@@ -8126,7 +8188,7 @@
     if (!_dokFsOk) { toast('Najprej zaženi 31_dokumenti_fs.sql v Supabase.'); return; }
     zagotoviPdf().catch(function () {});   // naloži PDF modul vnaprej, medtem ko uporabnik slika
     _skenSlike = [];
-    var mape = dokMapeSeznam(), privzeta = _dokPot || '', danes = new Date().toISOString().slice(0, 10);
+    var mape = dokMapeSeznam(), privzeta = _dokPot || '', danes = danes10();
     var kam = $('dokKamera'), lib = $('dokKameraLib');
     var back = document.createElement('div'); back.className = 'sc-modal-back sken-back';
     back.innerHTML = '<div class="sc-modal sken-modal" role="dialog" aria-modal="true">' +
