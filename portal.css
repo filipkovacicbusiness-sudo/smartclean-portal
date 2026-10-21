@@ -2184,7 +2184,7 @@ html[data-view="grid"] .pris-zap .row .num::before{content:"danes ";color:var(--
 .u-off .row{opacity:.55;}
 .u-znacke{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;}
 .u-znacke .pill{margin-left:0;}
-html[data-view="grid"] .u-mreza .u-znacke{flex-wrap:nowrap;overflow:hidden;align-self:flex-start;max-width:100%;}
+html[data-view="grid"] .u-mreza .u-znacke{align-self:flex-start;max-width:100%;}   /* značke se prelomijo, nikoli porežejo */
 html[data-view="grid"] .u-mreza .u-znacke .pill{font-size:var(--fs-11);padding:1px 8px;}
 html[data-view="grid"] .u-mreza .u-znacke .u-vi{display:none;}   /* v okvirčku ni prostora; v oknu je */
 html[data-view="grid"] .u-mreza .row .num::before{content:"prijava ";color:var(--mid);}
@@ -2802,3 +2802,43 @@ html[data-theme="dark"] .doc-stage{background:color-mix(in srgb,var(--ink) 6%,va
 .v5 .row-name .sc-tag,.v5 .cgrp-nm .sc-tag,.v5 .okno .okno-kartica .sc-tag{position:static;transform:none;margin:0;padding:2px 8px;font-size:var(--fs-11);line-height:1.5;vertical-align:2px;}
 .v5 .cgrp-nm .sc-tag{margin-left:8px;}
 .v5 .lcell .row > span:first-child{padding-right:0;}
+
+/* ── Vrstice z dejanji v oknih (.u-acts): enotno — desno, enaki gumbi kot v karticah;
+   glavni gumb skrajno desno, brisanje skrajno levo; na telefonu mreža dveh stolpcev ── */
+.v5 .u-acts:not(.nl-akc){display:flex;flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:8px;margin-top:16px;}
+.v5 .u-acts:not(.a-ikone):not(.nl-akc) button{width:auto;height:auto;min-height:var(--ctrl-h-md);padding:6px 16px;line-height:1.2;
+  border:1px solid var(--line);border-radius:var(--r-full);background:transparent;color:var(--ink);font-size:var(--fs-14);font-weight:500;}
+.v5 .u-acts:not(.a-ikone) button:hover:not(:disabled){background:var(--green-m);border-color:var(--line-strong);color:var(--ink);}
+.v5 .u-acts .ur-save{order:2;background:var(--ink);border-color:var(--ink);color:var(--bg);}
+.v5 .u-acts .ur-save:hover:not(:disabled){background:var(--ink);border-color:var(--ink);color:var(--bg);opacity:.86;}
+.v5 .u-acts button.danger{order:-1;margin-right:auto;color:var(--st-bad-ink);border-color:color-mix(in srgb,var(--st-bad) 45%,var(--line));}
+.v5 .u-acts button.danger:hover:not(:disabled){background:color-mix(in srgb,var(--st-bad) 8%,transparent);color:var(--st-bad-ink);}
+.v5 .u-acts.nl-akc .ur-save{order:3;}
+.v5 .u-acts.a-ikone{gap:8px;}
+.v5 .u-acts.a-ikone button{width:var(--tb-h);height:var(--tb-h);}
+.v5 .u-acts.a-ikone button.danger{order:0;margin-right:0;margin-left:auto;}
+.v5 .u-acts.a-ikone button.danger + *{margin-left:0;}
+@media(max-width:560px){
+  .v5 .u-acts:not(.a-ikone):not(.nl-akc){display:grid;grid-template-columns:1fr 1fr;}
+  .v5 .u-acts:not(.a-ikone):not(.nl-akc) button{width:100%;justify-content:center;text-align:center;}
+  .v5 .u-acts:not(.a-ikone):not(.nl-akc) button.danger{grid-column:1 / -1;order:9;margin-right:0;}
+  .v5 .u-acts:not(.a-ikone):not(.nl-akc) button:only-child{grid-column:1 / -1;}
+}
+/* okno lista: postavke čez celo širino (dva stolpca šele pri daljšem seznamu), dejanja (ikone) desno */
+html.v5 .okno .a-det .a-det-pad > ul{columns:auto;max-width:none;}
+html.v5 .okno .a-det .a-det-pad > ul:has(> li:nth-child(7)){columns:2;column-gap:32px;}
+@media(max-width:560px){html.v5 .okno .a-det .a-det-pad > ul:has(> li:nth-child(7)){columns:auto;}}
+.v5 .a-det .u-acts.a-ikone{justify-content:flex-end;}
+
+/* ── Obvestilo z dejanjem (Natisni, Razveljavi); širina po vsebini, ne polovica zaslona ── */
+.v5 .sc-toast{width:max-content;max-width:calc(100vw - 32px);}
+.v5 .sc-toast.z-akcijo{display:flex;align-items:center;gap:14px;padding-right:8px;pointer-events:auto;}
+.v5 .sc-toast-akc{height:32px;padding:0 14px;border:0;border-radius:var(--r-full);background:rgba(255,255,255,.16);color:inherit;font:500 var(--fs-14)/1 var(--sans);cursor:pointer;white-space:nowrap;}
+.v5 .sc-toast-akc:hover{background:rgba(255,255,255,.26);}
+.v5[data-theme="dark"] .sc-toast-akc{background:rgba(0,0,0,.08);}
+.v5[data-theme="dark"] .sc-toast-akc:hover{background:rgba(0,0,0,.16);}
+
+/* ── Nov uporabnik (okno): polja čez celo širino ── */
+.v5 .nu-modal .add-row{display:grid;grid-template-columns:1fr;gap:0;align-items:stretch;justify-items:stretch;}
+.v5 .nu-modal .add-row .field{width:100%;margin:0 0 14px;text-align:left;}
+.v5 .nu-modal .add-row .field input,.v5 .nu-modal .add-row .cs,.v5 .nu-modal .add-row select{width:100%;max-width:none;}

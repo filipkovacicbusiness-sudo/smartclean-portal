@@ -336,7 +336,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.60 · BETA';
+  var APP_VERZIJA = '4.61 · BETA';
   var NALAGANJE = '<div class="sc-load" aria-hidden="true"><span class="sc-load-line"></span></div>';
   // Stale-while-revalidate: ob ponovnem obisku razdelka NE pobriši vsebine v nalagalnik —
   // obdrži prejšnjo (takojšen prikaz) in jo osveži v ozadju. Trak le ob prvem nalaganju.
@@ -4401,7 +4401,7 @@
   }
   // Številka lista v košu je prosta (61_stevilke_kos.sql). Če jo je medtem dobil drug list,
   // obnova ponudi naslednjo prosto številko, namesto napake »duplicate key«.
-  async function spremniObnovi(id) {
+  async function spremniObnovi(id, vArhiv) {
     var r = await sb.from('delivery_notes').update({ deleted_at: null }).eq('id', id);
     if (r.error && /duplicate|unique/i.test(r.error.message || '')) {
       var st = (await sb.from('delivery_notes').select('doc_year,doc_seq').eq('id', id).maybeSingle()).data;
@@ -4414,7 +4414,7 @@
     }
     if (r.error) { toast(napakaBesedilo(r.error)); return; }
     logDodaj('Arhiv', 'Obnovljeno', 'Spremni list obnovljen iz koša');
-    toast('Spremni list obnovljen'); await naloziListe(); arhivKos();
+    toast('Spremni list obnovljen'); await naloziListe(); if (vArhiv) risiArhiv(); else arhivKos();
   }
   async function spremniIzbrisiDokoncno(id) {
     var ok = await potrdiModal({ naslov: 'Izbriši dokončno', sporocilo: 'Dokončno izbrišem ta spremni list? Tega ni mogoče razveljaviti.', potrdi: 'Izbriši dokončno', preklici: 'Prekliči', nevarno: true });
@@ -4541,18 +4541,18 @@
     return out;
   }
 
-  /* ── Pisna opomba na spremnem listu (z avtorjem) ── */
+  /* ── Zapisek osebja na spremnem listu (z avtorjem) ── */
   function opombaHtml(n) {
     n = n || {};
     var obst = n.opomba ? '<div class="opomba-prikaz"><div class="opomba-besedilo">' + escape_(n.opomba) + '</div>' +
       '<div class="opomba-avtor">— ' + escape_(n.opomba_avtor || 'osebje') + (n.opomba_at ? ' · ' + datumcas(n.opomba_at) : '') + '</div></div>' : '';
     if (!OSEBJE) {
-      return obst ? '<div class="opomba-blok"><div class="opomba-h">Opomba</div>' + obst + '</div>' : '';
+      return obst ? '<div class="opomba-blok"><div class="opomba-h">Zapisek</div>' + obst + '</div>' : '';
     }
-    return '<div class="opomba-blok"><div class="opomba-h">Opomba</div>' + obst +
-      '<textarea class="opomba-vnos" data-opomba rows="2" maxlength="600" placeholder="Dodaj pisno opombo …">' + escape_(n.opomba || '') + '</textarea>' +
-      '<div class="opomba-acts"><button type="button" class="opomba-save" data-opomba-shrani>' + (n.opomba ? 'Posodobi opombo' : 'Shrani opombo') + '</button>' +
-      (n.opomba ? '<button type="button" class="opomba-remove" data-opomba-brisi>Odstrani opombo</button>' : '') +
+    return '<div class="opomba-blok"><div class="opomba-h">Zapisek</div>' + obst +
+      '<textarea class="opomba-vnos" data-opomba rows="2" maxlength="600" placeholder="Dodaj zapisek …">' + escape_(n.opomba || '') + '</textarea>' +
+      '<div class="opomba-acts"><button type="button" class="opomba-save" data-opomba-shrani>' + (n.opomba ? 'Posodobi zapisek' : 'Shrani zapisek') + '</button>' +
+      (n.opomba ? '<button type="button" class="opomba-remove" data-opomba-brisi>Odstrani zapisek</button>' : '') +
       '</div><div class="msg" data-opomba-msg role="status" aria-live="polite"></div></div>';
   }
   function wireOpomba(box) {
@@ -4577,7 +4577,7 @@
     // Posodobi lokalno stanje in ponovno izriši detajl.
     Object.assign(box._note, novo);
     var li = LISTI.find(function (l) { return l.id === box._id; }); if (li) Object.assign(li, novo);
-    logDodaj('Arhiv', izbrisi ? 'Opomba odstranjena' : 'Opomba', 'Spremni list ' + ((box._note && box._note.number) || '') + (txt ? ': »' + txt + '«' : ''));
+    logDodaj('Arhiv', izbrisi ? 'Zapisek odstranjen' : 'Zapisek', 'Spremni list ' + ((box._note && box._note.number) || '') + (txt ? ': »' + txt + '«' : ''));
     risiListDetajl(box);
   }
 
@@ -4607,7 +4607,7 @@
       }
       pozabiPostavke(box._id);
       logDodaj('Arhiv', 'Izbrisano', 'Spremni list ' + ((box._note && box._note.number) || '') + (_softDelDN ? ' (v koš)' : ''));
-      toast(_softDelDN ? 'Premaknjeno v »Nedavno brisani«' : 'Spremni list izbrisan');
+      { const _izbId = box._id; toast(_softDelDN ? 'Spremni list izbrisan' : 'Spremni list izbrisan', _softDelDN ? { besedilo: 'Razveljavi', ob: () => spremniObnovi(_izbId, true) } : null); }
       await naloziListe();
       risiArhiv();
     } catch (e) {
@@ -5243,7 +5243,9 @@
       if (error) throw error;
       const nova = { id: novId };
       logDodaj('Arhiv', 'Dodano', 'Spremni list ' + seq + '/' + leto + ' · ' + (ORGIME[org_id] || ''));
-      toast('Spremni list ustvarjen');
+      const _zaTisk = { _note: { id: novId, number: seq + '/' + leto, org_id, doc_date, issued_name: izdal, weight_kg: _kgAuto, transport: beriPrevoz(box), opomba_stranka: opStranka || null },
+        _items: postavke.map(p => ({ naziv: p.naziv, kosov: p.kosov })) };
+      toast('Spremni list ' + seq + '/' + leto + ' ustvarjen', { besedilo: 'Natisni', ob: () => natisniList(_zaTisk) });
       await naloziListe();
       _arhStran = 0;   // nov list je na vrhu prve strani
       risiArhiv();
@@ -6829,7 +6831,8 @@
     if (t !== m && m && JE_LASTNIK()) t += ' (' + m.slice(0, 120) + ')';
     return t;
   }
-  function toast(t) {
+  // toast(besedilo [, { besedilo, ob }]) — z dejanjem (npr. Natisni, Razveljavi) ostane dlje
+  function toast(t, akcija) {
     if (!_toastEl) {
       _toastEl = document.createElement('div');
       _toastEl.className = 'sc-toast';
@@ -6838,9 +6841,15 @@
       document.body.appendChild(_toastEl);
     }
     _toastEl.textContent = t;
+    _toastEl.classList.toggle('z-akcijo', !!akcija);
+    if (akcija) {
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'sc-toast-akc'; b.textContent = akcija.besedilo;
+      b.addEventListener('click', function () { _toastEl.classList.remove('show'); try { akcija.ob(); } catch (e) {} });
+      _toastEl.appendChild(b);
+    }
     _toastEl.classList.add('show');
     clearTimeout(_toastEl._h);
-    _toastEl._h = setTimeout(() => _toastEl.classList.remove('show'), 2600);
+    _toastEl._h = setTimeout(() => _toastEl.classList.remove('show'), akcija ? 7000 : 2600);
   }
   // Dostopnost modalnih oken: ujemi fokus znotraj okna (Tab kroži) in ga ob
   // zaprtju vrni na element, ki je okno odprl (kot pri velikih ponudnikih).
@@ -7106,7 +7115,7 @@
     try { var _kr = await sb.rpc('stranka_kosi', { p_org: orgId }); if (_kr && !_kr.error) (_kr.data || []).forEach(function (x) { kosMap[x.article_id] = Number(x.kosov) || 0; }); } catch (e) {}
     const meta = [org.vat_id ? 'Davčna <b>' + escape_(org.vat_id) + '</b>' : 'Brez davčne številke', org.address ? escape_(org.address) : 'Brez naslova'].join(' · ');
     let html = '<p class="meta">' + meta + '</p>';
-    if (OSEBJE) html += `<div class="u-acts" style="margin:2px 0 10px"><button type="button" class="str-edit">Uredi podatke stranke</button><button type="button" class="str-del cgrp-btn danger" data-org="${orgId}">Izbriši stranko</button></div>`;
+    if (OSEBJE) html += `<div class="u-acts" style="margin:2px 0 10px"><button type="button" class="str-edit">Uredi podatke stranke</button></div>`;
     function cenaOznaka(a) {
       const c = cenaZaArtikel(a.cena_sifra);
       if (c != null) return '<span class="art-cena on" title="' + escape_((CENIKMAP[a.cena_sifra] && CENIKMAP[a.cena_sifra].naziv) || '') + '">' + cenaFmt(c) + '</span>';
@@ -7143,7 +7152,6 @@
     box.innerHTML = html;
     if (OSEBJE) {
       { const eb = box.querySelector('.str-edit'); if (eb) eb.addEventListener('click', e => { e.stopPropagation(); urediStranko(box, orgId); }); }
-      { const db = box.querySelector('.str-del'); if (db) db.addEventListener('click', e => { e.stopPropagation(); izbrisiStrankoStranke(orgId, box); }); }
       { const cl = box.querySelector('.art-to-cenik'); if (cl) cl.addEventListener('click', e => { e.stopPropagation(); var pre = strankaSkupina(orgId); _artOpen = {}; if (pre) _artOpen[pre] = true; pojdi('artikli'); }); }
       box.querySelectorAll('.str-teza-in').forEach(function (inp) {
         inp.addEventListener('click', function (e) { e.stopPropagation(); });
@@ -7386,11 +7394,12 @@
         <label class="ur-f"><span>Davčna</span><input type="text" data-e-davcna value="${escape_(o.vat_id || '')}"></label>
       </div>
       <label class="ur-f"><span>Naslov</span><input type="text" data-e-naslov value="${escape_(o.address || '')}"></label>
-      <div class="u-acts" style="margin-top:12px"><button type="button" class="ur-save" data-e-shrani>Shrani</button><button type="button" data-e-preklici>Prekliči</button></div>
+      <div class="u-acts" style="margin-top:12px"><button type="button" class="danger" data-e-izbrisi>Izbriši stranko</button><button type="button" class="ur-save" data-e-shrani>Shrani</button><button type="button" data-e-preklici>Prekliči</button></div>
       <p class="u-sub ur-msg" data-e-msg></p></div>`;
     box.querySelector('[data-e-naziv]').addEventListener('click', e => e.stopPropagation());
     box.querySelector('[data-e-preklici]').addEventListener('click', e => { e.stopPropagation(); risiArtikleBox(box, orgId); });
     box.querySelector('[data-e-shrani]').addEventListener('click', e => { e.stopPropagation(); shraniStranko(box, orgId); });
+    box.querySelector('[data-e-izbrisi]').addEventListener('click', e => { e.stopPropagation(); izbrisiStrankoStranke(orgId, box); });
   }
   async function shraniStranko(box, orgId) {
     const g = s => box.querySelector(s);

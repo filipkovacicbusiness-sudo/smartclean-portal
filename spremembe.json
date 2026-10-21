@@ -1,5 +1,20 @@
 [
  {
+  "v": "4.61",
+  "d": "2026-10-21",
+  "c": "2026-10-21T20:30:00+02:00",
+  "t": [
+   "Po novem spremnem listu obvestilo ponudi »Natisni« — list natisnete takoj, brez iskanja v seznamu.",
+   "Po brisanju spremnega lista obvestilo ponudi »Razveljavi«.",
+   "Gumbi v oknih so povsod enaki in na istem mestu: desno, glavni skrajno desno, brisanje skrajno levo; na telefonu v dveh stolpcih.",
+   "»Izbriši stranko« je v urejanju podatkov stranke, ne več med glavnimi gumbi okna.",
+   "Okno »Nov uporabnik«: polja čez celo širino.",
+   "Pisna opomba osebja se imenuje »Zapisek« — ne meša se več z »Interno opombo« in »Opombo na spremnem listu«.",
+   "Postavke v oknu spremnega lista čez celo širino (dva stolpca šele pri daljšem seznamu).",
+   "Obvestila na telefonu v eni vrstici; značke uporabnikov v mreži se prelomijo, ne porežejo."
+  ]
+ },
+ {
   "v": "4.60",
   "d": "2026-10-21",
   "c": "2026-10-21T18:30:00+02:00",
