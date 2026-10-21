@@ -338,7 +338,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.64 · BETA';
+  var APP_VERZIJA = '4.65 · BETA';
   var NALAGANJE = '<div class="sc-load" aria-hidden="true"><span class="sc-load-line"></span></div>';
   // Stale-while-revalidate: ob ponovnem obisku razdelka NE pobriši vsebine v nalagalnik —
   // obdrži prejšnjo (takojšen prikaz) in jo osveži v ozadju. Trak le ob prvem nalaganju.
@@ -2397,7 +2397,24 @@
   /* ══════════ ARTIKLI (katalog po skupinah ID + teža + dodeljevanje) ══════════ */
   var _artOpen = {}, SKUPINE_IME = {};
   function artPrefix(koda) { var s = normId(koda); return /^[A-ZČŠŽ]{2}[0-9]{3}$/.test(s) ? s.slice(0, 2) : '—'; }
-  function imeSkupine(pre) { return SKUPINE_IME[pre] || ('Skupina ' + pre); }
+  function imeSkupine(pre) { return SKUPINE_IME[pre] || (pre === 'SC' ? 'Splošni cenik' : 'Skupina ' + pre); }
+  // Naziv, zapisan z VELIKIMI ČRKAMI (iz registra), za prikaz v običajnem zapisu: »PLANINSKO DRUŠTVO JEZERSKO« →
+  // »Planinsko Društvo Jezersko«, pravne oblike (d.o.o., s.p. …) z malimi. Točen zapis ostane v oknu stranke in v title.
+  var PRAVNE_OBLIKE = /^(d\.o\.o\.|d\.d\.|s\.p\.|k\.d\.|d\.n\.o\.|z\.o\.o\.|so\.p\.|z\.b\.o\.)[,.]?$/i;
+  var MALE_BESEDE = { in: 1, na: 1, za: 1, pri: 1, od: 1, do: 1, ter: 1, ali: 1, iz: 1, po: 1, z: 1, s: 1, v: 1, k: 1, o: 1 };
+  function lepNaziv(s) {
+    s = String(s || '');
+    var brezOblik = s.split(/\s+/).filter(function (w) { return !PRAVNE_OBLIKE.test(w); }).join(' ');
+    if (!s || /\p{Ll}/u.test(brezOblik) || (brezOblik.match(/\p{L}/gu) || []).length < 4) return s;
+    var prva = true;
+    return s.split(/(\s+|-)/).map(function (w) {
+      if (!w.trim() || w === '-') return w;
+      if (PRAVNE_OBLIKE.test(w)) return w.toLowerCase();
+      var m = w.toLowerCase(), gola = m.replace(/[^\p{L}]/gu, '');
+      var izid = (!prva && MALE_BESEDE[gola]) ? m : m.replace(/\p{L}/u, function (c) { return c.toUpperCase(); });
+      prva = false; return izid;
+    }).join('');
+  }
   async function naloziSkupineImena() {
     try { var r = await sb.from('article_groups').select('prefix,name'); if (!r.error) { SKUPINE_IME = {}; (r.data || []).forEach(function (x) { if (x.name) SKUPINE_IME[x.prefix] = x.name; }); } } catch (e) {}
   }
@@ -2418,6 +2435,49 @@
     (CENIK || []).forEach(function (x) { if (x.deleted_at) return; var pre = artPrefix(x.koda); (g[pre] = g[pre] || []).push(x); });
     Object.keys(g).forEach(function (k) { g[k].sort(cenikSort); });
     return g;
+  }
+  /* ══ Barva = cenik stranke. Ista barva povsod (stranke, spremni listi, ceniki, fakture): splošni cenik ima
+     zeleno barvo logotipa, skupine po abecedi iz umirjene palete, stranke brez enotnega cenika nevtralno.
+     Naslovnica kartice: dva mehka preliva te barve; razpored je stalen za vsako stranko (seme = id). ══ */
+  var BARVA_SC = ['#1f8f5f', '#6ed3a1'], BARVA_NIC = ['#a3adb8', '#e3e8ed'];
+  var BARVE_SKUPIN = [['#2f6fe0', '#8fb8ff'], ['#7a5ae0', '#c8b0ff'], ['#e08a1e', '#ffd08a'], ['#d9486f', '#ffaac0'], ['#149aa6', '#8ee8ef'], ['#4b5bd6', '#a9b4ff']];
+  var BARVE_VLOG = { super: ['#7a5ae0', '#c8b0ff'], admin: ['#7a5ae0', '#c8b0ff'], osebje: BARVA_SC, zaposleni: ['#149aa6', '#8ee8ef'], stranka: BARVA_NIC };
+  var _skupineRed = null, _skupineRedCenik = null;
+  function zgoscek(s) { var h = 2166136261; s = String(s || ''); for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+  function barvaSkupine(pre) {
+    if (pre === 'SC') return BARVA_SC;
+    if (!pre || pre === '—') return BARVA_NIC;
+    if (_skupineRedCenik !== CENIK) {
+      var vse = {}; (CENIK || []).forEach(function (x) { var p = artPrefix(x.koda); if (p !== 'SC' && p !== '—') vse[p] = 1; });
+      Object.keys(SKUPINE_IME || {}).forEach(function (p) { if (p !== 'SC') vse[p] = 1; });
+      _skupineRed = Object.keys(vse).sort(); _skupineRedCenik = CENIK;
+    }
+    var i = _skupineRed.indexOf(pre); if (i < 0) i = zgoscek(pre);
+    return BARVE_SKUPIN[i % BARVE_SKUPIN.length];
+  }
+  function naslovnica(barva, seme) {
+    var h = zgoscek(seme);
+    return '--c1:' + barva[0] + ';--c2:' + barva[1] + ';--p1:' + (10 + h % 44) + '% ' + (6 + (h >>> 7) % 40) + '%;--p2:' + (56 + (h >>> 13) % 40) + '% ' + (52 + (h >>> 19) % 44) + '%';
+  }
+  function barvaStranke(orgId) { return OSEBJE ? barvaSkupine(strankaSkupina(orgId)) : BARVA_SC; }
+  function naslovnicaStranke(orgId) { return naslovnica(barvaStranke(orgId), orgId); }
+  function cenikStrankeIme(orgId) {
+    if (!CLANI) return '';
+    var pre = strankaSkupina(orgId);
+    if (pre) return imeSkupine(pre);
+    // brez enotne skupine: artikli s cenami iz več skupin = lasten cenik; brez cen = brez cenika
+    return CLANI.some(function (a) { return a.org_id === orgId && a.cena_sifra != null; }) ? 'Lasten cenik' : 'Brez cenika';
+  }
+  // Barve so znane, ko so naloženi cenik in artikli strank — takrat pobarvaj že izrisane kartice.
+  var _barveObljuba = null;
+  function zagotoviBarve() {
+    if (!OSEBJE || (CENIK && CLANI)) return Promise.resolve();
+    if (!_barveObljuba) _barveObljuba = Promise.all([nalozicenik(), naloziClane(), naloziSkupineImena()]).then(pobarvajNaslovnice, function () {}).then(function () { _barveObljuba = null; });
+    return _barveObljuba;
+  }
+  function pobarvajNaslovnice() {
+    document.querySelectorAll('[data-cov-org]').forEach(function (el) { el.setAttribute('style', naslovnicaStranke(el.getAttribute('data-cov-org'))); });
+    document.querySelectorAll('[data-cenik-org]').forEach(function (el) { var t = cenikStrankeIme(el.getAttribute('data-cenik-org')); el.textContent = t; el.hidden = !t; });
   }
   function strankaSkupina(orgId) {
     if (!CLANI) return null;
@@ -2476,7 +2536,7 @@
     var _sy = window.scrollY;
     var grupe = artikliGrupe();
     var preSet = {}; Object.keys(grupe).forEach(function (k) { if (k !== '—') preSet[k] = 1; }); Object.keys(SKUPINE_IME).forEach(function (k) { preSet[k] = 1; });
-    var prefs = Object.keys(preSet).sort();
+    var prefs = Object.keys(preSet).sort(function (x, y) { return x === 'SC' ? -1 : y === 'SC' ? 1 : x.localeCompare(y); });
     if (grupe['—']) prefs.push('—');
     var strPoGrupi = {}; (ORGSEZNAM || []).forEach(function (o) { var g = strankaSkupina(o.id); if (g) (strPoGrupi[g] = strPoGrupi[g] || []).push(o); });
     // Gumba »+ Nov cenik« in »Uskladi artikle« sta v glavi razdelka (enotna orodna vrstica), ne več v seznamu.
@@ -2498,7 +2558,7 @@
             '<button type="button" class="art-grip dnd-handle" title="Povleci za razvrščanje" aria-label="Razvrsti">' + DND_ICON + '</button><button type="button" class="art-r-edit" data-aedit="' + x.sifra + '" title="Uredi" aria-label="Uredi">' + IKO_T_SVINC + '</button><button type="button" class="art-r-del" data-adel="' + x.sifra + '" title="Izbriši artikel" aria-label="Izbriši artikel">' + IKO_KOS + '</button></span></div>';
       }).join('');
       var chips = str.length ? str.map(function (o) { return '<span class="pris-chip"><span class="pris-chip-t" style="cursor:default">' + escape_(ORGIME[o.id] || o.name) + '</span></span>'; }).join(' ') : '<span class="u-sub">Ni dodeljenih strank.</span>';
-      return '<div class="cgrp' + (open ? ' open' : '') + '" data-pre="' + escape_(pre) + '"><div class="cgrp-head-row"><button type="button" class="cgrp-h' + (open ? ' open' : '') + '" data-artgrp="' + escape_(pre) + '">' +
+      return '<div class="cgrp' + (open ? ' open' : '') + '" data-pre="' + escape_(pre) + '"><div class="cgrp-head-row"><button type="button" class="cgrp-h' + (open ? ' open' : '') + '" data-artgrp="' + escape_(pre) + '" style="' + naslovnica(barvaSkupine(pre), pre) + '">' +
         '<span class="cgrp-name"><span class="cgrp-nm">' + escape_(imeSkupine(pre)) + '</span><span class="cgrp-sub">' + escape_(pre) + ' · ' + str.length + ' ' + (str.length === 1 ? 'stranka' : 'strank') + '</span></span>' +
         '<span class="cgrp-count">' + sklonArtiklov(arts.length) + '</span><span class="cgrp-chev" aria-hidden="true">›</span></button></div>' +
         '<div class="cgrp-body' + (open ? ' show' : '') + '">' +
@@ -4003,6 +4063,7 @@
   // mera: 'kg' / 'cena' — ob razvrščanju po teži ali vrednosti kartica pokaže še to vrednost.
   function tabelaListov(vrstice, klikljivo, mera) {
     if (!vrstice.length) return LISTI_NAPAKA ? napakaListi : prazniListi(OSEBJE ? 'osebje' : 'stranka');
+    zagotoviBarve();
     return '<div class="rows">' + vrstice.map((l, i) => {
       let mer = '';
       if (mera === 'kg') mer = '<span class="num a-mer">' + (l.weight_kg != null ? tezaFmt(l.weight_kg) : '—') + '</span>';
@@ -4021,7 +4082,7 @@
       // krožec za izbiro več listov (viden le v načinu »Izberi«, na mestu kljukice)
       const izbran = klikljivo && ARH_IZB && ARH_IZB.has(l.id);
       return `<div class="lcell arh-${stat}${izbran ? ' izbran' : ''}">
-    <button class="a-row" type="button" data-i="${i}" data-id="${l.id}" aria-expanded="false"${klikljivo && ARH_IZB ? ' aria-pressed="' + (izbran ? 'true' : 'false') + '"' : ''}
+    <button class="a-row" type="button" data-i="${i}" data-id="${l.id}" data-cov-org="${escape_(l.org_id || '')}" style="${naslovnicaStranke(l.org_id)}" aria-expanded="false"${klikljivo && ARH_IZB ? ' aria-pressed="' + (izbran ? 'true' : 'false') + '"' : ''}
       ${klikljivo ? '' : 'style="cursor:default"'}>
       ${klikljivo ? '<span class="a-sel" aria-hidden="true"></span>' : ''}${chk}<span class="a-num">${escape_(l.number || '—')}${l.popravljeno_at ? '<span class="a-pop" title="Popravljeno v aplikaciji' + (l.popravil ? ' · ' + escape_(l.popravil) : '') + '">' + IKO_T_SVINC + '</span>' : ''}</span>
       <span class="a-cli">${escape_(OSEBJE ? ORGIME[l.org_id] || '—' : l.issued_name || '')}${l.transport === 'izredni' ? '<span class="a-izr" title="Izredni prevoz">Izredni</span>' : ''}</span>
@@ -4274,7 +4335,8 @@
   // Gumb »Izberi«: kljukica + Izberi; med izbiranjem × + Prekliči.
   function arhIzbiraGumb(vkljuceno) {
     var b = $('arhivIzberiBtn'); if (!b) return;
-    b.innerHTML = vkljuceno ? IKO_X + 'Prekliči' : IKO_KLJUKICA + 'Izberi';
+    b.innerHTML = vkljuceno ? IKO_X + '<span class="tb-lbl">Prekliči</span>' : IKO_KLJUKICA + '<span class="tb-lbl">Izberi</span>';
+    b.setAttribute('aria-label', vkljuceno ? 'Prekliči izbiro' : 'Izberi več spremnih listov');
     b.setAttribute('aria-pressed', vkljuceno ? 'true' : 'false');
     b.classList.toggle('on', !!vkljuceno);
   }
@@ -5505,7 +5567,7 @@
             <div class="fak-tot-r fak-tot-bruto"><span>Za plačilo (z DDV)</span><b>${cenaFmt(g.bruto)}</b></div>
             ${g.brezCene ? `<div class="fak-tot-r"><span class="fak-warn">${stevilo(g.brezCene)} artiklov brez cene — niso všteti v znesek; poveži jih v Strankah</span><b></b></div>` : ''}` : '';
     const povzetek = money && g.neto ? `<b>${cenaFmt(g.bruto)}</b>` : '';
-    return `<div class="fak-card" data-org="${escape_(String(g.org_id || ''))}" role="button" tabindex="0" aria-label="${escape_(ime)} — osnova za račun">
+    return `<div class="fak-card" data-org="${escape_(String(g.org_id || ''))}" data-cov-org="${escape_(String(g.org_id || ''))}" style="${naslovnicaStranke(g.org_id)}" role="button" tabindex="0" aria-label="${escape_(ime)} — osnova za račun">
       <div class="fak-card-h" data-faktoggle="${gi}">
         <div class="fak-card-info"><h3>${escape_(ime)}</h3><p class="u-sub">${sklonListov(g.listov)} · ${sklonKosov(g.kosov)}${g.izredni ? ' · ' + stevilo(g.izredni) + '× izredni prevoz' : ''}</p><p class="fak-noga"><span>${fakKg(g.kg)}</span>${povzetek}</p></div>
         <span class="fak-chev" aria-hidden="true">›</span>
@@ -6165,7 +6227,6 @@
     if (!priced.length) return false;
     return priced.every(function (a) { var p = CENIKMAP[a.cena_sifra]; return p && jeSc(p.koda); });
   }
-  var SC_TAG = '<span class="sc-tag" title="Ta stranka uporablja splošni cenik">Splošni cenik</span>';
   function veljavenId(s) { return /^[A-ZČŠŽ]{2}[0-9]{3}$/.test(normId(s)); }
   function idZaseden(id, exceptSifra) { id = normId(id); if (!id || !CENIK) return null; var hit = CENIK.find(function (x) { return x.sifra !== exceptSifra && normId(x.koda) === id; }); return hit || null; }
   function pad3(n) { n = String(n); while (n.length < 3) n = '0' + n; return n; }
@@ -6287,7 +6348,7 @@
     var scRows = scItems.map(function (p) { return cenikVrsticaHtml(p, '', null); }).join('');
     var scAdd = OSEBJE ? ('<div class="art-add sc-add"><input type="text" class="sc-new" placeholder="Nov standardni artikel"><input type="text" class="sc-id-new" placeholder="ID" maxlength="5" value="' + escape_(nextSc()) + '"><button type="button" class="btn btn-narrow sc-add-btn">+ Dodaj</button></div>') : '';
     var scBody = (scRows || '<p class="u-sub" style="padding:12px 16px 4px">Ni artiklov.</p>') + scAdd;
-    var scCard = OSEBJE ? ('<div class="cgrp splosni' + (scOpen ? ' open' : '') + '" data-key="splosni"><div class="cgrp-head-row"><button type="button" class="cgrp-h' + (scOpen ? ' open' : '') + '" data-cgrp="splosni"><span class="cgrp-name">Splošni cenik</span><span class="cgrp-count">' + sklonArtiklov(scItems.length) + '</span><span class="cgrp-chev" aria-hidden="true">›</span></button></div><div class="cgrp-body' + (scOpen ? ' show' : '') + '">' + scBody + '</div></div>') : '';
+    var scCard = OSEBJE ? ('<div class="cgrp splosni' + (scOpen ? ' open' : '') + '" data-key="splosni"><div class="cgrp-head-row"><button type="button" class="cgrp-h' + (scOpen ? ' open' : '') + '" data-cgrp="splosni" style="' + naslovnica(BARVA_SC, 'SC') + '"><span class="cgrp-name"><span class="cgrp-nm">Splošni cenik</span><span class="cgrp-sub">Standardni artikli za vse stranke</span></span><span class="cgrp-count">' + sklonArtiklov(scItems.length) + '</span><span class="cgrp-chev" aria-hidden="true">›</span></button></div><div class="cgrp-body' + (scOpen ? ' show' : '') + '">' + scBody + '</div></div>') : '';
     var scWrap = scCard ? ('<div class="sc-isolate">' + scCard + '</div>') : '';
     var stHead = (OSEBJE && arr.length) ? '<div class="cenik-sec-head">Ceniki po strankah</div>' : '';
     box.innerHTML = scWrap + stHead + arr.map(function (g) {
@@ -6298,9 +6359,9 @@
       var sub = ''; var pod = orgPodatki(g.org_id); if (pod) sub = '<span class="cgrp-sub">' + pod + '</span>';
       var splBtn = '<button type="button" class="cgrp-btn ghost sc-toggle' + (jeSpl ? ' on' : '') + '" data-splorg="' + g.org_id + '" data-splon="' + (jeSpl ? '1' : '0') + '">' + (jeSpl ? 'Splošni cenik: vklopljen' : 'Vklopi splošni cenik') + '</button>';
       var bar = OSEBJE ? '<div class="cgrp-bar"><button type="button" class="cgrp-btn ghost" data-izvozorg="' + g.org_id + '">Izvozi</button><button type="button" class="cgrp-btn ghost" data-uvozorg="' + g.org_id + '">Uvozi</button>' + splBtn + '</div>' : '';
-      return '<div class="cgrp' + (open ? ' open' : '') + '" data-key="' + escape_(g.key) + '" data-org="' + escape_(g.org_id) + '"><div class="cgrp-head-row"><button type="button" class="cgrp-h' + (open ? ' open' : '') + '" data-cgrp="' + escape_(g.key) + '">' +
-        '<span class="cgrp-name"><span class="cgrp-nm">' + escape_(g.label) + (jeSpl ? SC_TAG : '') + '</span>' + sub + '</span>' +
-        '<span class="cgrp-count">' + sklonArtiklov(list.length) + '</span><span class="cgrp-chev" aria-hidden="true">›</span></button></div>' +
+      return '<div class="cgrp' + (open ? ' open' : '') + '" data-key="' + escape_(g.key) + '" data-org="' + escape_(g.org_id) + '"><div class="cgrp-head-row"><button type="button" class="cgrp-h' + (open ? ' open' : '') + '" data-cgrp="' + escape_(g.key) + '" data-cov-org="' + escape_(g.org_id) + '" style="' + naslovnicaStranke(g.org_id) + '">' +
+        '<span class="cgrp-name"><span class="cgrp-nm">' + escape_(g.label) + '</span>' + sub + '</span>' +
+        '<span class="cgrp-count">' + (jeSpl ? 'Splošni cenik · ' : '') + sklonArtiklov(list.length) + '</span><span class="cgrp-chev" aria-hidden="true">›</span></button></div>' +
         '<div class="cgrp-body' + (open ? ' show' : '') + '">' + bar + rows + '</div></div>';
     }).join('');
     box.querySelectorAll('[data-cgrp]').forEach(function (h) {
@@ -7047,15 +7108,16 @@
     const naj = Math.max(...ORGSEZNAM.map(o => kgm[o.id] || 0), 1);
     $('content').innerHTML = '<div class="rows">' + list.map((o, i) => {
       const kg = kgm[o.id] || 0;
-      const _spl = strankaSplosni(o.id);
-      return `<div class="lcell"><button class="row${_spl ? ' has-sc' : ''}" type="button" data-id="${o.id}" data-i="${i}" aria-expanded="false">
-      <span><span class="row-name"><span class="row-nm">${escape_(o.name)}</span>${_spl ? SC_TAG : ''}</span><br><span class="row-legal">${o.legal_name ? escape_(o.legal_name) : ''}</span></span>
+      const _cen = cenikStrankeIme(o.id);
+      return `<div class="lcell"><button class="row" type="button" data-id="${o.id}" data-i="${i}" data-cov-org="${o.id}" style="${naslovnicaStranke(o.id)}" aria-expanded="false">
+      <span><span class="row-name"><span class="row-nm">${escape_(o.name)}</span></span><br><span class="row-legal" title="${escape_(o.legal_name || '')}">${escape_(lepNaziv(o.legal_name || o.name))}</span><span class="row-cenik" data-cenik-org="${o.id}"${_cen ? '' : ' hidden'}>${escape_(_cen)}</span></span>
       <span class="row-pct" title="Delež vseh količin ta mesec">${skupajKg ? (Math.round(kg / skupajKg * 1000) / 10).toLocaleString('sl-SI') + ' %' : '—'}</span>
       <span class="num">${fmtKg(kg)}</span>
       <span class="chev" aria-hidden="true">›</span>
     </button><div class="arts" id="a${i}"></div></div>`;
     }).join('') + '</div>';
     document.querySelectorAll('#content .row').forEach(b => { b.addEventListener('click', () => toggle(b)); strankaPredNalozi(b); });
+    zagotoviBarve();
     oknoPoIzrisu();
     requestAnimationFrame(function () { window.scrollTo(0, _sy); });
   }
@@ -7203,9 +7265,10 @@
       if (_row && _row.classList && _row.classList.contains('row')) {
         var _priced = arts.filter(function (a) { return a.cena_sifra != null; });
         var _spl = _priced.length > 0 && _priced.every(function (a) { var p = CENIKMAP[a.cena_sifra]; return p && jeSc(p.koda); });
-        var _rn = _row.querySelector('.row-name'); var _wrap = _rn ? _rn.parentNode : null; var _has = _row.querySelector('.sc-tag');
-        if (_wrap) { if (_spl && !_has) _wrap.insertAdjacentHTML('beforeend', SC_TAG); else if (!_spl && _has) _has.remove(); }
-        _row.classList.toggle('has-sc', !!_spl);
+        void _spl;
+        if (CLANI) { CLANI = CLANI.filter(function (a) { return a.org_id !== orgId; }).concat(arts.map(function (a) { return { id: a.id, org_id: orgId, name: a.name, cena_sifra: a.cena_sifra, sort_order: a.sort_order }; })); }
+        var _cn = _row.querySelector('.row-cenik'); if (_cn) { var _t = cenikStrankeIme(orgId); _cn.textContent = _t; _cn.hidden = !_t; }
+        if (_row.hasAttribute('data-cov-org')) _row.setAttribute('style', naslovnicaStranke(orgId));
         if (_okno && _okno.vsebina === box) oknoGlava();
       }
     } catch (e) {}
@@ -8659,7 +8722,7 @@
         (u.active ? '' : '<span class="pill">izklopljen</span>');
       const ime = u.full_name || u.email || '—';
       const prijava = u.last_login ? datumcas(u.last_login) : '';
-      return `<div class="lcell${u.active ? '' : ' u-off'}"><button class="row has-tag" type="button" data-uid="${u.id}" aria-haspopup="dialog">
+      return `<div class="lcell${u.active ? '' : ' u-off'}"><button class="row has-tag" type="button" data-uid="${u.id}" style="${naslovnica(BARVE_VLOG[vlogaVal] || BARVA_NIC, u.id)}" aria-haspopup="dialog">
       <span><span class="row-name"><span class="row-nm">${escape_(ime)}</span></span><br><span class="row-legal">${escape_(u.email || '—')}</span>${znacke ? '<span class="u-znacke">' + znacke + '</span>' : ''}</span>
       <span class="row-pct"></span><span class="num u-prijava" title="Zadnja prijava">${prijava ? escape_(prijava.split(',')[0]) : '—'}</span><span class="chev" aria-hidden="true">›</span></button>
       <div class="arts u-det">

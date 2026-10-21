@@ -1,5 +1,19 @@
 [
  {
+  "v": "4.65",
+  "d": "2026-10-21",
+  "c": "2026-10-21T17:20:00+02:00",
+  "t": [
+   "Nov videz kartic v mreži: naslovnica z mehkim barvnim prelivom in imenom, pod njo podatki in naslov s puščico (stranke, spremni listi, ceniki, fakture, uporabniki).",
+   "Barva ima pomen: barva kartice je cenik stranke — splošni cenik zelen (barva logotipa), vsaka skupina svoja barva, brez cenika nevtralno. Ista barva povsod: pri strankah, spremnih listih, cenikih in fakturah.",
+   "»Splošni cenik« ni več plavajoča značka ob imenu, ampak stalna oznaka cenika pod naslovnico (v seznamu pod nazivom z barvno piko).",
+   "Nazivi, zapisani z velikimi črkami, so prikazani berljivo (»Planinsko Društvo Jezersko«); točen zapis ostane v oknu stranke.",
+   "Prisotnost: ure se ne prekrivajo več s stanjem (»odsoten 7h 14min«).",
+   "Spremni listi: »Izberi« je v glavi ob »Nov spremni list«, orodna vrstica je v eni vrsti; na telefonu stranka in razvrščanje v isti vrsti.",
+   "Ceniki: splošni cenik je prvi in ima svoje ime."
+  ]
+ },
+ {
   "v": "4.64",
   "d": "2026-10-21",
   "c": "2026-10-21T17:30:00+02:00",

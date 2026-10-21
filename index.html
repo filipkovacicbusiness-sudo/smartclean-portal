@@ -240,7 +240,7 @@ body:has(> .app.show) .sc-hex [class*="hw"]{animation-play-state:paused}
       <section class="sec hidden" id="sec-arhiv">
         <div class="head">
           <div class="head-t"><h2>Spremni listi</h2><p class="count" id="arhivPod"></p></div>
-          <div class="head-akc arh-actbar hidden" id="arhivActBar"><button type="button" id="arhivNovBtn" aria-keyshortcuts="n" class="btn tb-prim" title="Nov spremni list"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span class="tb-lbl">Nov spremni list</span></button></div>
+          <div class="head-akc arh-actbar hidden" id="arhivActBar"><button type="button" id="arhivIzberiBtn" class="btn btn-alt tb-sek" aria-pressed="false" aria-label="Izberi več spremnih listov"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg><span class="tb-lbl">Izberi</span></button><button type="button" id="arhivNovBtn" aria-keyshortcuts="n" class="btn tb-prim" title="Nov spremni list"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span class="tb-lbl">Nov spremni list</span></button></div>
           <div class="filtri">
             <input type="search" id="arhivIsci" placeholder="Številka ali stranka …" aria-label="Iskanje po številki ali stranki"/>
             <select id="arhivOrg" class="hidden"></select>
@@ -257,9 +257,6 @@ body:has(> .app.show) .sc-hex [class*="hw"]{animation-play-state:paused}
               <label class="arh-lab">Od<input type="date" id="arhivOd" class="arh-dan" aria-label="Od datuma"/></label>
               <label class="arh-lab">Do<input type="date" id="arhivDo" class="arh-dan" aria-label="Do datuma"/></label>
               <button type="button" id="arhivObdX" class="arh-obd-x hidden" aria-label="Počisti obdobje" title="Počisti obdobje"><svg class="iko-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M17 7 7 17M7 7l10 10"/></svg></button>
-            </span>
-            <span class="tb-desno">
-              <button type="button" id="arhivIzberiBtn" class="btn btn-alt tb-sek" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>Izberi</button>
             </span>
           </div>
         </div>
