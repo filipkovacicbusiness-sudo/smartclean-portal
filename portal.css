@@ -653,13 +653,7 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
 .fak-lab input{width:auto;min-width:0;padding:0;border:none;background:transparent;color:var(--ink);
   font-size:var(--fs-16);font-weight:400;font-variant-numeric:tabular-nums;}
 .fak-lab input:focus{outline:none;}
-.fak-hitri{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 18px;}
-.fak-hitri-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 18px;}
 #fakList{transition:opacity .2s ease;}
-.fak-hitri-row .fak-hitri{margin:0;flex:1 1 auto;min-width:0;}
-.fak-chip{padding:0 14px;border:1px solid var(--line);border-radius:var(--r-full);background:var(--surface);
-  color:var(--mid);font-size:var(--fs-12);cursor:pointer;text-transform:capitalize;transition:.15s;min-height:var(--ctrl-h-md);display:inline-flex;align-items:center;justify-content:center;}
-.fak-chip:hover{border-color:var(--green-l);color:var(--ink);background:var(--green-m);}
 .fak-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;align-items:start;}
 .fak-grid .fak-card{margin-bottom:0;}
 .fak-grid .fak-card.open{grid-column:1 / -1;}
@@ -1035,9 +1029,6 @@ html[data-view="list"] .fak-grid .fak-card:not(.open){display:flex;flex-directio
 .fak-card-h{align-items:center;}
 .fak-card-h .fak-print{margin-top:0;}
 .fak-card-h .fak-chev{margin-top:0;margin-left:2px;}
-/* hitri meseci (julij/junij …) naj zavzamejo enak pas kot gumbi drugod,
-   da se seznam začne na isti višini kot pri ostalih podstraneh */
-.fak-hitri{min-height:46px;align-items:center;margin:0 0 18px;}
 
 /* enotna višina vrstice s filtri (da se seznam začne na isti višini povsod) */
 @media(min-width:721px){ .head .filtri{height:44px;} }
@@ -1433,7 +1424,7 @@ html[data-view="grid"] :is(#cenikList,.art-skupine) .sc-isolate .cgrp:not(.open)
 .uc-d3-stage{width:100%;margin-top:6px;flex:1;min-height:0;display:flex;align-items:center;justify-content:center;}
 /* Velikost je določena z razmerjem (viewBox 800×384) — NE z višino kartice.
    Tako se diagram ob osvežitvi (ko se sosednja lestvica naloži) ne poveča. */
-.uc3d-svg{display:block;width:100%;height:auto;aspect-ratio:800 / 384;max-height:420px;overflow:visible;}
+.uc3d-svg{display:block;width:100%;height:auto;aspect-ratio:800 / 384;max-height:420px;overflow:visible;will-change:transform;}   /* lastna plast: Chrome na Androidu je diagram sicer izrisal zamaknjeno (kopije čez sosednje kartice) */
 .uc3d-lab{pointer-events:none;}
 .uc3d-p{stroke:rgba(0,0,0,.28);stroke-width:.8px;stroke-linejoin:round;transition:filter .18s ease,stroke .18s ease,stroke-width .18s ease;pointer-events:none;}
 /* Hover: obroba + rahlo POTEMNI (light mode) — brez premikanja. */
@@ -2364,9 +2355,6 @@ html[data-view] .pz-seznam .row .num::before{content:none;}
 /* teža v spodnji vrstici je le besedilo (drugje je okvirček polja) */
 .nl-sum .ur-kg-auto{display:inline;border:0;padding:0;margin:0;background:none;width:auto;min-height:0;height:auto;font:inherit;font-weight:700;color:var(--ink);box-shadow:none;}
 
-/* Menjava teme v aplikaciji z začetnega zaslona: mehak barvni prehod vseh elementov hkrati (glej uporabiTemo / applyTheme) */
-html.sc-tema-prehod,html.sc-tema-prehod *,html.sc-tema-prehod *::before,html.sc-tema-prehod *::after{
-  transition:background-color .34s ease,color .34s ease,border-color .34s ease,fill .34s ease,stroke .34s ease,box-shadow .34s ease!important;}
 
 /* ══ Meni na telefonu/tablici: ves na zaslonu, brez pomikanja ══
    Prej 15 postavk po 42 px + velik spodnji odmik → meni je bil višji od zaslona. Zdaj se postavke
@@ -2505,8 +2493,10 @@ html[data-theme="dark"] .doc-stage{background:color-mix(in srgb,var(--ink) 6%,va
 .v5 .empty h3{font-family:var(--sans);font-weight:500;letter-spacing:-.01em;}
 
 /* ── glava razdelka: naslov levo, glavno dejanje desno, orodna vrstica spodaj ── */
-.v5 .head{display:flex;flex-direction:row;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:20px 16px;margin-bottom:24px;}
+.v5 .head{display:flex;flex-direction:row;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:20px 16px;margin-bottom:24px;}
 .v5 .head > .head-t{flex:1 1 auto;min-width:0;}
+/* naslov je visok kot glavni gumb: na vseh straneh na isti višini, gumb poravnan z njim (ne s podnaslovom) */
+.v5 .head > .head-t > h2{min-height:var(--tb-h);display:flex;align-items:center;}
 .v5 .head > .head-akc{flex:none;display:flex;align-items:center;gap:8px;margin:0;}
 .v5 .head > .filtri{flex:1 1 100%;display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;gap:8px;margin:0;}
 .v5 .sk-tabs{display:inline-flex;margin:-6px 0 22px;}
@@ -2684,9 +2674,6 @@ html[data-theme="dark"] .doc-stage{background:color-mix(in srgb,var(--ink) 6%,va
 .v5 .tema-b svg{width:15px;height:15px;}
 
 /* žetoni (32 / 28) */
-.v5 .fak-chip{height:var(--ctrl-h-sm);min-height:0;padding:0 14px;font-size:var(--fs-13);font-weight:500;color:var(--ink);border-color:var(--line);}
-.v5 .fak-chip:hover{background:var(--green-m);}
-.v5 .fak-hitri{min-height:0;margin:0 0 20px;}
 .v5 .pris-chip-t{font-weight:500;}
 @media(min-width:561px){.v5 .pris-chip-t{font-size:var(--fs-13);}}
 
@@ -2842,3 +2829,64 @@ html.v5 .okno .a-det .a-det-pad > ul:has(> li:nth-child(7)){columns:2;column-gap
 .v5 .nu-modal .add-row{display:grid;grid-template-columns:1fr;gap:0;align-items:stretch;justify-items:stretch;}
 .v5 .nu-modal .add-row .field{width:100%;margin:0 0 14px;text-align:left;}
 .v5 .nu-modal .add-row .field input,.v5 .nu-modal .add-row .cs,.v5 .nu-modal .add-row select{width:100%;max-width:none;}
+
+/* ── Spletna aplikacija na začetnem zaslonu (iOS): nad vsem je trak #sc-vrh (12 px ali višina ure, glej index.html).
+   Okna in plasti se začnejo POD njim, sicer jim trak odreže zgornji rob. --vrh = koliko vrha je zasedenega. ── */
+:root{--vrh:env(safe-area-inset-top);}
+html.sc-sam{--vrh:max(12px,env(safe-area-inset-top));}
+.v5 .okno-back{padding-top:calc(24px + var(--vrh));}
+.v5 .okno{max-height:calc(100dvh - 48px - var(--vrh));}
+.v5 .sc-modal-back{align-items:flex-start;overflow-y:auto;padding:calc(20px + var(--vrh)) 20px calc(20px + env(safe-area-inset-bottom));}
+.v5 .sc-modal-back > .sc-modal{margin:auto;}   /* sredina, a pri visokem oknu vrh nikoli izven zaslona */
+.v5 .dok-lb{padding-top:calc(20px + var(--vrh));}
+.v5 .dok-lb-x{top:calc(14px + var(--vrh));}
+@media(max-width:560px){
+  .v5 .okno-back{padding-top:calc(10px + var(--vrh));}
+  .v5 .okno{max-height:calc(100dvh - 20px - var(--vrh) - env(safe-area-inset-bottom));}
+}
+/* meni na telefonu: višina z računalnika (100dvh − 65px) na telefonu ne velja — sicer se meni konča 1 px nad
+   dnom zaslona (spletna aplikacija na začetnem zaslonu) in pod njim se vidi stran */
+@media(max-width:900px){ .v5 .side{height:auto;bottom:0;} }
+/* okno je že nad varnim robom (.okno-back ima spodnji odmik) — vrstica z gumbi v oknu brez dodatnega odmika za domači indikator */
+.v5 .okno .u-acts.nl-akc{padding-bottom:12px;margin-bottom:0;}
+/* iOS: izbirnik datuma ima lastno najmanjšo širino in sega čez stolpec; brez sistemskega videza upošteva širino polja */
+@supports (-webkit-touch-callout:none){
+  .v5 input[type=date],.v5 input[type=time]{-webkit-appearance:none;appearance:none;min-width:0;max-width:100%;display:block;}
+  .v5 input[type=date]::-webkit-date-and-time-value,.v5 input[type=time]::-webkit-date-and-time-value{text-align:left;margin:0;}
+}
+
+/* ── Domov (4.62): pozdrav z datumom, tiho stanje, ena kartica tekočega meseca, zadnjih pet listov ── */
+.v5 #sec-domov .head .count{display:block;margin-top:8px;}   /* pod pozdravom datum (drugje so števci skriti) */
+.v5 #sec-domov .preg-status{display:inline-flex;width:auto;max-width:100%;gap:10px;margin:0 0 24px;padding:8px 14px 8px 12px;
+  border:1px solid var(--line);border-radius:var(--r-full);background:var(--surface);color:var(--mid);font-size:var(--fs-14);line-height:1.35;}
+.v5 #sec-domov .preg-status b{color:var(--ink);font-weight:600;}
+.v5 #sec-domov .preg-status .ps-ik{width:8px;height:8px;font-size:0;}
+.v5 #sec-domov .preg-status .ps-ik svg{display:none;}
+.v5 #sec-domov .preg-status.ps-klik{width:auto;}
+.v5 #sec-domov .preg-status.ps-klik::after{width:6px;height:6px;margin-left:4px;}
+.v5 #sec-domov .preg-status.ps-klik:hover{border-color:var(--line-strong);color:var(--ink);}
+.v5 .dom-kart{border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);padding:20px 24px 18px;margin:0 0 36px;}
+.v5 #sec-domov .stat-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:0;margin:0;}
+.v5 .dom-kart-h{grid-column:1 / -1;margin:0 0 14px;font-size:var(--fs-14);font-weight:500;color:var(--ink);}
+.v5 #sec-domov .stat{border:0;border-radius:0;background:none;box-shadow:none;min-height:0;padding:0 20px;gap:6px;}
+.v5 #sec-domov .stat + .stat{border-left:1px solid var(--line);}
+.v5 #sec-domov .dom-kart-h + .stat{padding-left:0;}
+.v5 #sec-domov .stat-num{font-size:2rem;white-space:nowrap;}
+.v5 #sec-domov .bars{border:0;border-top:1px solid var(--line);border-radius:0;background:none;padding:16px 0 0;margin:20px 0 0;}
+.v5 #sec-domov .bars .sec-h{margin:0;font-size:var(--fs-13);font-weight:500;color:var(--mid);}
+.v5 #sec-domov .bars-row{height:auto;margin-top:10px;grid-template-rows:auto 56px auto;gap:0 10px;}
+.v5 #sec-domov .bars-bar{background:var(--line-strong);border-radius:4px 4px 0 0;}
+.v5 #sec-domov .bars-col.zdaj .bars-bar{background:var(--ink);}
+.v5 #sec-domov .bars-col.zdaj .bars-lab,.v5 #sec-domov .bars-col.zdaj .bars-val{color:var(--ink);}
+.v5 .dom-zadnji-h{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:0 0 14px;}
+.v5 .dom-zadnji-h .sec-h{margin:0;}
+@media(max-width:560px){
+  .v5 #sec-domov .preg-status{display:flex;border-radius:var(--r-md);margin-bottom:20px;}
+  .v5 .dom-kart{padding:16px 16px 14px;margin-bottom:28px;}
+  .v5 #sec-domov .stat-grid{grid-template-columns:repeat(2,minmax(0,1fr));row-gap:16px;}
+  .v5 .dom-kart-h{margin-bottom:0;}
+  .v5 #sec-domov .stat,.v5 #sec-domov .stat + .stat,.v5 #sec-domov .dom-kart-h + .stat{padding:0 0 0 14px;border-left:0;}
+  .v5 #sec-domov .stat:nth-child(odd),.v5 #sec-domov .stat + .stat:nth-child(odd){border-left:1px solid var(--line);}
+  .v5 #sec-domov .stat:nth-child(even),.v5 #sec-domov .stat + .stat:nth-child(even){padding-left:0;}
+  .v5 #sec-domov .stat-num{font-size:1.6rem;}
+}

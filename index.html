@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="sl" data-theme="dark" class="v5">
+<html lang="sl" translate="no" data-theme="dark" class="v5">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover"/>
@@ -36,6 +36,7 @@ html.sc-sam.sc-pod-uro[data-theme="light"] #sc-vrh{background:#0a0a0a;}
 @media print{#sc-vrh{display:none!important;}}
 </style>
 <meta name="robots" content="noindex,nofollow"/>
+<meta name="google" content="notranslate"/>
 <link rel="manifest" href="manifest.json"/>
 <meta name="theme-color" content="#0a0a0a"/>
 <meta name="mobile-web-app-capable" content="yes"/>
@@ -226,10 +227,13 @@ body:has(> .app.show) .sc-hex [class*="hw"]{animation-play-state:paused}
       <section class="sec" id="sec-domov">
         <div class="head">
           <div class="head-t"><h2 id="domovNaslov">Pregled</h2><p class="count" id="domovPod"></p></div>
+          <div class="head-akc hidden" id="domovAkc"><button type="button" id="domovNovBtn" class="btn tb-prim" title="Nov spremni list"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span class="tb-lbl">Nov spremni list</span></button></div>
         </div>
         <div id="domovStatus"></div>
-        <div id="statGrid" class="stat-grid"></div>
-        <div id="mesecni"></div>
+        <div class="dom-kart" id="domovKart">
+          <div id="statGrid" class="stat-grid"></div>
+          <div id="mesecni"></div>
+        </div>
         <div id="zadnji"></div>
       </section>
 
@@ -283,7 +287,6 @@ body:has(> .app.show) .sc-hex [class*="hw"]{animation-play-state:paused}
             </span>
           </div>
         </div>
-        <div class="fak-hitri-row"><div class="fak-hitri" id="fakHitri"></div></div>
         <div id="fakList"></div>
       </section>
 
@@ -326,7 +329,7 @@ body:has(> .app.show) .sc-hex [class*="hw"]{animation-play-state:paused}
           </div>
         </div>
         <div class="panel hidden" id="bioPanel">
-          <h3 class="sec-h">Prijava s Face ID ali prstnim odtisom</h3>
+          <h3 class="sec-h" data-bio-naslov>Prijava s prstnim odtisom ali obrazom</h3>
           <div class="bio-row">
             <button type="button" class="btn btn-narrow" id="bioOn">Omogoči na tej napravi</button>
             <button type="button" class="btn btn-narrow bio-off hidden" id="bioOff">Odstrani s te naprave</button>
@@ -532,7 +535,7 @@ body:has(> .app.show) .sc-hex [class*="hw"]{animation-play-state:paused}
 <div class="bio-promo hidden" id="bioPromo" role="dialog" aria-modal="true" aria-labelledby="bioPromoNaslov">
   <div class="bio-promo-card">
     <div class="bio-promo-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 11a2 2 0 0 0-2 2v2"/><path d="M12 7a6 6 0 0 1 6 6v1"/><path d="M6 13a6 6 0 0 1 3-5.2"/><path d="M8 17.5a8 8 0 0 0 .5 2"/><path d="M15.5 20a10 10 0 0 0 .5-6 4 4 0 0 0-6.5-3"/></svg></div>
-    <h3 id="bioPromoNaslov">Prijava s Face ID ali prstnim odtisom</h3>
+    <h3 id="bioPromoNaslov" data-bio-naslov>Prijava s prstnim odtisom ali obrazom</h3>
     <div class="bio-promo-btns">
       <button type="button" class="btn" id="bioPromoOn">Omogoči</button>
       <button type="button" class="btn btn-ghost" id="bioPromoLater">Ne zdaj</button>

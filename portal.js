@@ -36,16 +36,18 @@
     try { var mc = document.querySelector('meta[name="theme-color"]'); if (mc) mc.setAttribute('content', eff === 'light' ? '#ffffff' : '#0a0a0a'); } catch (e) {}
     if (de.dataset.theme && de.dataset.theme !== eff) {
       var _mirno = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      // Aplikacija z začetnega zaslona (iPhone): BREZ View Transition — med prelivanjem iOS ne posodobi
-      // pasu ob uri (ta je barvo zamenjal šele po koncu). Namesto tega mehak barvni prehod vseh
-      // elementov hkrati (tudi traku #sc-vrh), da se pas ob uri spreminja skupaj s stranjo.
-      // Enako v Safariju na iPhonu/iPadu: med View Transition Safari pasova (zgoraj ob uri in spodnjo
-      // vrstico) pobarva iz posnetka strani in spodnjega po koncu ne osveži več.
+      // iPhone/iPad (Safari in aplikacija z začetnega zaslona): tema se zamenja v ENEM koraku za vse hkrati.
+      // · View Transition ne: Safari pasova (ob uri in spodnjo vrstico) pobarva iz posnetka in ju po koncu ne osveži.
+      // · Barvni prehod vseh elementov ne: podedovana barva besedila se animira v vsakem gnezdenem elementu
+      //   znova, zato pisava zaostaja za ozadjem; pasova Safari vzorči šele po koncu.
+      // Takoj za menjavo pasova prisilimo k ponovnemu vzorčenju (osveziPasove) — vse se zamenja skupaj.
       var _ios = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-      if ((de.classList.contains('sc-sam') || _ios) && !_mirno) {
-        de.classList.add('sc-tema-prehod');
+      if (de.classList.contains('sc-sam') || _ios) {
+        de.classList.add('sc-notrans');
         de.dataset.theme = eff;
-        clearTimeout(de._temaUra); de._temaUra = setTimeout(function () { de.classList.remove('sc-tema-prehod'); osveziPasove(); }, 480);
+        void de.offsetWidth;
+        osveziPasove();
+        requestAnimationFrame(function () { requestAnimationFrame(function () { de.classList.remove('sc-notrans'); }); });
       }
       // Gladka animacija preklopa teme brez zatikanja:
       // View Transitions naredi GPU-navzkrižno pretapljanje (smooth), fallback je hipen preklop.
@@ -336,7 +338,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.61 · BETA';
+  var APP_VERZIJA = '4.62 · BETA';
   var NALAGANJE = '<div class="sc-load" aria-hidden="true"><span class="sc-load-line"></span></div>';
   // Stale-while-revalidate: ob ponovnem obisku razdelka NE pobriši vsebine v nalagalnik —
   // obdrži prejšnjo (takojšen prikaz) in jo osveži v ozadju. Trak le ob prvem nalaganju.
@@ -784,17 +786,20 @@
     if (JE_LASTNIK()) {
       return [['domov', 'Domov'], ['dokumenti', 'Dokumenti'], ['prisotnost', 'Prisotnost'], ['stranke', 'Stranke'],
         ['arhiv', 'Spremni listi'], ['artikli', 'Cenik & artikli'], ['fakture', 'Fakture'], ['uporabniki', 'Uporabniki'],
-        ['statistika', 'Statistika'], ['gorivo', 'Gorivo']];
+        ['statistika', 'Statistika']];
     }
     // Ostali: vidnost razdelkov po pravicah vloge (nastavljivo v Admin).
     var vl = mojaVloga(), out = [];
     ADMIN_RAZDELKI.forEach(function (s) { if (s[0] !== 'konzola' && s[0] !== 'aplikacija' && rolePerm(vl, s[0], 'r')) out.push(s); });
     if (!out.some(function (x) { return x[0] === 'domov'; })) out.unshift(['domov', 'Domov']);
+    // Gorivo je zavihek v Statistiki (samostojno v meniju le, če Statistike ne sme videti)
+    if (out.some(function (x) { return x[0] === 'statistika'; })) out = out.filter(function (x) { return x[0] !== 'gorivo'; });
     return out;
   }
   // Sorodni razdelki so en vnos v meniju z zavihki na vrhu razdelka (meni 15 → 11).
   var SKUPINE = {
     uporabniki: { ime: 'Uporabniki', clani: [['uporabniki', 'Uporabniki'], ['admin', 'Admin'], ['konzola', 'Konzola']] },
+    statistika: { ime: 'Statistika', clani: [['statistika', 'Statistika'], ['gorivo', 'Gorivo']] },
     nastavitve: { ime: 'Nastavitve', clani: [['nastavitve', 'Splošno'], ['racun', 'Moj račun'], ['aplikacija', 'Aplikacije']] }
   };
   function smeRazdelek(k) {
@@ -3608,30 +3613,26 @@
   }
   function risiPregledStatus() { if ($('sec-domov') && !$('sec-domov').classList.contains('hidden') && !_okno) risiPregled(); }
   function risiPregled() {
-    $('domovNaslov').textContent = OSEBJE ? (pozdrav() + ', ' + prvoIme()) : MOJEPODJETJE ? MOJEPODJETJE.name : 'Vaš pregled';
-    $('domovPod').textContent = OSEBJE ? ORGSEZNAM.length + ' strank v bazi' : MOJEPODJETJE ? [MOJEPODJETJE.legal_name, MOJEPODJETJE.address].filter(Boolean).join(' · ') : '';
     const zdaj = new Date();
+    const _dan = zdaj.toLocaleDateString('sl-SI', { weekday: 'long', day: 'numeric', month: 'long' });
+    $('domovNaslov').textContent = (OSEBJE || (JAZIME || '').trim()) ? (pozdrav() + ', ' + prvoIme()) : pozdrav();
+    $('domovPod').textContent = [_dan.charAt(0).toUpperCase() + _dan.slice(1), !OSEBJE && MOJEPODJETJE ? MOJEPODJETJE.name : ''].filter(Boolean).join(' · ');
+    { const _ak = $('domovAkc'); if (_ak) _ak.classList.toggle('hidden', !OSEBJE); }
     const zacetekMeseca = new Date(zdaj.getFullYear(), zdaj.getMonth(), 1);
     const vMesecu = LISTI.filter(l => new Date(l.doc_date) >= zacetekMeseca);
     const kosovMesec = vMesecu.reduce((s, l) => s + (l.total_pieces || 0), 0);
-    const kosovSkupaj = LISTI.reduce((s, l) => s + (l.total_pieces || 0), 0);
     const kgMesec = vMesecu.reduce((s, l) => s + (parseFloat(l.weight_kg) || 0), 0);
-    const kgSkupaj = LISTI.reduce((s, l) => s + (parseFloat(l.weight_kg) || 0), 0);
     const zadnji = LISTI[0];
-    const pred90 = new Date(zdaj.getTime() - 90 * 864e5);
-    const aktivnih = new Set(LISTI.filter(l => new Date(l.doc_date) >= pred90).map(l => l.org_id)).size;
-    const kartice = OSEBJE ? [
-      { lab: 'Teža ta mesec', num: kgMesec, fmt: 'tona' },
-      { lab: 'Ur ta mesec', pending: 'ure' },
-      { lab: 'Spremnih listov ta mesec', num: vMesecu.length, fmt: 'int' },
-      { lab: 'Kosov ta mesec', num: kosovMesec, fmt: 'int' }   // vse štiri za tekoči mesec (prej kosi za vse čase)
-    ] : [
-      { lab: 'Spremnih listov', num: VSEHLISTOV, fmt: 'int', sub: 'skupaj' },
-      { lab: 'Ta mesec', num: vMesecu.length, fmt: 'int', sub: stevilo(kosovMesec) + ' kosov' },
-      { lab: 'Kosov skupaj', num: kosovSkupaj, fmt: 'int', sub: 'v vseh spremnih listih' },
-      { lab: 'Zadnji spremni list', text: zadnji ? datum(zadnji.doc_date) : '—', sub: zadnji ? stevilo(zadnji.total_pieces) + ' kosov' : 'še ni podatkov' }
+    // ena kartica za tekoči mesec: štiri številke, pod njimi zadnjih šest mesecev
+    const _zadnjiKratko = zadnji ? (function (d) { return d.getDate() + '. ' + d.toLocaleDateString('sl-SI', { month: 'short' }); })(new Date(zadnji.doc_date)) : '—';
+    const kartice = [
+      { lab: 'Spremni listi', num: vMesecu.length, fmt: 'int' },
+      { lab: 'Kosi', num: kosovMesec, fmt: 'int' },
+      { lab: 'Teža', num: kgMesec, fmt: 'tona' },
+      OSEBJE ? { lab: 'Ure', pending: 'ure' } : { lab: 'Zadnji spremni list', text: _zadnjiKratko }
     ];
-    $('statGrid').innerHTML = kartice.map(function (k) {
+    const _mesec = zdaj.toLocaleDateString('sl-SI', { month: 'long' });
+    $('statGrid').innerHTML = '<div class="dom-kart-h">' + escape_(_mesec.charAt(0).toUpperCase() + _mesec.slice(1)) + '</div>' + kartice.map(function (k) {
       var num;
       if (k.text != null) num = escape_(k.text);
       else if (k.pending) num = '<span class="stat-dots">···</span>';
@@ -3666,9 +3667,9 @@
       });
     }
     const naj = Math.max(...meseci.map(m => m.kos), 1);
-    $('mesecni').innerHTML = '<div class="bars"><h3 class="sec-h">Kosov po mesecih</h3><div class="bars-row">' + meseci.map(m => `<div class="bars-col">
+    $('mesecni').innerHTML = '<div class="bars"><h3 class="sec-h">Kosov po mesecih</h3><div class="bars-row">' + meseci.map((m, i) => `<div class="bars-col${i === meseci.length - 1 ? ' zdaj' : ''}">
         <span class="bars-val">${m.kos ? stevilo(m.kos) : ''}</span>
-        <div class="bars-bar" style="height:${Math.round(m.kos / naj * 88)}px"></div>
+        <div class="bars-bar" style="height:${Math.round(m.kos / naj * 56)}px"></div>
         <span class="bars-lab">${escape_(m.ime)}</span></div>`).join('') + '</div></div>';
     const stKljuc = l => { const d = String(l.number || '').split('/'); return (parseInt(d[1], 10) || 0) * 1e7 + (parseInt(d[0], 10) || 0); };
     const razvrsceni = LISTI.slice().sort((a, b) => stKljuc(b) - stKljuc(a));
@@ -3681,18 +3682,19 @@
       var pricakovan = _iso(_d);
       var azuren = zadnjiDatum && zadnjiDatum >= pricakovan;
       var nepotrjeni = LISTI.filter(function (l) { return (l.total_pieces > 0) && l.potrjeno !== true && !STAR_SET.has(l.id); }).length;
-      if (!azuren) statusHtml = '<div class="preg-status ps-warn"><span class="ps-ik">' + IKO_KLICAJ + '</span><span>Zadnji spremni list je od <b>' + (zadnjiDatum ? datum(zadnjiDatum) : '—') + '</b> — morda manjkajo novejši.</span></div>';
+      if (!azuren) statusHtml = '<div class="preg-status ps-warn ps-klik" role="button" tabindex="0" data-arhiv><span class="ps-ik">' + IKO_KLICAJ + '</span><span>Zadnji spremni list je od <b>' + (zadnjiDatum ? datum(zadnjiDatum) : '—') + '</b> — morda manjkajo novejši.</span></div>';
       else if (nepotrjeni > 0) statusHtml = '<div class="preg-status ps-warn ps-klik" role="button" tabindex="0" data-nepotrjeni title="Pokaži nepotrjene"><span class="ps-ik">' + IKO_TOCKA + '</span><span><b>' + nepotrjeniBesedilo(nepotrjeni) + '</b> · pokaži in potrdi</span></div>';
       else statusHtml = '<div class="preg-status ps-ok"><span class="ps-ik">' + IKO_KLJUKICA + '</span><span>Vse pregledano in dodano · zadnji list <b>' + (zadnjiDatum ? datum(zadnjiDatum) : '—') + '</b>.</span></div>';
     }
     if ($('domovStatus')) {
       $('domovStatus').innerHTML = statusHtml;
-      var _np = $('domovStatus').querySelector('[data-nepotrjeni]');
-      if (_np) { var _odpri = function () { ARH_NEPOTRJENI = true; pojdi('arhiv'); }; _np.addEventListener('click', _odpri); _np.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); _odpri(); } }); }
+      var _np = $('domovStatus').querySelector('[data-nepotrjeni], [data-arhiv]');
+      if (_np) { var _odpri = function () { if (_np.hasAttribute('data-nepotrjeni')) ARH_NEPOTRJENI = true; pojdi('arhiv'); }; _np.addEventListener('click', _odpri); _np.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); _odpri(); } }); }
     }
-    var kolikoNaj = Math.max(6, Math.min(40, Math.floor((window.innerHeight - 230) / 62)));
-    const zadnjiListi = razvrsceni.slice(0, kolikoNaj);
-    $('zadnji').innerHTML = '<h3 class="sec-h">Zadnji spremni listi</h3>' + tabelaListov(zadnjiListi, true);
+    const zadnjiListi = razvrsceni.slice(0, 5);
+    $('zadnji').innerHTML = '<div class="dom-zadnji-h"><h3 class="sec-h">Zadnji spremni listi</h3>' +
+      (razvrsceni.length > zadnjiListi.length ? '<button type="button" class="link-btn" data-vsi>Vsi spremni listi</button>' : '') + '</div>' + tabelaListov(zadnjiListi, true);
+    { const _v = $('zadnji').querySelector('[data-vsi]'); if (_v) _v.addEventListener('click', () => pojdi('arhiv')); }
     $('zadnji').querySelectorAll('.a-row').forEach(b => b.addEventListener('click', () => odpriList(b)));
     $('zadnji').querySelectorAll('.arh-chk.clk').forEach(c => {
       c.addEventListener('click', e => { e.stopPropagation(); potrdiList(c).then(risiPregledStatus); });
@@ -4373,6 +4375,8 @@
   { const dd = $('arhivDo'); if (dd) dd.addEventListener('change', risiArhiv); }
   { const xb = $('arhivObdX'); if (xb) xb.addEventListener('click', () => { const a = $('arhivOd'), b = $('arhivDo'); if (a) a.value = ''; if (b) b.value = ''; risiArhiv(); }); }
   { const _nb = $('arhivNovBtn'); if (_nb) _nb.addEventListener('click', () => novList()); }
+  // Domov: isti nov spremni list — odpre se v Spremnih listih (okno zraste iz tamkajšnjega gumba, nov list se pokaže v seznamu)
+  { const _db = $('domovNovBtn'); if (_db) _db.addEventListener('click', () => { pojdi('arhiv'); requestAnimationFrame(() => novList()); }); }
   { const _kb = $('arhivKosBtn'); if (_kb) _kb.addEventListener('click', () => arhivKos()); }
   // ── Koš spremnih listov (Nedavno brisani — obnovljivi) ──
   async function arhivKos() {
@@ -5318,7 +5322,6 @@
       var _fp = $('fakPdfBtn'); if (_fp) _fp.addEventListener('click', () => fakIzvozModal('pdf'));
       risiFakture._wired = true;
     }
-    risiHitreMesece();
     nalozifakture();
     _fakObdToggle();
   }
@@ -5335,23 +5338,6 @@
     var d = _fakDefault();
     var neDef = (($('fakOd') && $('fakOd').value) !== d.od) || (($('fakDo') && $('fakDo').value) !== d.doo);
     x.classList.toggle('hidden', !neDef);
-  }
-  function risiHitreMesece() {
-    const box = $('fakHitri');
-    if (!box) return;
-    const z = new Date();
-    const pad = n => String(n).padStart(2, '0');
-    const iso = d => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
-    const izbire = [];
-    for (let i = 0; i < 4; i++) {
-      const prvi = new Date(z.getFullYear(), z.getMonth() - i, 1);
-      const zadnji = new Date(z.getFullYear(), z.getMonth() - i + 1, 0);
-      izbire.push({ oznaka: prvi.toLocaleDateString('sl-SI', { month: 'long', year: 'numeric' }), od: iso(prvi), doo: iso(zadnji) });
-    }
-    box.innerHTML = izbire.map(m => `<button type="button" class="fak-chip" data-od="${m.od}" data-do="${m.doo}">${escape_(m.oznaka)}</button>`).join('');
-    box.querySelectorAll('.fak-chip').forEach(b => b.addEventListener('click', () => {
-      $('fakOd').value = b.dataset.od; $('fakDo').value = b.dataset.do; nalozifakture(); _fakObdToggle();
-    }));
   }
   // Zberi in izračunaj skupine po strankah za obdobje (orgIds: null/[] = vse, sicer seznam ID-jev).
   async function fakZberi(od, doo, orgIds) {
@@ -8895,7 +8881,7 @@
     var BIO_IKONA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 11a2 2 0 0 0-2 2v2"/><path d="M12 7a6 6 0 0 1 6 6v1"/><path d="M6 13a6 6 0 0 1 3-5.2"/><path d="M8 17.5a8 8 0 0 0 .5 2"/><path d="M15.5 20a10 10 0 0 0 .5-6 4 4 0 0 0-6.5-3"/></svg>';
     var html = prof.map(function (p) {
       var imaBio = bioPodprt() && p.uid && bioVklopljen(p.uid);
-      var badge = imaBio ? '<span class="pp-bio" title="Face ID / prstni odtis">' + BIO_IKONA + '</span>' : '';
+      var badge = imaBio ? '<span class="pp-bio" title="' + bioIme() + '">' + BIO_IKONA + '</span>' : '';
       return '<div class="pp-tile-wrap">' +
         '<button type="button" class="pp-tile" data-email="' + escape_(p.email) + '">' +
         ppAvatarHtml(p, 'pp-av') + badge +
@@ -8969,7 +8955,7 @@
     //    NIKOLI tihega vstopa (varnost). Face ID se sam NE izklopi (ne poteče) —
     //    izklopi se le ročno v Nastavitvah (»Odstrani s te naprave«).
     if (p && p.uid && bioPodprt() && bioVklopljen(p.uid)) {
-      var m = $('ppMsg'); if (m) { m.className = 'msg show'; m.innerHTML = '<span class="bio-pulse"></span>Odkleni s Face ID / Touch ID …'; }
+      var m = $('ppMsg'); if (m) { m.className = 'msg show'; m.innerHTML = '<span class="bio-pulse"></span>Odkleni ' + bioZ() + ' …'; }
       try {
         var ok = await bioOdkleni(p.uid, email);
         if (!ok) { pokaziPrijavo(email); return; }
@@ -8995,6 +8981,18 @@
   }
 
   /* ══════════ FACE ID / PRSTNI ODTIS (WebAuthn) ══════════ */
+  // Ime biometrije, kot ga uporablja naprava (na Androidu ni Face ID, na Macu je Touch ID …)
+  function bioNaprava() {
+    var ua = navigator.userAgent || '', pl = navigator.platform || '';
+    if (/iPhone|iPad|iPod/.test(ua) || (pl === 'MacIntel' && navigator.maxTouchPoints > 1)) return 'ios';
+    if (/Android/.test(ua)) return 'android';
+    if (/Mac/.test(pl)) return 'mac';
+    if (/Win/.test(pl)) return 'win';
+    return '';
+  }
+  function bioZ() { return { ios: 's Face ID', android: 's prstnim odtisom', mac: 's Touch ID', win: 'z Windows Hello' }[bioNaprava()] || 's prstnim odtisom ali obrazom'; }
+  function bioIme() { return { ios: 'Face ID', android: 'Prstni odtis', mac: 'Touch ID', win: 'Windows Hello' }[bioNaprava()] || 'Prstni odtis'; }
+  document.querySelectorAll('[data-bio-naslov]').forEach(function (h) { h.textContent = 'Prijava ' + bioZ(); });
   function bioPodprt() {
     try { return !!(window.PublicKeyCredential && navigator.credentials && navigator.credentials.create); }
     catch (e) { return false; }
@@ -9070,7 +9068,7 @@
   }
   // Omogoči biometrijo: registriraj passkey na STREŽNIKU (oseba je prijavljena z geslom).
   async function bioOmogoci() {
-    if (!bioPodprt()) throw new Error('Ta naprava ne podpira Face ID / prstnega odtisa.');
+    if (!bioPodprt()) throw new Error('Ta naprava ne podpira prijave ' + bioZ() + '.');
     var sres = await sb.auth.getSession();
     var session = sres && sres.data && sres.data.session;
     if (!session) throw new Error('Najprej se prijavi z geslom.');

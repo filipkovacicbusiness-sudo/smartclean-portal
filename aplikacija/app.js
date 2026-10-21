@@ -418,11 +418,14 @@ function applyTheme(animiraj){
   var dark = pref === "auto" ? autoDark() : (pref !== "light");
   var eff = dark ? "dark" : "light", de = document.documentElement;
   if(animiraj && de.getAttribute("data-theme") && de.getAttribute("data-theme") !== eff){
-    /* začetni zaslon (iPhone): brez View Transition — iOS bi pas ob uri zamenjal šele po prelivanju */
-    if(de.classList.contains("sc-sam") && !oknoMirno()){
+    /* iPhone/iPad (Safari in začetni zaslon): v enem koraku za vse hkrati (kot portal, uporabiTemo) —
+       View Transition pusti pasova Safarija v stari barvi, barvni prehod pa zamakne pisavo za ozadjem */
+    var ios = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    if(de.classList.contains("sc-sam") || ios){
       var m0 = document.querySelector('meta[name="theme-color"]'); if(m0) m0.setAttribute("content", dark ? "#0a0a0a" : "#ffffff");
-      de.classList.add("sc-tema-prehod"); de.setAttribute("data-theme", eff);
-      clearTimeout(de._temaUra); de._temaUra = setTimeout(function(){ de.classList.remove("sc-tema-prehod"); }, 480);
+      de.classList.add("sc-notrans"); de.setAttribute("data-theme", eff); void de.offsetWidth;
+      try{ var y = window.scrollY, gor = y > 0 ? -1 : 1; window.scrollTo(0, y + gor); requestAnimationFrame(function(){ window.scrollTo(0, y); }); }catch(e){}   // pasova Safarija na novo vzorčita barvo
+      requestAnimationFrame(function(){ requestAnimationFrame(function(){ de.classList.remove("sc-notrans"); }); });
     }else if(document.startViewTransition && !oknoMirno()){
       de.classList.add("sc-notrans");
       try{
