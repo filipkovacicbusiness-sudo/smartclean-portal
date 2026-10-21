@@ -321,7 +321,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.52 · BETA';
+  var APP_VERZIJA = '4.53 · BETA';
   var NALAGANJE = '<div class="sc-load" aria-hidden="true"><span class="sc-load-line"></span></div>';
   // Stale-while-revalidate: ob ponovnem obisku razdelka NE pobriši vsebine v nalagalnik —
   // obdrži prejšnjo (takojšen prikaz) in jo osveži v ozadju. Trak le ob prvem nalaganju.
@@ -699,7 +699,7 @@
     try { await naloziRoleCfg(); } catch (e) {}
     meni();
     await naloziListe();
-    pojdi('domov');
+    pojdi(zacetniRazdelek());   // ob ponovnem nalaganju ostane isti razdelek (#arhiv …), sicer Domov
     // Portal je sestavljen in prva stran izrisana → gladko umakni zagonski zaslon.
     try { requestAnimationFrame(function () { if (window.scBootDone) window.scBootDone(); }); } catch (e) { try { if (window.scBootDone) window.scBootDone(); } catch (_) {} }
     zazeniCustomSelecte();
@@ -927,6 +927,19 @@
   window.addEventListener('resize', pgMiniZahtevaj);
   { const pm = $('pgMini'); if (pm) pm.addEventListener('click', function () { try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (e) { window.scrollTo(0, 0); } }); }
 
+  // Fakture → »N listov še ni potrjenih · preglej«: Arhiv s to stranko in samo nepotrjenimi
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('[data-faknep]'); if (!b) return;
+    e.preventDefault(); e.stopPropagation();
+    var org = b.dataset.faknep;
+    ['arhivIsci', 'arhivOd', 'arhivDo'].forEach(function (i) { var x = $(i); if (x) x.value = ''; });
+    ARH_NEPOTRJENI = true; pojdi('arhiv');
+    var o = $('arhivOrg'); if (o && org) { o.value = org; o.dispatchEvent(new Event('change')); }
+  }, true);
+  function zacetniRazdelek() {
+    var h = String(location.hash || '').replace(/^#/, '');
+    return /^[a-z]+$/.test(h) && document.getElementById('sec-' + h) ? h : 'domov';
+  }
   function pojdi(kam) {
     if (_okno) oknoZapri(true);
     // Admin & Konzola: samo lastnik.
@@ -940,6 +953,8 @@
     }
     // Zaposleni vidi samo Pregled, Prisotnost in Moj račun.
     if (JE_ZAPOSLENI() && ['domov', 'prisotnost', 'racun'].indexOf(kam) < 0) kam = 'domov';
+    // razdelek v naslovu (#arhiv): osvežitev ali ponovni zagon aplikacije na začetnem zaslonu ostane tu
+    try { var _h = kam === 'domov' ? location.pathname + location.search : '#' + kam; if ((location.hash || '') !== (kam === 'domov' ? '' : '#' + kam)) history.replaceState(null, '', _h); } catch (e) {}
     document.querySelectorAll('.sec').forEach(s => {
       s.classList.toggle('hidden', s.id !== 'sec-' + kam);
     });
@@ -1316,7 +1331,7 @@
       if (!ok) return;
       msg.textContent = 'Brišem …';
       var r = await sb.from('fuel_logs').update({ deleted_at: new Date().toISOString() }).eq('id', rec.id);
-      if (r.error) { msg.textContent = 'Napaka: ' + r.error.message; return; }
+      if (r.error) { msg.textContent = napakaBesedilo(r.error); return; }
       logDodaj('Gorivo', 'Izbrisano', 'Tankanje ' + datum(rec.datum) + ' · ' + gorLitriFmt(rec.litri));
       GORIVO = (GORIVO || []).filter(function (x) { return x.id !== rec.id; });
       zapri(); toast('Tankanje izbrisano.'); gorRisi();
@@ -1400,7 +1415,7 @@
         toast(nov ? 'Tankanje shranjeno.' : 'Tankanje posodobljeno.');
         gorRisi();
       } catch (e) {
-        msg.textContent = 'Napaka: ' + ((e && e.message) || e);
+        msg.textContent = napakaBesedilo(e);
       }
     });
 
@@ -1801,17 +1816,20 @@
     var prisotnihN = 0;
     var zapKartice = zapUrejeni.map(function (z, i) {
       var l = prisZadnji(z.id); var notri = !!(z.active && l && l.type === 'in');
-      if (notri) prisotnihN++;
+      // prihod s prejšnjega dne brez odhoda: ni »prisoten«, ampak pozabljena odjava (prej »od 06:30«, kot da je tu zdaj)
+      var brezOdhoda = notri && isoLokalno(new Date(l.ts)) < danesD;
+      var odhodTxt = brezOdhoda ? 'ni odhoda · ' + datum(isoLokalno(new Date(l.ts))).replace(/ \d{4}$/, '') + ' ' + uraMin(l.ts) : '';
+      if (notri && !brezOdhoda) prisotnihN++;
       var upo = z.profile_id ? PRIS_UPO_MAP[z.profile_id] : null;
       var upoLbl = upo ? (upo.email || upo.full_name || 'povezan') : '';
       var dan = prisPari(z.id, danesD);
       var danUre = dan.sek ? trajanjeH(dan.sek) : '';
       var intervali = dan.pari.map(function (p) { return uraMin(p[0].ts) + '–' + uraMin(p[1].ts); });
       if (dan.odprt) intervali.push(uraMin(dan.odprt.ts) + ' → v teku');
-      var znak = !z.active ? '<span class="pris-badge out">neaktiven</span>' : (notri ? '<span class="pris-badge in">prisoten · od ' + uraMin(l.ts) + '</span>' : '<span class="pris-badge out">odsoten</span>');
+      var znak = !z.active ? '<span class="pris-badge out">neaktiven</span>' : (brezOdhoda ? '<span class="pris-badge warn">' + odhodTxt + '</span>' : notri ? '<span class="pris-badge in">prisoten · od ' + uraMin(l.ts) + '</span>' : '<span class="pris-badge out">odsoten</span>');
       var pod = upoLbl || (z.card_token ? 'kartica dodeljena' : 'brez kartice');
       var det = '<dl class="pris-zap-dl">' +
-          (notri ? '<dt>Stanje</dt><dd>' + znak + ' <button type="button" class="cgrp-btn ghost pris-odjavi" data-odjavi="' + z.id + '">Odjavi</button></dd>' : '') +
+          (notri ? '<dt>Stanje</dt><dd>' + znak + ' <button type="button" class="cgrp-btn ghost pris-odjavi" data-odjavi="' + z.id + '">' + (brezOdhoda ? 'Vpiši odhod' : 'Odjavi') + '</button></dd>' : '') +
           '<dt>Danes</dt><dd>' + (intervali.length ? escape_(intervali.join(', ')) + (danUre ? ' · <b>' + danUre + '</b>' : '') : '<span class="u-sub">ni vpisov</span>') + '</dd>' +
           '<dt>Uporabnik</dt><dd>' + (upoLbl ? escape_(upoLbl) : '<span class="u-sub">ni povezan</span>') + '</dd>' +
           '<dt>Kartica</dt><dd>' + (z.card_token ? 'dodeljena' : '<span class="u-sub">ni dodeljena</span>') + '</dd>' +
@@ -1826,7 +1844,7 @@
         '</div>';
       // ENA vrstica na zaposlenega: ime · stanje · ure danes (prej tri: ime, kartica, značka —
       // do mesečne evidence je bilo treba dolgo drseti). Kartica in uporabnik sta v oknu.
-      var stKr = !z.active ? '<span class="pz-st off">neaktiven</span>' : (notri ? '<span class="pz-st in">od ' + uraMin(l.ts) + '</span>' : '<span class="pz-st">odsoten</span>');
+      var stKr = !z.active ? '<span class="pz-st off">neaktiven</span>' : (brezOdhoda ? '<span class="pz-st warn">' + odhodTxt + '</span>' : notri ? '<span class="pz-st in">od ' + uraMin(l.ts) + '</span>' : '<span class="pz-st">odsoten</span>');
       return '<div class="pz-cell' + (z.active ? '' : ' pris-neakt') + '"><button class="row pz" type="button" data-zid="' + z.id + '" aria-haspopup="dialog" title="' + escape_(pod) + '">' +
         '<span class="pz-ime"><span class="row-name"><span class="row-nm">' + escape_(z.ime) + '</span></span>' + stKr + '</span>' +
         '<span class="num pris-zap-ure" title="Danes">' + (danUre || '—') + '</span><span class="chev" aria-hidden="true">›</span></button>' +
@@ -1974,12 +1992,12 @@
     ime = (ime || '').trim(); if (!ime) { toast('Vpiši ime.'); return; }
     var org = prisOrg(); if (!org) { toast('Ni organizacije za zaposlenega.'); return; }
     var ins = await sb.from('employees').insert({ org_id: org, ime: ime, active: true }).select('id').maybeSingle();
-    if (ins.error) { toast('Napaka: ' + ins.error.message); return; }
+    if (ins.error) { toast(napakaBesedilo(ins.error)); return; }
     toast('Zaposleni dodan.'); await risiPrisotnost();
   }
   async function prisAktiv(empId, on) {
     var up = await sb.from('employees').update({ active: on }).eq('id', empId);
-    if (up.error) { toast('Napaka: ' + up.error.message); return; }
+    if (up.error) { toast(napakaBesedilo(up.error)); return; }
     await risiPrisotnost();
   }
   async function prisPreimenuj(empId) {
@@ -1988,7 +2006,7 @@
     if (novo === null) return;
     novo = novo.trim(); if (!novo) { toast('Ime ne sme biti prazno.'); return; }
     var up = await sb.from('employees').update({ ime: novo }).eq('id', empId);
-    if (up.error) { toast('Napaka: ' + up.error.message); return; }
+    if (up.error) { toast(napakaBesedilo(up.error)); return; }
     toast('Ime posodobljeno.'); await risiPrisotnost();
   }
   // Poveži zaposlenega (evidenca ur) z uporabnikom portala (e-pošta + geslo).
@@ -2013,7 +2031,7 @@
       var val = back.querySelector('.pu-sel').value || null;
       if (val) { var ze = (ZAPOSLENI || []).find(function (x) { return x.profile_id === val && x.id !== empId; }); if (ze) { toast('Ta uporabnik je že povezan z: ' + ze.ime); return; } }
       var up = await sb.from('employees').update({ profile_id: val }).eq('id', empId);
-      if (up.error) { toast('Napaka: ' + (/profile_id|column|schema/i.test(up.error.message || '') ? 'najprej zaženi 48_zaposleni_uporabnik.sql v Supabase.' : up.error.message)); return; }
+      if (up.error) { toast(napakaBesedilo(up.error)); return; }
       logDodaj('Prisotnost', 'Urejeno', 'Zaposleni »' + z.ime + '« ' + (val ? 'povezan z uporabnikom ' + ((PRIS_UPO_MAP[val] && PRIS_UPO_MAP[val].email) || '') : 'odvezan od uporabnika'));
       toast(val ? 'Uporabnik povezan.' : 'Povezava odstranjena.'); zapri(); await risiPrisotnost();
     });
@@ -2023,7 +2041,7 @@
     var ok = await potrdiModal({ naslov: 'Izbriši zaposlenega', sporocilo: 'Res izbrišem »' + z.ime + '«? Izbrišejo se tudi vsi njegovi vpisi ur — tega ni mogoče razveljaviti. (Če želiš ohraniti zgodovino, raje uporabi Deaktiviraj.)', potrdi: 'Izbriši', preklici: 'Prekliči', nevarno: true });
     if (!ok) return;
     var del = await sb.from('employees').delete().eq('id', empId);
-    if (del.error) { toast('Napaka: ' + del.error.message); return; }
+    if (del.error) { toast(napakaBesedilo(del.error)); return; }
     toast('Zaposleni izbrisan.'); await risiPrisotnost();
   }
   // Žeton s kartice DESFire je natanko 32 šestnajstiških znakov (16 bajtov).
@@ -2056,8 +2074,8 @@
     var up = await sb.from('employees').update({ card_token: zeton }).eq('id', empId).select('id,ime,card_token');
     if (up.error) {
       var m = up.error.message || '';
-      toast('Napaka: ' + (m.indexOf('duplicate') >= 0 || m.indexOf('employees_card_token_key') >= 0
-        ? 'ta žeton je že dodeljen drugemu zaposlenemu.' : m));
+      toast(m.indexOf('duplicate') >= 0 || m.indexOf('employees_card_token_key') >= 0
+        ? 'Ta kartica je že dodeljena drugemu zaposlenemu.' : napakaBesedilo(up.error));
       return;
     }
     if (!up.data || !up.data.length) { toast('Ni bilo mogoče shraniti — za to vlogo ni pravic.'); return; }
@@ -2070,7 +2088,7 @@
     var ids = String(idsStr || '').split(',').filter(Boolean);
     if (!ids.length) return;
     var up = await sb.from('att_events').update({ potrjeno: on }).in('id', ids);
-    if (up.error) { toast('Napaka: ' + up.error.message); return; }
+    if (up.error) { toast(napakaBesedilo(up.error)); return; }
     ids.forEach(function (id) { var d = prisDogById(id); if (d) d.potrjeno = on; });
     prisRender();
   }
@@ -2080,7 +2098,7 @@
     var ok = await potrdiModal({ naslov: 'Izbriši vpis', sporocilo: 'Izbrišem ta vpis ur (prihod' + (ids.length > 1 ? ' in odhod' : '') + ')? Tega ni mogoče razveljaviti.', potrdi: 'Izbriši', preklici: 'Prekliči', nevarno: true });
     if (!ok) return;
     var del = await sb.from('att_events').delete().in('id', ids);
-    if (del.error) { toast('Napaka: ' + del.error.message); return; }
+    if (del.error) { toast(napakaBesedilo(del.error)); return; }
     toast('Vpis izbrisan.'); await risiPrisotnost();
   }
   function hmLocal(ts) { var d = new Date(ts); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); }
@@ -2191,7 +2209,7 @@
     async function naloziDan(fokus) {
       zaseden = true; lst.classList.add('vu-nalaga');
       try { pari = await vuNaloziPari(z.id, dan); }
-      catch (e) { sporoci('Napaka pri nalaganju: ' + ((e && e.message) || e)); return; }
+      catch (e) { sporoci('Nalaganje ni uspelo. ' + napakaBesedilo(e)); return; }
       finally { zaseden = false; lst.classList.remove('vu-nalaga'); }
       risiVrste(fokus);
     }
@@ -2237,7 +2255,7 @@
       var res = await Promise.all(ops);
       gumb.disabled = false;
       var nap = res.filter(function (x) { return x && x.error; })[0];
-      if (nap) { sporoci('Napaka pri shranjevanju: ' + nap.error.message); await naloziDan(); return false; }
+      if (nap) { sporoci(napakaBesedilo(nap.error)); await naloziDan(); return false; }
       shranjeno = true;
       try { logDodaj('Prisotnost', 'Vnos ur', z.ime + ' · ' + dan + ' · ' + (izm.map(function (x) { return x.in + '–' + (x.out || '…'); }).join(', ') || 'brez izmen')); } catch (e) {}
       try { await naloziPrisDog(); prisRender(); } catch (e) {}
@@ -2461,7 +2479,7 @@
   async function artPotrdiCeno(sifra, on) {
     var rec = CENIKMAP[sifra];
     var up = await sb.from('pricelist').update({ cena_potrjena: on, updated_at: new Date().toISOString() }).eq('sifra', sifra);
-    if (up.error) { toast('Napaka: ' + up.error.message); artRender(); return; }
+    if (up.error) { toast(napakaBesedilo(up.error)); artRender(); return; }
     if (rec) rec.cena_potrjena = on;
     var rec2 = (CENIK || []).find(function (p) { return p.sifra === sifra; }); if (rec2) rec2.cena_potrjena = on;
     var row = document.querySelector('.art-row[data-s="' + sifra + '"]');
@@ -2517,7 +2535,7 @@
       if (nid && nid !== normId(rec.koda)) patch.koda = nid;
       if (cena !== rec.cena1) patch.cena_potrjena = false;   // spremenjena cena → znova potrebna potrditev (oranžna)
       var e1 = (await sb.from('pricelist').update(patch).eq('sifra', sifra)).error;
-      if (e1) { toast('Napaka: ' + e1.message); return; }
+      if (e1) { toast(napakaBesedilo(e1)); return; }
       if (nm !== rec.naziv) await posodobiImeArtikla(sifra, nm);
       var _spr = []; if (nm !== rec.naziv) _spr.push('naziv'); if (cena !== rec.cena1) _spr.push('cena ' + cenaFmt(cena));
       rec.naziv = nm; rec.cena1 = cena; if (patch.koda) rec.koda = nid; if ('cena_potrjena' in patch) rec.cena_potrjena = false; zgradiCenikMap();
@@ -2549,7 +2567,7 @@
     var sifra = await naslednjaSifra();
     var rec = { sifra: sifra, koda: id, naziv: nm, em: 'kos', cena1: cena, cena2: cena, org_id: null, sort_order: (CENIK ? CENIK.length : 0) };
     var e = (await sb.from('pricelist').insert(rec)).error;
-    if (e) { toast('Napaka: ' + e.message); return; }
+    if (e) { toast(napakaBesedilo(e)); return; }
     CENIK.push(rec); zgradiCenikMap();
     // PROPAGACIJA: dodaj artikel vsem strankam, ki že uporabljajo to skupino
     var ciljOrgi = (ORGSEZNAM || []).filter(function (o) { return strankaSkupina(o.id) === pre; });
@@ -2585,7 +2603,7 @@
       var obst = {}; (CENIK || []).forEach(function (x) { obst[artPrefix(x.koda)] = 1; }); Object.keys(SKUPINE_IME).forEach(function (k) { obst[k] = 1; });
       if (obst[pre]) { toast('Predpona ' + pre + ' že obstaja.'); return; }
       var r = await sb.from('article_groups').upsert({ prefix: pre, name: ime || null, updated_at: new Date().toISOString() }, { onConflict: 'prefix' });
-      if (r.error) { toast('Napaka: ' + r.error.message + (/relation|does not exist/i.test(r.error.message) ? ' (poženi migracijo 13_skupine.sql)' : '')); return; }
+      if (r.error) { toast(napakaBesedilo(r.error) + (/relation|does not exist/i.test(r.error.message) ? ' (poženi migracijo 13_skupine.sql)' : '')); return; }
       if (ime) SKUPINE_IME[pre] = ime;
       zapri();
       if (typeof opts.onCreated === 'function') { opts.onCreated(pre, ime); }
@@ -2598,7 +2616,7 @@
     if (novo === null) return;
     novo = novo.trim();
     var r = await sb.from('article_groups').upsert({ prefix: pre, name: novo || null, updated_at: new Date().toISOString() }, { onConflict: 'prefix' });
-    if (r.error) { toast('Napaka: ' + r.error.message + (/relation|does not exist/i.test(r.error.message) ? ' (poženi migracijo 13_skupine.sql)' : '')); return; }
+    if (r.error) { toast(napakaBesedilo(r.error) + (/relation|does not exist/i.test(r.error.message) ? ' (poženi migracijo 13_skupine.sql)' : '')); return; }
     if (novo) SKUPINE_IME[pre] = novo; else delete SKUPINE_IME[pre];
     toast('Ime skupine shranjeno.'); artRender();
   }
@@ -2609,9 +2627,9 @@
     toast('Brišem skupino …');
     var sifre = arts.map(function (x) { return x.sifra; });
     var e1 = (await sb.from('articles').delete().in('cena_sifra', sifre)).error;
-    if (e1) { toast('Napaka: ' + e1.message); return; }
+    if (e1) { toast(napakaBesedilo(e1)); return; }
     var e2 = (await sb.from('pricelist').update({ deleted_at: new Date().toISOString() }).in('sifra', sifre)).error;
-    if (e2) { toast('Napaka: ' + e2.message); return; }
+    if (e2) { toast(napakaBesedilo(e2)); return; }
     try { await sb.from('article_groups').delete().eq('prefix', pre); } catch (e) {}
     var setSif = {}; sifre.forEach(function (s) { setSif[s] = 1; });
     if (CLANI) CLANI = CLANI.filter(function (a) { return !setSif[a.cena_sifra]; });
@@ -2645,7 +2663,7 @@
         toast('Stranke posodobljene.');
       } catch (e) {
         try { await naloziClane(true); } catch (e2) {}
-        toast('Napaka pri shranjevanju: ' + (e && e.message ? e.message : e));
+        toast(napakaBesedilo(e));
       }
       artRender();
     });
@@ -3990,7 +4008,7 @@
       await sb.from('delivery_note_conflicts').delete().eq('id', k.id);
       toast('Prekrivanje rešeno.');
       await naloziListe(); await naloziKonflikte(); risiArhiv();
-    } catch (e) { toast('Napaka: ' + (e.message || e)); }
+    } catch (e) { toast(napakaBesedilo(e)); }
   }
   // ── Razvrščanje po vrednosti (Arhiv → »Cena«) ──
   // Vrednost lista = vsota (cena po ceniku × kosov) brez DDV, izračunana enako kot v Fakturah:
@@ -4171,7 +4189,7 @@
     if (lcell) { lcell.classList.remove('arh-green', 'arh-yellow'); lcell.classList.add(naVkljuceno ? 'arh-green' : 'arh-yellow'); }
     chk.title = naVkljuceno ? 'potrjeno — klikni za preklic' : 'klikni za potrditev (urejeno)';
     const { error } = await sb.from('delivery_notes').update({ potrjeno: naVkljuceno }).eq('id', id);
-    if (error) { toast('Napaka: ' + error.message); chk.classList.toggle('on', !naVkljuceno); chk.innerHTML = !naVkljuceno ? IKO_KLJUKICA : ''; if (lcell) { lcell.classList.remove('arh-green', 'arh-yellow'); lcell.classList.add(!naVkljuceno ? 'arh-green' : 'arh-yellow'); } return; }
+    if (error) { toast(napakaBesedilo(error)); chk.classList.toggle('on', !naVkljuceno); chk.innerHTML = !naVkljuceno ? IKO_KLJUKICA : ''; if (lcell) { lcell.classList.remove('arh-green', 'arh-yellow'); lcell.classList.add(!naVkljuceno ? 'arh-green' : 'arh-yellow'); } return; }
     const rec = (LISTI || []).find(x => x.id === id); if (rec) rec.potrjeno = naVkljuceno;
     toast(naVkljuceno ? 'Potrjeno kot urejeno.' : 'Potrditev preklicana.');
   }
@@ -4280,7 +4298,7 @@
       var boxi = listi.map(l => ({ _note: l, _items: _POST_CACHE[l.id] || [] }));
       var en = boxi.length === 1, naslov = en ? 'Spremni list ' + (listi[0].number || '') : sklonListov(boxi.length);
       predogledDokument({ naslov: naslov, docHtml: dokHtml(en ? naslov : 'Spremni listi', boxi.map(spremniTeloHtml)), pdf: function () { return spremniPdfDownload(boxi); } });
-    } catch (e) { toast('Napaka: ' + ((e && e.message) || e)); }
+    } catch (e) { toast(napakaBesedilo(e)); }
     finally { bt._tece = false; bt.classList.remove('nalaga'); arhIzbiraRisi(); }
   }
   // Postavke več listov naenkrat (predpomnilnik ima le prvih 80 iz seznama).
@@ -4347,7 +4365,7 @@
       if (!ok) return;
       r = await sb.from('delivery_notes').update({ deleted_at: null, doc_seq: nova }).eq('id', id);
     }
-    if (r.error) { toast('Napaka: ' + r.error.message); return; }
+    if (r.error) { toast(napakaBesedilo(r.error)); return; }
     logDodaj('Arhiv', 'Obnovljeno', 'Spremni list obnovljen iz koša');
     toast('Spremni list obnovljen'); await naloziListe(); arhivKos();
   }
@@ -4361,7 +4379,7 @@
       pozabiPostavke(id);
       logDodaj('Arhiv', 'Izbrisano dokončno', 'Spremni list dokončno izbrisan iz koša');
       toast('Dokončno izbrisano'); arhivKos();
-    } catch (e) { toast('Napaka: ' + (e && e.message ? e.message : e)); }
+    } catch (e) { toast(napakaBesedilo(e)); }
   }
   // Predpomnilnik postavk (za takojšnje, gladko razpiranje kartic — brez skoka).
   var _POST_CACHE = {};
@@ -4509,7 +4527,7 @@
       opomba_at: txt ? new Date().toISOString() : null
     };
     var r = await sb.from('delivery_notes').update(novo).eq('id', box._id);
-    if (r && r.error) { if (m) { m.className = 'msg bad show'; m.textContent = 'Napaka: ' + r.error.message; } return; }
+    if (r && r.error) { if (m) { m.className = 'msg bad show'; m.textContent = napakaBesedilo(r.error); } return; }
     // Posodobi lokalno stanje in ponovno izriši detajl.
     Object.assign(box._note, novo);
     var li = LISTI.find(function (l) { return l.id === box._id; }); if (li) Object.assign(li, novo);
@@ -4853,7 +4871,7 @@
       risiArhiv();
       pokaziList(_vrniSe);
     } catch (e) {
-      msg.textContent = /duplicate|unique/i.test(e.message || '') ? 'Številka ' + seq + '/' + leto + ' je že uporabljena za drug spremni list.' : 'Napaka: ' + (e.message || e);
+      msg.textContent = /duplicate|unique/i.test(e.message || '') ? 'Številka ' + seq + '/' + leto + ' je že uporabljena za drug spremni list.' : napakaBesedilo(e);
     }
   }
 
@@ -5208,7 +5226,7 @@
         pokaziList(nid);
       }
     } catch (e) {
-      msg.textContent = /duplicate|unique/i.test(e.message || '') ? 'Številka ' + seq + '/' + leto + ' je že uporabljena za drug spremni list.' : 'Napaka: ' + (e.message || e);
+      msg.textContent = /duplicate|unique/i.test(e.message || '') ? 'Številka ' + seq + '/' + leto + ' je že uporabljena za drug spremni list.' : napakaBesedilo(e);
     }
   }
 
@@ -5270,6 +5288,8 @@
   function _fakDefault() {
     var z = new Date(), pad = function (n) { return String(n).padStart(2, '0'); };
     var iso = function (d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); };
+    // prvih 10 dni v mesecu se fakturira pretekli mesec → ta je privzet (prej vedno tekoči)
+    if (z.getDate() <= 10) return { od: iso(new Date(z.getFullYear(), z.getMonth() - 1, 1)), doo: iso(new Date(z.getFullYear(), z.getMonth(), 0)) };
     return { od: iso(new Date(z.getFullYear(), z.getMonth(), 1)), doo: iso(z) };
   }
   function _fakObdToggle() {
@@ -5300,7 +5320,7 @@
     // Naloži VSE spremne liste v obdobju (stranično), brez trde meje — da noben list/stranka ne izpade iz obračuna.
     const r = await vseVrstice(function (a, b) {
       let q = sb.from('delivery_notes')
-        .select('id,number,doc_date,weight_kg,total_pieces,org_id,transport,delivery_note_items(article_name,article_id,pieces)')
+        .select('id,number,doc_date,weight_kg,total_pieces,org_id,transport,potrjeno,delivery_note_items(article_name,article_id,pieces)')
         .is('deleted_at', null)
         .gte('doc_date', od).lte('doc_date', doo)
         .order('doc_date', { ascending: true }).order('id', { ascending: true }).range(a, b);
@@ -5316,6 +5336,7 @@
       if (!poOrg[oid]) poOrg[oid] = { org_id: oid, listov: 0, kg: 0, kosov: 0, redni: 0, izredni: 0, artikli: {}, artAid: {} };
       const g = poOrg[oid];
       g.listov++;
+      if (n.potrjeno !== true && (n.total_pieces || 0) > 0) g.nepotrjenih = (g.nepotrjenih || 0) + 1;   // opozorilo na kartici
       if (n.transport === 'izredni') g.izredni++; else g.redni++;
       g.kg += parseFloat(n.weight_kg) || 0;
       g.kosov += n.total_pieces || 0;
@@ -5417,7 +5438,8 @@
       `<span class="fak-l-t">${p.teza != null ? tezaFmt(p.teza) : '—'}</span>` +
       (money ? `<b class="fak-l-z">${p.znesek != null ? cenaFmt(p.znesek) : '—'}</b>` : '') +
       `</div>`).join('') : '<div class="fak-line fak-line-empty"><span class="u-sub">Brez postavk</span></div>';
-    const prevoz = `<div class="fak-tot-r"><span>Prevozi</span><b>${stevilo(g.redni)} redni${g.izredni ? ' · ' + stevilo(g.izredni) + ' izredni' : ''}</b></div>`;
+    const prevoz = `<div class="fak-tot-r"><span>Prevozi</span><b>${stevilo(g.redni)} redni${g.izredni ? ' · ' + stevilo(g.izredni) + ' izredni' : ''}</b></div>` +
+      (g.nepotrjenih ? `<div class="fak-tot-r"><button type="button" class="fak-nep" data-faknep="${escape_(String(g.org_id || ''))}">${IKO_T_POZOR}${nepotrjeniBesedilo(g.nepotrjenih)} · preglej</button><b></b></div>` : '');
     const head = money
       ? `<div class="fak-head fak-head-m"><span>Artikel</span><span>Cena</span><span>Kol.</span><span>Teža</span><span>Znesek</span></div>`
       : `<div class="fak-head fak-head-nm"><span>Artikel</span><span>Količina</span><span>Teža</span></div>`;
@@ -5949,7 +5971,7 @@
       msg.className = 'fx-msg msg'; msg.textContent = '';
       const res = await fakZberi(od, doo, vseIzbrane ? null : izbrani);
       btn.disabled = false; btn.textContent = jePdf ? 'Predogled' : 'Izvozi Excel';
-      if (res.error) { msg.className = 'fx-msg msg bad show'; msg.textContent = 'Napaka: ' + res.error.message; return; }
+      if (res.error) { msg.className = 'fx-msg msg bad show'; msg.textContent = napakaBesedilo(res.error); return; }
       const skupine = res.skupine || [];
       if (!skupine.length) { msg.className = 'fx-msg msg bad show'; msg.textContent = 'V izbranem obdobju ni spremnih listov.'; return; }
       zapri();
@@ -6117,7 +6139,7 @@
     var scList = (CENIK || []).filter(function (x) { return jeSc(x.koda); }).slice().sort(cenikSort);
     var rec = { sifra: sifra, koda: id, naziv: name, em: 'kos', cena1: 0, cena2: 0, org_id: null, sort_order: scList.length };
     var e = (await sb.from('pricelist').insert(rec)).error;
-    if (e) { toast('Napaka: ' + e.message); return; }
+    if (e) { toast(napakaBesedilo(e)); return; }
     CENIK.push(rec);
     // normaliziraj sort_order vseh SC (obstoječi po trenutnem vrstnem redu, nov na koncu) → stabilen vrstni red
     var koncni = scList.concat([rec]); var ups = [];
@@ -6307,7 +6329,7 @@
     wrap.querySelector('.cenik-delconf-yes').addEventListener('click', async e => {
       e.stopPropagation();
       const { error } = await sb.from('orgs').update({ deleted_at: new Date().toISOString() }).eq('id', orgId);
-      if (error) { toast('Napaka: ' + error.message); return; }
+      if (error) { toast(napakaBesedilo(error)); return; }
       ORGSEZNAM = ORGSEZNAM.filter(o => o.id !== orgId); delete ORGIME[orgId]; zgradiCenikMap();
       toast('Stranka izbrisana (obnovljiva 30 dni)');
       cenikRender();
@@ -6349,7 +6371,7 @@
       e.stopPropagation();
       if (!sifre.length) { cenikRender(); return; }
       const { error } = await sb.from('pricelist').update({ deleted_at: new Date().toISOString() }).in('sifra', sifre);
-      if (error) { toast('Napaka: ' + error.message); return; }
+      if (error) { toast(napakaBesedilo(error)); return; }
       CENIK = CENIK.filter(x => sifre.indexOf(x.sifra) < 0); zgradiCenikMap();
       toast('Skupina izbrisana (' + sifre.length + ' art., obnovljivo 30 dni)');
       cenikRender();
@@ -6379,7 +6401,7 @@
       const patch = { naziv: nm, cena1: v, updated_at: new Date().toISOString() };
       if (novId !== curId) patch.koda = novId;
       const { error } = await sb.from('pricelist').update(patch).eq('sifra', s);
-      if (error) { toast('Napaka: ' + error.message); return; }
+      if (error) { toast(napakaBesedilo(error)); return; }
       if (nm !== rec.naziv) { await posodobiImeArtikla(s, nm); }
       rec.naziv = nm; rec.cena1 = v; if (novId !== curId) rec.koda = novId; zgradiCenikMap();
       toast('Shranjeno.');
@@ -6399,7 +6421,7 @@
     // odstrani povezavo (članstvo) te stranke z artiklom
     if (orgId) {
       const e1 = (await sb.from('articles').delete().eq('org_id', orgId).eq('cena_sifra', s)).error;
-      if (e1) { toast('Napaka: ' + e1.message); return; }
+      if (e1) { toast(napakaBesedilo(e1)); return; }
       if (CLANI) CLANI = CLANI.filter(function (a) { return !(a.org_id === orgId && a.cena_sifra === s); });
     }
     // če je artikel LASTEN tej stranki (ni deljen), ga tudi mehko izbriši iz kataloga
@@ -6429,7 +6451,7 @@
       const so = sibs.reduce((m, x) => Math.max(m, x.sort_order != null ? x.sort_order : 0), 0) + 1;
       const novaRec = { sifra: nova, koda: '', naziv: nm, em: 'kos', cena1: v, cena2: 0, org_id: orgId || null, sort_order: so };
       const { error } = await sb.from('pricelist').insert(novaRec);
-      if (error) { toast('Napaka: ' + error.message); return; }
+      if (error) { toast(napakaBesedilo(error)); return; }
       if (orgId) {
         const { data: maxd } = await sb.from('articles').select('sort_order').eq('org_id', orgId).order('sort_order', { ascending: false }).limit(1);
         const aOrder = ((maxd && maxd[0] && maxd[0].sort_order) || 0) + 1;
@@ -6471,7 +6493,7 @@
       var p = CENIKMAP[sif]; if (!p) return;
       var maxo = 0; (CLANI || []).forEach(function (a) { if (a.org_id === orgId && a.sort_order != null && a.sort_order > maxo) maxo = a.sort_order; });
       var ins = await sb.from('articles').insert({ org_id: orgId, name: p.naziv || '', cena_sifra: sif, sort_order: maxo + 1, viden_app: true }).select('id').maybeSingle();
-      if (ins.error) { toast('Napaka: ' + ins.error.message); return; }
+      if (ins.error) { toast(napakaBesedilo(ins.error)); return; }
       if (CLANI) CLANI.push({ id: ins.data ? ins.data.id : null, org_id: orgId, name: p.naziv || '', cena_sifra: sif, sort_order: maxo + 1 });
       _cenikOpen['org:' + orgId] = true;
       toast('Artikel dodan stranki');
@@ -6625,7 +6647,7 @@
       const sifre = CENIK.filter(x => !x.org_id && cenikSkupina(x.naziv) === prefix).map(x => x.sifra);
       if (!sifre.length) { toast('Ni artiklov za povezavo'); return; }
       const { error } = await sb.from('pricelist').update({ org_id: orgId }).in('sifra', sifre);
-      if (error) { toast('Napaka: ' + error.message); return; }
+      if (error) { toast(napakaBesedilo(error)); return; }
       CENIK.forEach(x => { if (sifre.indexOf(x.sifra) >= 0) x.org_id = orgId; }); zgradiCenikMap();
       _cenikOpen['org:' + orgId] = true;
       toast('Povezano z ' + (ORGIME[orgId] || 'stranko') + ' (' + sifre.length + ' art.)');
@@ -6639,7 +6661,7 @@
     const sifre = CENIK.filter(x => x.org_id === orgId).map(x => x.sifra);
     if (!sifre.length) return;
     const { error } = await sb.from('pricelist').update({ org_id: null }).in('sifra', sifre);
-    if (error) { toast('Napaka: ' + error.message); return; }
+    if (error) { toast(napakaBesedilo(error)); return; }
     CENIK.forEach(x => { if (x.org_id === orgId) x.org_id = null; }); zgradiCenikMap();
     toast('Povezava s stranko preklicana');
     cenikRender();
@@ -6676,13 +6698,13 @@
   }
   async function cenikObnovi(s) {
     const { error } = await sb.from('pricelist').update({ deleted_at: null }).eq('sifra', s);
-    if (error) { toast('Napaka: ' + error.message); return; }
+    if (error) { toast(napakaBesedilo(error)); return; }
     toast('Artikel obnovljen'); CENIK = null; CENIKMAP = null;
     risiKos();
   }
   async function cenikObnoviOrg(id) {
     const { error } = await sb.from('orgs').update({ deleted_at: null }).eq('id', id);
-    if (error) { toast('Napaka: ' + error.message); return; }
+    if (error) { toast(napakaBesedilo(error)); return; }
     await naloziOrge(); zgradiCenikMap();
     toast('Stranka obnovljena'); risiKos();
   }
@@ -6748,6 +6770,29 @@
   }
 
   let _toastEl = null;
+  // Napaka iz baze/omrežja → kratek slovenski stavek za uporabnika. Slovenska sporočila iz baze
+  // (prožilci: »Lastnih pravic ni mogoče spremeniti.«) ostanejo; tehnična podrobnost gre v konzolo,
+  // lastniku pa še v oklepaj (prej je vsak videl npr. »duplicate key value violates …«).
+  function napakaBesedilo(e) {
+    var m = String((e && (e.message || e.error_description || e.details)) || e || '').trim();
+    var k = String((e && e.code) || '');
+    var teh = /[a-z]+_[a-z]+|permission|row-level|policy|violates|relation|column|syntax|function|null value|duplicate|fetch|jwt|token|constraint|undefined|TypeError|[{}]/i;
+    // naše sporočilo = slovensko (prožilec v bazi ali Error iz portala), brez tehničnih izrazov
+    var slo = /[čšžČŠŽ]/.test(m) || /(^|\s)(ni|niso|je|za|na|se|lahko|najprej|nimate|nista)(\s|[.,]|$)/i.test(m);
+    var nasa = m && slo && !teh.test(m) && /^[A-ZČŠŽ]/.test(m) && m.length < 160;
+    var t;
+    if (/failed to fetch|networkerror|load failed|network request failed|timeout/i.test(m)) t = 'Ni povezave z internetom. Poskusi znova.';
+    else if (/jwt expired|invalid jwt|refresh token|not authenticated/i.test(m)) t = 'Seja je potekla. Odjavi se in prijavi znova.';
+    else if (k === '23505' || /duplicate key|already exists/i.test(m)) t = 'Tak vnos že obstaja.';
+    else if (k === '23503' || /foreign key/i.test(m)) t = 'Vnos je povezan z drugimi podatki, zato tega ni mogoče narediti.';
+    else if (k === '23514' || k === '23502' || /check constraint|null value/i.test(m)) t = 'Vpisani podatki niso popolni ali veljavni.';
+    else if (nasa) t = m;
+    else if (k === '42501' || /row-level security|permission denied/i.test(m)) t = 'Za to nimate dovoljenja.';
+    else t = 'Ni uspelo. Poskusi znova.';
+    try { console.warn('[SmartClean] napaka:', e); } catch (_) {}
+    if (t !== m && m && JE_LASTNIK()) t += ' (' + m.slice(0, 120) + ')';
+    return t;
+  }
   function toast(t) {
     if (!_toastEl) {
       _toastEl = document.createElement('div');
@@ -7088,7 +7133,7 @@
           var teza = raw === '' ? null : parseFloat(raw);
           if (teza != null && (isNaN(teza) || teza < 0)) { toast('Neveljavna teža.'); return; }
           var e1 = (await sb.from('articles').update({ teza: teza }).eq('id', a.id)).error;
-          if (e1) { toast('Napaka: ' + e1.message); return; }
+          if (e1) { toast(napakaBesedilo(e1)); return; }
           a.teza = teza;
           logDodaj('Artikli', 'Urejeno', 'Teža »' + (a.name || '') + '« · ' + (teza != null ? tezaFmt(teza) : '—'));
           toast('Teža shranjena.');
@@ -7100,7 +7145,7 @@
           var a = arts[+chk.dataset.idx]; if (!a) return;
           var val = chk.checked;
           var e1 = (await sb.from('articles').update({ viden_app: val }).eq('id', a.id)).error;
-          if (e1) { toast('Napaka: ' + e1.message); chk.checked = !val; return; }
+          if (e1) { toast(napakaBesedilo(e1)); chk.checked = !val; return; }
           a.viden_app = val;
           logDodaj('Artikli', 'Urejeno', (val ? 'Viden v app' : 'Skrit v app') + ' · »' + (a.name || '') + '«');
           toast(val ? 'Artikel viden v aplikaciji.' : 'Artikel skrit v aplikaciji.');
@@ -7147,7 +7192,7 @@
       var mx = await sb.from('articles').select('sort_order').eq('org_id', orgId).order('sort_order', { ascending: false }).limit(1);
       var so = ((mx.data && mx.data[0] && mx.data[0].sort_order) || 0) + 1;
       var ins = await sb.from('articles').insert({ org_id: orgId, name: p.naziv || '', cena_sifra: sif, sort_order: so });
-      if (ins.error) { toast('Napaka: ' + ins.error.message); return; }
+      if (ins.error) { toast(napakaBesedilo(ins.error)); return; }
       if (CLANI) CLANI.push({ org_id: orgId, name: p.naziv || '', cena_sifra: sif, sort_order: so });
       toast('Artikel dodan stranki');
       risiArtikleBox(box, orgId);
@@ -7195,12 +7240,12 @@
     }
     async function izberi(sifra) {
       const { error } = await sb.from('articles').update({ cena_sifra: sifra }).eq('id', artId);
-      if (error) { toast('Napaka: ' + error.message); return; }
+      if (error) { toast(napakaBesedilo(error)); return; }
       toast('Cena povezana'); risiArtikleBox(box, orgId);
     }
     li.querySelector('.art-pick-cancel').addEventListener('click', e => { e.stopPropagation(); risiArtikleBox(box, orgId); });
     const clr = li.querySelector('.art-pick-clear');
-    if (clr) clr.addEventListener('click', async e => { e.stopPropagation(); const { error } = await sb.from('articles').update({ cena_sifra: null }).eq('id', artId); if (error) { toast('Napaka: ' + error.message); return; } toast('Odvezano'); risiArtikleBox(box, orgId); });
+    if (clr) clr.addEventListener('click', async e => { e.stopPropagation(); const { error } = await sb.from('articles').update({ cena_sifra: null }).eq('id', artId); if (error) { toast(napakaBesedilo(error)); return; } toast('Odvezano'); risiArtikleBox(box, orgId); });
     inp.addEventListener('input', render);
     render();
   }
@@ -7224,14 +7269,14 @@
     var artRec = { org_id: orgId, name, sort_order: nextOrder };
     if (novaSif != null) artRec.cena_sifra = novaSif;
     const { error } = await sb.from('articles').insert(artRec);
-    if (error) { toast('Napaka: ' + error.message); return; }
+    if (error) { toast(napakaBesedilo(error)); return; }
     toast(novaSif != null ? 'Artikel dodan (viden tudi v Ceniku)' : 'Artikel dodan');
     await risiArtikleBox(box, orgId);
   }
   // Vklop/izklop vidnosti artikla v aplikaciji (tablici). Ne briše — samo skrije.
   async function preklopiArtikelViden(artId, on, box, orgId) {
     const { error } = await sb.from('articles').update({ aktiven: on }).eq('id', artId);
-    if (error) { toast(/aktiven/.test(error.message || '') ? 'Najprej zaženi migracijo (stolpec »aktiven«).' : 'Napaka: ' + error.message); return; }
+    if (error) { toast(/aktiven/.test(error.message || '') ? 'Najprej zaženi migracijo (stolpec »aktiven«).' : napakaBesedilo(error)); return; }
     toast(on ? 'Artikel viden v aplikaciji' : 'Artikel skrit v aplikaciji');
     await risiArtikleBox(box, orgId);
   }
@@ -7245,7 +7290,7 @@
     const ad = await sb.from('articles').select('cena_sifra').eq('id', artId).maybeSingle();
     if (ad && ad.data) sif = ad.data.cena_sifra;
     const { error } = await sb.from('articles').delete().eq('id', artId);
-    if (error) { toast('Napaka: ' + error.message); return; }
+    if (error) { toast(napakaBesedilo(error)); return; }
     if (sif != null && CENIKMAP && CENIKMAP[sif] && CENIKMAP[sif].org_id === orgId) {
       await sb.from('pricelist').update({ deleted_at: new Date().toISOString() }).eq('sifra', sif);
       if (CENIK) { CENIK = CENIK.filter(function (x) { return x.sifra !== sif; }); zgradiCenikMap(); }
@@ -7275,14 +7320,14 @@
       if (novId && novId !== curId) { const z = idZaseden(novId, sif); if (z) { toast('ID ' + novId + ' že uporablja: ' + (z.naziv || '#' + z.sifra)); idInp.focus(); return; } }
       if (nm !== cur) {
         const e1 = (await sb.from('articles').update({ name: nm }).eq('id', id)).error;
-        if (e1) { toast('Napaka: ' + e1.message); return; }
+        if (e1) { toast(napakaBesedilo(e1)); return; }
       }
       if (sif != null && CENIKMAP && CENIKMAP[sif] && CENIKMAP[sif].org_id === orgId) {
         // artikel že ima svoj zapis v ceniku → posodobi naziv + ID
         const patch = {}; if (nm !== cur) patch.naziv = nm; if (novId !== curId) patch.koda = novId;
         if (Object.keys(patch).length) {
           const e2 = (await sb.from('pricelist').update(patch).eq('sifra', sif)).error;
-          if (e2) { toast('Napaka: ' + e2.message); return; }
+          if (e2) { toast(napakaBesedilo(e2)); return; }
           if (patch.naziv != null) CENIKMAP[sif].naziv = patch.naziv;
           if (patch.koda != null) CENIKMAP[sif].koda = patch.koda;
         }
@@ -7301,7 +7346,7 @@
         }
         if (e3) { toast('ID ni bilo mogoče shraniti: ' + e3.message); return; }
         const e4 = (await sb.from('articles').update({ cena_sifra: rec.sifra }).eq('id', id)).error;
-        if (e4) { toast('Napaka pri povezovanju: ' + e4.message); return; }
+        if (e4) { toast('Povezovanje ni uspelo. ' + napakaBesedilo(e4)); return; }
         if (CENIK) { CENIK.push(rec); zgradiCenikMap(); }
         toast('ID ' + novId + ' shranjen');
         await konec();
@@ -7337,7 +7382,7 @@
     const patch = { name: naziv, legal_name: g('[data-e-podjetje]').value.trim() || null, vat_id: g('[data-e-davcna]').value.trim() || null, address: g('[data-e-naslov]').value.trim() || null };
     msg.textContent = 'Shranjujem …';
     const { error } = await sb.from('orgs').update(patch).eq('id', orgId);
-    if (error) { msg.textContent = 'Napaka: ' + error.message; return; }
+    if (error) { msg.textContent = napakaBesedilo(error); return; }
     const o = ORGSEZNAM.find(x => x.id === orgId);
     if (o) { o.name = patch.name; o.legal_name = patch.legal_name; o.vat_id = patch.vat_id; o.address = patch.address; }
     ORGIME[orgId] = patch.name;
@@ -7352,7 +7397,7 @@
     box.querySelector('[data-yes]').addEventListener('click', async e => {
       e.stopPropagation();
       const { error } = await sb.from('orgs').update({ deleted_at: new Date().toISOString() }).eq('id', orgId);
-      if (error) { toast('Napaka: ' + error.message); return; }
+      if (error) { toast(napakaBesedilo(error)); return; }
       ORGSEZNAM = ORGSEZNAM.filter(o => o.id !== orgId); delete ORGIME[orgId];
       if (typeof CENIK !== 'undefined' && CENIK) zgradiCenikMap();
       toast('Stranka izbrisana (obnovljiva 30 dni)');
@@ -7397,7 +7442,7 @@
       toast('Stranka ustvarjena');
       render();
     } catch (e) {
-      msg.textContent = 'Napaka: ' + (e.message || e);
+      msg.textContent = napakaBesedilo(e);
     }
   }
 
@@ -8032,7 +8077,7 @@
       DOKUMENTI = (DOKUMENTI || []).filter(function (x) { return ids.indexOf(x.id) < 0; });
       dokRisi();
       toast(obnovljivo ? 'Premaknjeno v »Nedavno brisani«' : 'Izbrisano');
-    } catch (e) { toast('Napaka pri brisanju: ' + (e && e.message ? e.message : e)); }
+    } catch (e) { toast(napakaBesedilo(e)); }
   }
   // ── Koš dokumentov (Nedavno brisani — obnovljivi) ──
   async function dokKos() {
@@ -8061,7 +8106,7 @@
   }
   async function dokObnovi(id) {
     var r = await sb.from('documents').update({ deleted_at: null }).eq('id', id);
-    if (r.error) { toast('Napaka: ' + r.error.message); return; }
+    if (r.error) { toast(napakaBesedilo(r.error)); return; }
     toast('Obnovljeno'); dokKos();
   }
   async function dokIzbrisiDokoncno(id) {
@@ -8073,7 +8118,7 @@
       if (rec && rec.storage_path) { try { await sb.storage.from('dokumenti').remove([rec.storage_path]); } catch (e) {} }
       var del = await sb.from('documents').delete().eq('id', id); if (del.error) throw del.error;
       toast('Dokončno izbrisano'); dokKos();
-    } catch (e) { toast('Napaka: ' + (e && e.message ? e.message : e)); }
+    } catch (e) { toast(napakaBesedilo(e)); }
   }
   // Prenos datoteke z ORIGINALNIM imenom (ne s poti s časovnim žigom).
   async function dokPrenesi(r) {
@@ -8231,7 +8276,7 @@
         var bytes = await dokSlikeVPdf(_skenSlike);
         await dokShraniBlob(new Blob([bytes], { type: 'application/pdf' }), ime, cilj, 'application/pdf');
         zapri(); dokPojdi(cilj); toast('Račun shranjen kot PDF.');
-      } catch (e) { btn.disabled = false; btn.textContent = 'Shrani PDF'; toast('Napaka pri shranjevanju: ' + (e && e.message ? e.message : e)); }
+      } catch (e) { btn.disabled = false; btn.textContent = 'Shrani PDF'; toast(napakaBesedilo(e)); }
     });
   }
   async function dokNalozi(files) {
@@ -8342,7 +8387,7 @@
     btn.disabled = true; btn.textContent = 'Shranjujem …';
     const { error } = await sb.from('profiles').update({ full_name: ime, phone: tel || null, contact_email: kmail || null }).eq('id', JAZ);
     btn.disabled = false; btn.textContent = 'Shrani profil';
-    if (error) { m.className = 'msg bad show'; m.textContent = 'Napaka: ' + error.message; return; }
+    if (error) { m.className = 'msg bad show'; m.textContent = napakaBesedilo(error); return; }
     JAZIME = ime;
     MOJPROFIL.full_name = ime; MOJPROFIL.phone = tel || null; MOJPROFIL.contact_email = kmail || null;
     nastaviWho(ime);

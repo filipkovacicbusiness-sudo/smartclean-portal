@@ -1,5 +1,15 @@
 [
  {
+  "v": "4.53",
+  "d": "2026-10-21",
+  "c": "2026-10-21T11:40:00+02:00",
+  "t": [
+   "Fakture: v prvih 10 dneh meseca se odpre pretekli mesec; kartica opozori na nepotrjene liste in jih z dotikom odpre v Arhivu.",
+   "Prisotnost: pozabljena odjava s prejšnjega dne je vidna kot »ni odhoda« z gumbom »Vpiši odhod« (prej je oseba veljala za prisotno).",
+   "Razumljiva sporočila o napakah namesto tehničnih; osvežitev strani ostane v istem razdelku."
+  ]
+ },
+ {
   "v": "4.52",
   "d": "2026-10-21",
   "c": "2026-10-21T11:33:00+02:00",
