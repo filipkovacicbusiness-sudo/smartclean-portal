@@ -1,5 +1,17 @@
 [
  {
+  "v": "4.58",
+  "d": "2026-10-21",
+  "c": "2026-10-21T17:30:00+02:00",
+  "t": [
+   "Nov, enoten videz po celem portalu: v vsakem razdelku naslov levo in glavno dejanje desno (Nov spremni list, Nova stranka, Naloži, Nov cenik, Nov uporabnik), pod njima ista orodna vrstica — iskanje, filtri, nato pomožna dejanja.",
+   "Kartice: ena zgradba v mreži in seznamu — naslov, podnaslov in noga (kg, znesek, značka »Splošni cenik«) vedno na istem mestu; spremni listi brez rumene podlage, stanje pove kljukica.",
+   "Ena lestvica kontrol: polja 44, orodna vrstica 40, dejanja v karticah 36, zavihki 30; vsi gumbi v isti pisavi (Archivo) in debelini.",
+   "Krajši meni (11 namesto 15): Admin in Konzola sta zavihka v Uporabnikih, Moj račun in Aplikacije v Nastavitvah; »Arhiv« je zdaj »Spremni listi«.",
+   "Prisotnost: stanje v poravnanem stolpcu; na telefonu dnevna evidenca brez prekrivanja. Domov: ploščice z merami kot ostale kartice. Teža povsod s presledkom (»88,1 kg«)."
+  ]
+ },
+ {
   "v": "4.57",
   "d": "2026-10-21",
   "c": "2026-10-21T15:20:00+02:00",

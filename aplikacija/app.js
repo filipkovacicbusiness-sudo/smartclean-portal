@@ -186,7 +186,7 @@ function stevilo(n){ return Number(n || 0).toLocaleString("sl-SI"); }
 function tezaFmt(kg){   // enako kot v portalu: max 2 decimalki, vejica, nad 1000 kg v tonah
   kg = Math.round((Number(kg) || 0) * 100) / 100;
   var v, u; if(kg >= 1000){ v = kg / 1000; u = "t"; }else{ v = kg; u = "kg"; }
-  return v.toFixed(2).replace(/0+$/, "").replace(/\.$/, "").replace(".", ",") + u;
+  return v.toFixed(2).replace(/0+$/, "").replace(/\.$/, "").replace(".", ",") + "\u00a0" + u;
 }
 function sklon(n, e1, e2, e34, e5){ var m = Math.abs(n) % 100; return m === 1 ? e1 : m === 2 ? e2 : (m === 3 || m === 4) ? e34 : e5; }
 function normaliziraj(s){ return String(s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""); }

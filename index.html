@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="sl" data-theme="dark">
+<html lang="sl" data-theme="dark" class="v5">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover"/>
@@ -225,7 +225,7 @@ body:has(> .app.show) .sc-hex [class*="hw"]{animation-play-state:paused}
 
       <section class="sec" id="sec-domov">
         <div class="head">
-          <div><h2 id="domovNaslov">Pregled</h2><p class="count" id="domovPod"></p></div>
+          <div class="head-t"><h2 id="domovNaslov">Pregled</h2><p class="count" id="domovPod"></p></div>
         </div>
         <div id="domovStatus"></div>
         <div id="statGrid" class="stat-grid"></div>
@@ -235,13 +235,10 @@ body:has(> .app.show) .sc-hex [class*="hw"]{animation-play-state:paused}
 
       <section class="sec hidden" id="sec-arhiv">
         <div class="head">
-          <div><h2>Arhiv spremnih listov</h2><p class="count" id="arhivPod"></p></div>
+          <div class="head-t"><h2>Spremni listi</h2><p class="count" id="arhivPod"></p></div>
+          <div class="head-akc arh-actbar hidden" id="arhivActBar"><button type="button" id="arhivNovBtn" class="btn tb-prim" title="Nov spremni list"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span class="tb-lbl">Nov spremni list</span></button></div>
           <div class="filtri">
             <input type="search" id="arhivIsci" placeholder="Številka ali stranka …" aria-label="Iskanje po številki ali stranki"/>
-            <button type="button" id="arhivIzberiBtn" class="btn btn-narrow btn-alt tb-ikona" title="Izberi več" aria-label="Izberi več" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></button>
-            <span class="tb-grupa arh-actbar hidden" id="arhivActBar">
-              <button type="button" id="arhivNovBtn" class="btn btn-narrow tb-ikona" title="Nov spremni list" aria-label="Nov spremni list"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
-            </span>
             <select id="arhivOrg" class="hidden"></select>
             <select id="arhivSort" aria-label="Razvrsti">
               <option value="st_desc" selected>Št. ↓</option>
@@ -257,6 +254,9 @@ body:has(> .app.show) .sc-hex [class*="hw"]{animation-play-state:paused}
               <label class="arh-lab">Do<input type="date" id="arhivDo" class="arh-dan" aria-label="Do datuma"/></label>
               <button type="button" id="arhivObdX" class="arh-obd-x hidden" aria-label="Počisti obdobje" title="Počisti obdobje"><svg class="iko-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M17 7 7 17M7 7l10 10"/></svg></button>
             </span>
+            <span class="tb-desno">
+              <button type="button" id="arhivIzberiBtn" class="btn btn-alt tb-sek" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>Izberi</button>
+            </span>
           </div>
         </div>
         <div id="arhivKonflikti"></div>
@@ -268,7 +268,7 @@ body:has(> .app.show) .sc-hex [class*="hw"]{animation-play-state:paused}
 
       <section class="sec hidden" id="sec-fakture">
         <div class="head">
-          <div><h2>Fakture</h2><p class="count" id="fakPod"></p></div>
+          <div class="head-t"><h2>Fakture</h2><p class="count" id="fakPod"></p></div>
           <div class="filtri">
             <span class="fak-obd">
               <label class="fak-lab">Od <input type="date" id="fakOd"/></label>
@@ -277,8 +277,10 @@ body:has(> .app.show) .sc-hex [class*="hw"]{animation-play-state:paused}
             </span>
             <select id="fakOrg" aria-label="Stranka"><option value="">Vse stranke</option></select>
             <button type="button" id="fakBtn" class="btn btn-narrow">Prikaži</button>
+            <span class="tb-desno">
             <button type="button" id="fakXlsxBtn" class="btn btn-narrow btn-alt btn-izvoz" title="Izvozi v Excel" aria-label="Izvozi v Excel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="m7.5 10.5 4.5 4.5 4.5-4.5"/><path d="M5 20h14"/></svg>Excel</button>
             <button type="button" id="fakPdfBtn" class="btn btn-narrow btn-alt btn-izvoz" title="Izvozi PDF" aria-label="Izvozi PDF"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="m7.5 10.5 4.5 4.5 4.5-4.5"/><path d="M5 20h14"/></svg>PDF</button>
+            </span>
           </div>
         </div>
         <div class="fak-hitri-row"><div class="fak-hitri" id="fakHitri"></div></div>
@@ -287,10 +289,10 @@ body:has(> .app.show) .sc-hex [class*="hw"]{animation-play-state:paused}
 
       <section class="sec hidden" id="sec-stranke">
         <div class="head">
-          <div><h2>Stranke</h2><p class="count" id="count"></p></div>
+          <div class="head-t"><h2>Stranke</h2><p class="count" id="count"></p></div>
+          <div class="head-akc"><button type="button" id="novaStrankaBtn" class="btn tb-prim hidden" title="Nova stranka"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span class="tb-lbl">Nova stranka</span></button></div>
           <div class="filtri">
             <input type="search" id="search" placeholder="Iskanje strank …" aria-label="Iskanje strank"/>
-            <button type="button" id="novaStrankaBtn" class="btn btn-narrow tb-ikona hidden" title="Nova stranka" aria-label="Nova stranka"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
             <select id="strankeSort" aria-label="Razvrsti stranke">
               <option value="promet" selected>Po prometu</option>
               <option value="abeceda">Abecedno</option>
@@ -302,12 +304,12 @@ body:has(> .app.show) .sc-hex [class*="hw"]{animation-play-state:paused}
       </section>
 
       <section class="sec hidden" id="sec-katalog">
-        <div class="head"><div><h2>Vaš katalog perila</h2><p class="count" id="katalogPod"></p></div></div>
+        <div class="head"><div class="head-t"><h2>Vaš katalog perila</h2><p class="count" id="katalogPod"></p></div></div>
         <div id="katalogList"></div>
       </section>
 
       <section class="sec hidden" id="sec-nastavitve">
-        <div class="head"><div><h2>Nastavitve</h2></div></div>
+        <div class="head"><div class="head-t"><h2>Nastavitve</h2></div></div>
         <div class="panel">
           <h3 class="sec-h">Videz</h3>
           <div class="tema-izbira">
@@ -334,18 +336,20 @@ body:has(> .app.show) .sc-hex [class*="hw"]{animation-play-state:paused}
       </section>
 
       <section class="sec hidden" id="sec-aplikacija">
-        <div class="head"><div><h2>Programska oprema</h2></div></div>
+        <div class="head"><div class="head-t"><h2>Aplikacije</h2></div></div>
         <div id="apkPanel"></div>
       </section>
 
       <section class="sec hidden" id="sec-dokumenti">
-        <div class="head"><div><h2>Dokumenti</h2><p class="count" id="dokPod"></p></div>
+        <div class="head"><div class="head-t"><h2>Dokumenti</h2><p class="count" id="dokPod"></p></div>
+          <div class="head-akc"><button type="button" id="dokNaloziBtn" class="btn tb-prim dok-tbtn" title="Naloži datoteke"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M5 20h14"/></svg><span class="tb-lbl">Naloži</span></button></div>
           <div class="filtri">
-            <input type="search" id="dokIsci" placeholder="Iskanje …" aria-label="Iskanje po datotekah"/>
+            <input type="search" id="dokIsci" placeholder="Iskanje datotek …" aria-label="Iskanje po datotekah"/>
+            <span class="tb-desno">
             <button type="button" id="dokSkenirajBtn" class="btn btn-narrow btn-alt dok-tbtn tb-ikona" title="Skeniraj račun" aria-label="Skeniraj račun"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8V6a2 2 0 0 1 2-2h2M17 4h2a2 2 0 0 1 2 2v2M21 16v2a2 2 0 0 1-2 2h-2M7 20H5a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="3.2"/></svg><span class="tb-skrit">Skeniraj račun</span></button>
             <button type="button" id="dokNovaMapa" class="btn btn-narrow btn-alt dok-tbtn tb-ikona" title="Nova mapa" aria-label="Nova mapa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 11v5M9.5 13.5h5"/></svg><span class="tb-skrit">Nova mapa</span></button>
-            <button type="button" id="dokNaloziBtn" class="btn btn-narrow dok-tbtn tb-ikona" title="Naloži datoteke" aria-label="Naloži datoteke"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M5 20h14"/></svg><span class="tb-skrit">Naloži datoteke</span></button>
             <button type="button" id="dokKosBtn" class="btn btn-narrow btn-alt dok-tbtn tb-ikona" title="Nedavno brisani" aria-label="Nedavno brisani"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 10v6M14 10v6"/></svg></button>
+            </span>
             <input type="file" id="dokFile" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.heic,.heif,image/*,application/pdf,.csv" hidden/>
             <input type="file" id="dokKamera" accept="image/*" capture="environment" hidden/>
             <input type="file" id="dokKameraLib" accept="image/*" multiple hidden/>
@@ -364,50 +368,46 @@ body:has(> .app.show) .sc-hex [class*="hw"]{animation-play-state:paused}
       </section>
 
       <section class="sec hidden" id="sec-statistika">
-        <div class="head"><div><h2>Statistika</h2><p class="count" id="ucPod"></p></div></div>
+        <div class="head"><div class="head-t"><h2>Statistika</h2><p class="count" id="ucPod"></p></div></div>
         <div id="ucList"></div>
       </section>
 
       <section class="sec hidden" id="sec-gorivo">
-        <div class="head"><div><h2>Gorivo</h2><p class="count" id="gorPod"></p></div></div>
+        <div class="head"><div class="head-t"><h2>Gorivo</h2><p class="count" id="gorPod"></p></div></div>
         <div id="gorList"></div>
       </section>
 
       <section class="sec hidden" id="sec-artikli">
-        <div class="head"><div><h2>Cenik &amp; artikli</h2><p class="count" id="artPod"></p></div>
-          <div class="filtri">
-            <button type="button" id="artNovaBtn" class="btn btn-narrow tb-ikona" title="Nov cenik" aria-label="Nov cenik"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
-            <button type="button" id="artUskladiBtn" class="btn btn-narrow btn-alt">Uskladi artikle</button>
-          </div>
+        <div class="head"><div class="head-t"><h2>Cenik &amp; artikli</h2><p class="count" id="artPod"></p></div>
+          <div class="head-akc"><button type="button" id="artNovaBtn" class="btn tb-prim" title="Nov cenik"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span class="tb-lbl">Nov cenik</span></button></div>
         </div>
         <div id="artList"></div>
+        <p class="arh-kos-pov"><button type="button" id="artUskladiBtn" class="link-btn">Uskladi artikle</button></p>
       </section>
 
       <section class="sec hidden" id="sec-prisotnost">
-        <div class="head"><div><h2>Prisotnost</h2><p class="count" id="prisPod"></p></div></div>
+        <div class="head"><div class="head-t"><h2>Prisotnost</h2><p class="count" id="prisPod"></p></div></div>
         <div id="prisList"></div>
       </section>
 
       <section class="sec hidden" id="sec-ceniki">
-        <div class="head"><div><h2>Ceniki</h2><p class="count" id="cenikPod"></p></div>
-          <div class="filtri"><select id="cenikSort2" aria-label="Razvrsti cenik">
+        <div class="head"><div class="head-t"><h2>Ceniki</h2><p class="count" id="cenikPod"></p></div>
+          <div class="filtri"><input type="search" id="cenikIsci" placeholder="Naziv ali koda …" aria-label="Iskanje po ceniku"/><select id="cenikSort2" aria-label="Razvrsti cenik">
               <option value="sledi" selected>Kot pri strankah</option>
               <option value="abeceda">Abecedno</option>
               <option value="promet">Po prometu</option>
-            </select><input type="search" id="cenikIsci" placeholder="Iskanje po nazivu ali kodi …" aria-label="Iskanje po ceniku"/></div>
+            </select></div>
         </div>
         <div id="cenikList"></div>
         <p class="arh-kos-pov"><button type="button" id="cenikKos" class="link-btn">Nedavno brisani</button></p>
       </section>
 
       <section class="sec hidden" id="sec-uporabniki">
-        <div class="head"><div><h2>Uporabniki</h2></div></div>
-        <div class="panel">
-          <h3 class="sec-h">Vsi uporabniki</h3>
-          <div id="usersList"></div>
-        </div>
-        <div class="panel">
-          <h3 class="sec-h">Ustvari novega uporabnika</h3>
+        <div class="head"><div class="head-t"><h2>Uporabniki</h2></div>
+          <div class="head-akc"><button type="button" id="nuOdpri" class="btn tb-prim hidden" title="Nov uporabnik"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span class="tb-lbl">Nov uporabnik</span></button></div></div>
+        <div id="usersList"></div>
+        <div class="panel nu-panel hidden" id="nuPanel">
+          <h3 class="sec-h">Nov uporabnik</h3>
           <form id="addUserForm" class="add-row" novalidate>
             <div class="field">
               <label for="nuIme">Ime in priimek</label>
@@ -428,7 +428,7 @@ body:has(> .app.show) .sc-hex [class*="hw"]{animation-play-state:paused}
       </section>
 
       <section class="sec hidden" id="sec-racun">
-        <div class="head"><div><h2>Moj račun</h2><p class="count" id="racunPod"></p></div></div>
+        <div class="head"><div class="head-t"><h2>Moj račun</h2><p class="count" id="racunPod"></p></div></div>
         <div class="panel">
           <h3 class="sec-h">Profil</h3>
           <div class="prof-edit">
@@ -480,12 +480,12 @@ body:has(> .app.show) .sc-hex [class*="hw"]{animation-play-state:paused}
       </section>
 
       <section class="sec hidden" id="sec-admin">
-        <div class="head"><div><h2>Admin</h2></div></div>
+        <div class="head"><div class="head-t"><h2>Admin</h2></div></div>
         <div id="adminList"></div>
       </section>
 
       <section class="sec hidden" id="sec-konzola">
-        <div class="head"><div><h2>Konzola</h2></div></div>
+        <div class="head"><div class="head-t"><h2>Konzola</h2></div></div>
         <div class="panel">
           <h3 class="sec-h">Novo obvestilo</h3>
           <form id="konzForm" novalidate>

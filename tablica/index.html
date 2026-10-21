@@ -709,7 +709,7 @@ html.sc-tema-prehod,html.sc-tema-prehod *,html.sc-tema-prehod *::before,html.sc-
    Podatki ostanejo v istih ključih kot v prejšnjih različicah (pralnica:*),
    zato posodobitev ne izgubi ničesar.
    ══════════════════════════════════════════════════════════════════════ */
-var VARIANTA = "tablica", APP_VERZIJA = "11.5";
+var VARIANTA = "tablica", APP_VERZIJA = "11.6";
 var LASTNIK = "filip@eflitte.si";
 var DOK_BIZ = ["BSMART d.o.o.", "Škalska cesta 6, 3210 Slovenske Konjice", "+386 41 209 676", "+386 68 693 988", "blanka.kovacic1@gmail.com"];
 var PRIVZETI_PORTAL = "https://anrhtgbckxrccnafcmsz.supabase.co";
@@ -887,7 +887,7 @@ function stevilo(n){ return Number(n || 0).toLocaleString("sl-SI"); }
 function tezaFmt(kg){   // enako kot v portalu: max 2 decimalki, vejica, nad 1000 kg v tonah
   kg = Math.round((Number(kg) || 0) * 100) / 100;
   var v, u; if(kg >= 1000){ v = kg / 1000; u = "t"; }else{ v = kg; u = "kg"; }
-  return v.toFixed(2).replace(/0+$/, "").replace(/\.$/, "").replace(".", ",") + u;
+  return v.toFixed(2).replace(/0+$/, "").replace(/\.$/, "").replace(".", ",") + "\u00a0" + u;
 }
 function sklon(n, e1, e2, e34, e5){ var m = Math.abs(n) % 100; return m === 1 ? e1 : m === 2 ? e2 : (m === 3 || m === 4) ? e34 : e5; }
 function normaliziraj(s){ return String(s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""); }

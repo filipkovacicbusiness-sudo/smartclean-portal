@@ -1642,16 +1642,7 @@ html[data-view="grid"] :is(#cenikList,.art-skupine) .sc-isolate .cgrp:not(.open)
   #content .arts > .meta{display:none;}
 }
 
-/* Mobilno: Fakture — »Od« in »Do« skupaj v isti vrstici, stranka in gumb pod njima */
-@media(max-width:720px){
-  #sec-fakture .filtri{flex-direction:row;flex-wrap:wrap;align-items:stretch;gap:8px;}
-  #sec-fakture .filtri .fak-obd{flex:1 1 100%;width:100%;gap:8px;}
-  #sec-fakture .filtri .fak-obd .fak-lab{flex:1 1 0;min-width:0;justify-content:flex-start;}
-  #sec-fakture .filtri .fak-obd .fak-lab input{flex:1 1 auto;min-width:0;width:auto;max-width:100%;}
-  #sec-fakture .filtri .cs,
-  #sec-fakture .filtri select,
-  #sec-fakture .filtri #fakBtn{flex:1 1 100%;max-width:none;width:100%;}
-}
+/* (4.58) Fakture na telefonu: glej DIZAJN v5. */
 
 /* ══════════ DOKUMENTI (skenirani računi) ══════════ */
 /* Admin — vloge in pravice */
@@ -2405,25 +2396,7 @@ html.sc-tema-prehod,html.sc-tema-prehod *,html.sc-tema-prehod *::before,html.sc-
 .arh-kos-pov{margin:18px 0 4px;text-align:center;}
 .arh-kos-pov .link-btn{font-size:var(--fs-13);}
 
-/* ══ Arhiv na telefonu: iskanje + ✓ + + v eni vrsti; stranka, razvrščanje in obdobje levo, v naravni širini ══ */
-@media (max-width:560px){
-  #sec-arhiv .head .filtri{display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:flex-start;gap:8px;}
-  #sec-arhiv .head .filtri > #arhivIsci{flex:1 1 calc(100% - 104px);min-width:0;width:auto;max-width:none;}
-  #sec-arhiv .head .filtri > #arhivActBar:not(.hidden){display:contents;}
-  #sec-arhiv .head .filtri > .cs[data-za="arhivOrg"]{flex:1 1 150px;width:auto;max-width:240px;min-width:0;}
-  #sec-arhiv .head .filtri > .cs[data-za="arhivSort"]{flex:0 0 auto;width:auto;min-width:112px;}
-  #sec-arhiv .head .filtri > .arh-obd{flex:0 0 auto;width:auto;display:inline-flex;}
-  #sec-arhiv .head .filtri > .arh-obd .arh-lab{flex:none;}
-  #sec-arhiv .head .filtri > .arh-obd .arh-dan{flex:none;width:118px;}
-  /* Stranke, Dokumenti: iskanje + simboli v eni vrsti */
-  #sec-stranke .head .filtri,#sec-dokumenti .head .filtri{display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:flex-start;gap:8px;}
-  #sec-stranke .head .filtri > #search,#sec-dokumenti .head .filtri > #dokIsci{flex:1 1 140px;min-width:0;width:auto;}
-  #sec-stranke .head .filtri > .cs{flex:0 0 auto;width:auto;min-width:128px;}
-  #sec-dokumenti .head .filtri .dok-tbtn.tb-ikona{width:44px;}
-  /* Cenik: + in »Uskladi artikle« drug ob drugem, levo (prej je bil drugi gumb raztegnjen do desnega roba) */
-  #sec-artikli .head .filtri{display:flex;flex-direction:row;align-items:center;justify-content:flex-start;gap:8px;}
-  #sec-artikli .head .filtri > #artUskladiBtn{width:auto;flex:none;padding:0 20px;}
-}
+/* (4.58) Stari blok orodnih vrstic za telefon je nadomestil DIZAJN v5 na koncu datoteke. */
 
 /* Prostor za značko »Splošni cenik« le, ko je značka v vrstici (prej 150 px pri vseh — na telefonu je
    ime »Pod Macesnovo Streho« postalo »Pod Mac…«). Na telefonu je značka pod imenom. */
@@ -2519,3 +2492,307 @@ html[data-theme="dark"] .doc-stage{background:color-mix(in srgb,var(--ink) 6%,va
 .pz-seznam .pz-ime .row-name{overflow:visible;text-overflow:clip;white-space:normal;overflow-wrap:anywhere;}
 .adm-ime{min-width:0;width:100%;}
 .adm-role-key{flex:none;}
+/* Prisotnost: urejeni stolpci — ime levo, stanje desno poravnano pred urami
+   (prej se je stanje začelo takoj za imenom, vsaka vrstica drugje) */
+.pz-seznam .row.pz:not(.okno-kartica){grid-template-columns:minmax(0,1fr) auto 2.75rem 16px;gap:10px;}
+.pz-seznam .row.pz:not(.okno-kartica) .pz-ime{display:contents;}
+.pz-seznam .row.pz:not(.okno-kartica) .pz-st{justify-self:end;text-align:right;white-space:normal;max-width:9.5rem;}
+.pz-seznam .row.pz:not(.okno-kartica) .pris-zap-ure{justify-self:end;}
+
+/* ════════════════════════════════════════════════════════════════════════
+   DIZAJN v5 (4.58) — en sistem za ves portal: glava razdelka, orodna vrstica,
+   kartice (mreža) in vrstice (seznam). Vsa pravila imajo predpono .v5 (razred
+   na <html>), zato veljajo pred starejšimi plastmi. Pisava ostane Archivo.
+   ════════════════════════════════════════════════════════════════════════ */
+.v5{--tb-h:40px;--tile-min2:232px;--tile-pad:18px;--hover-sh:0 10px 30px -14px rgba(0,0,0,.22);}
+.v5[data-theme="dark"]{--hover-sh:0 12px 34px -12px rgba(0,0,0,.7);}
+
+/* ── tipografija ── */
+.v5 .count{margin-top:6px;font-size:var(--fs-14);color:var(--mid);}
+.v5 h3.sec-h,.v5 h3.sec{font-family:var(--sans);font-size:var(--fs-18);font-weight:550;letter-spacing:-.012em;line-height:1.3;}
+.v5 .empty h3{font-family:var(--sans);font-weight:500;letter-spacing:-.01em;}
+
+/* ── glava razdelka: naslov levo, glavno dejanje desno, orodna vrstica spodaj ── */
+.v5 .head{display:flex;flex-direction:row;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:20px 16px;margin-bottom:24px;}
+.v5 .head > .head-t{flex:1 1 auto;min-width:0;}
+.v5 .head > .head-akc{flex:none;display:flex;align-items:center;gap:8px;margin:0;}
+.v5 .head > .filtri{flex:1 1 100%;display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;gap:8px;margin:0;}
+.v5 .sk-tabs{display:inline-flex;margin:-6px 0 22px;}
+
+/* ── glavni gumb (Nov …): črna kapsula z ikono in besedilom ── */
+.v5 .btn.tb-prim{width:auto;height:var(--tb-h);margin:0;padding:0 18px 0 14px;display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  border:0;border-radius:var(--r-full);background:var(--ink);color:var(--bg);font-size:var(--fs-14);font-weight:500;letter-spacing:-.005em;white-space:nowrap;}
+.v5 .btn.tb-prim:hover:not(:disabled){background:var(--ink);opacity:.86;}
+.v5 .btn.tb-prim svg{width:16px;height:16px;flex:none;}
+
+/* ── orodna vrstica: iskanje → filtri → (desno) pomožna dejanja; vse kapsule enake višine ── */
+.v5 .filtri .tb-desno{margin-left:auto;display:flex;align-items:center;gap:8px;}
+.v5 .filtri input[type=search]{flex:1 1 240px;max-width:340px;width:auto;height:var(--tb-h);margin:0;padding:0 16px 0 40px;
+  border:1px solid var(--line);border-radius:var(--r-full);background:var(--surface) no-repeat 15px 50%/16px 16px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230a0a0a' stroke-opacity='.45' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E");
+  font-size:var(--fs-14);color:var(--ink);-webkit-appearance:none;appearance:none;}
+.v5[data-theme="dark"] .filtri input[type=search]{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-opacity='.5' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E");}
+.v5 .filtri input[type=search]:focus{border-color:var(--line-strong);outline:none;box-shadow:0 0 0 3px var(--green-m);}
+.v5 .filtri input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;}
+.v5 .filtri select,.v5 .filtri .cs{flex:none;width:auto;max-width:none;margin:0;}
+.v5 .filtri .cs-trigger,.v5 .filtri select{height:var(--tb-h);min-width:0;padding:0 14px 0 16px;border:1px solid var(--line);border-radius:var(--r-full);
+  background-color:var(--surface);font-size:var(--fs-14);font-weight:500;color:var(--ink);}
+.v5 .filtri .cs-trigger:hover{border-color:var(--line-strong);}
+.v5 .filtri .btn.tb-ikona{width:var(--tb-h);min-width:var(--tb-h);height:var(--tb-h);margin:0;border:1px solid var(--line);border-radius:var(--r-full);background:transparent;color:var(--ink);}
+.v5 .filtri .btn.tb-ikona:hover:not(:disabled){background:var(--green-m);border-color:var(--line-strong);}
+.v5 .filtri .btn.tb-ikona[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--bg);}
+.v5 .filtri .btn.tb-ikona svg{width:18px;height:18px;}
+.v5 .filtri .btn-izvoz,.v5 .filtri .tb-sek{width:auto;height:var(--tb-h);margin:0;padding:0 16px;display:inline-flex;align-items:center;gap:8px;
+  border:1px solid var(--line);border-radius:var(--r-full);background:transparent;color:var(--ink);font-size:var(--fs-14);font-weight:500;}
+.v5 .filtri .btn-izvoz:hover:not(:disabled),.v5 .filtri .tb-sek:hover:not(:disabled){background:var(--green-m);border-color:var(--line-strong);}
+.v5 .filtri .btn-izvoz svg{width:16px;height:16px;}
+.v5 .filtri #fakBtn{width:auto;height:var(--tb-h);margin:0;padding:0 18px;border-radius:var(--r-full);font-size:var(--fs-14);font-weight:500;}
+/* obdobje: ena kapsula »Od … Do …« */
+.v5 .filtri :is(.arh-obd,.fak-obd){display:inline-flex;align-items:center;gap:0;height:var(--tb-h);padding:0 6px 0 4px;border:1px solid var(--line);border-radius:var(--r-full);background:var(--surface);}
+.v5 .filtri :is(.arh-lab,.fak-lab){height:100%;padding:0 10px;border:0;border-radius:0;background:none;gap:6px;font-size:var(--fs-13);color:var(--mid);}
+.v5 .filtri :is(.arh-lab,.fak-lab) input{font-size:var(--fs-14);color:var(--ink);}
+.v5 .filtri :is(.arh-lab,.fak-lab) + :is(.arh-lab,.fak-lab){border-left:1px solid var(--line);}
+.v5 .filtri .arh-obd-x{width:26px;height:26px;margin-left:2px;}
+
+/* ── kartice v mreži: ena zgradba za Stranke, Spremne liste, Cenike in Fakture ── */
+.v5[data-view="grid"] .rows,
+.v5[data-view="grid"] .fak-grid,
+.v5[data-view="grid"] :is(#cenikList,.art-skupine){display:grid;grid-template-columns:repeat(auto-fill,minmax(var(--tile-min2),1fr));gap:12px;align-items:stretch;}
+.v5[data-view="grid"] .lcell:not(.open){display:flex;flex-direction:column;min-width:0;}
+.v5[data-view="grid"] .lcell:not(.open) :is(.row,.a-row),
+.v5[data-view="grid"] :is(#cenikList,.art-skupine) .cgrp:not(.open),
+.v5[data-view="grid"] .fak-grid .fak-card:not(.open){flex:1 1 auto;height:auto;min-height:140px;margin:0;border:1px solid var(--line);border-radius:var(--radius);
+  background:var(--surface);box-shadow:none;transition:border-color .18s ease,box-shadow .22s ease;}
+.v5[data-view="grid"] .lcell:not(.open) :is(.row,.a-row):hover,
+.v5[data-view="grid"] :is(#cenikList,.art-skupine) .cgrp:not(.open):hover,
+.v5[data-view="grid"] .fak-grid .fak-card:not(.open):hover{background:var(--surface);border-color:var(--line-strong);box-shadow:var(--hover-sh);}
+/* skupno: brez puščic in deležev v mreži (cela kartica je gumb) */
+.v5[data-view="grid"] .lcell:not(.open) :is(.row,.a-row) .chev,
+.v5[data-view="grid"] .lcell:not(.open) .row .row-pct,
+.v5[data-view="grid"] :is(#cenikList,.art-skupine) .cgrp:not(.open) .cgrp-chev,
+.v5[data-view="grid"] .fak-grid .fak-card:not(.open) .fak-chev{display:none;}
+/* naslov · podnaslov · noga (enake mere povsod) */
+.v5[data-view="grid"] .lcell:not(.open) .row .row-name,
+.v5[data-view="grid"] .lcell:not(.open) .a-row .a-num,
+.v5[data-view="grid"] :is(#cenikList,.art-skupine) .cgrp:not(.open) .cgrp-nm,
+.v5[data-view="grid"] .fak-grid .fak-card:not(.open) h3{display:block;height:auto;margin:0;font-family:var(--sans);font-size:var(--fs-16);font-weight:500;letter-spacing:-.01em;line-height:1.3;color:var(--ink);overflow-wrap:anywhere;}
+.v5[data-view="grid"] .lcell:not(.open) .row .row-legal,
+.v5[data-view="grid"] .lcell:not(.open) .a-row .a-cli,
+.v5[data-view="grid"] :is(#cenikList,.art-skupine) .cgrp:not(.open) .cgrp-sub,
+.v5[data-view="grid"] .fak-grid .fak-card:not(.open) .fak-card-info .u-sub{display:block;height:auto;min-height:0;margin:0;font-family:var(--sans);font-size:var(--fs-13);font-weight:400;line-height:1.4;color:var(--mid);
+  overflow:visible;overflow-wrap:anywhere;-webkit-line-clamp:none;}
+
+/* Stranke: ime + uradni naziv zgoraj; kg in značka v nogi */
+.v5[data-view="grid"] .lcell:not(.open) .row{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto 1fr;
+  grid-template-areas:"main main" "num tag";gap:14px 10px;padding:var(--tile-pad);align-items:end;text-align:left;}
+.v5[data-view="grid"] .lcell:not(.open) .row > span:first-child{grid-area:main;align-self:start;display:flex;flex-direction:column;gap:3px;height:auto;min-width:0;padding:0;overflow:visible;position:static;}
+.v5[data-view="grid"] .lcell:not(.open) .row > span:first-child br{display:none;}
+.v5[data-view="grid"] .lcell:not(.open) .row .num{grid-area:num;position:static;margin:0;justify-self:start;font-size:var(--fs-13);color:var(--mid);text-align:left;}
+.v5[data-view="grid"] .lcell:not(.open) .row .sc-tag{grid-area:tag;position:static;transform:none;margin:0;justify-self:end;}
+
+/* Spremni listi: številka + kljukica zgoraj, stranka, noga datum · kosi */
+.v5[data-view="grid"] .lcell:not(.open) .a-row{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto auto 1fr;
+  grid-template-areas:"num chk" "cli cli" "foot foot";gap:4px 10px;padding:var(--tile-pad);text-align:left;align-items:start;}
+.v5[data-view="grid"] .lcell:not(.open) .a-row .a-num{grid-area:num;align-self:center;}
+.v5[data-view="grid"] .lcell:not(.open) .a-row :is(.arh-chk,.a-sel){grid-area:chk;position:static;margin:0;align-self:center;}
+.v5[data-view="grid"] .lcell:not(.open) .a-row .a-cli{grid-area:cli;}
+.v5[data-view="grid"] .lcell:not(.open) .a-row .a-foot{grid-area:foot;align-self:end;position:static;display:flex;justify-content:flex-start;gap:6px;margin:12px 0 0;padding:0;
+  font-family:var(--sans);font-size:var(--fs-13);color:var(--mid);white-space:normal;overflow:visible;flex-wrap:wrap;}
+.v5[data-view="grid"] .lcell:not(.open) .a-row .a-foot .num{font-size:var(--fs-13);color:var(--mid);font-weight:400;}
+.v5[data-view="grid"] .lcell:not(.open) .a-row .a-foot :is(.a-qty,.a-mer)::before{content:'· ';}
+.v5[data-view="grid"] .lcell:not(.open) .a-row .a-foot .a-mer{font-weight:500;color:var(--ink);order:3;}
+
+/* Ceniki in Cenik & artikli: ime + oznaka/stranke; noga število artiklov · značka */
+.v5[data-view="grid"] :is(#cenikList,.art-skupine) .cgrp:not(.open){display:flex;flex-direction:column;overflow:visible;position:relative;}
+.v5[data-view="grid"] :is(#cenikList,.art-skupine) .cgrp:not(.open) .cgrp-head-row{flex:1 1 auto;display:flex;height:auto;align-items:stretch;}
+.v5[data-view="grid"] :is(#cenikList,.art-skupine) .cgrp:not(.open) .cgrp-h{flex:1;display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto 1fr;
+  grid-template-areas:"name name" "count tag";gap:14px 10px;padding:var(--tile-pad);align-items:end;text-align:left;position:static;height:auto;}
+.v5[data-view="grid"] :is(#cenikList,.art-skupine) .cgrp:not(.open) .cgrp-name{grid-area:name;align-self:start;display:flex;flex-direction:column;gap:3px;min-height:0;}
+.v5[data-view="grid"] :is(#cenikList,.art-skupine) .cgrp:not(.open) .cgrp-count{grid-area:count;position:static;margin:0;justify-self:start;font-family:var(--sans);font-size:var(--fs-13);font-weight:400;color:var(--mid);}
+.v5[data-view="grid"] :is(#cenikList,.art-skupine) .cgrp:not(.open) .sc-tag{grid-area:tag;justify-self:end;margin:0;}
+
+/* Fakture: naslov + povzetek */
+.v5[data-view="grid"] .fak-grid .fak-card:not(.open){padding:0;display:flex;flex-direction:column;justify-content:flex-start;}
+.v5[data-view="grid"] .fak-grid .fak-card:not(.open) .fak-card-h{padding:var(--tile-pad);flex-direction:column;align-items:stretch;justify-content:flex-start;gap:3px;}
+
+/* ── seznam: enotne vrstice ── */
+.v5[data-view="list"] .lcell :is(.row,.a-row){padding:14px 18px;margin-bottom:8px;border-radius:var(--r-md);border-color:var(--line);transition:border-color .18s ease,background-color .18s ease;}
+.v5[data-view="list"] .lcell :is(.row,.a-row):hover{background:var(--surface);border-color:var(--line-strong);}
+.v5[data-view="list"] .lcell .row{grid-template-columns:minmax(0,1fr) auto auto 96px 16px;grid-template-areas:"main tag pct num chev";gap:14px;}
+.v5[data-view="list"] .lcell .row > span:first-child{grid-area:main;padding-right:0;min-height:0;position:static;}
+.v5[data-view="list"] .lcell .row .sc-tag{grid-area:tag;position:static;transform:none;margin:0;}
+.v5[data-view="list"] .lcell .row .row-pct{grid-area:pct;}
+.v5[data-view="list"] .lcell .row .num{grid-area:num;}
+.v5[data-view="list"] .lcell .row .chev{grid-area:chev;}
+.v5[data-view="list"] .lcell .row .row-name{font-size:var(--fs-16);font-weight:500;letter-spacing:-.01em;}
+.v5[data-view="list"] .lcell .row .row-legal{font-size:var(--fs-13);line-height:1.4;}
+@media(max-width:560px){
+  .v5[data-view="list"] .lcell .row{grid-template-columns:minmax(0,1fr) auto 16px;grid-template-areas:"main num chev" "tag tag tag";gap:6px 12px;}
+  .v5[data-view="list"] .lcell .row .sc-tag{justify-self:start;}
+  .v5[data-view="list"] .lcell .row .row-pct{display:none;}
+}
+
+/* ── značke ── */
+.v5 .sc-tag{display:inline-flex;align-items:center;max-width:max-content;padding:3px 10px;border:0;border-radius:var(--r-full);background:var(--green-m);color:var(--ink);
+  font-family:var(--sans);font-size:var(--fs-12);font-weight:500;letter-spacing:0;line-height:1.4;white-space:nowrap;}
+
+/* ── Spremni listi: brez barvnih podlag in robov; stanje pove le kljukica ── */
+.v5 :is(.arh-green,.arh-yellow,.arh-red) .a-row{border-left:1px solid var(--line);background:var(--surface);}
+.v5 :is(.arh-green,.arh-yellow,.arh-red) .a-row:hover{background:var(--surface);}
+.v5 .arh-chk{width:24px;height:24px;border-width:1.5px;border-radius:7px;background:var(--surface);}
+.v5 .arh-chk.on{background:var(--st-ok);border-color:var(--st-ok);color:#fff;}
+.v5[data-theme="dark"] .arh-chk.on{color:#0a0a0a;}
+.v5 .arh-chk svg{width:14px;height:14px;}
+.v5 .arh-red .a-qty{color:var(--st-bad-ink);font-weight:500;}
+
+/* ── plošče in kartice razdelkov: enak rob, zaobljenost in odmik ── */
+.v5 :is(.panel,.pris-card,.uc-card){border-color:var(--line);border-radius:var(--radius);}
+
+/* ── telefon ── */
+@media(max-width:560px){
+  .v5{--tb-h:44px;--tile-pad:16px;}
+  .v5 .head{gap:16px 12px;margin-bottom:20px;}
+  .v5 .btn.tb-prim{width:var(--tb-h);padding:0;}
+  .v5 .btn.tb-prim .tb-lbl{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;}
+  .v5 .btn.tb-prim svg{width:18px;height:18px;}
+  .v5 .filtri input[type=search]{flex:1 1 180px;max-width:none;min-width:0;}
+  .v5 .filtri :is(select,.cs){flex:1 1 auto;}
+  .v5 .filtri .cs-trigger,.v5 .filtri select{width:100%;}
+  .v5 #sec-fakture .filtri .cs{flex:1 1 0;min-width:0;}
+  .v5 .filtri :is(.arh-obd,.fak-obd){flex:1 1 100%;justify-content:space-between;}
+  .v5 .filtri :is(.arh-lab,.fak-lab){flex:1 1 0;min-width:0;}
+  .v5[data-view="grid"] .rows,.v5[data-view="grid"] .fak-grid,.v5[data-view="grid"] :is(#cenikList,.art-skupine){grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:10px;}
+  .v5[data-view="grid"] .lcell:not(.open) :is(.row,.a-row),
+  .v5[data-view="grid"] :is(#cenikList,.art-skupine) .cgrp:not(.open),
+  .v5[data-view="grid"] .fak-grid .fak-card:not(.open){min-height:128px;}
+}
+
+/* ── v5 · lestvica kontrol: 44 polja/obrazci · 40 orodna vrstica · 36 dejanja v karticah · 30 zavihki · 32 žetoni ── */
+.v5 .btn{font-weight:500;letter-spacing:-.005em;}
+.v5 .head :is(.btn,input,select,.cs-trigger){min-height:0;}
+.v5 .head .btn.tb-sek,.v5 .head .btn.btn-izvoz,.v5 .head .btn.tb-prim{height:var(--tb-h);}
+.v5 .head .tb-sek{width:auto;margin:0;padding:0 16px;display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:var(--r-full);
+  background:transparent;color:var(--ink);font-size:var(--fs-14);font-weight:500;white-space:nowrap;}
+.v5 .head .tb-sek:hover:not(:disabled){background:var(--green-m);border-color:var(--line-strong);}
+.v5 .head .tb-sek[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--bg);}
+.v5 .head .tb-sek svg{width:16px;height:16px;flex:none;}
+.v5 .filtri .btn.tb-ikona,.v5 .filtri .dok-tbtn.tb-ikona{padding:0!important;}
+
+/* dejanja v karticah (36) */
+.v5 :is(.cgrp-btn,.btn-mini){min-height:0;height:var(--ctrl-h-md);padding:0 14px;font-size:var(--fs-14);font-weight:500;border-radius:var(--r-full);gap:6px;}
+.v5 .cgrp-btn.ghost{color:var(--ink);border-color:var(--line);}
+.v5 .cgrp-btn.ghost:hover:not(:disabled){background:var(--green-m);border-color:var(--line-strong);}
+.v5 .cgrp-btn.tb-ikona{width:var(--ctrl-h-md);min-width:var(--ctrl-h-md);}
+.v5 :is(.dok-navbtn,.pris-nav){width:var(--ctrl-h-md);height:var(--ctrl-h-md);}
+.v5 .gor-leto + .cs .cs-trigger,.v5 .cs-trigger.gor-leto{height:var(--ctrl-h-md);border-radius:var(--r-full);font-size:var(--fs-14);font-weight:500;padding:0 12px 0 14px;}
+
+/* zavihki in preklopniki: en videz (okvir 36, zavihek 30) */
+.v5 :is(.pris-tabs,.seg,.tema-izbira){display:inline-flex;gap:2px;padding:3px;border:0;border-radius:var(--r-full);background:var(--green-m);flex-wrap:nowrap;}
+.v5 :is(.pris-tab,.seg-b,.tema-b){height:30px;min-height:0;padding:0 14px;display:inline-flex;align-items:center;justify-content:center;gap:6px;border:0;border-radius:var(--r-full);
+  background:none;color:var(--mid);font-size:var(--fs-14);font-weight:500;line-height:1;white-space:nowrap;cursor:pointer;transition:color .15s,background .15s,box-shadow .15s;}
+.v5 :is(.pris-tab,.seg-b,.tema-b):hover{color:var(--ink);}
+.v5 :is(.pris-tab.on,.seg-b.on,.tema-b.on){background:var(--surface);color:var(--ink);box-shadow:var(--shadow-sm);}
+.v5[data-theme="dark"] :is(.pris-tab.on,.seg-b.on,.tema-b.on){background:rgba(255,255,255,.12);}
+.v5 .tema-b svg{width:15px;height:15px;}
+
+/* žetoni (32 / 28) */
+.v5 .fak-chip{height:var(--ctrl-h-sm);min-height:0;padding:0 14px;font-size:var(--fs-13);font-weight:500;color:var(--ink);border-color:var(--line);}
+.v5 .fak-chip:hover{background:var(--green-m);}
+.v5 .fak-hitri{min-height:0;margin:0 0 20px;}
+.v5 .pris-chip-t{font-weight:500;}
+@media(min-width:561px){.v5 .pris-chip-t{font-size:var(--fs-13);}}
+
+/* polja v obrazcih (44): enak rob, zaobljenost in fokus */
+.v5 :is(input[type=email],input[type=password],.field input[type=text],.field input[type=tel],.field input[type=email],.field input[type=number],
+  .sc-modal-input,.pris-new,.adm-ime,.ur-form input:not([type=checkbox]):not([type=radio]):not([type=hidden])),
+.v5 .cs-trigger{min-height:var(--ctrl-h);border:1px solid var(--line);border-radius:var(--r-md);font-size:var(--fs-15);}
+.v5 :is(input[type=email],input[type=password],.field input[type=text],.field input[type=tel],.field input[type=email],.field input[type=number],.sc-modal-input,.pris-new,.adm-ime){padding:10px 14px;}
+.v5 .field textarea{border-width:1px;border-radius:var(--r-md);}
+.v5 :is(input,textarea):focus,.v5 .cs-open .cs-trigger,.v5 .cs-trigger:focus{border-color:var(--line-strong);box-shadow:0 0 0 3px var(--green-m);outline:none;}
+.v5 .adm-ime{font-size:var(--fs-16);font-weight:500;}
+.v5 .pris-add .pris-add-btn{min-height:var(--ctrl-h);height:var(--ctrl-h);}
+.v5 label,.v5 .ur-f > span,.v5 .pris-lab{font-weight:500;letter-spacing:0;}
+.v5 .dok-crumb{font-weight:500;}
+.v5 .uc-th{font-size:var(--fs-13);font-weight:500;}
+@media(max-width:900px){
+  .v5 :is(input[type=email],input[type=password],.field input[type=text],.field input[type=tel],.field input[type=email],.field input[type=number],.sc-modal-input,.pris-new,.ur-form input),.v5 .cs-trigger{font-size:var(--fs-16);}
+}
+
+/* ── Prisotnost: vrstice zaposlenih kot vrstice seznama ── */
+.v5 .pz-seznam .row.pz{border-radius:var(--r-md);padding:12px 16px;}
+.v5 .pz-seznam .row.pz .row-name{font-size:var(--fs-15);font-weight:500;letter-spacing:-.005em;}
+
+/* ── kartice na telefonu v seznamu: enak polmer kot v mreži ── */
+.v5[data-view="list"] .lcell :is(.row,.a-row){border-radius:var(--radius);}
+
+/* ── Fakture: kg levo, znesek desno v nogi (mreža) ali desno ob naslovu (seznam) ── */
+.v5 .fak-noga{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:0;font-size:var(--fs-13);color:var(--mid);font-variant-numeric:tabular-nums;}
+.v5 .fak-noga b{font-weight:500;color:var(--ink);}
+.v5[data-view="grid"] .fak-grid .fak-card:not(.open) .fak-card-h{flex:1 1 auto;}
+.v5[data-view="grid"] .fak-grid .fak-card:not(.open) .fak-card-info{display:flex;flex-direction:column;gap:3px;flex:1 1 auto;}
+.v5[data-view="grid"] .fak-grid .fak-card:not(.open) .fak-noga{margin-top:auto;padding-top:14px;}
+.v5[data-view="list"] .fak-card .fak-card-info{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"t n" "s n";column-gap:20px;row-gap:3px;align-items:center;}
+.v5[data-view="list"] .fak-card .fak-card-info h3{grid-area:t;font-size:var(--fs-16);font-weight:500;letter-spacing:-.01em;}
+.v5[data-view="list"] .fak-card .fak-card-info .u-sub{grid-area:s;font-size:var(--fs-13);}
+.v5[data-view="list"] .fak-card .fak-noga{grid-area:n;gap:18px;}
+.v5 :is(input[type=email],input[type=password],.field input[type=text],.field input[type=tel],.field input[type=email],.field input[type=number],.sc-modal-input,.pris-new,.adm-ime){height:var(--ctrl-h);}
+.v5 .main .btn{font-size:var(--fs-14);}
+/* kontrole v glavi kartice (36): izbirniki in datum */
+.v5 :is(.pris-h,.pris-hbtns,.uc-ctrl) .cs-trigger,.v5 .pris-h select{height:var(--ctrl-h-md);min-height:0;padding:0 12px 0 14px;border-radius:var(--r-full);font-size:var(--fs-14);font-weight:500;}
+.v5 #prisDatum,.v5 .pris-datum input[type=date]{height:var(--ctrl-h-md);min-height:0;padding:0 14px;border:1px solid var(--line);border-radius:var(--r-full);font-size:var(--fs-14);background:var(--surface);}
+
+/* ── Domov: ploščice z merami kot ostale kartice (oznaka zgoraj, število pod njo, levo) ── */
+.v5 .stat{display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:8px;padding:var(--tile-pad) 20px 20px;text-align:left;min-height:0;}
+.v5 .stat-lab{order:-1;margin:0;font-size:var(--fs-13);font-weight:500;letter-spacing:0;color:var(--mid);}
+.v5 .stat-num{font-size:2.25rem;font-weight:500;letter-spacing:-.035em;line-height:1.05;}
+.v5 .stat-sub{margin:0;}
+@media(max-width:560px){.v5 .stat{padding:14px 16px 16px;gap:6px;}.v5 .stat-num{font-size:1.65rem;}}
+
+/* ── Spremni listi v seznamu: enotna ločila v nogi (datum · izdal · kosi · mera) ── */
+@media(min-width:561px){
+  .v5[data-view="list"] .lcell .a-row .a-foot{gap:0;}
+  .v5[data-view="list"] .lcell .a-row .a-foot > *{font-size:var(--fs-13);color:var(--mid);}
+  .v5[data-view="list"] .lcell .a-row .a-foot > * + *::before{content:'·';display:inline-block;margin:0 7px;color:var(--mid);}
+  .v5[data-view="list"] .lcell .a-row .a-foot .a-mer{color:var(--ink);font-weight:500;}
+}
+
+/* ── Uporabniki: obrazec za novega uporabnika v oknu ── */
+.v5 .nu-modal{position:relative;width:min(440px,calc(100vw - 32px));padding:24px;}
+.v5 .nu-modal .nu-panel{border:0;padding:0;margin:0;background:none;}
+.v5 .nu-modal .nu-panel h3.sec-h{margin:0 40px 18px 0;}
+.v5 .nu-modal .add-row{display:flex;flex-direction:column;gap:0;}
+.v5 .nu-modal .add-row .btn{width:100%;margin-top:6px;}
+.v5 .nu-modal .nu-x{position:absolute;top:16px;right:16px;}
+.v5 #usersList{margin:0;}
+
+/* ── telefon: dodelave orodnih vrstic ── */
+@media(max-width:560px){
+  .v5 #sec-arhiv .filtri .arh-obd{order:5;}
+  .v5 #sec-arhiv .filtri .tb-desno{margin-left:0;flex:none;}
+  .v5 .filtri #fakBtn{flex:none;width:auto;}
+  .v5 #sec-fakture .filtri .tb-desno{flex:1 1 100%;margin-left:0;}
+  .v5 #sec-fakture .filtri .tb-desno .btn-izvoz{flex:1 1 0;justify-content:center;}
+}
+/* ── Nastavitve: ikona teme ob besedilu ── */
+.v5 .tema-b{flex-direction:row;}
+/* ── Domov: število vedno na dnu ploščice (poravnane številke tudi ob prelomljeni oznaki) ── */
+.v5 .stat{justify-content:space-between;}
+
+/* ── Prisotnost (telefon): dnevna evidenca kot vrstice — ime in ure zgoraj, prihodi/odhodi pod njimi ── */
+@media(max-width:560px){
+  .v5 #sec-prisotnost .pris-tbl-dan thead{display:none;}
+  .v5 #sec-prisotnost .pris-tbl-dan,.v5 #sec-prisotnost .pris-tbl-dan tbody,.v5 #sec-prisotnost .pris-tbl-dan tfoot{display:block;width:100%;}
+  .v5 #sec-prisotnost .pris-tbl-dan tr{display:grid;grid-template-columns:minmax(0,1fr) auto auto;grid-template-areas:"ime ure dod" "par par par";align-items:center;column-gap:10px;
+    padding:12px 0;border-bottom:1px solid var(--line);}
+  .v5 #sec-prisotnost .pris-tbl-dan tbody tr:last-child{border-bottom:0;}
+  .v5 #sec-prisotnost .pris-tbl-dan td{display:block;width:auto!important;padding:0;border:0;}
+  .v5 #sec-prisotnost .pris-tbl-dan td:nth-child(1){grid-area:ime;font-weight:500;}
+  .v5 #sec-prisotnost .pris-tbl-dan td.pris-pairs{grid-area:par;padding-top:6px;}
+  .v5 #sec-prisotnost .pris-tbl-dan td.pris-ure{grid-area:ure;text-align:right;}
+  .v5 #sec-prisotnost .pris-tbl-dan td.pris-act{grid-area:dod;}
+  .v5 #sec-prisotnost .pris-tbl-dan td.pris-pairs:empty{display:none;}
+  .v5 #sec-prisotnost .pris-tbl-dan tfoot tr{grid-template-areas:"ime ure dod";border-top:2px solid var(--line);border-bottom:0;}
+  .v5 #sec-prisotnost .pris-tbl-dan tfoot td:nth-child(2){display:none;}
+  .v5 #sec-arhiv .filtri .cs[data-za="arhivOrg"]{flex:1 1 auto;}
+  .v5 #sec-arhiv .filtri .cs[data-za="arhivSort"]{flex:none;}
+}
