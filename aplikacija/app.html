@@ -74,7 +74,6 @@
       <div class="auth-box" id="prijavaObr" hidden>
         <p class="eyebrow">Prijava</p>
         <h1>Dobrodošli nazaj</h1>
-        <p class="sub" id="prijavaSub">Vpišite se s podatki za portal SmartClean.</p>
         <form id="acctForm" autocomplete="on" novalidate>
           <div class="field"><label for="acctEmail">E-poštni naslov</label>
             <input type="email" id="acctEmail" inputmode="email" autocapitalize="none" autocorrect="off" autocomplete="username" enterkeyhint="next" /></div>
@@ -171,7 +170,6 @@
     <button class="btn ghost" type="button" id="rvPreskoci">Brez tiskanja</button>
     <button class="btn ghost" type="button" id="rvTisk1" aria-label="Natisni 1 izvod" title="Natisni 1 izvod"><svg class="ik-tisk" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 8.5V3.5h10v5"/><rect x="3.5" y="8.5" width="17" height="8.5" rx="2"/><path d="M7 14h10v6.5H7z"/><path d="M17 11.5h.01"/></svg>1×</button>
     <button class="btn" type="button" id="rvTisk2" aria-label="Natisni 2 izvoda" title="Natisni 2 izvoda"><svg class="ik-tisk" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 8.5V3.5h10v5"/><rect x="3.5" y="8.5" width="17" height="8.5" rx="2"/><path d="M7 14h10v6.5H7z"/><path d="M17 11.5h.01"/></svg>2×</button>
-    <p class="tisk-namig" hidden>Odpre se meni Deli — izberi <b>Natisni</b>.</p>
   </div>
 </div></div>
 
@@ -181,15 +179,15 @@
     <div class="pred-okvir" id="pdOkvir"></div>
     <label class="kopije"><input type="checkbox" id="pdEna" /> Natisni samo en izvod</label>
   </div>
-  <div class="okno-akc"><button class="btn" type="button" id="pdTisk"><svg class="ik-tisk" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 8.5V3.5h10v5"/><rect x="3.5" y="8.5" width="17" height="8.5" rx="2"/><path d="M7 14h10v6.5H7z"/><path d="M17 11.5h.01"/></svg>Natisni</button><p class="tisk-namig" hidden>Odpre se meni Deli — izberi <b>Natisni</b>.</p></div>
+  <div class="okno-akc"><button class="btn" type="button" id="pdTisk"><svg class="ik-tisk" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 8.5V3.5h10v5"/><rect x="3.5" y="8.5" width="17" height="8.5" rx="2"/><path d="M7 14h10v6.5H7z"/><path d="M17 11.5h.01"/></svg>Natisni</button></div>
 </div></div>
 
 <div class="okno-back" id="oknoOpombe"><div class="okno sirse" role="dialog" aria-modal="true" aria-labelledby="opT">
   <div class="okno-h"><span class="t" id="opT">Opombe</span><button class="okno-x" type="button" data-zapri aria-label="Zapri">×</button></div>
   <div class="okno-b">
-    <div class="field"><label class="f-lbl" for="opStranka">Opomba za stranko <small>· natisne se na spremni list</small></label>
+    <div class="field"><label class="f-lbl" for="opStranka">Opomba na spremnem listu</label>
       <textarea id="opStranka" rows="3" placeholder="Npr. Perilo prevzeto mokro."></textarea></div>
-    <div class="field" style="margin-bottom:0"><label class="f-lbl" for="opEvidenca">Opomba za evidenco <small>· ne natisne se, vidna le v portalu</small></label>
+    <div class="field" style="margin-bottom:0"><label class="f-lbl" for="opEvidenca">Interna opomba</label>
       <textarea id="opEvidenca" rows="3" placeholder="Npr. interna opomba za osebje."></textarea></div>
   </div>
   <div class="okno-akc"><button class="btn" type="button" id="opShrani">Shrani opombe</button></div>

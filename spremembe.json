@@ -1,5 +1,15 @@
 [
  {
+  "v": "4.55",
+  "d": "2026-10-21",
+  "c": "2026-10-21T12:45:00+02:00",
+  "t": [
+   "Brez opisov in navodil: odstranjeni pojasnjevalni odstavki, podnaslovi in namigi v portalu in aplikaciji (Nastavitve, Admin, Prisotnost, Ceniki, Dokumenti, Gorivo, prijava, prazna stanja).",
+   "Jasnejše oznake namesto razlag: »Opomba na spremnem listu« in »Interna opomba« povsod; vrata pri novem listu »Potrdi«; Programska oprema: spletna aplikacija in tablica (z različico).",
+   "Aplikacija 11.3: brez namigov na prijavi, pri PIN-u, pri tiskanju in na praznem vnosu."
+  ]
+ },
+ {
   "v": "4.54",
   "d": "2026-10-21",
   "c": "2026-10-21T11:56:00+02:00",

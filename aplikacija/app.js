@@ -484,8 +484,8 @@ function setClientLabel(){
 }
 function renderEntry(){
   var body = $("vnosTelo"), c = clientById(selectedId);
-  if(!c){ body.innerHTML = '<div class="vnos-namig"><b>Izberi stranko</b>Nato vpiši število kosov za vsak artikel.</div>'; return; }
-  if(!c.artikli.length){ body.innerHTML = '<div class="vnos-namig"><b>Stranka še nima artiklov</b>Artikle doda osebje v portalu (Cenik in artikli).</div>'; return; }
+  if(!c){ body.innerHTML = '<div class="vnos-namig"><b>Izberi stranko</b></div>'; return; }
+  if(!c.artikli.length){ body.innerHTML = '<div class="vnos-namig"><b>Stranka nima artiklov</b></div>'; return; }
   /* privzeto samo artikli, ki jih stranka ima (viden_app) ali so že vpisani */
   function jeViden(a){ return (a.vid !== false) || (draftQty[a.id] || 0) > 0; }
   var vidni = c.artikli.filter(jeViden), skriti = c.artikli.filter(function(a){ return !jeViden(a); });
@@ -494,7 +494,7 @@ function renderEntry(){
       '<span class="kos" data-kos="' + esc(a.id) + '">' + k + '</span><span class="chev">›</span></button>'; }
   /* v portalu pri stranki ni obkljukan noben artikel (oznaka »app«) — namesto praznega prostora razlaga */
   var html = vidni.length ? '<div class="artikli">' + vidni.map(vrsta).join("") + '</div>'
-    : '<div class="vnos-namig"><b>Ni artiklov, označenih za aplikacijo</b>V portalu jih označiš pri stranki (oznaka »app«). Ostale izbereš spodaj.</div>';
+    : '<div class="vnos-namig"><b>Ni artiklov</b></div>';
   if(skriti.length){
     html += showHidden
       ? '<p class="drugi-h">Ostali artikli</p><div class="artikli">' + skriti.map(vrsta).join("") + '</div><button type="button" class="drugi-btn" id="drugiSkrij">Skrij ostale artikle</button>'
@@ -554,7 +554,7 @@ function fillClientGrid(){
   }
   $("stGrid").innerHTML = seznam.length
     ? (nedavne.length ? '<p class="st-h">Nedavno</p>' + nedavne.map(ploscica).join("") + '<p class="st-h">Vse stranke</p>' : "") + seznam.map(ploscica).join("")
-    : '<div class="st-prazno">' + (CLIENTS.length ? "Ni zadetkov." : (pullTecev || katalogTecev ? "Nalagam stranke iz portala …" : "Seznam strank je prazen — potrebna je povezava s portalom.")) + '</div>';
+    : '<div class="st-prazno">' + (CLIENTS.length ? "Ni zadetkov." : (pullTecev || katalogTecev ? "Nalagam stranke iz portala …" : "Ni strank.")) + '</div>';
   $("stGrid").querySelectorAll("[data-c]").forEach(function(b){ b.onclick = function(){ pickClient(b.getAttribute("data-c")); }; });
 }
 function openClientPicker(mode, izvor){
@@ -689,7 +689,7 @@ function openReview(izvor){
     '<div class="rv-tot"><span>Skupaj kosov</span><b>' + stevilo(draftPieces()) + '</b></div>' +
     '<div class="rv-tot"><span>Teža perila</span><b>' + (ka.ima ? tezaFmt(ka.kg) : "—") + '</b></div>' +
     '<div class="rv-tot"><span>Prevoz</span><b>' + (draftPrevoz === "izredni" ? "Izredni" : "Redni") + '</b></div>' +
-    (draftOpombaStranka ? '<div class="rv-tot"><span>Opomba za stranko</span><b style="text-align:right;font-weight:500">' + esc(draftOpombaStranka) + '</b></div>' : '');
+    (draftOpombaStranka ? '<div class="rv-tot"><span>Opomba na spremnem listu</span><b style="text-align:right;font-weight:500">' + esc(draftOpombaStranka) + '</b></div>' : '');
   $("rvT").textContent = "Pregled pred shranjevanjem";
   $("rvPotrdiAkc").hidden = false; $("rvTiskAkc").hidden = true;
   odpriOkno("oknoPregled", izvor);
@@ -721,7 +721,6 @@ async function confirmReview(){
     if(razkril) saveClients();
     praznOsnutek(); osveziVse();
     $("rvT").textContent = "Spremni list " + ent.stevilka + " je shranjen";
-    $("rvTelo").insertAdjacentHTML("beforeend", '<div class="rv-ok"><span class="dot ok"></span>Shranjen na napravi' + (portalAuth ? " in se pošilja v portal." : ".") + '</div>');
     $("rvPotrdiAkc").hidden = true; $("rvTiskAkc").hidden = false;
     savePdfs(ent);
     pripraviPdf(ent);   /* iPhone (začetni zaslon): PDF za meni Deli, preden tapneš »Natisni« */
@@ -1060,9 +1059,8 @@ function deliPdfList(e, izv){
   if(navigator.canShare && !navigator.canShare({ files: [c.file] })){ toast("Ta naprava ne zna deliti PDF-ja."); return; }
   navigator.share({ files: [c.file], title: "Spremni list " + e.stevilka }).catch(function(er){ if(er && er.name !== "AbortError") toast("Meni Deli se ni odprl: " + (er.message || er.name)); });
 }
-/* iPhone na začetnem zaslonu: namig pod gumbi za tisk + moduli za PDF vnaprej (v ozadju) */
+/* iPhone na začetnem zaslonu: moduli za PDF vnaprej (v ozadju) */
 if(jeIosSam()){
-  Array.prototype.forEach.call(document.querySelectorAll(".tisk-namig"), function(p){ p.hidden = false; });
   setTimeout(function(){ naloziPdf().catch(function(){}); }, 2500);
 }
 function pdfPlugin(){ try{ if(window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.PralnicaPrint) return Capacitor.Plugins.PralnicaPrint; }catch(e){} return null; }
@@ -1200,7 +1198,6 @@ async function spletnaSeja(sila){
 function prikaziSpletnoPrijavo(msg, email){
   session = null; zapriVsaOkna(); pokaziPrijavo();
   $("profili").hidden = true; $("prijavaObr").hidden = false; $("acctBack").hidden = true;
-  $("prijavaSub").textContent = "Prijavite se s podatki za portal SmartClean. Prijava velja tudi za portal.";
   $("acctErr").textContent = msg || ""; $("acctPass").value = "";
   if(email) $("acctEmail").value = email;
 }
@@ -1274,7 +1271,6 @@ function showAccountLogin(msg, email){
   if(SPLET){ prikaziSpletnoPrijavo(msg, email); return; }
   session = null; zapriVsaOkna(); pokaziPrijavo();
   $("profili").hidden = true; $("prijavaObr").hidden = false;
-  $("prijavaSub").textContent = "Vpišite se s podatki za portal SmartClean. Tablica si prijavo zapomni.";
   $("acctErr").textContent = msg || ""; $("acctPass").value = "";
   if(email) $("acctEmail").value = email;
   $("acctBack").hidden = !savedProfs.length;
@@ -1437,7 +1433,7 @@ function zahtevajPin(p, onOk){
   var star = $("pinOkno"); if(star) star.remove();
   var buf = "";
   var el = document.createElement("div"); el.className = "pin"; el.id = "pinOkno";
-  el.innerHTML = '<div class="pin-in">' + avatarHtml(p) + '<div class="pin-ime">' + esc(p.name || p.email) + '</div><div class="pin-sub">Vpiši svojo 4-mestno kodo</div>' +
+  el.innerHTML = '<div class="pin-in">' + avatarHtml(p) + '<div class="pin-ime">' + esc(p.name || p.email) + '</div>' +
     '<div class="pin-dots">' + [0, 1, 2, 3].map(function(){ return '<span class="pin-dot"></span>'; }).join("") + '</div>' +
     '<div class="pin-pad">' + ["1","2","3","4","5","6","7","8","9"].map(function(n){ return '<button type="button" class="pin-key" data-k="' + n + '">' + n + '</button>'; }).join("") +
     '<button type="button" class="pin-key prazna" tabindex="-1"></button><button type="button" class="pin-key" data-k="0">0</button><button type="button" class="pin-key" data-k="del" aria-label="Briši">⌫</button></div>' +
@@ -2105,7 +2101,6 @@ function pokaziZaklepShrambe(){
   var el = document.createElement("div"); el.className = "pin"; el.id = "zaklepShrambe";
   el.innerHTML = '<div class="pin-in" style="max-width:420px"><div class="wordmark" style="font-size:2rem;margin-bottom:22px">Smart<span>Clean</span></div>' +
     '<div class="pin-ime">Aplikacija potrebuje dostop do datotek</div>' +
-    '<p class="pin-sub" style="line-height:1.55">Spremni listi so shranjeni v mapi Dokumenti na tej tablici. Omogoči »Dostop do vseh datotek« za SmartClean, nato se vrni v aplikacijo.</p>' +
     '<button type="button" class="btn lg" id="zsOdpri">Odpri nastavitve</button></div>';
   document.body.appendChild(el);
   $("zsOdpri").onclick = function(){ try{ pdfPlugin().requestPermission(); }catch(e){} };

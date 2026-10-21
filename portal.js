@@ -323,7 +323,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.54 · BETA';
+  var APP_VERZIJA = '4.55 · BETA';
   var NALAGANJE = '<div class="sc-load" aria-hidden="true"><span class="sc-load-line"></span></div>';
   // Stale-while-revalidate: ob ponovnem obisku razdelka NE pobriši vsebine v nalagalnik —
   // obdrži prejšnjo (takojšen prikaz) in jo osveži v ozadju. Trak le ob prvem nalaganju.
@@ -1153,8 +1153,7 @@
   function gorRisi() {
     var box = $('gorList'); if (!box) return;
     if (GOR_NAPAKA) {
-      box.innerHTML = '<div class="pris-card"><p class="msg bad show">Tankanj ni bilo mogoče naložiti: ' + escape_(GOR_NAPAKA) + '</p>' +
-        '<p class="u-sub">Če razdelek uporabljaš prvič, v Supabase → SQL Editor zaženi <b>baza/55_gorivo.sql</b>.</p></div>';
+      box.innerHTML = '<div class="pris-card"><p class="msg bad show">Tankanj ni bilo mogoče naložiti: ' + escape_(GOR_NAPAKA) + '</p></div>';
       return;
     }
     var vse = gorIzbrane();
@@ -1201,7 +1200,7 @@
 
     box.innerHTML = kart +
       '<div class="pris-card"><div class="pris-h">' +
-      '<div><h3 class="sec-h">Tankanja</h3><p class="uc-obd-lbl">poraba računana od polnega do polnega rezervoarja</p></div>' +
+      '<div><h3 class="sec-h">Tankanja</h3></div>' +
       '<span class="pris-hbtns">' + letoSel +
       (lahkoPise ? '<button type="button" class="cgrp-btn gor-novo tb-ikona" title="Novo tankanje" aria-label="Novo tankanje"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>' : '') + '</span></div>' +
       tbl + '</div>';
@@ -1247,7 +1246,7 @@
       '</div>' +
       '<p class="u-sub gor-uradna" data-uradna></p>' +
       '<label class="ur-f"><span>Tankal</span><input type="text" data-tankal maxlength="60" value="' + escape_(nov ? (JAZIME || '') : rec.tankal) + '"></label>' +
-      '<label class="ur-f"><span>Opomba (neobvezno)</span><input type="text" data-opomba maxlength="200" value="' + escape_(nov ? '' : rec.opomba) + '"></label>' +
+      '<label class="ur-f"><span>Opomba</span><input type="text" data-opomba maxlength="200" value="' + escape_(nov ? '' : rec.opomba) + '"></label>' +
       '<label class="ur-f"><span>Račun (PDF ali slika, do ' + GOR_MAX_MB + ' MB)</span>' +
       '<input type="file" data-rac accept="application/pdf,image/*"></label>' +
       '<p class="u-sub gor-rac-stanje" data-racst></p>' +
@@ -1732,7 +1731,6 @@
     var checks = zap.map(function (z) { return '<label class="fx-cli"><input type="checkbox" class="fx-org" value="' + escape_(z.id) + '" checked><span>' + escape_(z.ime) + '</span></label>'; }).join('') || '<p class="u-sub">Ni aktivnih zaposlenih.</p>';
     back.innerHTML = '<div class="sc-modal sc-modal-wide" role="dialog" aria-modal="true">' +
       '<h4>Listi za vpis ur</h4>' +
-      '<p>Za vsako izbrano zaposleno en list: za vsak dan razen nedelje prihod, odhod in podpis.</p>' +
       '<div class="fx-dates"><label>Mesec<input type="month" class="sc-modal-input ur-mesec"></label></div>' +
       '<div class="fx-cli-head"><span>Zaposleni</span><label class="fx-all"><input type="checkbox" class="fx-vse" checked><span>Vse</span></label></div>' +
       '<div class="fx-cli-list">' + checks + '</div>' +
@@ -1968,7 +1966,7 @@
     var moj = (ZAPOSLENI || []).find(function (z) { return (z.ime || '').trim().toLowerCase() === (JAZIME || '').trim().toLowerCase(); });
     var telo;
     if (!moj) {
-      telo = '<p class="u-sub" style="padding:8px 2px">Tvoj profil še ni povezan z evidenco ur. Prosi vodjo, da te v Prisotnosti doda pod imenom »' + escape_(JAZIME || '') + '«.</p>';
+      telo = '<p class="u-sub" style="padding:8px 2px">Profil ni povezan z evidenco ur.</p>';
     } else {
       var rows = '', tot = 0, dni = 0, nDni = dniVMesecu(mk);
       for (var di = 1; di <= nDni; di++) {
@@ -2021,7 +2019,6 @@
     }).join('');
     var back = document.createElement('div'); back.className = 'sc-modal-back';
     back.innerHTML = '<div class="sc-modal" role="dialog" aria-modal="true"><h4>Poveži z uporabnikom — ' + escape_(z.ime) + '</h4>' +
-      '<p class="u-sub" style="margin:0 0 10px">Poveži zaposlenega z uporabnikom portala (tistim z e-pošto in geslom). Uporabnike urejaš v razdelku Uporabniki.</p>' +
       '<label class="pris-lab">Uporabnik</label><select class="pu-sel sc-modal-input">' + opts + '</select>' +
       '<div class="sc-modal-acts"><button type="button" class="sc-modal-btn ghost" data-no>Prekliči</button><button type="button" class="sc-modal-btn primary" data-yes>Shrani</button></div></div>';
     document.body.appendChild(back);
@@ -2040,7 +2037,7 @@
   }
   async function prisIzbrisi(empId) {
     var z = (ZAPOSLENI || []).find(function (x) { return x.id === empId; }); if (!z) return;
-    var ok = await potrdiModal({ naslov: 'Izbriši zaposlenega', sporocilo: 'Res izbrišem »' + z.ime + '«? Izbrišejo se tudi vsi njegovi vpisi ur — tega ni mogoče razveljaviti. (Če želiš ohraniti zgodovino, raje uporabi Deaktiviraj.)', potrdi: 'Izbriši', preklici: 'Prekliči', nevarno: true });
+    var ok = await potrdiModal({ naslov: 'Izbriši zaposlenega', sporocilo: 'Res izbrišem »' + z.ime + '«? Izbrišejo se tudi vsi njegovi vpisi ur — tega ni mogoče razveljaviti.', potrdi: 'Izbriši', preklici: 'Prekliči', nevarno: true });
     if (!ok) return;
     var del = await sb.from('employees').delete().eq('id', empId);
     if (del.error) { toast(napakaBesedilo(del.error)); return; }
@@ -2054,9 +2051,8 @@
     var z = (ZAPOSLENI || []).find(function (x) { return x.id === empId; }); if (!z) return;
     var zeton = await vnesiModal({
       naslov: (z.card_token ? 'Nova kartica — ' + z.ime : 'Dodeli kartico — ' + z.ime),
-      sporocilo: 'Prilepi žeton, ki ga je izpisal vpisi_karto.py — 32 šestnajstiških znakov.'
-        + (z.card_token ? '\nStara kartica bo prenehala delovati.' : ''),
-      placeholder: 'npr. A1B2C3D4E5F60718293A4B5C6D7E8F90',
+      sporocilo: z.card_token ? 'Stara kartica bo prenehala delovati.' : '',
+      placeholder: 'Žeton kartice',
       potrdi: 'Shrani'
     });
     if (zeton === null) return;
@@ -2168,7 +2164,6 @@
       '<div class="vu-vrste"></div>' +
       '<button type="button" class="pris-int-add vu-dodaj">' + IKO_T_PLUS + 'Dodaj izmeno</button>' +
       '<div class="vu-skupaj"></div>' +
-      '<p class="vu-opis">Ure vpiši s številkami: 730 = 07:30, 1530 = 15:30. Čas med izmenama je pavza. Odhod lahko pustiš prazen, dokler izmena traja.</p>' +
       '<div class="fx-msg msg" role="alert"></div>' +
       '<div class="sc-modal-acts"><button type="button" class="sc-modal-btn ghost" data-no>Zapri</button><button type="button" class="sc-modal-btn primary" data-yes>Shrani</button></div></div>';
     document.body.appendChild(back);
@@ -2431,7 +2426,7 @@
           '<span class="art-r-nm">' + escape_(x.naziv || '') + '</span>' +
           '<span class="art-r-cena">' + cenaFmt(x.cena1) + '</span>' +
           '<span class="art-r-acts">' +
-            '<label class="art-chk' + (c <= 0 ? ' dis' : '') + '" title="' + (c <= 0 ? 'Vpiši ceno' : 'Označi, ko je cena potrjena') + '"><input type="checkbox" data-cpot="' + x.sifra + '"' + (pot ? ' checked' : '') + (c <= 0 ? ' disabled' : '') + '><span class="art-chk-box"></span></label>' +
+            '<label class="art-chk' + (c <= 0 ? ' dis' : '') + '" title="' + (c <= 0 ? 'Ni cene' : 'Cena potrjena') + '"><input type="checkbox" data-cpot="' + x.sifra + '"' + (pot ? ' checked' : '') + (c <= 0 ? ' disabled' : '') + '><span class="art-chk-box"></span></label>' +
             '<button type="button" class="art-grip dnd-handle" title="Povleci za razvrščanje" aria-label="Razvrsti">' + DND_ICON + '</button><button type="button" class="art-r-edit" data-aedit="' + x.sifra + '" title="Uredi" aria-label="Uredi">' + IKO_T_SVINC + '</button><button type="button" class="art-r-del" data-adel="' + x.sifra + '" title="Izbriši artikel" aria-label="Izbriši artikel">' + IKO_KOS + '</button></span></div>';
       }).join('');
       var chips = str.length ? str.map(function (o) { return '<span class="pris-chip"><span class="pris-chip-t" style="cursor:default">' + escape_(ORGIME[o.id] || o.name) + '</span></span>'; }).join(' ') : '<span class="u-sub">Ni dodeljenih strank.</span>';
@@ -2443,7 +2438,7 @@
         '<div class="art-thead"><span>ID</span><span>Naziv</span><span>Cena</span><span></span></div><div class="art-rows">' + rows + '</div>' +
         '<div class="art-add-new"><input type="text" class="art-nn-nm" placeholder="Nov artikel"><input type="text" class="art-nn-id" maxlength="5" value="' + escape_(pre + artNextNum(pre)) + '"><input type="text" inputmode="decimal" class="art-nn-cena" placeholder="€"><button type="button" class="cgrp-btn art-nn-btn" data-pre="' + escape_(pre) + '">' + IKO_T_PLUS + 'Dodaj</button></div>' +
         '</div></div>';
-    }).join('') + '</div>' : '<div class="pris-card"><p class="u-sub">Ni artiklov. Ustvari nov cenik z gumbom zgoraj.</p></div>');
+    }).join('') + '</div>' : '<div class="pris-card"><p class="u-sub">Ni artiklov.</p></div>');
 
     box.querySelectorAll('[data-artgrp]').forEach(function (h) { h.addEventListener('click', function () { artOdpriSkupino(h.dataset.artgrp); }); });
     box.querySelectorAll('[data-aedit]').forEach(function (b) { b.addEventListener('click', function (e) { e.stopPropagation(); artUredi(parseInt(b.dataset.aedit, 10)); }); });
@@ -2589,8 +2584,8 @@
     var imeVal = opts.ime ? escape_(opts.ime) : '';
     var back = document.createElement('div'); back.className = 'sc-modal-back';
     back.innerHTML = '<div class="sc-modal" role="dialog" aria-modal="true"><h4>Nov cenik (skupina)</h4>' +
-      '<label class="pris-lab">Ime cenika</label><input type="text" class="nc-ime sc-modal-input" placeholder="npr. Posteljnina" value="' + imeVal + '">' +
-      '<label class="pris-lab">Predpona ID <span class="u-sub">(2 črki, npr. PO)</span></label><input type="text" class="nc-pre sc-modal-input" maxlength="2" placeholder="PO" style="text-transform:uppercase;font-family:var(--mono)">' +
+      '<label class="pris-lab">Ime cenika</label><input type="text" class="nc-ime sc-modal-input" value="' + imeVal + '">' +
+      '<label class="pris-lab">Predpona ID</label><input type="text" class="nc-pre sc-modal-input" maxlength="2" placeholder="PO" style="text-transform:uppercase;font-family:var(--mono)">' +
       '<div class="sc-modal-acts"><button type="button" class="sc-modal-btn ghost" data-no>Prekliči</button><button type="button" class="sc-modal-btn primary" data-yes>Ustvari</button></div></div>';
     document.body.appendChild(back); requestAnimationFrame(function () { back.classList.add('show'); });
     function zapri() { back.classList.remove('show'); setTimeout(function () { if (back.parentNode) back.parentNode.removeChild(back); }, 180); }
@@ -2614,7 +2609,7 @@
   }
   function artNovCenik() { novCenikModal({}); }
   async function artPreimenujSkupino(pre) {
-    var novo = await vnesiModal({ naslov: 'Ime skupine ' + pre, sporocilo: 'Prijazno ime skupine (pusti prazno za privzeto »Skupina ' + pre + '«).', privzeto: SKUPINE_IME[pre] || '', placeholder: 'npr. Posteljnina', potrdi: 'Shrani' });
+    var novo = await vnesiModal({ naslov: 'Ime skupine ' + pre, privzeto: SKUPINE_IME[pre] || '', placeholder: 'Skupina ' + pre, potrdi: 'Shrani' });
     if (novo === null) return;
     novo = novo.trim();
     var r = await sb.from('article_groups').upsert({ prefix: pre, name: novo || null, updated_at: new Date().toISOString() }, { onConflict: 'prefix' });
@@ -2645,7 +2640,6 @@
     var back = document.createElement('div'); back.className = 'sc-modal-back';
     var rows = seznam.map(function (o) { var checked = strankaSkupina(o.id) === pre; return '<label class="assign-chk"><input type="checkbox" data-org="' + o.id + '"' + (checked ? ' checked' : '') + '><span>' + escape_(o.name || '') + '</span></label>'; }).join('') || '<p class="u-sub">Ni strank.</p>';
     back.innerHTML = '<div class="sc-modal" role="dialog" aria-modal="true"><h4>Dodeli skupino ' + escape_(pre) + ' strankam</h4>' +
-      '<p class="u-sub" style="margin:-6px 0 12px">Odkljukane stranke dobijo te artikle — zamenja njihov cenik. Odkljukane, ki so bile v tej skupini, se izpraznijo.</p>' +
       '<div class="art-chk-list">' + rows + '</div>' +
       '<div class="sc-modal-acts"><button type="button" class="sc-modal-btn ghost" data-no>Prekliči</button><button type="button" class="sc-modal-btn primary" data-yes>Shrani</button></div></div>';
     document.body.appendChild(back); requestAnimationFrame(function () { back.classList.add('show'); });
@@ -3361,7 +3355,7 @@
       (rows || '<tr><td colspan="3" class="u-sub">Ni podatkov v izbranem obdobju.</td></tr>') + '</tbody>' +
       (rows ? '<tfoot><tr><td>Skupaj</td><td class="pris-ure">' + fmtKg(d.kgSkup) + '</td><td class="pris-ure uc-eur uc-eur-tot">' + eurCela(d.eurTot) + '</td></tr></tfoot>' : '') + '</table>';
     var ev = '<div class="pris-card"><div class="pris-h">' +
-      '<div><h3 class="sec-h">Evidenca kg</h3><p class="uc-obd-lbl">' + escape_(rangeLbl) + ' · obdobje izbereš na vrhu strani</p></div>' +
+      '<div><h3 class="sec-h">Evidenca kg</h3><p class="uc-obd-lbl">' + escape_(rangeLbl) + '</p></div>' +
       '<span class="pris-hbtns"><button type="button" class="cgrp-btn ghost uc-izvoz">Izvozi</button></span></div>' +
       tbl + '</div>';
 
@@ -3499,9 +3493,9 @@
     })();
     return _starP;
   }
-  const prazniListi = kdo => '<div class="rows"><div class="empty"><h3>Spremnih listov še ni</h3><p>' + (kdo === 'osebje' ? 'Spremni listi nastajajo na tablici v pralnici. Ko jih bomo prenesli v bazo,<br>se bodo izpisali tukaj.' : 'Ko bomo prevzeli in vrnili perilo, se bo vsak prevzem izpisal tukaj.') + '</p></div></div>';
+  const prazniListi = kdo => '<div class="rows"><div class="empty"><h3>Spremnih listov še ni</h3></div></div>';
   // Ločeno stanje za NAPAKO pri nalaganju (ne prikazuj kot »prazno«) — z gumbom za ponovni poskus.
-  const napakaListi = '<div class="rows"><div class="empty"><h3>Nalaganje ni uspelo</h3><p>Podatkov trenutno ni bilo mogoče naložiti.<br>Preveri povezavo in poskusi znova.</p><button type="button" class="btn ghost" data-act="liste-ponovi" style="margin-top:14px">Poskusi znova</button></div></div>';
+  const napakaListi = '<div class="rows"><div class="empty"><h3>Nalaganje ni uspelo</h3><button type="button" class="btn ghost" data-act="liste-ponovi" style="margin-top:14px">Poskusi znova</button></div></div>';
   document.addEventListener('click', async function (e) {
     var b = e.target && e.target.closest ? e.target.closest('[data-act="liste-ponovi"]') : null;
     if (!b) return;
@@ -4146,11 +4140,11 @@
     ARH_VIDNI = stran;   // »Izberi vse« = listi na tej strani
     if (ARH_IZB) { const _obst = new Set(LISTI.map(l => l.id)); ARH_IZB.forEach(id => { if (!_obst.has(id)) ARH_IZB.delete(id); }); }   // medtem izbrisani
     if (!vrstice.length && LISTI.length && !LISTI_NAPAKA && ARH_NEPOTRJENI && !q && !org && !_od && !_do) {
-      $('arhivList').innerHTML = '<div class="rows"><div class="empty"><h3>Vse je potrjeno</h3><p>Ni nepotrjenih spremnih listov.</p><button type="button" class="btn btn-narrow btn-alt" data-pocisti>Pokaži vse liste</button></div></div>';
+      $('arhivList').innerHTML = '<div class="rows"><div class="empty"><h3>Vse je potrjeno</h3><button type="button" class="btn btn-narrow btn-alt" data-pocisti>Pokaži vse liste</button></div></div>';
       $('arhivList').querySelector('[data-pocisti]').addEventListener('click', () => { ARH_NEPOTRJENI = false; risiArhiv(); });
     } else if (!vrstice.length && LISTI.length && !LISTI_NAPAKA) {
       // iskanje/filtri ne najdejo ničesar (prej: »Spremnih listov še ni« — zavajajoče)
-      $('arhivList').innerHTML = '<div class="rows"><div class="empty"><h3>Ni zadetkov</h3><p>Noben spremni list ne ustreza iskanju in izbranim filtrom.</p><button type="button" class="btn btn-narrow btn-alt" data-pocisti>Počisti filtre</button></div></div>';
+      $('arhivList').innerHTML = '<div class="rows"><div class="empty"><h3>Ni zadetkov</h3><button type="button" class="btn btn-narrow btn-alt" data-pocisti>Počisti filtre</button></div></div>';
       $('arhivList').querySelector('[data-pocisti]').addEventListener('click', () => {
         ['arhivIsci', 'arhivOd', 'arhivDo'].forEach(i => { const e = $(i); if (e) e.value = ''; });
         const o = $('arhivOrg'); if (o) { o.value = ''; o.dispatchEvent(new Event('change')); }
@@ -4342,9 +4336,9 @@
       .not('deleted_at', 'is', null).gte('deleted_at', mejnik).order('deleted_at', { ascending: false });
     var arr = (r && !r.error) ? (r.data || []) : [];
     var html = '<div class="cgrp-bar"><button type="button" class="cgrp-btn ghost" id="kosNazajArhiv">' + IKO_T_NAZAJ + 'Nazaj na arhiv</button></div>' +
-      '<h3 class="sec-h" style="margin:6px 0 10px">Nedavno brisani spremni listi <span class="u-sub">(obnovljivi 30 dni)</span></h3>';
+      '<h3 class="sec-h" style="margin:6px 0 10px">Nedavno brisani spremni listi</h3>';
     if (r && r.error) html += '<div class="msg bad show">Napaka: ' + escape_(r.error.message) + '</div>';
-    else if (!arr.length) html += '<div class="empty"><h3>Koš je prazen</h3><p>Zadnjih 30 dni ni brisanih spremnih listov.</p></div>';
+    else if (!arr.length) html += '<div class="empty"><h3>Koš je prazen</h3></div>';
     else html += '<div class="cenik">' + arr.map(function (l) {
       return '<div class="cenik-row"><div class="cenik-nm">' + escape_(l.number || '—') + ' · ' + escape_(ORGIME[l.org_id] || '—') + '</div>' +
         '<div class="cenik-meta">' + datum(l.doc_date) + ' · ' + stevilo(l.total_pieces || 0) + ' kos' + (l.weight_kg != null && l.weight_kg !== '' ? ' · ' + tezaFmt(l.weight_kg) : '') + ' · izbrisan ' + datumcas(l.deleted_at) + '</div>' +
@@ -4492,9 +4486,9 @@
   function opombeAppHtml(n) {
     n = n || {};
     var out = '';
-    if (n.opomba_stranka) out += '<div class="opomba-blok"><div class="opomba-h">Opomba za stranko (na natisu)</div>' +
+    if (n.opomba_stranka) out += '<div class="opomba-blok"><div class="opomba-h">Opomba na spremnem listu</div>' +
       '<div class="opomba-prikaz"><div class="opomba-besedilo" style="white-space:pre-wrap">' + escape_(n.opomba_stranka) + '</div></div></div>';
-    if (n.opomba_evidenca) out += '<div class="opomba-blok"><div class="opomba-h">Opomba za evidenco (interno — se ne natisne)</div>' +
+    if (n.opomba_evidenca) out += '<div class="opomba-blok"><div class="opomba-h">Interna opomba</div>' +
       '<div class="opomba-prikaz"><div class="opomba-besedilo" style="white-space:pre-wrap">' + escape_(n.opomba_evidenca) + '</div></div></div>';
     return out;
   }
@@ -4656,7 +4650,7 @@
 
     const vrata = document.createElement('div');
     vrata.className = 'ur-dv';
-    vrata.innerHTML = '<span class="ur-dv-txt">Najprej potrdi stranko, datum in številko lista — do takrat postavk ni mogoče vpisovati.</span>'
+    vrata.innerHTML = '<span class="ur-dv-txt">Potrdi</span>'
       + '<span class="ur-dv-polja"></span>';
     pBox.parentNode.insertBefore(vrata, pBox);
     const polja = vrata.querySelector('.ur-dv-polja');
@@ -4699,7 +4693,6 @@
         gumb.disabled = !el.value;
         gumb.innerHTML = '<span class="ur-dv-kljuk" aria-hidden="true">' + (k.ok ? IKO_KLJUKICA : '') + '</span>'
           + escape_(ime + ' ' + (el.value ? besedilo() : '—'));
-        gumb.title = k.ok ? 'potrjeno' : 'klikni za potrditev (ali popravi polje zgoraj)';
       };
       k.osvezi();
       el.classList.add('dv-treba');
@@ -4731,9 +4724,9 @@
         <label class="ur-f" hidden><span>Leto</span><input type="number" data-leto value="${st.leto}"></label>
         <label class="ur-f"><span>Datum</span><input type="date" data-datum value="${escape_(dnes)}"></label>
       </div>
-      <p class="nl-izdal">Izdal: <b>${escape_(n.issued_name || '—')}</b> <span>(izvirni, se ne spreminja)</span><input type="hidden" data-izdal value="${escape_(n.issued_name || '')}"></p>
+      <p class="nl-izdal">Izdal: <b>${escape_(n.issued_name || '—')}</b><input type="hidden" data-izdal value="${escape_(n.issued_name || '')}"></p>
       <div class="ur-f"><span>Vrsta prevoza</span>${segPrevoz(n.transport)}</div>
-      <p class="u-sub" style="margin:10px 0 4px">Postavke — izberi artikel (z ID) iz kataloga stranke</p>
+      <p class="u-sub" style="margin:10px 0 4px">Postavke</p>
       <div data-postavke></div>
       <button type="button" class="ur-add" data-dodaj>${IKO_T_PLUS}Dodaj postavko</button>
       <div class="u-acts nl-akc"><div class="nl-sum"><b data-sum-kos>0 kos</b> · <output class="ur-kg-auto" data-teza-auto>—</output></div><button type="button" class="ur-save" data-shrani>Shrani</button><button type="button" data-preklici>Prekliči</button></div>
@@ -5083,13 +5076,12 @@
       </div>
       <p class="nl-izdal">Izdal: <b>${escape_(JAZIME || '—')}</b><input type="hidden" data-izdal value="${escape_(JAZIME || '')}"></p>
       <div class="ur-f"><span>Vrsta prevoza</span>${segPrevoz('redni')}</div>
-      <p class="u-sub" style="margin:10px 0 4px">Postavke — artikli stranke so že na seznamu; vpiši samo količine (prazne se ne shranijo). Enter ali ↓ = naslednja vrstica.</p>
+      <p class="u-sub" style="margin:10px 0 4px">Postavke</p>
       <div data-postavke></div>
       <button type="button" class="ur-add" data-dodaj>${IKO_T_PLUS}Dodaj postavko (izven seznama)</button>
-      <p class="u-sub" style="margin:12px 0 4px">Opombi (neobvezno)</p>
       <div class="ur-opomba">
-        <label class="ur-f"><span>Za stranko — natisne se na spremni list</span><textarea class="ur-opomba-txt" data-opomba-stranka rows="2" maxlength="600" placeholder="Vidno stranki, natisne se …"></textarea></label>
-        <label class="ur-f"><span>Interno — samo osebje, se NE natisne</span><textarea class="ur-opomba-txt" data-opomba-interno rows="2" maxlength="600" placeholder="Vidno samo osebju …"></textarea></label>
+        <label class="ur-f"><span>Opomba na spremnem listu</span><textarea class="ur-opomba-txt" data-opomba-stranka rows="2" maxlength="600"></textarea></label>
+        <label class="ur-f"><span>Interna opomba</span><textarea class="ur-opomba-txt" data-opomba-interno rows="2" maxlength="600"></textarea></label>
       </div>
       <div class="u-acts nl-akc"><div class="nl-sum"><b data-sum-kos>0 kos</b> · <output class="ur-kg-auto" data-teza-auto>—</output></div><button type="button" class="ur-save" data-shrani>Ustvari</button><button type="button" data-preklici>Prekliči</button></div>
       <p class="u-sub ur-msg" data-msg></p></div>`;
@@ -5760,7 +5752,6 @@
     var iosDeli = !tiskNativni() && jeIosSam() && !!opt.pdf && !!navigator.share;
     var pdfDat = null, pdfNapaka = null;
     if (iosDeli) {
-      back.querySelector('.doc-acts').insertAdjacentHTML('beforebegin', '<p class="doc-namig">Odpre se meni Deli — izberi <b>Natisni</b> ali <b>Shrani v Datoteke</b>.</p>');
       back.querySelectorAll('[data-print],[data-pdf]').forEach(function (b) { b.disabled = true; b.classList.add('nalaga'); });
       pdfKotDatoteka(opt.pdf).then(function (f) { pdfDat = f; }, function (e) { pdfNapaka = e; })
         .then(function () { back.querySelectorAll('[data-print],[data-pdf]').forEach(function (b) { b.disabled = false; b.classList.remove('nalaga'); }); });
@@ -6188,8 +6179,8 @@
     const res = await nalozicenik(true);
     if (!res.ok) {
       CENIK = null;
-      box.innerHTML = '<div class="msg bad show">Tabele cenika (pricelist) še ni v bazi. Zaženi priloženo migracijo v Supabase → SQL Editor, nato klikni »Uvozi cenik iz PDF-ja«.</div>';
-      if ($('cenikPod')) $('cenikPod').textContent = 'Cenik še ni pripravljen';
+      box.innerHTML = '<div class="msg bad show">Tabele cenika ni v bazi.</div>';
+      if ($('cenikPod')) $('cenikPod').textContent = '';
       return;
     }
     await naloziClane(true);
@@ -6207,7 +6198,7 @@
     const box = $('cenikList'); if (!box) return;
     var _sy = window.scrollY;
     const q = (($('cenikIsci') && $('cenikIsci').value) || '').trim().toLowerCase();
-    if ($('cenikPod')) $('cenikPod').textContent = (CENIK && CENIK.length) ? (stevilo(CENIK.length) + ' artiklov · cene neto na kos') : 'Ustvarjaj cenik po strankah';
+    if ($('cenikPod')) $('cenikPod').textContent = (CENIK && CENIK.length) ? (stevilo(CENIK.length) + ' artiklov · cene neto na kos') : '';
     if (!CENIK) { box.innerHTML = '<div class="empty"><h3>Cenik ni na voljo</h3></div>'; return; }
     function matchesQ(x) { return !q || (x.naziv || '').toLowerCase().includes(q) || normId(x.koda).toLowerCase().includes(q) || String(x.sifra) === q; }
     // Skupni katalog: vsak izdelek je en zapis (pricelist); stranke so nanj POVEZANE prek članstev (articles).
@@ -6235,7 +6226,7 @@
     var scOpen = !!q || _cenikOpen['splosni'];
     var scRows = scItems.map(function (p) { return cenikVrsticaHtml(p, '', null); }).join('');
     var scAdd = OSEBJE ? ('<div class="art-add sc-add"><input type="text" class="sc-new" placeholder="Nov standardni artikel"><input type="text" class="sc-id-new" placeholder="ID" maxlength="5" value="' + escape_(nextSc()) + '"><button type="button" class="btn btn-narrow sc-add-btn">+ Dodaj</button></div>') : '';
-    var scBody = (scRows || '<p class="u-sub" style="padding:12px 16px 4px">Dodaj standardne artikle (ID SC001, SC002 …). Veljajo za vse stranke.</p>') + scAdd;
+    var scBody = (scRows || '<p class="u-sub" style="padding:12px 16px 4px">Ni artiklov.</p>') + scAdd;
     var scCard = OSEBJE ? ('<div class="cgrp splosni' + (scOpen ? ' open' : '') + '" data-key="splosni"><div class="cgrp-head-row"><button type="button" class="cgrp-h' + (scOpen ? ' open' : '') + '" data-cgrp="splosni"><span class="cgrp-name">Splošni cenik</span><span class="cgrp-count">' + stevilo(scItems.length) + ' art.</span><span class="cgrp-chev" aria-hidden="true">›</span></button></div><div class="cgrp-body' + (scOpen ? ' show' : '') + '">' + scBody + '</div></div>') : '';
     var scWrap = scCard ? ('<div class="sc-isolate">' + scCard + '</div>') : '';
     var stHead = (OSEBJE && arr.length) ? '<div class="cenik-sec-head">Ceniki po strankah</div>' : '';
@@ -6673,7 +6664,7 @@
   async function risiKos() {
     const box = $('cenikList'); if (!box) return;
     box.innerHTML = NALAGANJE;
-    if ($('cenikPod')) $('cenikPod').textContent = 'Nedavno brisani — obnovljivi 30 dni';
+    if ($('cenikPod')) $('cenikPod').textContent = 'Nedavno brisani';
     const mejnik = new Date(Date.now() - 30 * 864e5).toISOString();
     let orgsDel = [];
     { const ro = await sb.from('orgs').select('id,name,legal_name,deleted_at').not('deleted_at', 'is', null).gte('deleted_at', mejnik).order('deleted_at', { ascending: false }); if (!ro.error) orgsDel = ro.data || []; }
@@ -6689,7 +6680,7 @@
     }
     html += '<h3 class="sec-h" style="margin:6px 0 8px">Izbrisani artikli</h3>';
     if (ra.error) html += '<div class="msg bad show">Napaka: ' + escape_(ra.error.message) + '</div>';
-    else if (!arr.length) html += '<div class="empty"><h3>Ni brisanih artiklov</h3><p>Zadnjih 30 dni ni brisanih artiklov.</p></div>';
+    else if (!arr.length) html += '<div class="empty"><h3>Ni brisanih artiklov</h3></div>';
     else html += '<div class="cenik">' + arr.map(function (x) {
       return '<div class="cenik-row"><div class="cenik-nm">' + escape_(x.naziv) + '</div>' +
         '<div class="cenik-meta">' + (x.koda ? escape_(normId(x.koda)) + ' · ' : '') + 'izbrisan ' + datumcas(x.deleted_at) + '</div>' +
@@ -6747,7 +6738,7 @@
     var panel = sec.querySelector('.menu-order-panel');
     if (!panel) {
       panel = document.createElement('div'); panel.className = 'panel menu-order-panel';
-      panel.innerHTML = '<h3 class="sec-h">Vrstni red menija</h3><p class="u-sub" style="margin-bottom:14px">Povleci razdelke za razvrščanje v levem meniju.</p><ul class="menu-order-list"></ul><button type="button" class="btn btn-narrow ghost menu-order-reset" style="margin-top:12px">Ponastavi privzeti vrstni red</button>';
+      panel.innerHTML = '<h3 class="sec-h">Vrstni red menija</h3><ul class="menu-order-list"></ul><button type="button" class="btn btn-narrow ghost menu-order-reset" style="margin-top:12px">Ponastavi privzeti vrstni red</button>';
       sec.appendChild(panel);
       panel.querySelector('.menu-order-reset').addEventListener('click', function () {
         try { localStorage.removeItem('sc-menu-order'); } catch (e) {} shraniNastavitve();
@@ -6982,7 +6973,7 @@
     const skupajKg = ORGSEZNAM.reduce((s, o) => s + (kgm[o.id] || 0), 0);
     $('count').textContent = ORGSEZNAM.length + ' strank · ' + fmtKg(skupajKg) + ' opranega ta mesec';
     if (!list.length) {
-      $('content').innerHTML = '<div class="rows"><div class="empty"><h3>Nič se ne ujema</h3>' + '<p>Poskusite z drugim delom naziva.</p></div></div>';
+      $('content').innerHTML = '<div class="rows"><div class="empty"><h3>Nič se ne ujema</h3></div></div>';
       oknoPoIzrisu();
       return;
     }
@@ -7238,8 +7229,7 @@
       if (q) items = CENIK.filter(x => (x.naziv || '').toLowerCase().includes(q) || (x.koda || '').toLowerCase().includes(q) || String(x.sifra) === q);
       else items = imaLastne ? lastni : CENIK;
       items = items.slice(0, 60);
-      const hint = (!q && !imaLastne) ? '<p class="u-sub" style="padding:6px 4px">Ta stranka v ceniku še nima svojih artiklov — poveži cenik s stranko v razdelku Ceniki, ali išči po celotnem ceniku.</p>' : '';
-      listEl.innerHTML = hint + (items.length ? items.map(x => '<button type="button" class="art-pick-item' + (x.sifra === curS ? ' on' : '') + '" data-s="' + x.sifra + '"><span>' + escape_(x.naziv) + '</span><b>' + cenaFmt(x.cena1) + '</b></button>').join('') : '<p class="u-sub" style="padding:10px 4px">Ni zadetkov.</p>');
+      listEl.innerHTML = (items.length ? items.map(x => '<button type="button" class="art-pick-item' + (x.sifra === curS ? ' on' : '') + '" data-s="' + x.sifra + '"><span>' + escape_(x.naziv) + '</span><b>' + cenaFmt(x.cena1) + '</b></button>').join('') : '<p class="u-sub" style="padding:10px 4px">Ni zadetkov.</p>');
       listEl.querySelectorAll('.art-pick-item').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); izberi(parseInt(b.dataset.s, 10)); }));
     }
     async function izberi(sifra) {
@@ -7419,7 +7409,6 @@
         <label class="ur-f"><span>Davčna</span><input type="text" data-davcna></label>
       </div>
       <label class="ur-f"><span>Naslov</span><input type="text" data-naslov></label>
-      <p class="u-sub" style="margin:10px 0 0">Cenik dodeliš pozneje v razdelku »Cenik & artikli« → »Uredi stranke«.</p>
       <div class="u-acts" style="margin-top:14px"><button type="button" class="ur-save" data-shrani>Ustvari</button><button type="button" data-preklici>Prekliči</button></div>
       <p class="u-sub ur-msg" data-msg></p></div>`;
     box.querySelector('[data-preklici]').addEventListener('click', () => { box.innerHTML = ''; box.classList.remove('show'); });
@@ -7453,7 +7442,7 @@
   /* ══════════ KATALOG (stranka) ══════════ */
   async function risiKatalog() {
     if (!MOJEPODJETJE) {
-      $('katalogList').innerHTML = '<div class="rows"><div class="empty">' + '<h3>Tu še ni ničesar za prikaz</h3><p>Vaš račun ni povezan z nobenim podjetjem.<br>' + 'Javite se nam in vam ga uredimo.</p></div></div>';
+      $('katalogList').innerHTML = '<div class="rows"><div class="empty">' + '<h3>Račun ni povezan s podjetjem</h3></div></div>';
       return;
     }
     var kbox = $('katalogList');
@@ -7464,7 +7453,7 @@
     if (error) {
       if (!kbox.dataset.loaded) {
         $('katalogPod').textContent = '';
-        kbox.innerHTML = '<div class="rows"><div class="empty"><h3>Nalaganje ni uspelo</h3><p>Kataloga trenutno ni bilo mogoče naložiti.<br>Preveri povezavo in poskusi znova.</p><button type="button" class="btn ghost" data-act="katalog-ponovi" style="margin-top:14px">Poskusi znova</button></div></div>';
+        kbox.innerHTML = '<div class="rows"><div class="empty"><h3>Nalaganje ni uspelo</h3><button type="button" class="btn ghost" data-act="katalog-ponovi" style="margin-top:14px">Poskusi znova</button></div></div>';
         var _kp = kbox.querySelector('[data-act="katalog-ponovi"]');
         if (_kp) _kp.addEventListener('click', function () { risiKatalog(); });
       }
@@ -7700,7 +7689,7 @@
      Namestitveni paket leži poleg spletne različice, ne v kodi portala.
      Če ga še ni, to tu tudi piše — namesto strani 404. */
   // ?v= ob vsaki novi različici aplikacije (aplikacija/zgradi.py): brskalnik in predpomnilnik vzameta nov paket.
-  var APK_POT = 'tablica/Pralnica-sync.apk?v=11.2';
+  var APK_POT = 'tablica/Pralnica-sync.apk?v=11.3';
 
   function wirePwa(scope) {
     var pb = (scope || document).querySelector('#pwaInstall');
@@ -7721,7 +7710,6 @@
 
     var IKO_WEB = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M8.5 20.5h7M12 17v3.5"/></svg>';
     var IKO_DL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5v11"/><path d="m7.5 10 4.5 4.5 4.5-4.5"/><path d="M4.5 20.5h15"/></svg>';
-    var IKO_TEL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M10.5 18.5h3"/></svg>';
     var IKO_OUT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg>';
     function _progCard(ico, naslov, opis, akcija, id) {
       return '<div class="prog-card"' + (id ? ' id="' + id + '"' : '') + '>' +
@@ -7731,10 +7719,10 @@
     }
     var _odpri = '<a class="btn prog-act" href="mobile/" target="_blank" rel="noopener">' + IKO_OUT + 'Odpri</a>';
 
+    var apkVer = (/[?&]v=([^&]+)/.exec(APK_POT) || [])[1] || '';
     p.innerHTML = '<div class="prog-grid">' +
-      _progCard(IKO_WEB, 'Spletni pogled', 'Deluje v vsakem brskalniku, brez namestitve — telefon, tablica ali računalnik.', _odpri) +
-      _progCard(IKO_DL, 'Tablica (Android)', 'Namestitveni paket za vnos in tiskanje spremnih listov na tablici (različica 11.2). Namesti se čez obstoječo; le če je na tablici še različica 8 ali starejša, jo najprej odstrani — shranjeni listi ostanejo.', '<a class="btn prog-act apk-dl" href="' + escape_(url) + '" download>' + IKO_DL + 'Prenesi<span class="apk-mb"></span></a>', 'apkTablet') +
-      _progCard(IKO_TEL, 'Telefon', 'Odpre se v brskalniku; dodaj na začetni zaslon za občutek prave aplikacije.', _odpri) +
+      _progCard(IKO_WEB, 'Spletna aplikacija', '', _odpri) +
+      _progCard(IKO_DL, 'Tablica (Android)', apkVer ? 'Različica ' + escape_(apkVer) : '', '<a class="btn prog-act apk-dl" href="' + escape_(url) + '" download>' + IKO_DL + 'Prenesi<span class="apk-mb"></span></a>', 'apkTablet') +
       '</div>';
 
     // Gumb »Prenesi« je viden TAKOJ (skupaj z ostalimi); velikost (MB) se le pripiše, ko HEAD odgovori.
@@ -7839,7 +7827,7 @@
     }
     if (res.error) {
       box.innerHTML = '<div class="msg bad show">Napaka pri nalaganju: ' + escape_(res.error.message || String(res.error)) +
-        '<br><small>Če piše, da tabela ne obstaja, zaženi <b>19_dokumenti.sql</b>; za mape še <b>31_dokumenti_fs.sql</b>.</small></div>';
+        '</div>';
       return;
     }
     DOKUMENTI = (res.data || []).map(function (r) { if (r.mapa == null) r.mapa = ''; return r; });
@@ -7881,7 +7869,7 @@
     }
     var pod = $('dokPod'); if (pod) pod.textContent = (mape.length ? mape.length + ' map · ' : '') + datoteke.length + ' datotek';
     if (!mape.length && !datoteke.length) {
-      box.innerHTML = '<div class="empty"><h3>' + (q ? 'Ni zadetkov' : 'Prazna mapa') + '</h3>' + (q ? '' : '<p>Naloži datoteke (PDF, Word, Excel, slike) ali ustvari novo mapo.</p>') + '</div>';
+      box.innerHTML = '<div class="empty"><h3>' + (q ? 'Ni zadetkov' : 'Prazna mapa') + '</h3></div>';
       return;
     }
     var _more = (sme('dokumenti', 'w') || sme('dokumenti', 'x') || sme('dokumenti', 'd')) ? '<button type="button" class="dok-more" title="Možnosti" aria-label="Možnosti">' + _DOK_MORE + '</button>' : '';
@@ -7969,7 +7957,7 @@
   async function dokPreimenuj(r) {
     if (!sme('dokumenti', 'w')) { toast('Ni dovoljeno.'); return; }
     var staro = dokImeRow(r);
-    var novo = await vnesiModal({ naslov: r.je_mapa ? 'Preimenuj mapo' : 'Preimenuj datoteko', sporocilo: 'Novo ime:', privzeto: staro, potrdi: 'Shrani', preklici: 'Prekliči' });
+    var novo = await vnesiModal({ naslov: r.je_mapa ? 'Preimenuj mapo' : 'Preimenuj datoteko', privzeto: staro, potrdi: 'Shrani', preklici: 'Prekliči' });
     if (novo == null) return; novo = String(novo).trim().replace(/[\/\\]/g, ' ').trim();
     if (!novo || novo === staro) return;
     var dvojnik = (DOKUMENTI || []).some(function (x) { return x.id !== r.id && (x.mapa || '') === (r.mapa || '') && !!x.je_mapa === !!r.je_mapa && dokImeRow(x).toLowerCase() === novo.toLowerCase(); });
@@ -8093,9 +8081,9 @@
       .not('deleted_at', 'is', null).gte('deleted_at', mejnik).order('deleted_at', { ascending: false });
     var arr = (r && !r.error) ? (r.data || []) : [];
     var html = '<div class="cgrp-bar"><button type="button" class="cgrp-btn ghost" id="kosNazajDok">' + IKO_T_NAZAJ + 'Nazaj na dokumente</button></div>' +
-      '<h3 class="sec-h" style="margin:6px 0 10px">Nedavno brisano <span class="u-sub">(obnovljivo 30 dni)</span></h3>';
+      '<h3 class="sec-h" style="margin:6px 0 10px">Nedavno brisano</h3>';
     if (r && r.error) html += '<div class="msg bad show">Napaka: ' + escape_(r.error.message) + '</div>';
-    else if (!arr.length) html += '<div class="empty"><h3>Koš je prazen</h3><p>Zadnjih 30 dni ni brisanih dokumentov.</p></div>';
+    else if (!arr.length) html += '<div class="empty"><h3>Koš je prazen</h3></div>';
     else html += '<div class="cenik">' + arr.map(function (d) {
       var nm = d.ime || (d.storage_path ? String(d.storage_path).split('/').pop() : '—');
       return '<div class="cenik-row"><div class="cenik-nm">' + (d.je_mapa ? IKO_T_MAPA : '') + escape_(nm) + '</div>' +
@@ -8139,7 +8127,7 @@
   async function dokNovaMapa() {
     if (!sme('dokumenti', 'w')) { toast('Za to vlogo urejanje ni dovoljeno.'); return; }
     if (!_dokFsOk) { toast('Najprej zaženi 31_dokumenti_fs.sql v Supabase.'); return; }
-    var ime = await vnesiModal({ naslov: 'Nova mapa', sporocilo: 'Ime mape:', placeholder: 'npr. Računi 2026', potrdi: 'Ustvari', preklici: 'Prekliči' });
+    var ime = await vnesiModal({ naslov: 'Nova mapa', placeholder: 'Ime mape', potrdi: 'Ustvari', preklici: 'Prekliči' });
     if (ime == null) return; ime = String(ime).trim().replace(/[\/\\]/g, ' ').trim();
     if (!ime) return;
     var obst = (DOKUMENTI || []).some(function (x) { return x.je_mapa && (x.mapa || '') === _dokPot && dokImeRow(x).toLowerCase() === ime.toLowerCase(); });
@@ -8242,7 +8230,6 @@
     var back = document.createElement('div'); back.className = 'sc-modal-back sken-back';
     back.innerHTML = '<div class="sc-modal sken-modal" role="dialog" aria-modal="true">' +
       '<h4>Skeniraj račun</h4>' +
-      '<p class="u-sub" style="margin:0 0 12px">Slikaj račun s kamero ali naloži sliko iz datotek. Dodaš lahko več strani — shrani se kot en PDF.</p>' +
       '<div class="sken-strani" id="skenStrani"></div>' +
       '<div class="sken-add-row">' +
       '<button type="button" class="btn btn-narrow btn-alt sken-add" id="skenDodaj"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;vertical-align:-3px"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>Slikaj stran</button>' +
@@ -8573,7 +8560,7 @@
     }
     if (!ljudje) {   // vsi poskusi branja niso uspeli → napaka, ne prazno
       if (!$('usersList').dataset.loaded) {
-        $('usersList').innerHTML = '<div class="empty"><h3>Nalaganje ni uspelo</h3><p>Seznama uporabnikov trenutno ni bilo mogoče naložiti.<br>Preveri povezavo in poskusi znova.</p><button type="button" class="btn ghost" data-act="users-ponovi" style="margin-top:14px">Poskusi znova</button></div>';
+        $('usersList').innerHTML = '<div class="empty"><h3>Nalaganje ni uspelo</h3><button type="button" class="btn ghost" data-act="users-ponovi" style="margin-top:14px">Poskusi znova</button></div>';
         var _up = $('usersList').querySelector('[data-act="users-ponovi"]');
         if (_up) _up.addEventListener('click', function () { loadUsers(); });
       }
@@ -8625,10 +8612,10 @@
         </dl>
         <div class="u-acts">
         ${(jaz || lahkoUredi) ? `<button data-act="ime" data-id="${u.id}" data-ime="${escape_(u.full_name || '')}">Preimenuj</button>` : ''}
-        ${(jaz || lahkoUredi) ? `<button class="u-web${webOn ? ' on' : ''}" data-act="web" data-id="${u.id}" data-v="${webOn ? 0 : 1}" title="Dovoljenje za prijavo v aplikacijo / spletni pogled (izbira oseb)">${webOn ? 'Aplikacija: dovoljena' : 'Aplikacija: ne'}</button>` : ''}
+        ${(jaz || lahkoUredi) ? `<button class="u-web${webOn ? ' on' : ''}" data-act="web" data-id="${u.id}" data-v="${webOn ? 0 : 1}">${webOn ? 'Aplikacija: dovoljena' : 'Aplikacija: ne'}</button>` : ''}
         ${lahkoUredi ? `<button data-act="active" data-id="${u.id}" data-v="${u.active ? 0 : 1}">${u.active ? 'Izklopi' : 'Vklopi'}</button>` : ''}
         ${(jaz || lahkoUredi) ? `<button data-act="pw" data-id="${u.id}">Novo geslo</button>` : ''}
-        ${(jaz || lahkoUredi) ? `<button class="u-pin${pinSet ? ' on' : ''}" data-act="pin" data-id="${u.id}" data-ime="${escape_(u.full_name || '')}" title="${pinSet ? 'PIN je nastavljen — klikni za spremembo ali izbris' : '4-mestni PIN za prijavo v aplikaciji'}">${pinSet ? 'PIN nastavljen' : 'PIN za app'}</button>` : ''}
+        ${(jaz || lahkoUredi) ? `<button class="u-pin${pinSet ? ' on' : ''}" data-act="pin" data-id="${u.id}" data-ime="${escape_(u.full_name || '')}">${pinSet ? 'PIN nastavljen' : 'PIN za app'}</button>` : ''}
         ${(jeLastnik && !jaz) ? `<button class="danger" data-act="del" data-id="${u.id}" data-m="${escape_(u.email || '')}">Izbriši</button>` : ''}
         </div>
       </div></div>`;
@@ -8768,7 +8755,7 @@
     }
     if (act === 'pin') {
       const jeNastavljen = btn.classList.contains('on');
-      const novo = await vnesiModal({ naslov: jeNastavljen ? 'Spremeni PIN za aplikacijo' : 'Nastavi PIN za aplikacijo', sporocilo: (jeNastavljen ? 'Ta uporabnik ima PIN že nastavljen. ' : '') + 'Vpiši 4-mestno kodo, ki jo oseba vpiše ob prijavi v aplikacijo. Pusti prazno za odstranitev PIN-a.', placeholder: '4-mestni PIN', potrdi: 'Shrani' });
+      const novo = await vnesiModal({ naslov: jeNastavljen ? 'Spremeni PIN za aplikacijo' : 'Nastavi PIN za aplikacijo', placeholder: '4-mestni PIN', potrdi: 'Shrani' });
       btn.disabled = false;
       if (novo === null) return;
       const pin = String(novo || '').replace(/\D/g, '').slice(0, 4);
@@ -9094,12 +9081,9 @@
     if (!bioPodprt()) { panel.classList.add('hidden'); return; }
     panel.classList.remove('hidden');
     function prikazi(ima) {
-      var on = $('bioOn'), off = $('bioOff'), lead = $('bioLead');
+      var on = $('bioOn'), off = $('bioOff');
       if (on) on.classList.toggle('hidden', ima);
       if (off) off.classList.toggle('hidden', !ima);
-      if (lead) lead.textContent = ima
-        ? 'Prijava z biometrijo je vklopljena. Ob prijavi tapni svoj profil in potrdi s Face ID / prstnim odtisom.'
-        : 'Namesto gesla se lahko prijaviš s Face ID ali prstnim odtisom te naprave.';
     }
     prikazi(bioVklopljen(JAZ));                 // takoj (lokalni namig)
     var m = $('bioMsg'); if (m) { m.className = 'msg'; m.textContent = ''; }
@@ -9140,12 +9124,6 @@
     _ADMIN_OSNUTEK = o; return o;
   }
   var _adminVloga = 'osebje';
-  var ADMIN_OPISI = {
-    domov: 'Začetna nadzorna plošča.', statistika: 'Analitika — kilaža, učinkovitost, grafi.', arhiv: 'Arhiv spremnih listov.',
-    fakture: 'Osnove za račun (izvoz PDF/Excel).', artikli: 'Katalog artiklov in ceniki (za osebje).', stranke: 'Upravljanje strank in njihovih cenikov.',
-    prisotnost: 'Evidenca delovnega časa.', dokumenti: 'Datoteke in mape.', aplikacija: 'Namestitev aplikacij (Skener …).',
-    uporabniki: 'Upravljanje uporabnikov in vlog.', katalog: 'Cenik/katalog, ki ga vidi stranka za svoje podjetje.'
-  };
   var _PRAV_ADMIN = [['r', 'Branje'], ['w', 'Pisanje'], ['x', 'Izvajanje'], ['d', 'Prenos']];
   var _PRAV_DOK = [['r', 'Branje'], ['w', 'Nalaganje'], ['x', 'Brisanje'], ['d', 'Prenos']];
   function adminPanelHtml(o) {
@@ -9153,21 +9131,20 @@
     var jeSuper = (v === 'super');
     var h = '<div class="panel adm-role">' +
       '<div class="adm-role-h"><input type="text" class="adm-ime" value="' + escape_(o.imena[v]) + '" maxlength="40" aria-label="Ime vloge"><span class="adm-role-key">' + escape_(v) + '</span></div>' +
-      (jeSuper ? '<p class="u-sub" style="margin:0 0 10px">Super admin ima vedno vse pravice (jih ni mogoče omejiti).</p>' : '<p class="u-sub" style="margin:0 0 8px">Obkljukaj, kateri razdelki so vidni tej vlogi (stranski meni). Pri Dokumentih lahko ločeno določiš branje / nalaganje / brisanje / prenos.</p>') +
       '<div class="adm-list">';
     ADMIN_RAZDELKI.forEach(function (s) {
       if (s[0] === 'dokumenti') {
-        h += '<div class="adm-item adm-item-dok"><span class="adm-sec" title="' + escape_(ADMIN_OPISI.dokumenti) + '">Dokumenti</span><div class="adm-perms">' +
+        h += '<div class="adm-item adm-item-dok"><span class="adm-sec">Dokumenti</span><div class="adm-perms">' +
           _PRAV_DOK.map(function (p) { var on = o.perm[v].dokumenti[p[0]]; return '<label class="adm-pill' + (on ? ' on' : '') + (jeSuper ? ' dis' : '') + '"><input type="checkbox" data-s="dokumenti" data-p="' + p[0] + '"' + (on ? ' checked' : '') + (jeSuper ? ' disabled' : '') + '>' + p[1] + '</label>'; }).join('') +
           '</div></div>';
       } else if (s[0] === 'konzola') {
         // Konzola je na voljo SAMO lastniku — v seznamu je zaradi skladnosti s stranskim menijem,
         // a je ni mogoče dodeliti drugim vlogam.
-        h += '<div class="adm-item"><span class="adm-sec" title="Konzola je na voljo samo lastniku.">Konzola <span class="adm-only">samo lastnik</span></span>' +
+        h += '<div class="adm-item"><span class="adm-sec">Konzola <span class="adm-only">samo lastnik</span></span>' +
           '<label class="adm-chk"><input type="checkbox" disabled' + (jeSuper ? ' checked' : '') + '><span></span></label></div>';
       } else {
         var on = o.perm[v][s[0]].r;
-        h += '<div class="adm-item"><span class="adm-sec" title="' + escape_(ADMIN_OPISI[s[0]] || '') + '">' + escape_(s[1]) + '</span>' +
+        h += '<div class="adm-item"><span class="adm-sec">' + escape_(s[1]) + '</span>' +
           '<label class="adm-chk"><input type="checkbox" data-s="' + s[0] + '" data-p="r"' + (on ? ' checked' : '') + (jeSuper ? ' disabled' : '') + '><span></span></label></div>';
       }
     });
@@ -9206,7 +9183,7 @@
     var o = adminOsnutek();
     if (ADMIN_VLOGE.indexOf(_adminVloga) < 0) _adminVloga = 'osebje';
     var tabs = '<div class="pris-tabs adm-tabs" id="adminTabs">' + ADMIN_VLOGE.map(function (v) { return '<button type="button" class="pris-tab' + (v === _adminVloga ? ' on' : '') + '" data-av="' + v + '">' + escape_(o.imena[v]) + '</button>'; }).join('') + '</div>';
-    body.innerHTML = '<p class="u-sub" style="margin:8px 0 14px">Izberi vlogo, nato uredi njene pravice. Kljukica = razdelek je viden v stranskem meniju. (Tvoje pravice ostanejo vedno polne.)</p>' +
+    body.innerHTML = '' +
       '<div class="adm-top">' + tabs + '</div><div id="adminRolePanel"></div>' +
       '<div class="adm-save"><div class="msg" id="adminMsg" role="status"></div><button type="button" class="btn btn-narrow" id="adminShrani">Shrani pravice</button></div>';
     body.querySelectorAll('#adminTabs [data-av]').forEach(function (b) { b.addEventListener('click', function () { _adminVloga = b.dataset.av; body.querySelectorAll('#adminTabs [data-av]').forEach(function (x) { x.classList.toggle('on', x === b); }); adminRisiPanel(); }); });
@@ -9216,13 +9193,13 @@
   var _adminLogFilter = '';
   async function adminRisiDnevnik() {
     var body = $('adminBody'); if (!body) return;
-    body.innerHTML = '<p class="u-sub" style="margin:8px 0 12px">Spremembe zadnjih 6 mesecev (artikli, stranke, arhiv, opombe, vloge). Zapisuje se samo, kaj je bilo spremenjeno — ne vsak klik.</p>' +
+    body.innerHTML = '' +
       '<div class="filtri" style="margin:0 0 12px"><input type="search" id="adminLogIsci" placeholder="Iskanje po dnevniku …" aria-label="Iskanje"></div><div id="adminLogList">' + NALAGANJE + '</div>';
     var il = $('adminLogIsci'); if (il) { il.value = _adminLogFilter; il.addEventListener('input', function () { _adminLogFilter = this.value; adminRisiLogSez(); }); }
     var meja = new Date(Date.now() - 183 * 24 * 3600 * 1000).toISOString();
     var r;
     try { r = await sb.from('audit_log').select('kdo_ime,razdelek,akcija,opis,created_at').gte('created_at', meja).order('created_at', { ascending: false }).limit(1000); } catch (e) { r = { error: e }; }
-    if (r && r.error) { $('adminLogList').innerHTML = '<div class="msg bad show">Napaka pri nalaganju. Če piše, da tabela ne obstaja, zaženi <b>33_audit_log.sql</b> v Supabase.</div>'; return; }
+    if (r && r.error) { $('adminLogList').innerHTML = '<div class="msg bad show">Napaka pri nalaganju.</div>'; return; }
     _ADMIN_LOG = r.data || [];
     adminRisiLogSez();
   }
@@ -9231,7 +9208,7 @@
     var host = $('adminLogList'); if (!host) return;
     var q = (_adminLogFilter || '').trim().toLowerCase();
     var vrstice = (_ADMIN_LOG || []).filter(function (l) { return !q || ((l.kdo_ime || '') + ' ' + (l.razdelek || '') + ' ' + (l.akcija || '') + ' ' + (l.opis || '')).toLowerCase().indexOf(q) >= 0; });
-    if (!vrstice.length) { host.innerHTML = '<div class="empty"><h3>' + (q ? 'Ni zadetkov' : 'Ni zapisov') + '</h3>' + (q ? '' : '<p>Spremembe se bodo tu izpisovale, ko jih uporabniki naredijo.</p>') + '</div>'; return; }
+    if (!vrstice.length) { host.innerHTML = '<div class="empty"><h3>' + (q ? 'Ni zadetkov' : 'Ni zapisov') + '</h3></div>'; return; }
     host.innerHTML = '<div class="log-list">' + vrstice.map(function (l) {
       var dt = new Date(l.created_at).toLocaleString('sl-SI', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
       return '<div class="log-row"><span class="log-raz">' + escape_(l.razdelek || '—') + '</span>' +

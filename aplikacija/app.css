@@ -128,9 +128,8 @@ html.sc-booting,html.sc-booting body{overflow:hidden!important;}
 .auth-slot{align-self:start;width:100%;display:flex;flex-direction:column;align-items:center;}
 .auth-box{width:100%;max-width:370px;}
 .pp-h{margin-bottom:22px;font-size:1.02rem;font-weight:500;letter-spacing:.01em;color:var(--mid);text-align:center;}
-.eyebrow{font-size:.7rem;letter-spacing:.16em;text-transform:uppercase;color:var(--green-t);font-weight:500;margin-bottom:10px;}
-.auth-box h1{font-size:1.9rem;font-weight:450;letter-spacing:-.028em;line-height:1.1;margin-bottom:6px;}
-.sub{color:var(--mid);font-size:.9rem;margin-bottom:26px;}
+.eyebrow{font-size:.75rem;color:var(--green-t);font-weight:500;margin-bottom:10px;}
+.auth-box h1{font-size:1.9rem;font-weight:450;letter-spacing:-.028em;line-height:1.1;margin-bottom:28px;}
 /* noga v toku (ne pritrjena na dno), da je nikoli ne prekrije obrazec ali »Nazaj na profile« */
 .auth-foot{display:block;flex:none;text-align:center;font-size:.82rem;color:var(--mid);text-decoration:none;padding:8px 0 max(18px,env(safe-area-inset-bottom));}
 .auth-foot b{color:var(--wm-green);font-weight:600;}
@@ -160,8 +159,7 @@ html.sc-booting,html.sc-booting body{overflow:hidden!important;}
 .pin{position:fixed;top:0;right:0;bottom:0;left:0;z-index:60;display:flex;align-items:center;justify-content:center;background:var(--bg);padding:24px;animation:fadeIn .22s ease both;}
 .pin-in{width:100%;max-width:320px;text-align:center;}
 .pin-in .pp-av{margin:0 auto 12px;}
-.pin-ime{font-size:1.1rem;font-weight:600;margin-bottom:4px;}
-.pin-sub{font-size:.88rem;color:var(--mid);margin-bottom:22px;}
+.pin-ime{font-size:1.1rem;font-weight:600;margin-bottom:22px;}
 .pin-dots{display:flex;justify-content:center;gap:14px;margin-bottom:26px;}
 .pin-dot{width:14px;height:14px;border-radius:50%;border:1.5px solid var(--mid);transition:background .12s,border-color .12s;}
 .pin-dot.on{background:var(--ink);border-color:var(--ink);}
@@ -354,8 +352,6 @@ html.sc-notrans,html.sc-notrans *,html.sc-notrans *::before,html.sc-notrans *::a
 .rv-tot{display:flex;justify-content:space-between;gap:12px;padding:10px 0 0;}
 .rv-tot span{color:var(--mid);}
 .rv-tot b{font-variant-numeric:tabular-nums;}
-.rv-ok{display:flex;align-items:center;gap:10px;margin-top:14px;padding:12px 14px;border-radius:12px;background:var(--green-m);font-weight:500;}
-.rv-ok .dot{width:10px;height:10px;}
 
 /* predogled A4 */
 .pred-okvir{position:relative;width:100%;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#e9edeb;}
@@ -478,7 +474,6 @@ html.sc-sam.sc-pod-uro[data-theme="light"] #sc-vrh{background:#0a0a0a;}
   .auth-hero{align-self:center;padding-bottom:clamp(14px,2.4vh,22px);max-height:160px;overflow:hidden;transition:max-height .25s ease,opacity .18s ease,padding .25s ease;}
   .auth-slot{flex:none;width:100%;}
   .auth-tipk .auth-hero{max-height:0;opacity:0;padding-bottom:0;}
-  .auth-tipk .auth-box .sub{display:none;}
   .auth-foot{margin-top:auto;}
 }
 
@@ -488,8 +483,6 @@ html.sc-tema-prehod,html.sc-tema-prehod *,html.sc-tema-prehod *::before,html.sc-
 
 /* tisk: ikona tiskalnika v gumbih; na iPhonu (začetni zaslon) namig za meni Deli */
 .btn .ik-tisk{width:19px;height:19px;flex:none;}
-.tisk-namig{flex:1 1 100%;margin:2px 2px 0;font-size:.8125rem;color:var(--mid);line-height:1.4;}
-.tisk-namig[hidden]{display:none;}
 
 /* številčnica: Potrdi (shrani in zapri) + Naprej (shrani in naslednji artikel) */
 .kp-akc{grid-column:1/-1;display:flex;gap:10px;margin-top:4px;}
