@@ -1,5 +1,21 @@
 [
  {
+  "v": "4.63",
+  "d": "2026-10-21",
+  "c": "2026-10-21T17:00:00+02:00",
+  "t": [
+   "Varnost: koda (PIN) za aplikacijo je zgoščena in je ne more prebrati nihče, niti osebje; na tablici po 5 napačnih kodah čakanje (vsakič dlje), po 10 je treba vpisati geslo.",
+   "Varnost: žetona kartice zaposlenega iz portala ni več mogoče prebrati — vidno je le, ali je kartica dodeljena.",
+   "Varnost: potrjen spremni list zaklene baza sama — spremeni ga lahko le osebje v portalu (zapisek, interna opomba, koš in odpotrditev ostanejo dovoljeni).",
+   "Številke spremnih listov: tablica ob shranjevanju številko rezervira, zato je portal ali druga naprava ne more dobiti hkrati. Če je številka medtem zasedena, portal predlaga naslednjo prosto.",
+   "Nova stranka se odpre v oknu in takoj dobi cenik (splošni, skupina ali brez).",
+   "Nov uporabnik dobi vlogo že ob ustvarjanju (osebje, admin, zaposleni ali stranka).",
+   "Bližnjice na računalniku: »/« ali Ctrl/⌘+K za iskanje, »N« za glavno dejanje strani (nov spremni list, nova stranka …).",
+   "iPhone: datum v izbirniku dneva poravnan; vrstice v Evidenci na telefonu brez praznega prostora.",
+   "Aplikacija 11.7: povečava predogleda (dotik ali lupa), spodnja vrstica z vsoto in gumbom »Zaključi«, po shranjevanju »Natisni« z izbiro »samo en izvod« (kot drugje)."
+  ]
+ },
+ {
   "v": "4.62",
   "d": "2026-10-21",
   "c": "2026-10-21T16:10:00+02:00",

@@ -139,6 +139,8 @@
       </section>
     </div>
   </main>
+  <!-- telefon/ozek zaslon: vsota in »Zaključi« vedno pri roki, ko je povzetek izven zaslona -->
+  <div class="vnos-dno" id="vnosDno" hidden><span class="vd-kos" id="vdKos"></span><button class="btn" type="button" id="vdBtn">Zaključi</button></div>
 </div>
 
 <!-- ══════════ OKNA ══════════ -->
@@ -167,16 +169,17 @@
     <button class="btn" type="button" id="rvPotrdi">Potrdi in shrani</button>
   </div>
   <div class="okno-akc" id="rvTiskAkc" hidden>
+    <label class="kopije"><input type="checkbox" id="rvEna" /> Natisni samo en izvod</label>
     <button class="btn ghost" type="button" id="rvPreskoci">Brez tiskanja</button>
-    <button class="btn ghost" type="button" id="rvTisk1" aria-label="Natisni 1 izvod" title="Natisni 1 izvod"><svg class="ik-tisk" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 8.5V3.5h10v5"/><rect x="3.5" y="8.5" width="17" height="8.5" rx="2"/><path d="M7 14h10v6.5H7z"/><path d="M17 11.5h.01"/></svg>1×</button>
-    <button class="btn" type="button" id="rvTisk2" aria-label="Natisni 2 izvoda" title="Natisni 2 izvoda"><svg class="ik-tisk" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 8.5V3.5h10v5"/><rect x="3.5" y="8.5" width="17" height="8.5" rx="2"/><path d="M7 14h10v6.5H7z"/><path d="M17 11.5h.01"/></svg>2×</button>
+    <button class="btn" type="button" id="rvTisk"><svg class="ik-tisk" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 8.5V3.5h10v5"/><rect x="3.5" y="8.5" width="17" height="8.5" rx="2"/><path d="M7 14h10v6.5H7z"/><path d="M17 11.5h.01"/></svg>Natisni</button>
   </div>
 </div></div>
 
 <div class="okno-back" id="oknoPredogled"><div class="okno siroko" role="dialog" aria-modal="true" aria-labelledby="pdT">
   <div class="okno-h"><span class="t" id="pdT">Spremni list</span><button class="okno-x" type="button" data-zapri aria-label="Zapri">×</button></div>
   <div class="okno-b">
-    <div class="pred-okvir" id="pdOkvir"></div>
+    <div class="pred-ovoj"><div class="pred-okvir" id="pdOkvir"></div>
+      <button class="pred-zoom" type="button" id="pdZoom" aria-label="Povečaj predogled"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/><path class="zp-plus" d="M11 8v6"/><path d="M8 11h6"/></svg></button></div>
     <label class="kopije"><input type="checkbox" id="pdEna" /> Natisni samo en izvod</label>
   </div>
   <div class="okno-akc"><button class="btn" type="button" id="pdTisk"><svg class="ik-tisk" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 8.5V3.5h10v5"/><rect x="3.5" y="8.5" width="17" height="8.5" rx="2"/><path d="M7 14h10v6.5H7z"/><path d="M17 11.5h.01"/></svg>Natisni</button></div>
@@ -186,9 +189,9 @@
   <div class="okno-h"><span class="t" id="opT">Opombe</span><button class="okno-x" type="button" data-zapri aria-label="Zapri">×</button></div>
   <div class="okno-b">
     <div class="field"><label class="f-lbl" for="opStranka">Opomba na spremnem listu</label>
-      <textarea id="opStranka" rows="3" placeholder="Npr. Perilo prevzeto mokro."></textarea></div>
+      <textarea id="opStranka" rows="3"></textarea></div>
     <div class="field" style="margin-bottom:0"><label class="f-lbl" for="opEvidenca">Interna opomba</label>
-      <textarea id="opEvidenca" rows="3" placeholder="Npr. interna opomba za osebje."></textarea></div>
+      <textarea id="opEvidenca" rows="3"></textarea></div>
   </div>
   <div class="okno-akc"><button class="btn" type="button" id="opShrani">Shrani opombe</button></div>
 </div></div>

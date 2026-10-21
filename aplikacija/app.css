@@ -492,3 +492,26 @@ html.sc-sam.sc-pod-uro[data-theme="light"] #sc-vrh{background:#0a0a0a;}
 /* izbira stranke: »Nedavno« (zadnje 4) nad vsemi strankami */
 .st-h{grid-column:1/-1;margin:6px 2px 0;font-size:.8125rem;font-weight:600;color:var(--mid);}
 .st-h:first-child{margin-top:0;}
+
+/* ── predogled: povečava (dotik ali lupa), premik s prstom ── */
+.pred-ovoj{position:relative;}
+.pred-pokrov{position:absolute;top:0;left:0;cursor:zoom-in;}
+.pred-okvir.povecano{overflow:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;}
+.pred-okvir.povecano .pred-pokrov{cursor:zoom-out;}
+.pred-zoom{position:absolute;top:10px;right:10px;z-index:2;width:40px;height:40px;display:flex;align-items:center;justify-content:center;
+  border:1px solid var(--line);border-radius:50%;background:var(--surface);color:var(--ink);cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.12);}
+.pred-zoom svg{width:20px;height:20px;}
+.pred-zoom.on .zp-plus{display:none;}
+/* ── tisk po shranjevanju: »Natisni samo en izvod« levo, gumba desno (kot v predogledu) ── */
+#rvTiskAkc{align-items:center;}
+#rvTiskAkc .kopije{margin:0 auto 0 0;flex:1 1 100%;}
+#rvTiskAkc .btn{flex:1 1 0;}
+/* ── PIN: med čakanjem po napačnih kodah tipkovnica ne sprejema vnosa ── */
+.pin-pad.zaklenjeno{opacity:.35;pointer-events:none;}
+/* ── spodnja vrstica pri vnosu (ozek zaslon): vsota levo, Zaključi desno ── */
+.vnos-dno{position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;align-items:center;gap:14px;
+  padding:10px 16px calc(10px + env(safe-area-inset-bottom));background:var(--surface);border-top:1px solid var(--line);box-shadow:0 -6px 18px rgba(0,0,0,.06);}
+.vnos-dno[hidden]{display:none;}
+.vnos-dno .vd-kos{flex:1 1 auto;font-weight:700;font-variant-numeric:tabular-nums;font-size:1.05rem;}
+.vnos-dno .btn{width:auto;flex:none;padding-left:26px;padding-right:26px;}
+body.z-dnom .stage{padding-bottom:calc(76px + env(safe-area-inset-bottom));}

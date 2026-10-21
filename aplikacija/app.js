@@ -175,7 +175,16 @@ async function loadSettings(){
   if(!settings.portalKey) settings.portalKey = PRIVZETI_KLJUC;
 }
 async function saveSettings(){ await dbWrite(SETTINGS_KEY, JSON.stringify(settings)); }
-async function loadProfs(){ savedProfs = await dbJson(PROFILES_KEY, []); if(!Array.isArray(savedProfs)) savedProfs = []; }
+async function loadProfs(){
+  savedProfs = await dbJson(PROFILES_KEY, []); if(!Array.isArray(savedProfs)) savedProfs = [];
+  /* starejše različice so kodo hranile kot besedilo — zgosti jo na mestu (67_app_pini.sql), besedilo izbriši */
+  var spremenjeno = false;
+  for(var i = 0; i < savedProfs.length; i++){
+    var p = savedProfs[i];
+    if(p && p.pin){ try{ if(!p.pinHash) p.pinHash = await pinZgosti(String(p.pin)); delete p.pin; spremenjeno = true; }catch(e){} }
+  }
+  if(spremenjeno) await saveProfs();
+}
 async function saveProfs(){ try{ await dbWrite(PROFILES_KEY, JSON.stringify(savedProfs)); }catch(e){} }
 
 /* ══════════ POMOŽNE ══════════ */
@@ -300,7 +309,7 @@ function odpriOkno(id, izvor){
   if(star) oknoPospravi(star);
   var panel = back.querySelector(".okno"), notr = panel.querySelector(".okno-notr");
   var o = _okna[id] = { id: id, back: back, panel: panel, notr: notr, najdi: najdiIzvor(izvor), kartica: jeViden(izvor) ? izvor : null };
-  odprtaOkna = odprtaOkna.filter(function(x){ return x !== id; }); odprtaOkna.push(id);
+  odprtaOkna = odprtaOkna.filter(function(x){ return x !== id; }); odprtaOkna.push(id); vnosDnoKmalu();
   zgodOdpri();
   oknoZaklep();
   back.classList.add("odprto");
@@ -325,7 +334,7 @@ function odpriOkno(id, izvor){
 function zapriOkno(id){
   var o = _okna[id]; if(!o || o.zapiram) return;
   o.zapiram = true;
-  odprtaOkna = odprtaOkna.filter(function(x){ return x !== id; });
+  odprtaOkna = odprtaOkna.filter(function(x){ return x !== id; }); vnosDnoKmalu();
   zgodZapri();
   var f = obZaprtju[id]; if(f){ try{ f(); }catch(e){} }
   var konec = function(){ oknoPospravi(o); };
@@ -535,8 +544,28 @@ function renderSummary(){
   }; });
   $("opombeBtn").onclick = function(){ openNote(this); };
   $("zakljuciBtn").onclick = function(){ if(editingId) saveEdit(); else openReview(this); };
+  $("vdKos").textContent = stevilo(draftPieces()) + " kos";
+  $("vdBtn").textContent = e ? "Shrani spremembe" : "Zaključi";
+  $("vdBtn").disabled = !(draftPieces() > 0);
+  vnosDno();
   shraniOsnutek();
 }
+/* spodnja vrstica (vsota + Zaključi): vidna le, ko je pravi gumb v povzetku izven zaslona in je kaj vpisanega */
+function vnosDno(){
+  var dno = $("vnosDno"), b = $("zakljuciBtn"); if(!dno) return;
+  var vidna = false;
+  if(b && !$("app").hidden && draftPieces() > 0 && !odprtaOkna.length){
+    var r = b.getBoundingClientRect();
+    vidna = !(r.top < window.innerHeight - 8 && r.bottom > 0);
+  }
+  if(dno.hidden === vidna) dno.hidden = !vidna;
+  document.body.classList.toggle("z-dnom", vidna);
+}
+var _vdRaf = 0;
+function vnosDnoKmalu(){ if(_vdRaf) return; _vdRaf = requestAnimationFrame(function(){ _vdRaf = 0; vnosDno(); }); }
+window.addEventListener("scroll", vnosDnoKmalu, { passive: true });
+window.addEventListener("resize", vnosDnoKmalu);
+$("vdBtn").onclick = function(){ var b = $("zakljuciBtn"); if(b && !b.disabled) b.click(); };
 function updatePanelMode(){
   var e = editingId ? entryById(editingId) : null;
   $("vnosNaslov").textContent = e ? ("Urejanje " + e.stevilka) : "Nov spremni list";
@@ -707,12 +736,14 @@ async function confirmReview(){
     /* številka: naprava pozna le liste, ki jih je že prenesla. Če zadnji poteg iz portala ni
        čisto svež, vpraša portal za prosto številko (največ 2,5 s) — prej je naprava z zastarelim
        seznamom izdala že zasedeno številko (opazilo se je šele po tisku). */
+    /* s povezavo številko REZERVIRA baza (70_rezervacija_stevilk.sql): do prenosa lista je ne dobi nihče drug
+       (portal, druga naprava); »najmanj« = naslednja, ki jo pozna naprava (njeni še neposlani listi) */
     var st = nextNumber();
-    if(portalAuth && navigator.onLine !== false && Date.now() - zadnjiPoteg > 15000 && syncZadnje !== "ni povezave"){
+    if(portalAuth && navigator.onLine !== false && syncZadnje !== "ni povezave"){
       try{
         var leto = new Date().getFullYear();
-        var izP = await zRokom(api("rpc/app_prosta_stevilka", { method: "POST", body: { p_leto: leto } }), 2500);
-        if(typeof izP === "number" && izP > (parseInt(st, 10) || 0)) st = String(izP).padStart(4, "0") + "/" + leto;
+        var izP = await zRokom(api("rpc/app_rezerviraj_stevilko", { method: "POST", body: { p_leto: leto, p_najmanj: parseInt(st, 10) || null } }), 2500);
+        if(typeof izP === "number" && izP >= (parseInt(st, 10) || 0)) st = String(izP).padStart(4, "0") + "/" + leto;
       }catch(_){}
     }
     var ent = novZapis(c, lines, st);
@@ -724,7 +755,7 @@ async function confirmReview(){
     if(razkril) saveClients();
     praznOsnutek(); osveziVse();
     $("rvT").textContent = "Spremni list " + ent.stevilka + " je shranjen";
-    $("rvPotrdiAkc").hidden = true; $("rvTiskAkc").hidden = false;
+    $("rvPotrdiAkc").hidden = true; $("rvTiskAkc").hidden = false; $("rvEna").checked = false;
     savePdfs(ent);
     pripraviPdf(ent);   /* iPhone (začetni zaslon): PDF za meni Deli, preden tapneš »Natisni« */
     try{ syncPush(true); }catch(e){}
@@ -734,8 +765,8 @@ $("rvPotrdi").onclick = confirmReview;
 $("rvUredi").onclick = function(){ zapriOkno("oknoPregled"); };
 $("rvZavrzi").onclick = function(){ zapriOkno("oknoPregled"); askConfirm("Zavrzi vnos?", "Vpisani kosi za to stranko bodo izbrisani.", "Zavrzi", function(){ praznOsnutek(); osveziVse(); }, true); };
 $("rvPreskoci").onclick = function(){ zapriOkno("oknoPregled"); };
-$("rvTisk1").onclick = function(){ var e = entryById(reviewEntryId); zapriOkno("oknoPregled"); if(e) printLists([e], true); };
-$("rvTisk2").onclick = function(){ var e = entryById(reviewEntryId); zapriOkno("oknoPregled"); if(e) printLists([e], false); };
+/* tisk po shranjevanju: isti izbor kopij kot v predogledu in v portalu (»Natisni samo en izvod«) */
+$("rvTisk").onclick = function(){ var e = entryById(reviewEntryId); var ena = $("rvEna").checked; zapriOkno("oknoPregled"); if(e) printLists([e], ena); };
 
 /* urejanje */
 function startEdit(id){
@@ -816,8 +847,8 @@ async function novaStevilka(id, izvor){
   var e = entryById(id); if(!e) return;
   var leto = String(e.stevilka).split("/")[1] || String(new Date().getFullYear());
   var izPortala = 0;
-  try{ var r = await api("rpc/app_prosta_stevilka", { method: "POST", body: { p_leto: parseInt(leto, 10) } }); if(typeof r === "number") izPortala = r; }catch(_){}
   var maxLok = 0; entries.forEach(function(x){ var p = String(x.stevilka || "").split("/"); if(p[1] === leto){ var s = parseInt(p[0], 10); if(!isNaN(s) && s > maxLok) maxLok = s; } });
+  try{ var r = await api("rpc/app_rezerviraj_stevilko", { method: "POST", body: { p_leto: parseInt(leto, 10), p_najmanj: maxLok + 1 } }); if(typeof r === "number") izPortala = r; }catch(_){}
   var nova = String(Math.max(izPortala, maxLok + 1)).padStart(4, "0") + "/" + leto;
   askConfirm("Nova številka lista?", "Številka " + e.stevilka + " je v portalu že zasedena z drugim spremnim listom. Ta list dobi številko " + nova + ". Na natisnjenem listu popravi številko ali ga natisni znova.", "Spremeni v " + nova, async function(){
     await renameEntryNumber(id, nova);
@@ -981,11 +1012,18 @@ function openSheet(id, izvor){
   ifr.setAttribute("title", "Predogled spremnega lista"); ifr.setAttribute("tabindex", "-1");
   ifr.style.width = "794px"; ifr.style.height = "1123px";
   okvir.appendChild(ifr);
+  /* povečava: dotik predogleda ali gumb z lupo — list v dvojni velikosti (največ naravni), premik s prstom */
+  var pokrov = document.createElement("div"); pokrov.className = "pred-pokrov"; okvir.appendChild(pokrov);
+  _pdZoom = false; $("pdZoom").classList.remove("on"); okvir.classList.remove("povecano"); okvir.scrollTop = 0; okvir.scrollLeft = 0;
   function prilagodi(){
     var w = okvir.clientWidth || 360, s = w / 794;
+    if(_pdZoom) s = Math.min(1, Math.max(s * 2, s));
     var h = 1123; try{ h = Math.max(1123, ifr.contentDocument.documentElement.scrollHeight); }catch(_){}
-    ifr.style.height = h + "px"; ifr.style.transform = "scale(" + s + ")"; okvir.style.height = Math.ceil(h * s) + "px";
+    ifr.style.height = h + "px"; ifr.style.transform = "scale(" + s + ")";
+    pokrov.style.width = Math.ceil(794 * s) + "px"; pokrov.style.height = Math.ceil(h * s) + "px";
+    okvir.style.height = (_pdZoom ? Math.min(Math.ceil(h * s), Math.round(window.innerHeight * 0.62)) : Math.ceil(h * s)) + "px";
   }
+  pokrov.onclick = function(){ pdPovecaj(!_pdZoom); };
   ifr.onload = function(){ prilagodi(); try{ ifr.contentDocument.fonts.ready.then(prilagodi); }catch(_){} };
   ifr.srcdoc = dokZaListe([e], 1);
   pripraviPdf(e);
@@ -993,7 +1031,16 @@ function openSheet(id, izvor){
   requestAnimationFrame(prilagodi);
   _pdPrilagodi = prilagodi;
 }
-var _pdPrilagodi = null;
+var _pdPrilagodi = null, _pdZoom = false;
+function pdPovecaj(da){
+  var okvir = $("pdOkvir"); if(!okvir.firstChild || !_pdPrilagodi) return;
+  var rx = okvir.scrollLeft / Math.max(1, okvir.scrollWidth), ry = okvir.scrollTop / Math.max(1, okvir.scrollHeight);
+  _pdZoom = !!da; okvir.classList.toggle("povecano", _pdZoom); $("pdZoom").classList.toggle("on", _pdZoom);
+  $("pdZoom").setAttribute("aria-label", _pdZoom ? "Pomanjšaj predogled" : "Povečaj predogled");
+  _pdPrilagodi();
+  if(_pdZoom){ okvir.scrollLeft = rx * okvir.scrollWidth; okvir.scrollTop = ry * okvir.scrollHeight; } else { okvir.scrollTop = 0; okvir.scrollLeft = 0; }
+}
+$("pdZoom").onclick = function(){ pdPovecaj(!_pdZoom); };
 window.addEventListener("resize", function(){ if(_pdPrilagodi && _okna.oknoPredogled && $("pdOkvir").firstChild) _pdPrilagodi(); });   // obračanje telefona
 obZaprtju.oknoPredogled = function(){ _pdPrilagodi = null; setTimeout(function(){ if(!_okna.oknoPredogled) $("pdOkvir").innerHTML = ""; }, 900); };
 $("pdTisk").onclick = function(){ var e = entryById(previewId); if(e) printLists([e], $("pdEna").checked); };
@@ -1328,15 +1375,17 @@ async function portalProfil(){
     var neveljavna = ur.status === 401 || ur.status === 403;
     var er = new Error(neveljavna ? "seja ni veljavna" : "ni povezave"); er.neveljavna = neveljavna; throw er;
   }
-  var out = { id: u.id, email: u.email || "", full_name: "", avatar_url: "", app_pin: "", dostop: false };
+  var out = { id: u.id, email: u.email || "", full_name: "", avatar_url: "", pinHash: "", dostop: false };
   try{
-    var rows = await api("profiles?select=full_name,avatar_url,app_pin,is_staff,super_admin,is_device,web_dostop&id=eq." + u.id);
+    var rows = await api("profiles?select=full_name,avatar_url,is_staff,super_admin,is_device,web_dostop&id=eq." + u.id);
     var r = Array.isArray(rows) ? rows[0] : null;
     if(r){
       out.full_name = r.full_name || ""; out.avatar_url = r.avatar_url || "";
-      out.app_pin = (r.app_pin != null && r.app_pin !== "") ? String(r.app_pin) : "";
       out.dostop = r.web_dostop !== false && !!(r.is_staff || r.super_admin || r.is_device);
     }
+    /* koda je zgoščena in jo bere le njen lastnik (67_app_pini.sql) */
+    var pk = await api("app_pini?select=hash&user_id=eq." + u.id);
+    out.pinHash = (Array.isArray(pk) && pk[0] && pk[0].hash) ? String(pk[0].hash) : "";
   }catch(e){
     /* napaka strežnika ni »ni dostopa« (prej je osebje ob motnji videlo »račun nima dostopa«,
        tablica pa si je to zapomnila in uporabnika odjavila) */
@@ -1365,7 +1414,7 @@ async function acctSubmit(){
     if(!prof.dostop){ portalAuth = null; await savePortalAuth(); er.textContent = NI_DOSTOPA; return; }
     var email = prof.email || em;
     savedProfs = savedProfs.filter(function(p){ return p.email !== email; });
-    var np = { email: email, name: prof.full_name || email, uid: prof.id || null, refresh_token: portalAuth.refresh_token, avatar: prof.avatar_url || "", pin: prof.app_pin || "", dostop: true };
+    var np = { email: email, name: prof.full_name || email, uid: prof.id || null, refresh_token: portalAuth.refresh_token, avatar: prof.avatar_url || "", pinHash: prof.pinHash || "", dostop: true };
     savedProfs.push(np); await saveProfs();
     $("acctPass").value = "";
     vstopi(np);   // pravkar se je prijavil z geslom → brez kode
@@ -1388,7 +1437,7 @@ async function izberiProfil(em, tile){
     portalAuth = { refresh_token: zetonProfila(p), access_token: null, expires_at: 0, email: p.email };
     await portalRefresh();
     var prof = await portalProfil();
-    p.name = prof.full_name || p.name; p.avatar = prof.avatar_url || ""; p.pin = prof.app_pin || ""; p.dostop = prof.dostop; p.uid = prof.id || p.uid;
+    p.name = prof.full_name || p.name; p.avatar = prof.avatar_url || ""; p.pinHash = prof.pinHash || ""; delete p.pin; p.dostop = prof.dostop; p.uid = prof.id || p.uid;
     await saveProfs();
     if(!prof.dostop){ portalAuth = null; await savePortalAuth(); prikaziProfile(NI_DOSTOPA); return false; }
     naprej(p); return true;
@@ -1404,7 +1453,10 @@ async function izberiProfil(em, tile){
     return false;
   }finally{ $("ppGrid").style.pointerEvents = ""; if(nm && nm.isConnected) nm.textContent = p.name || p.email; }
 }
-function vstopiSPinom(p){ if(p.pin) zahtevajPin(p, function(){ vstopi(p); }); else vstopi(p); }
+function vstopiSPinom(p){
+  if(p.pinNapake >= PIN_DO_GESLA){ showAccountLogin("Preveč napačnih kod — vpiši geslo za " + (p.name || p.email) + ".", p.email); return; }
+  if(p.pinHash) zahtevajPin(p, function(){ vstopi(p); }); else vstopi(p);
+}
 function vstopi(p, brezSinh){
   aktivniEmail = p.email;
   if(settings.zadnjiProfil !== p.email){ settings.zadnjiProfil = p.email; saveSettings(); }
@@ -1425,7 +1477,7 @@ function vstopiZadnjega(p){
     try{
       await portalRefresh();
       var prof = await portalProfil();
-      p.name = prof.full_name || p.name; p.avatar = prof.avatar_url || ""; p.pin = prof.app_pin || ""; p.dostop = prof.dostop; p.uid = prof.id || p.uid;
+      p.name = prof.full_name || p.name; p.avatar = prof.avatar_url || ""; p.pinHash = prof.pinHash || ""; delete p.pin; p.dostop = prof.dostop; p.uid = prof.id || p.uid;
       await saveProfs();
       if(!prof.dostop){ portalAuth = null; await savePortalAuth(); prikaziProfile(NI_DOSTOPA); return; }
       if(session && aktivniEmail === p.email){ session.user = p.name; $("tbIme").textContent = p.name; }
@@ -1439,10 +1491,30 @@ function vstopiZadnjega(p){
   })();
   return true;
 }
-/* PIN (nastavi se v portalu, Uporabniki) — samo ob menjavi uporabnika na tablici */
+/* PIN (nastavi se v portalu, Uporabniki) — samo ob menjavi uporabnika na tablici.
+   Koda je zgoščena (PBKDF2-HMAC-SHA256, 67_app_pini.sql) in se preveri na napravi, tudi brez povezave.
+   Napačne kode: po 5 zaporednih čakanje 30 s (vsakič dvakrat dlje, največ 15 min), po 10 je treba vpisati geslo. */
+var PIN_DO_ZAKLEPA = 5, PIN_DO_GESLA = 10;
+function b64Bajti(s){ var b = atob(s), a = new Uint8Array(b.length); for(var i = 0; i < b.length; i++) a[i] = b.charCodeAt(i); return a; }
+function bajtiB64(buf){ var a = new Uint8Array(buf), s = ""; for(var i = 0; i < a.length; i++) s += String.fromCharCode(a[i]); return btoa(s); }
+async function pbkdf2(pin, sol, it){
+  var k = await crypto.subtle.importKey("raw", new TextEncoder().encode(String(pin)), "PBKDF2", false, ["deriveBits"]);
+  return crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt: sol, iterations: it }, k, 256);
+}
+async function pinZgosti(pin){
+  var sol = crypto.getRandomValues(new Uint8Array(16)), it = 100000;
+  return "pbkdf2$sha256$" + it + "$" + bajtiB64(sol) + "$" + bajtiB64(await pbkdf2(pin, sol, it));
+}
+async function pinPravilen(p, pin){
+  var d = String(p.pinHash || "").split("$");
+  if(d.length !== 5 || d[0] !== "pbkdf2" || d[1] !== "sha256") return false;
+  var izr = bajtiB64(await pbkdf2(pin, b64Bajti(d[3]), parseInt(d[2], 10)));
+  var r = izr.length ^ d[4].length; for(var i = 0; i < izr.length && i < d[4].length; i++) r |= izr.charCodeAt(i) ^ d[4].charCodeAt(i);
+  return r === 0;
+}
 function zahtevajPin(p, onOk){
   var star = $("pinOkno"); if(star) star.remove();
-  var buf = "";
+  var buf = "", preverjam = false, ura = null;
   var el = document.createElement("div"); el.className = "pin"; el.id = "pinOkno";
   el.innerHTML = '<div class="pin-in">' + avatarHtml(p) + '<div class="pin-ime">' + esc(p.name || p.email) + '</div>' +
     '<div class="pin-dots">' + [0, 1, 2, 3].map(function(){ return '<span class="pin-dot"></span>'; }).join("") + '</div>' +
@@ -1451,19 +1523,50 @@ function zahtevajPin(p, onOk){
     '<div class="pin-err" id="pinErr"></div><button type="button" class="link-btn" id="pinPreklic">Prekliči</button></div>';
   document.body.appendChild(el);
   function upd(){ el.querySelectorAll(".pin-dot").forEach(function(d, i){ d.classList.toggle("on", i < buf.length); }); }
+  function zaklenjenDo(){ return Number(p.pinZaklep) || 0; }
+  function prikaziZaklep(){
+    clearInterval(ura);
+    var tipkovnica = el.querySelector(".pin-pad");
+    function tik(){
+      var ost = Math.ceil((zaklenjenDo() - Date.now()) / 1000);
+      if(ost <= 0){ clearInterval(ura); ura = null; tipkovnica.classList.remove("zaklenjeno"); $("pinErr").textContent = ""; return; }
+      tipkovnica.classList.add("zaklenjeno");
+      $("pinErr").textContent = "Poskusi znova čez " + (ost >= 60 ? Math.ceil(ost / 60) + " min" : ost + " s");
+    }
+    tik(); ura = setInterval(tik, 1000);
+  }
+  function konec(){ clearInterval(ura); document.removeEventListener("keydown", tipke); el.remove(); }
+  async function preveri(){
+    preverjam = true;
+    var ok = false; try{ ok = await pinPravilen(p, buf); }catch(e){}
+    preverjam = false;
+    if(ok){ p.pinNapake = 0; p.pinZaklep = 0; saveProfs(); konec(); onOk(); return; }
+    p.pinNapake = (Number(p.pinNapake) || 0) + 1; buf = ""; upd();
+    el.classList.remove("tresi"); void el.offsetWidth; el.classList.add("tresi");
+    if(p.pinNapake >= PIN_DO_GESLA){
+      await saveProfs(); konec();
+      showAccountLogin("Preveč napačnih kod — vpiši geslo za " + (p.name || p.email) + ".", p.email);
+      return;
+    }
+    if(p.pinNapake >= PIN_DO_ZAKLEPA){
+      p.pinZaklep = Date.now() + Math.min(15 * 60, 30 * Math.pow(2, p.pinNapake - PIN_DO_ZAKLEPA)) * 1000;
+      await saveProfs(); prikaziZaklep(); return;
+    }
+    await saveProfs();
+    $("pinErr").textContent = "Napačna koda";
+  }
   function tipka(k){
+    if(preverjam || zaklenjenDo() > Date.now()) return;
     if(k === "del") buf = buf.slice(0, -1);
     else if(buf.length < 4){ buf += k; $("pinErr").textContent = ""; }
     upd();
-    if(buf.length === 4) setTimeout(function(){
-      if(buf === String(p.pin)){ document.removeEventListener("keydown", tipke); el.remove(); onOk(); }
-      else{ buf = ""; upd(); $("pinErr").textContent = "Napačna koda"; el.classList.remove("tresi"); void el.offsetWidth; el.classList.add("tresi"); }
-    }, 120);
+    if(buf.length === 4) setTimeout(preveri, 120);
   }
   function tipke(ev){ if(/^[0-9]$/.test(ev.key)) tipka(ev.key); else if(ev.key === "Backspace") tipka("del"); }
   document.addEventListener("keydown", tipke);
   el.querySelectorAll("[data-k]").forEach(function(b){ b.onclick = function(){ tipka(b.getAttribute("data-k")); }; });
-  $("pinPreklic").onclick = function(){ document.removeEventListener("keydown", tipke); el.remove(); prikaziProfile(); };
+  $("pinPreklic").onclick = function(){ konec(); prikaziProfile(); };
+  if(zaklenjenDo() > Date.now()) prikaziZaklep();
 }
 function doLogin(u){
   session = { user: u.name, start: new Date().toISOString() };

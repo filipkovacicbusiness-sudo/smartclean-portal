@@ -2760,7 +2760,7 @@ html[data-theme="dark"] .doc-stage{background:color-mix(in srgb,var(--ink) 6%,va
   .v5 #sec-prisotnost .pris-tbl-dan tr{display:grid;grid-template-columns:minmax(0,1fr) auto auto;grid-template-areas:"ime ure dod" "par par par";align-items:center;column-gap:10px;
     padding:12px 0;border-bottom:1px solid var(--line);}
   .v5 #sec-prisotnost .pris-tbl-dan tbody tr:last-child{border-bottom:0;}
-  .v5 #sec-prisotnost .pris-tbl-dan td{display:block;width:auto!important;padding:0;border:0;}
+  .v5 #sec-prisotnost .pris-tbl-dan td{display:block;width:auto!important;height:auto;padding:0;border:0;}   /* stalna višina 46 px je za tabelo, ne za vrstico na telefonu */
   .v5 #sec-prisotnost .pris-tbl-dan td:nth-child(1){grid-area:ime;font-weight:500;}
   .v5 #sec-prisotnost .pris-tbl-dan td.pris-pairs{grid-area:par;padding-top:6px;}
   .v5 #sec-prisotnost .pris-tbl-dan td.pris-ure{grid-area:ure;text-align:right;}
@@ -2796,8 +2796,8 @@ html[data-theme="dark"] .doc-stage{background:color-mix(in srgb,var(--ink) 6%,va
 .v5 .u-acts:not(.a-ikone):not(.nl-akc) button{width:auto;height:auto;min-height:var(--ctrl-h-md);padding:6px 16px;line-height:1.2;
   border:1px solid var(--line);border-radius:var(--r-full);background:transparent;color:var(--ink);font-size:var(--fs-14);font-weight:500;}
 .v5 .u-acts:not(.a-ikone) button:hover:not(:disabled){background:var(--green-m);border-color:var(--line-strong);color:var(--ink);}
-.v5 .u-acts .ur-save{order:2;background:var(--ink);border-color:var(--ink);color:var(--bg);}
-.v5 .u-acts .ur-save:hover:not(:disabled){background:var(--ink);border-color:var(--ink);color:var(--bg);opacity:.86;}
+.v5 .u-acts .ur-save,.v5 .u-acts:not(.a-ikone):not(.nl-akc) button.ur-save{order:2;background:var(--ink);border-color:var(--ink);color:var(--bg);}
+.v5 .u-acts .ur-save:hover:not(:disabled),.v5 .u-acts:not(.a-ikone):not(.nl-akc) button.ur-save:hover:not(:disabled){background:var(--ink);border-color:var(--ink);color:var(--bg);opacity:.86;}
 .v5 .u-acts button.danger{order:-1;margin-right:auto;color:var(--st-bad-ink);border-color:color-mix(in srgb,var(--st-bad) 45%,var(--line));}
 .v5 .u-acts button.danger:hover:not(:disabled){background:color-mix(in srgb,var(--st-bad) 8%,transparent);color:var(--st-bad-ink);}
 .v5 .u-acts.nl-akc .ur-save{order:3;}
@@ -2851,8 +2851,11 @@ html.sc-sam{--vrh:max(12px,env(safe-area-inset-top));}
 .v5 .okno .u-acts.nl-akc{padding-bottom:12px;margin-bottom:0;}
 /* iOS: izbirnik datuma ima lastno najmanjšo širino in sega čez stolpec; brez sistemskega videza upošteva širino polja */
 @supports (-webkit-touch-callout:none){
-  .v5 input[type=date],.v5 input[type=time]{-webkit-appearance:none;appearance:none;min-width:0;max-width:100%;display:block;}
-  .v5 input[type=date]::-webkit-date-and-time-value,.v5 input[type=time]::-webkit-date-and-time-value{text-align:left;margin:0;}
+  /* flex: brez sistemskega videza iOS vrednost sicer postavi na vrh polja */
+  .v5 input[type=date],.v5 input[type=time],.v5 input[type=month]{-webkit-appearance:none;appearance:none;min-width:0;max-width:100%;display:flex;align-items:center;}
+  .v5 input[type=date]::-webkit-date-and-time-value,.v5 input[type=time]::-webkit-date-and-time-value,.v5 input[type=month]::-webkit-date-and-time-value{text-align:left;margin:0;}
+  /* izbirnik dneva v Evidenci (med puščicama): datum na sredini */
+  .v5 #prisDatum::-webkit-date-and-time-value{text-align:center;}
 }
 
 /* ── Domov (4.62): pozdrav z datumom, tiho stanje, ena kartica tekočega meseca, zadnjih pet listov ── */
@@ -2890,3 +2893,4 @@ html.sc-sam{--vrh:max(12px,env(safe-area-inset-top));}
   .v5 #sec-domov .stat:nth-child(even),.v5 #sec-domov .stat + .stat:nth-child(even){padding-left:0;}
   .v5 #sec-domov .stat-num{font-size:1.6rem;}
 }
+.v5 .nu-modal [hidden]{display:none!important;}

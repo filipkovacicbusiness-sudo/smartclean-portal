@@ -338,7 +338,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.62 · BETA';
+  var APP_VERZIJA = '4.63 · BETA';
   var NALAGANJE = '<div class="sc-load" aria-hidden="true"><span class="sc-load-line"></span></div>';
   // Stale-while-revalidate: ob ponovnem obisku razdelka NE pobriši vsebine v nalagalnik —
   // obdrži prejšnjo (takojšen prikaz) in jo osveži v ozadju. Trak le ob prvem nalaganju.
@@ -822,6 +822,25 @@
     tabs.innerHTML = clani.map(function (x) { return '<button type="button" role="tab" class="pris-tab' + (x[0] === kam ? ' on' : '') + '" aria-selected="' + (x[0] === kam) + '" data-sk="' + x[0] + '">' + escape_(x[1]) + '</button>'; }).join('');
   }
   document.addEventListener('click', function (e) { var b = e.target.closest && e.target.closest('.sk-tabs [data-sk]'); if (b && !b.classList.contains('on')) pojdi(b.dataset.sk); });
+  // Bližnjice (računalnik): »/« ali Ctrl/⌘+K = iskanje na strani, »N« = glavno dejanje strani (Nov …).
+  // Ne med tipkanjem v polje in ne, ko je odprto okno ali potrditev.
+  document.addEventListener('keydown', function (e) {
+    if (e.defaultPrevented || e.isComposing) return;
+    var t = e.target, tip = t && (t.tagName || '');
+    if (tip === 'INPUT' || tip === 'TEXTAREA' || tip === 'SELECT' || (t && t.isContentEditable)) return;
+    if (_okno || document.querySelector('.sc-modal-back, .dok-lb')) return;
+    var sec = document.querySelector('.sec:not(.hidden)'); if (!sec) return;
+    var iskanje = (e.key === '/' && !e.ctrlKey && !e.metaKey && !e.altKey) || ((e.ctrlKey || e.metaKey) && !e.altKey && (e.key === 'k' || e.key === 'K'));
+    if (iskanje) {
+      var f = sec.querySelector('.filtri input[type="search"], .filtri input[type="text"], .head input[type="search"]');
+      if (f && f.offsetParent) { e.preventDefault(); f.focus(); f.select && f.select(); }
+      return;
+    }
+    if ((e.key === 'n' || e.key === 'N') && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey) {
+      var g = sec.querySelector('.head-akc .btn.tb-prim');
+      if (g && g.offsetParent && !g.disabled) { e.preventDefault(); g.click(); }
+    }
+  });
   function menijVrstni() { try { return JSON.parse(localStorage.getItem('sc-menu-order') || '[]') || []; } catch (e) { return []; } }
   // Uporabi shranjeni vrstni red; nove razdelke pripni na konec, neveljavne izpusti.
   // »Pregled« (domov) je vedno prvi in ga ni mogoče premakniti.
@@ -1516,9 +1535,10 @@
     prisRender();
   }
   async function naloziPrisotnost() {
-    var e = await sb.from('employees').select('id,org_id,ime,card_token,active,created_at,profile_id').order('ime');
+    // žeton kartice ni berljiv (68_kartice_skrite.sql) — portal vidi le, ali je kartica dodeljena
+    var e = await sb.from('employees').select('id,org_id,ime,ima_kartico,active,created_at,profile_id').order('ime');
     if (e.error && /profile_id|column|schema/i.test(e.error.message || '')) {
-      e = await sb.from('employees').select('id,org_id,ime,card_token,active,created_at').order('ime');   // pred migracijo 48
+      e = await sb.from('employees').select('id,org_id,ime,ima_kartico,active,created_at').order('ime');   // pred migracijo 48
     }
     ZAPOSLENI = e.error ? [] : (e.data || []);
     // Uporabniki portala (e-pošta + geslo) — za povezavo z zaposlenim. Napake tiho spregledamo.
@@ -1875,18 +1895,18 @@
       var intervali = dan.pari.map(function (p) { return uraMin(p[0].ts) + '–' + uraMin(p[1].ts); });
       if (dan.odprt) intervali.push(uraMin(dan.odprt.ts) + ' → v teku');
       var znak = !z.active ? '<span class="pris-badge out">neaktiven</span>' : (brezOdhoda ? '<span class="pris-badge warn">' + odhodTxt + '</span>' : notri ? '<span class="pris-badge in">prisoten · od ' + uraMin(l.ts) + '</span>' : '<span class="pris-badge out">odsoten</span>');
-      var pod = upoLbl || (z.card_token ? 'kartica dodeljena' : 'brez kartice');
+      var pod = upoLbl || (z.ima_kartico ? 'kartica dodeljena' : 'brez kartice');
       var det = '<dl class="pris-zap-dl">' +
           (notri ? '<dt>Stanje</dt><dd>' + znak + ' <button type="button" class="cgrp-btn ghost pris-odjavi" data-odjavi="' + z.id + '">' + (brezOdhoda ? 'Vpiši odhod' : 'Odjavi') + '</button></dd>' : '') +
           '<dt>Danes</dt><dd>' + (intervali.length ? escape_(intervali.join(', ')) + (danUre ? ' · <b>' + danUre + '</b>' : '') : '<span class="u-sub">ni vpisov</span>') + '</dd>' +
           '<dt>Uporabnik</dt><dd>' + (upoLbl ? escape_(upoLbl) : '<span class="u-sub">ni povezan</span>') + '</dd>' +
-          '<dt>Kartica</dt><dd>' + (z.card_token ? 'dodeljena' : '<span class="u-sub">ni dodeljena</span>') + '</dd>' +
+          '<dt>Kartica</dt><dd>' + (z.ima_kartico ? 'dodeljena' : '<span class="u-sub">ni dodeljena</span>') + '</dd>' +
         '</dl>' +
         '<div class="pris-emp-act pris-zap-act">' +
           '<button type="button" class="cgrp-btn" data-vnosur="' + z.id + '">Vnesi ure</button>' +
           '<button type="button" class="cgrp-btn ghost" data-uredi="' + z.id + '">Uredi</button>' +
           '<button type="button" class="cgrp-btn ghost' + (z.profile_id ? ' on' : '') + '" data-uporabnik="' + z.id + '">' + (z.profile_id ? 'Uporabnik povezan' : 'Poveži uporabnika') + '</button>' +
-          '<button type="button" class="cgrp-btn ghost" data-karta="' + z.id + '">' + (z.card_token ? 'Nova kartica' : 'Dodeli kartico') + '</button>' +
+          '<button type="button" class="cgrp-btn ghost" data-karta="' + z.id + '">' + (z.ima_kartico ? 'Nova kartica' : 'Dodeli kartico') + '</button>' +
           '<button type="button" class="cgrp-btn ghost" data-aktiv="' + z.id + '" data-v="' + (z.active ? '0' : '1') + '">' + (z.active ? 'Deaktiviraj' : 'Aktiviraj') + '</button>' +
           '<button type="button" class="cgrp-btn danger" data-izbrisi="' + z.id + '">Izbriši</button>' +
         '</div>';
@@ -2098,8 +2118,8 @@
   async function prisDodeliKarto(empId) {
     var z = (ZAPOSLENI || []).find(function (x) { return x.id === empId; }); if (!z) return;
     var zeton = await vnesiModal({
-      naslov: (z.card_token ? 'Nova kartica — ' + z.ime : 'Dodeli kartico — ' + z.ime),
-      sporocilo: z.card_token ? 'Stara kartica bo prenehala delovati.' : '',
+      naslov: (z.ima_kartico ? 'Nova kartica — ' + z.ime : 'Dodeli kartico — ' + z.ime),
+      sporocilo: z.ima_kartico ? 'Stara kartica bo prenehala delovati.' : '',
       placeholder: 'Žeton kartice',
       potrdi: 'Shrani'
     });
@@ -2112,12 +2132,12 @@
       return;
     }
     // Enoličnost lovi tudi baza, a tu povemo IME, kar je edino uporabno.
-    var drugi = (ZAPOSLENI || []).find(function (x) { return x.id !== empId && x.card_token === zeton; });
-    if (drugi) { toast('Ta žeton že ima ' + drugi.ime + '.'); return; }
+    var drugi = null; try { drugi = (await sb.rpc('kartica_lastnik', { p_zeton: zeton, p_razen: empId })).data; } catch (e) {}
+    if (drugi) { toast('Ta žeton že ima ' + drugi + '.'); return; }
 
     // .select() je bistven: brez njega update ne pove, ali je zadel kakšno vrstico.
     // Pravila RLS vrstice SKRIJEJO — zavrnjen popravek ne javi napake, le popravi nič.
-    var up = await sb.from('employees').update({ card_token: zeton }).eq('id', empId).select('id,ime,card_token');
+    var up = await sb.from('employees').update({ card_token: zeton }).eq('id', empId).select('id,ime,ima_kartico');
     if (up.error) {
       var m = up.error.message || '';
       toast(m.indexOf('duplicate') >= 0 || m.indexOf('employees_card_token_key') >= 0
@@ -2125,7 +2145,7 @@
       return;
     }
     if (!up.data || !up.data.length) { toast('Ni bilo mogoče shraniti — za to vlogo ni pravic.'); return; }
-    z.card_token = up.data[0].card_token;
+    z.ima_kartico = up.data[0].ima_kartico;
     toast('Kartica shranjena za ' + up.data[0].ime + '.');
     await risiPrisotnost();
   }
@@ -5111,6 +5131,8 @@
     const letos = new Date().getFullYear();
     let maxSeq = 0;
     LISTI.forEach(l => { const d = String(l.number || '').split('/'); if ((parseInt(d[1], 10) || 0) === letos) { const sq = parseInt(d[0], 10) || 0; if (sq > maxSeq) maxSeq = sq; } });
+    // baza pozna tudi številke, ki jih je tablica rezervirala in še ne poslala (70_rezervacija_stevilk.sql)
+    try { const r = await Promise.race([sb.rpc('app_prosta_stevilka', { p_leto: letos }), new Promise(ok => setTimeout(() => ok(null), 2500))]); if (r && typeof r.data === 'number' && r.data - 1 > maxSeq) maxSeq = r.data - 1; } catch (e) {}
     const dnes = danes10();   // lokalni datum (UTC bi med 0. in 2. uro vrnil včeraj)
     const orgOpt = '<option value="">— izberi stranko —</option>' + ORGSEZNAM.map(o => `<option value="${o.id}">${escape_(o.name)}</option>`).join('');
     box.innerHTML = `<div class="ur-form">
@@ -5244,6 +5266,15 @@
         opomba_evidenca: opInterno || null,
         legacy_id: 'portal-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7)
       } });
+      if (error && (error.code === '23505' || /doc_seq_aktivni|duplicate key/i.test(error.message || ''))) {
+        // številko je medtem dobil drug list (tablica, drug zavihek) — predlagaj naslednjo prosto, potrdi jo uporabnik
+        let prosta = seq + 1;
+        try { const r = await sb.rpc('app_prosta_stevilka', { p_leto: leto }); if (r && typeof r.data === 'number') prosta = Math.max(prosta, r.data); } catch (e) {}
+        const vSeq = q('[data-seq]'); vSeq.value = prosta;
+        vSeq.dispatchEvent(new Event('input', { bubbles: true })); vSeq.dispatchEvent(new Event('change', { bubbles: true }));
+        msg.textContent = 'Številka ' + seq + '/' + leto + ' je medtem zasedena. Predlagana je ' + prosta + '/' + leto + '.';
+        return;
+      }
       if (error) throw error;
       const nova = { id: novId };
       logDodaj('Arhiv', 'Dodano', 'Spremni list ' + seq + '/' + leto + ' · ' + (ORGIME[org_id] || ''));
@@ -7418,23 +7449,38 @@
       render();
     });
   }
-  function novaStranka() {
+  // Nova stranka se odpre v OKNU (kot nov spremni list) — skupaj s cenikom: splošni, skupina ali brez.
+  async function novaStranka() {
     const box = $('novaStrankaBox');
-    if (!box) return;
+    if (!box || _okno) return;
+    const gumb = $('novaStrankaBtn'); if (gumb) gumb.classList.add('nalaga');
+    try { await nalozicenik(); await naloziClane(); await naloziSkupineImena(); } catch (e) {}
+    if (gumb) gumb.classList.remove('nalaga');
+    const grupe = artikliGrupe();
+    const kljuci = Object.keys(grupe).filter(k => k !== '—' && (grupe[k] || []).length)
+      .sort((a, b) => a === 'SC' ? -1 : b === 'SC' ? 1 : a.localeCompare(b, 'sl'));
+    const imeCenika = k => k === 'SC' ? 'Splošni cenik' : imeSkupine(k);
+    const opcije = kljuci.map(k => `<option value="${escape_(k)}">${escape_(imeCenika(k))} · ${escape_(sklonArtiklov(grupe[k].length))}</option>`).join('') +
+      '<option value="">Brez cenika</option>';
     box.innerHTML = `<div class="ur-form">
-      <h3 class="sec-h" style="margin-bottom:12px">Nova stranka</h3>
-      <label class="ur-f"><span>Naziv *</span><input type="text" data-naziv></label>
-      <div class="ur-grid">
-        <label class="ur-f"><span>Podjetje</span><input type="text" data-podjetje></label>
-        <label class="ur-f"><span>Davčna</span><input type="text" data-davcna></label>
+      <label class="ur-f"><span>Naziv</span><input type="text" data-naziv autocomplete="off"></label>
+      <div class="ur-grid nl-2">
+        <label class="ur-f"><span>Podjetje</span><input type="text" data-podjetje autocomplete="off"></label>
+        <label class="ur-f"><span>Davčna</span><input type="text" data-davcna autocomplete="off"></label>
       </div>
-      <label class="ur-f"><span>Naslov</span><input type="text" data-naslov></label>
-      <div class="u-acts" style="margin-top:14px"><button type="button" class="ur-save" data-shrani>Ustvari</button><button type="button" data-preklici>Prekliči</button></div>
-      <p class="u-sub ur-msg" data-msg></p></div>`;
-    box.querySelector('[data-preklici]').addEventListener('click', () => { box.innerHTML = ''; box.classList.remove('show'); });
+      <label class="ur-f"><span>Naslov</span><input type="text" data-naslov autocomplete="off"></label>
+      <label class="ur-f"><span>Cenik</span><select data-cenik>${opcije}</select></label>
+      <p class="u-sub ur-msg" data-msg role="status" aria-live="polite"></p>
+      <div class="u-acts"><button type="button" data-preklici>Prekliči</button><button type="button" class="ur-save" data-shrani>Ustvari</button></div></div>`;
+    box._grupe = grupe; box._imeCenika = imeCenika;
+    box.querySelector('[data-preklici]').addEventListener('click', () => oknoZapri());
     box.querySelector('[data-shrani]').addEventListener('click', () => shraniNovaStranka(box));
-    box.classList.add('show');
-    box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    box.querySelector('[data-naziv]').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); shraniNovaStranka(box); } });
+    oknoOdpri(gumb, box, () => $('novaStrankaBtn'), {
+      glava: () => { const h = document.createElement('h3'); h.className = 'sec-h'; h.textContent = 'Nova stranka'; return h; },
+      obZaprtju: () => { box.innerHTML = ''; }
+    });
+    setTimeout(() => { const n = box.querySelector('[data-naziv]'); if (n) n.focus(); }, 380);
   }
   async function shraniNovaStranka(box) {
     const g = s => box.querySelector(s);
@@ -7451,8 +7497,18 @@
       const { data: novOrg, error: e1 } = await sb.from('orgs').insert({ name: naziv, legal_name: podjetje || null, address: naslov || null, vat_id: davcna || null, legacy_id: legacyId }).select('id,name,legal_name,address,vat_id').single();
       if (e1) throw e1;
       ORGSEZNAM.push(novOrg); ORGIME[novOrg.id] = novOrg.name;
-      box.innerHTML = ''; box.classList.remove('show');
-      toast('Stranka ustvarjena');
+      // cenik: stranka dobi artikle izbrane skupine (enako kot »Dodeli skupino« v Ceniku)
+      const pre = g('[data-cenik]') ? g('[data-cenik]').value : '';
+      const arts = pre && box._grupe ? (box._grupe[pre] || []) : [];
+      let cenikNapaka = null;
+      if (arts.length) {
+        msg.textContent = 'Dodajam cenik …';
+        try { await nastaviSkupinoStranki(novOrg.id, arts.map(x => x.sifra)); await naloziClane(true); }
+        catch (e2) { cenikNapaka = e2; }
+      }
+      logDodaj('Stranke', 'Dodano', 'Stranka »' + novOrg.name + '«' + (arts.length ? ' · ' + box._imeCenika(pre) : ''));
+      if (_okno && _okno.vsebina === box) oknoZapri();
+      toast(cenikNapaka ? 'Stranka ustvarjena — cenika ni bilo mogoče dodati: ' + napakaBesedilo(cenikNapaka) : 'Stranka ' + novOrg.name + ' ustvarjena' + (arts.length ? ' · ' + box._imeCenika(pre) : ''));
       render();
     } catch (e) {
       msg.textContent = napakaBesedilo(e);
@@ -8509,6 +8565,15 @@
   });
 
   /* ══════════ UPORABNIKI (osebje) ══════════ */
+  // Koda (PIN) za aplikacijo: PBKDF2-HMAC-SHA256, 100.000 ponovitev, 16 B soli — isti zapis preveri
+  // tablica brez povezave (67_app_pini.sql); koda sama nikoli ne zapusti brskalnika.
+  async function pinZgosti(pin) {
+    var b64 = function (buf) { var s = '', a = new Uint8Array(buf); for (var i = 0; i < a.length; i++) s += String.fromCharCode(a[i]); return btoa(s); };
+    var sol = crypto.getRandomValues(new Uint8Array(16)), it = 100000;
+    var kljuc = await crypto.subtle.importKey('raw', new TextEncoder().encode(String(pin)), 'PBKDF2', false, ['deriveBits']);
+    var bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: sol, iterations: it }, kljuc, 256);
+    return 'pbkdf2$sha256$' + it + '$' + b64(sol) + '$' + b64(bits);
+  }
   function uMsg(txt, slabo) {
     const m = $('usersMsg');
     m.className = 'msg ' + (slabo ? 'bad show' : 'show');
@@ -8545,13 +8610,15 @@
     pokaziNalaganje($('usersList'));
     { var _no = $('nuOdpri'); if (_no) _no.classList.toggle('hidden', !(JE_LASTNIK() || sme('uporabniki', 'w'))); }
     if (!$('nuOrg').options.length) {
-      $('nuOrg').innerHTML = '<option value="">— osebje SmartClean —</option>' + ORGSEZNAM.map(o => `<option value="${o.id}">${escape_(o.name)}</option>`).join('');
+      $('nuOrg').innerHTML = '<option value="">— izberi stranko —</option>' + ORGSEZNAM.map(o => `<option value="${o.id}">${escape_(o.name)}</option>`).join('');
     }
     const [rLjudje, {
       data: clanstva
-    }] = await Promise.all([sb.from('profiles').select('id,email,full_name,is_staff,super_admin,zaposleni,active,last_login,last_seen,web_dostop,app_pin').order('email'), sb.from('memberships').select('user_id,org_id')]);
+    }, rPini] = await Promise.all([sb.from('profiles').select('id,email,full_name,is_staff,super_admin,zaposleni,active,last_login,last_seen,web_dostop').order('email'), sb.from('memberships').select('user_id,org_id'),
+      sb.rpc('app_pini_nastavljeni')]);
+    const sPini = new Set(((rPini && rPini.data) || []).map(x => typeof x === 'string' ? x : (x && (x.app_pini_nastavljeni || x.user_id))));
     let ljudje = rLjudje.data;
-    if (rLjudje.error) { /* super_admin/zaposleni/app_pin ali last_seen še ni — beri brez njih */
+    if (rLjudje.error) { /* super_admin/zaposleni ali last_seen še ni — beri brez njih */
       const fb = await sb.from('profiles').select('id,email,full_name,is_staff,active,last_login').order('email');
       if (fb.error) { const fb2 = await sb.from('profiles').select('id,email,full_name,is_staff,active').order('email'); ljudje = fb2.data; }
       else ljudje = fb.data;
@@ -8581,7 +8648,7 @@
       const lahkoUredi = !jaz && !jeLastnikU && mr > ur;   // nadrejeni ureja podrejene; lastnika nihče
       const naSpletu = jaz || (u.last_seen && (Date.now() - new Date(u.last_seen).getTime()) < 120000);
       const webOn = u.web_dostop !== false;   // privzeto vključen
-      const pinSet = (u.app_pin !== null && u.app_pin !== void 0 && String(u.app_pin) !== '');   // ali je PIN nastavljen
+      const pinSet = sPini.has(u.id);   // ali je PIN nastavljen (koda sama je zgoščena in je portal ne vidi)
       const roleOpts = VLOGE.filter(r => r[2] < mr).sort((a, b) => b[2] - a[2]).map(r => `<option value="${r[0]}"${vlogaVal === r[0] ? ' selected' : ''}>${r[1]}</option>`).join('');
       // Okvirček (Seznam/Mreža po nastavitvi Pogled); klik odpre okno z vlogo, podatki in dejanji.
       const znacke = (naSpletu ? '<span class="pill pill-on"><span class="dot-on"></span>na spletu</span>' : '') +
@@ -8758,8 +8825,9 @@
       if (novo === null) return;
       const pin = String(novo || '').replace(/\D/g, '').slice(0, 4);
       if (pin && pin.length !== 4) { uMsg('PIN mora imeti 4 števke.', true); return; }
-      const { error } = await sb.from('profiles').update({ app_pin: pin || null }).eq('id', id);
-      if (error && /app_pin|column/i.test(error.message || '')) { uMsg('Najprej zaženi 46_app_pin.sql v Supabase.', true); return; }
+      let error = null;
+      try { error = (await sb.rpc('nastavi_app_pin', { p_user: id, p_hash: pin ? await pinZgosti(pin) : null })).error; }
+      catch (e) { error = { message: (e && e.message) || 'napaka' }; }
       uMsg(error ? 'Ni uspelo: ' + escape_(error.message) : (pin ? 'PIN nastavljen.' : 'PIN odstranjen.'), !!error);
       if (!error) loadUsers();   // osveži seznam, da se oznaka »PIN nastavljen« takoj posodobi
       return;
@@ -8804,6 +8872,7 @@
     var m = document.createElement('div'); m.className = 'sc-modal nu-modal'; m.setAttribute('role', 'dialog'); m.setAttribute('aria-modal', 'true'); m.setAttribute('aria-label', 'Nov uporabnik');
     var x = document.createElement('button'); x.type = 'button'; x.className = 'spr-x nu-x'; x.setAttribute('aria-label', 'Zapri'); x.innerHTML = IKO_ZAPRI;
     var um = $('usersMsg'); if (um) { um.className = 'msg'; um.innerHTML = ''; }
+    nuVlogaOsvezi();
     p.classList.remove('hidden'); m.appendChild(x); m.appendChild(p); back.appendChild(m); document.body.appendChild(back);
     requestAnimationFrame(function () { back.classList.add('show'); });
     function zapri() {
@@ -8817,19 +8886,31 @@
     setTimeout(function () { var f = $('nuIme'); if (f) f.focus(); }, 80);
   }
   { var _no = $('nuOdpri'); if (_no) _no.addEventListener('click', nuOdpri); }
+  // vloga novega uporabnika: »Stranka« pokaže izbiro stranke; »Admin« lahko podeli le lastnik ali admin
+  function nuVlogaOsvezi() {
+    var v = $('nuVloga'); if (!v) return;
+    var adm = v.querySelector('option[value="admin"]');
+    if (adm) adm.hidden = adm.disabled = !(JE_LASTNIK() || (MOJPROFIL && MOJPROFIL.super_admin));
+    if (adm && adm.disabled && v.value === 'admin') v.value = 'osebje';
+    var pol = $('nuOrgPolje'); if (pol) pol.hidden = v.value !== 'stranka';
+  }
+  { var _nv = $('nuVloga'); if (_nv) _nv.addEventListener('change', nuVlogaOsvezi); }
   $('addUserForm').addEventListener('submit', async e => {
     e.preventDefault();
     const btn = $('nuBtn');
     btn.disabled = true;
     btn.textContent = 'Ustvarjam …';
-    const orgId = $('nuOrg').value;
+    const vloga = $('nuVloga') ? $('nuVloga').value : 'osebje';
+    const orgId = vloga === 'stranka' ? $('nuOrg').value : '';
     const ime = ($('nuIme') ? $('nuIme').value.trim() : '');
+    if (vloga === 'stranka' && !orgId) { btn.disabled = false; btn.textContent = 'Ustvari račun'; uMsg('Izberi stranko.', true); return; }
     const r = await klic({
       dejanje: 'ustvari',
       email: $('nuEmail').value.trim(),
       ime: ime || null,
       full_name: ime || null,
-      osebje: !orgId,
+      vloga: vloga,
+      osebje: vloga === 'osebje' || vloga === 'admin',
       orgId: orgId || null
     });
     btn.disabled = false;

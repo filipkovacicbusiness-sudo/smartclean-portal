@@ -142,12 +142,15 @@ async function obravnavaj(req: Request): Promise<Response> {
     }
 
     const id = ustvarjen.user.id;
-    const osebje = telo.osebje === true;
-    const orgId = telo.orgId ? String(telo.orgId) : null;
+    // vloga ob ustvarjanju: osebje | admin | zaposleni | stranka (starejši portal pošlje le »osebje«)
+    const vloga = ["osebje", "admin", "zaposleni", "stranka"].includes(String(telo.vloga))
+      ? String(telo.vloga) : (telo.osebje === true ? "osebje" : "stranka");
+    const osebje = vloga === "osebje" || vloga === "admin";
+    const orgId = vloga === "stranka" && telo.orgId ? String(telo.orgId) : null;
 
     // sprožilec je profil že ustvaril; dopolnimo vlogo
     await admin.from("profiles")
-      .update({ is_staff: osebje, active: true }).eq("id", id);
+      .update({ is_staff: osebje, super_admin: vloga === "admin", zaposleni: vloga === "zaposleni", active: true }).eq("id", id);
 
     if (!osebje && orgId) {
       const { error: nClan } = await admin.from("memberships")
