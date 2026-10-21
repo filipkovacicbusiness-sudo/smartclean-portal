@@ -29,8 +29,7 @@ html.sc-booting,html.sc-booting body{overflow:hidden!important;overscroll-behavi
    zamenjan; barva se le spremeni s temo (preverjeno na napravi: github.com/mbryantms/folio/pull/1026). */
 #sc-vrh{display:none;}
 html.sc-sam #sc-vrh{display:block;position:fixed;top:0;left:0;right:0;height:max(12px,env(safe-area-inset-top));
-  background:#0a0a0a;z-index:2147483647;}   /* brez pointer-events:none: iOS vrh »tipa« kot dotik; pod 12 px traku ni gumbov */
-html.sc-sam[data-theme="light"] #sc-vrh{background:#ffffff;}
+  background:var(--bg);z-index:2147483647;}   /* brez pointer-events:none: iOS vrh »tipa« kot dotik; pod 12 px traku ni gumbov */
 /* stara ikona (»black-translucent«): stran sega pod uro, ki je vedno bela → v svetli temi temen trak */
 html.sc-sam.sc-pod-uro[data-theme="light"] #sc-vrh{background:#0a0a0a;}
 @media print{#sc-vrh{display:none!important;}}
@@ -50,7 +49,7 @@ html.sc-sam.sc-pod-uro[data-theme="light"] #sc-vrh{background:#0a0a0a;}
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=4"/>
 <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png?v=4"/>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230a0a0a'/%3E%3Ctext x='32' y='42' font-family='Georgia,%27Times New Roman%27,serif' font-size='36' font-weight='700' text-anchor='middle'%3E%3Ctspan fill='%23e8f1eb'%3ES%3C/tspan%3E%3Ctspan fill='%236ed3a1'%3EC%3C/tspan%3E%3C/text%3E%3C/svg%3E"/>
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: https://anrhtgbckxrccnafcmsz.supabase.co; connect-src 'self' https://anrhtgbckxrccnafcmsz.supabase.co wss://anrhtgbckxrccnafcmsz.supabase.co; base-uri 'none'; form-action 'none'; object-src 'none'"/>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https://anrhtgbckxrccnafcmsz.supabase.co; connect-src 'self' https://anrhtgbckxrccnafcmsz.supabase.co wss://anrhtgbckxrccnafcmsz.supabase.co; base-uri 'none'; form-action 'none'; object-src 'none'"/>
 <link rel="stylesheet" href="portal.css"/>
 <style id="hexfx">
 .sc-hex{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;opacity:1}
@@ -131,8 +130,9 @@ body:has(> .app.show) .sc-hex [class*="hw"]{animation-play-state:paused}
   </header>
 
   <div class="auth-main">
-    <div class="auth-hero">
-      <h2 class="auth-claim">Peremo, vi pa <em>blestite.</em></h2>
+    <div class="auth-hero" aria-hidden="false">
+      <div class="auth-hero-luci" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+      <h2 class="auth-claim">Peremo, vi&nbsp;pa <em>blestite.</em></h2>
     </div>
     <div class="auth-slot">
     <div class="profile-picker hidden" id="profilePicker">
@@ -142,7 +142,6 @@ body:has(> .app.show) .sc-hex [class*="hw"]{animation-play-state:paused}
       <button class="pp-pass hidden" id="ppPass" type="button">Vpiši geslo namesto tega</button>
     </div>
     <div class="auth-box hidden" id="authBox">
-      <p class="eyebrow">Prijava</p>
       <h1>Dobrodošli nazaj</h1>
 
       <form id="loginForm" novalidate>
@@ -181,9 +180,9 @@ body:has(> .app.show) .sc-hex [class*="hw"]{animation-play-state:paused}
 
       <div class="msg" id="loginMsg" role="status" aria-live="polite"></div>
     </div>
+    <a class="auth-foot" href="https://eflitte.si" target="_blank" rel="noopener">Izdelava <b>eflitte</b></a>
     </div>
   </div>
-  <a class="auth-foot" href="https://eflitte.si" target="_blank" rel="noopener">Izdelava <b>eflitte</b></a>
 </div>
 
 <!-- ══════════ APLIKACIJA ══════════ -->
@@ -342,29 +341,27 @@ body:has(> .app.show) .sc-hex [class*="hw"]{animation-play-state:paused}
 
       <section class="sec hidden" id="sec-dokumenti">
         <div class="head"><div class="head-t"><h2>Dokumenti</h2><p class="count" id="dokPod"></p></div>
-          <div class="head-akc"><button type="button" id="dokNaloziBtn" aria-keyshortcuts="n" class="btn tb-prim dok-tbtn" title="Naloži datoteke"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M5 20h14"/></svg><span class="tb-lbl">Naloži</span></button></div>
+          <div class="head-akc">
+            <button type="button" id="dokNovaMapa" class="btn btn-alt tb-sek" title="Nova mapa" aria-label="Nova mapa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 11v5M9.5 13.5h5"/></svg><span class="tb-lbl">Nova mapa</span></button>
+            <button type="button" id="dokSkenirajBtn" class="btn btn-alt tb-sek" title="Skeniraj račun" aria-label="Skeniraj račun"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8V6a2 2 0 0 1 2-2h2M17 4h2a2 2 0 0 1 2 2v2M21 16v2a2 2 0 0 1-2 2h-2M7 20H5a2 2 0 0 1-2-2v-2"/><path d="M7 12h10"/></svg><span class="tb-lbl">Skeniraj</span></button>
+            <button type="button" id="dokNaloziBtn" aria-keyshortcuts="n" class="btn tb-prim" title="Naloži datoteke"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V5M7 10l5-5 5 5"/><path d="M5 20h14"/></svg><span class="tb-lbl">Naloži</span></button>
+          </div>
           <div class="filtri">
-            <input type="search" id="dokIsci" placeholder="Iskanje datotek …" aria-label="Iskanje po datotekah"/>
-            <span class="tb-desno">
-            <button type="button" id="dokSkenirajBtn" class="btn btn-narrow btn-alt dok-tbtn tb-ikona" title="Skeniraj račun" aria-label="Skeniraj račun"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8V6a2 2 0 0 1 2-2h2M17 4h2a2 2 0 0 1 2 2v2M21 16v2a2 2 0 0 1-2 2h-2M7 20H5a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="3.2"/></svg><span class="tb-skrit">Skeniraj račun</span></button>
-            <button type="button" id="dokNovaMapa" class="btn btn-narrow btn-alt dok-tbtn tb-ikona" title="Nova mapa" aria-label="Nova mapa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 11v5M9.5 13.5h5"/></svg><span class="tb-skrit">Nova mapa</span></button>
-            <button type="button" id="dokKosBtn" class="btn btn-narrow btn-alt dok-tbtn tb-ikona" title="Nedavno brisani" aria-label="Nedavno brisani"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 10v6M14 10v6"/></svg></button>
-            </span>
-            <input type="file" id="dokFile" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.heic,.heif,image/*,application/pdf,.csv" hidden/>
+            <input type="search" id="dokIsci" placeholder="Iskanje dokumentov …" aria-label="Iskanje dokumentov"/>
+            <select id="dokSort" aria-label="Razvrsti">
+              <option value="novi" selected>Najnovejši</option>
+              <option value="ime">Ime A–Ž</option>
+              <option value="vel">Velikost</option>
+            </select>
+            <input type="file" id="dokFile" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.jpg,.jpeg,.png,.gif,.webp,.heic,.heif,application/pdf" hidden/>
             <input type="file" id="dokKamera" accept="image/*" capture="environment" hidden/>
             <input type="file" id="dokKameraLib" accept="image/*" multiple hidden/>
           </div>
         </div>
-        <div class="dok-bar">
-          <div class="dok-nav">
-            <button type="button" id="dokBack" class="dok-navbtn" title="Nazaj" aria-label="Nazaj"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
-            <button type="button" id="dokFwd" class="dok-navbtn" title="Naprej" aria-label="Naprej"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
-          </div>
-          <nav class="dok-pot" id="dokPot" aria-label="Pot"></nav>
-          <button type="button" id="dokPaste" class="btn btn-narrow dok-paste" hidden>Prilepi</button>
-          <div class="dok-drop-hint" id="dokDropHint" hidden>Spusti datoteke sem za nalaganje</div>
-        </div>
+        <nav class="dk-pot" id="dokPot" aria-label="Pot" hidden></nav>
         <div id="dokList"></div>
+        <p class="arh-kos-pov dk-kos-pov" id="dokKosPov" hidden><button type="button" class="link-btn" id="dokKosBtn">Nedavno brisani dokumenti</button></p>
+        <div class="dk-spusti" id="dokDropHint" hidden><span>Spusti za nalaganje</span></div>
       </section>
 
       <section class="sec hidden" id="sec-statistika">

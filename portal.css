@@ -23,6 +23,43 @@
   src:url('fonts/playfair-display-latin-ext-700-normal.woff2') format('woff2');
   unicode-range:U+0100-02AF,U+0304,U+0308,U+0329,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
 }
+/* ── Prehod teme (4.67): barvni žetoni so registrirani kot <color>, zato se lahko zvezno spremenijo sami;
+   vsi elementi jih berejo hkrati → cel zaslon preide v isti hitrosti (portal.js: uporabiTemo). ── */
+@property --green{syntax:"<color>";inherits:true;initial-value:transparent;}
+@property --green-l{syntax:"<color>";inherits:true;initial-value:transparent;}
+@property --green-t{syntax:"<color>";inherits:true;initial-value:transparent;}
+@property --green-m{syntax:"<color>";inherits:true;initial-value:transparent;}
+@property --gold{syntax:"<color>";inherits:true;initial-value:transparent;}
+@property --gold-m{syntax:"<color>";inherits:true;initial-value:transparent;}
+@property --accent{syntax:"<color>";inherits:true;initial-value:transparent;}
+@property --btn-ink{syntax:"<color>";inherits:true;initial-value:transparent;}
+@property --ink{syntax:"<color>";inherits:true;initial-value:transparent;}
+@property --mid{syntax:"<color>";inherits:true;initial-value:transparent;}
+@property --bg{syntax:"<color>";inherits:true;initial-value:transparent;}
+@property --surface{syntax:"<color>";inherits:true;initial-value:transparent;}
+@property --topbar-bg{syntax:"<color>";inherits:true;initial-value:transparent;}
+@property --band{syntax:"<color>";inherits:true;initial-value:transparent;}
+@property --line{syntax:"<color>";inherits:true;initial-value:transparent;}
+@property --line-strong{syntax:"<color>";inherits:true;initial-value:transparent;}
+@property --wm-ink{syntax:"<color>";inherits:true;initial-value:transparent;}
+@property --wm-green{syntax:"<color>";inherits:true;initial-value:transparent;}
+@property --wm-blue{syntax:"<color>";inherits:true;initial-value:transparent;}
+@property --st-ok{syntax:"<color>";inherits:true;initial-value:transparent;}
+@property --st-warn{syntax:"<color>";inherits:true;initial-value:transparent;}
+@property --st-bad{syntax:"<color>";inherits:true;initial-value:transparent;}
+@property --st-ok-ink{syntax:"<color>";inherits:true;initial-value:transparent;}
+@property --st-warn-ink{syntax:"<color>";inherits:true;initial-value:transparent;}
+@property --st-bad-ink{syntax:"<color>";inherits:true;initial-value:transparent;}
+@property --krog-1{syntax:"<color>";inherits:true;initial-value:transparent;}
+@property --krog-2{syntax:"<color>";inherits:true;initial-value:transparent;}
+@property --krog-3{syntax:"<color>";inherits:true;initial-value:transparent;}
+@property --krog-4{syntax:"<color>";inherits:true;initial-value:transparent;}
+@property --krog-5{syntax:"<color>";inherits:true;initial-value:transparent;}
+@property --krog-0{syntax:"<color>";inherits:true;initial-value:transparent;}
+@property --cov-ink{syntax:"<color>";inherits:true;initial-value:transparent;}
+@property --cov-steklo{syntax:"<color>";inherits:true;initial-value:transparent;}
+@property --cov-rob{syntax:"<color>";inherits:true;initial-value:transparent;}
+@property --tema-test{syntax:"<color>";inherits:true;initial-value:rgb(1,2,3);}
 /* ── tokeni, podedovani s smartclean.si ───────────────────────────── */
 :root{
   /* eflitte light (faithful inversion) */
@@ -1566,8 +1603,6 @@ html[data-view="grid"] :is(#cenikList,.art-skupine) .sc-isolate .cgrp:not(.open)
 .vu-dan-t{overflow-wrap:anywhere;}
 /* izbirnik datuma je neviden čez cel gumb: tap odpre koledar naprave */
 .vu-dan-in{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:var(--fs-16);border:0;padding:0;}
-.vu-glava{display:grid;grid-template-columns:1fr 14px 1fr 36px;gap:8px;font-size:var(--fs-12);color:var(--mid);margin:0 0 6px;padding:0 2px;}
-.vu-glava span:nth-child(2){grid-column:3;}
 .vu-vrste{display:flex;flex-direction:column;gap:8px;}
 .vu-vrsta{display:grid;grid-template-columns:1fr 14px 1fr 36px;gap:8px;align-items:center;position:relative;}
 .vu-vrsta .sc-modal-input{margin:0;min-width:0;text-align:center;font-variant-numeric:tabular-nums;font-size:var(--fs-18);font-weight:600;letter-spacing:.02em;height:48px;padding:0 8px;}
@@ -1676,70 +1711,6 @@ html[data-view="grid"] :is(#cenikList,.art-skupine) .sc-isolate .cgrp:not(.open)
 .adm-save .msg{margin:0;flex:1;}
 .adm-save .btn{margin-top:0;width:auto;}
 @media(max-width:560px){.adm-ime{font-size:var(--fs-16);}}
-/* Dokumenti — orodna gumba (nova mapa / naloži) */
-.dok-tbtn{display:inline-flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap;width:auto;padding:0 18px;height:44px;}
-.dok-tbtn svg{width:17px;height:17px;flex:0 0 auto;}
-/* Dokumenti — datotečni sistem (Finder/Raziskovalec) */
-.dok-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:2px 0 12px;}
-.dok-pot{display:flex;align-items:center;gap:2px;flex-wrap:wrap;font-size:var(--fs-14);min-width:0;flex:1 1 auto;}
-@media(max-width:560px){.head .filtri .dok-tbtn{width:100%;}}
-.dok-crumb{border:none;background:none;color:var(--mid);cursor:pointer;font-size:var(--fs-14);font-weight:600;padding:4px 6px;border-radius:var(--r-sm);}
-.dok-crumb:last-child{color:var(--ink);}
-.dok-crumb:hover{background:var(--green-m);color:var(--ink);}
-.dok-sep{color:var(--mid);opacity:.6;}
-.dok-drop-hint{font-size:var(--fs-14);color:var(--green-t);font-weight:600;}
-.dok-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-top:6px;}
-.dok-item{position:relative;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);padding:16px 12px 12px;
-  display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;text-align:center;
-  transition:border-color .14s,background .14s,transform .06s,box-shadow .14s;}
-.dok-item:hover{border-color:var(--ink);box-shadow:var(--shadow);}
-.dok-item:active{transform:scale(.98);}
-.dok-ic{width:56px;height:56px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;border-radius:var(--r-md);background-size:cover;background-position:center;}
-.dok-ic svg{width:44px;height:44px;}
-.dok-ic-folder{color:#e6b64c;}
-.dok-ic-folder.zakl{color:#e0a53a;}
-.dok-ic-pdf{color:#e15759;}
-.dok-ic-word{color:#4e79a7;}
-.dok-ic-excel{color:#59a14f;}
-.dok-ic-file{color:var(--mid);}
-.dok-ic-img{width:64px;height:56px;border:1px solid var(--line);}
-.dok-nm{font-size:var(--fs-13);font-weight:600;color:var(--ink);line-height:1.3;max-width:100%;overflow-wrap:anywhere;display:block;word-break:break-word;}
-.dok-sub{font-size:var(--fs-11);color:var(--mid);}
-/* ⋯ meni gumb na kartici */
-.dok-more{position:absolute;top:6px;right:6px;width:30px;height:30px;border:1px solid var(--line);background:var(--surface);color:var(--mid);border-radius:var(--r-full);display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:0;transition:opacity .14s,color .14s,border-color .14s;box-shadow:var(--shadow);}
-.dok-more svg{width:16px;height:16px;}
-.dok-more:hover{color:var(--ink);border-color:var(--ink);}
-.dok-item:hover .dok-more,.dok-more:focus-visible{opacity:1;}
-.dok-item.dok-cut{opacity:.5;}
-/* zaklep na mapi */
-.dok-ic{position:relative;}
-.dok-lock{position:absolute;right:-2px;bottom:-2px;width:20px;height:20px;border-radius:50%;background:var(--surface);border:1px solid var(--line);color:#e0a53a;display:flex;align-items:center;justify-content:center;}
-.dok-lock svg{width:12px;height:12px;}
-/* nazaj/naprej + prilepi */
-.dok-nav{display:inline-flex;gap:6px;flex:0 0 auto;}
-.dok-navbtn{width:36px;height:36px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:var(--r-full);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:border-color .15s,opacity .15s;}
-.dok-navbtn svg{width:18px;height:18px;}
-.dok-navbtn:hover:not(:disabled){border-color:var(--ink);}
-.dok-navbtn:disabled{opacity:.35;cursor:default;}
-.dok-paste{width:auto;height:34px;margin-top:0;padding:0 16px;flex:0 0 auto;display:inline-flex;align-items:center;font-size:var(--fs-13);}
-.dok-paste[hidden]{display:none!important;}
-/* akcijski meni */
-.dok-menu{position:absolute;z-index:1200;min-width:180px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);box-shadow:var(--shadow-lg);padding:6px;display:flex;flex-direction:column;gap:2px;}
-.dok-menu-i{text-align:left;border:none;background:none;color:var(--ink);font:inherit;font-size:var(--fs-14);padding:8px 12px;border-radius:var(--r-sm);cursor:pointer;transition:background .12s;}
-.dok-menu-i:hover{background:var(--green-m);}
-.dok-menu-i.danger{color:var(--st-bad-ink);}
-.dok-menu-i.danger:hover{background:color-mix(in srgb,var(--st-bad) 10%,transparent);}
-@media(max-width:560px){.dok-grid{grid-template-columns:repeat(3,1fr);gap:10px;}.dok-more{opacity:1;}}
-/* Dokumenti — spoštuj pogled SEZNAM (ikona levo, ime, velikost, meni desno) */
-html[data-view="list"] .dok-grid{grid-template-columns:1fr;gap:8px;}
-html[data-view="list"] .dok-item{flex-direction:row;align-items:center;text-align:left;gap:14px;padding:10px 46px 10px 14px;min-height:62px;}
-html[data-view="list"] .dok-item .dok-ic{width:36px;height:36px;border-radius:var(--r-sm);}
-html[data-view="list"] .dok-item .dok-ic svg{width:26px;height:26px;}
-html[data-view="list"] .dok-item .dok-ic-img{width:46px;height:36px;}
-html[data-view="list"] .dok-item .dok-nm{flex:1 1 auto;min-width:0;text-align:left;-webkit-line-clamp:1;}
-html[data-view="list"] .dok-item .dok-sub{flex:0 0 auto;}
-html[data-view="list"] .dok-item .dok-more{opacity:1;top:50%;right:10px;transform:translateY(-50%);}
-@media(max-width:560px){html[data-view="list"] .dok-grid{grid-template-columns:1fr;}}
 /* Skener */
 .sken-modal{max-width:520px;width:100%;}
 .sken-strani{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px;min-height:96px;padding:12px;border:1px dashed var(--line);border-radius:var(--r-md);align-items:flex-start;align-content:flex-start;}
@@ -1749,12 +1720,7 @@ html[data-view="list"] .dok-item .dok-more{opacity:1;top:50%;right:10px;transfor
 .sken-th-x{position:absolute;top:4px;right:4px;width:28px;height:28px;border:none;background:rgba(0,0,0,.6);color:#fff;border-radius:50%;font-size:var(--fs-15);line-height:28px;text-align:center;padding:0;display:flex;align-items:center;justify-content:center;cursor:pointer;}
 .sken-th-n{position:absolute;left:4px;bottom:4px;min-width:18px;height:18px;padding:0 4px;border-radius:var(--r-sm);background:rgba(0,0,0,.6);color:#fff;font-size:var(--fs-11);font-weight:600;display:flex;align-items:center;justify-content:center;}
 .sken-add-row{display:flex;gap:8px;margin:0 0 14px;}
-.sken-add{flex:1;width:auto;margin:0;padding:12px 10px;justify-content:center;}
-@media(max-width:560px){.sken-add-row{flex-direction:column;}.sken-add{width:100%;}}
 .sken-polja{display:flex;flex-direction:column;gap:12px;margin-bottom:6px;}
-.sken-f{display:flex;flex-direction:column;gap:4px;font-size:var(--fs-13);color:var(--mid);}
-.sken-f input,.sken-f select{padding:10px 12px;border:1.5px solid var(--line);border-radius:var(--r-sm);background:var(--bg);color:var(--ink);font-size:var(--fs-15);}
-.sken-f input:focus,.sken-f select:focus{border-color:var(--green-l);outline:none;}
 /* Pregled slike (lightbox) */
 .dok-lb{position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:calc(20px + env(safe-area-inset-top)) 16px calc(20px + env(safe-area-inset-bottom));opacity:0;transition:opacity .18s;cursor:zoom-out;}
 .dok-lb.show{opacity:1;}
@@ -2200,7 +2166,6 @@ html[data-view="list"] .u-mreza .lcell .row > span:first-child{padding-right:0;}
   .head .filtri > input[type=search],.head .filtri > .arh-obd,.head .filtri > .fak-obd{grid-column:1 / -1;}
   .head .filtri .btn,.head .filtri .btn-narrow{width:100%;min-width:0;padding:0 12px;font-size:var(--fs-14);}
   .head .filtri .cs,.head .filtri select{max-width:none;width:100%;min-width:0;}
-  .head .filtri .dok-tbtn{width:100%;}
 }
 
 /* ══════════ OBDOBJE OD–DO KOT ENO POLJE (Arhiv, Fakture) ══════════
@@ -2654,14 +2619,14 @@ html[data-theme="dark"] .doc-stage{background:color-mix(in srgb,var(--ink) 6%,va
 .v5 .head .tb-sek:hover:not(:disabled){background:var(--green-m);border-color:var(--line-strong);}
 .v5 .head .tb-sek[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--bg);}
 .v5 .head .tb-sek svg{width:16px;height:16px;flex:none;}
-.v5 .filtri .btn.tb-ikona,.v5 .filtri .dok-tbtn.tb-ikona{padding:0!important;}
+.v5 .filtri .btn.tb-ikona{padding:0!important;}
 
 /* dejanja v karticah (36) */
 .v5 :is(.cgrp-btn,.btn-mini){min-height:0;height:var(--ctrl-h-md);padding:0 14px;font-size:var(--fs-14);font-weight:500;border-radius:var(--r-full);gap:6px;}
 .v5 .cgrp-btn.ghost{color:var(--ink);border-color:var(--line);}
 .v5 .cgrp-btn.ghost:hover:not(:disabled){background:var(--green-m);border-color:var(--line-strong);}
 .v5 .cgrp-btn.tb-ikona{width:var(--ctrl-h-md);min-width:var(--ctrl-h-md);}
-.v5 :is(.dok-navbtn,.pris-nav){width:var(--ctrl-h-md);height:var(--ctrl-h-md);}
+.v5 .pris-nav{width:var(--ctrl-h-md);height:var(--ctrl-h-md);}
 .v5 .gor-leto + .cs .cs-trigger,.v5 .cs-trigger.gor-leto{height:var(--ctrl-h-md);border-radius:var(--r-full);font-size:var(--fs-14);font-weight:500;padding:0 12px 0 14px;}
 
 /* zavihki in preklopniki: en videz (okvir 36, zavihek 30) */
@@ -2687,7 +2652,6 @@ html[data-theme="dark"] .doc-stage{background:color-mix(in srgb,var(--ink) 6%,va
 .v5 .adm-ime{font-size:var(--fs-16);font-weight:500;}
 .v5 .pris-add .pris-add-btn{min-height:var(--ctrl-h);height:var(--ctrl-h);}
 .v5 label,.v5 .ur-f > span,.v5 .pris-lab{font-weight:500;letter-spacing:0;}
-.v5 .dok-crumb{font-weight:500;}
 .v5 .uc-th{font-size:var(--fs-13);font-weight:500;}
 @media(max-width:900px){
   .v5 :is(input[type=email],input[type=password],.field input[type=text],.field input[type=tel],.field input[type=email],.field input[type=number],.sc-modal-input,.pris-new,.ur-form input),.v5 .cs-trigger{font-size:var(--fs-16);}
@@ -2899,10 +2863,10 @@ html.sc-sam{--vrh:max(12px,env(safe-area-inset-top));}
    V mreži je kartica naslovnica: mehek preliv barve cenika stranke (--c1/--c2 iz naslovnica() v portal.js),
    ime na njej; pod njo vrstica podatkov in naslov s puščico. Brez okvirja okrog cele kartice.
    Barva ima pomen: splošni cenik = zelena logotipa, vsaka skupina svoja, brez cenika nevtralno. */
-.v5{--cov-base:linear-gradient(165deg,#f9fbfa 0%,#eef2f0 100%);--cov-ink:#0d1f17;--cov-a1:44%;--cov-a2:40%;--cov-rob:rgba(13,31,23,.07);
+.v5{--cov-base:linear-gradient(160deg,#f7f8f8 0%,#edefee 55%,#e3e6e5 100%);--cov-ink:#101614;--cov-a1:46%;--cov-a2:40%;--cov-rob:rgba(13,31,23,.07);--cov-zrno-o:.42;
   --cov-sh:0 24px 40px -28px rgba(13,31,23,.5);--cov-steklo:rgba(255,255,255,.62);
   --cov-zrno:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .5 0 0 0 0 .5 0 0 0 0 .5 0 0 0 .6 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");}
-.v5[data-theme="dark"]{--cov-base:linear-gradient(165deg,#171c1a 0%,#0b0d0c 100%);--cov-ink:#fff;--cov-a1:60%;--cov-a2:46%;--cov-rob:rgba(255,255,255,.07);
+.v5[data-theme="dark"]{--cov-base:linear-gradient(160deg,#262a29 0%,#181b1a 55%,#101211 100%);--cov-ink:#f4f7f5;--cov-a1:40%;--cov-a2:18%;--cov-rob:rgba(255,255,255,.07);--cov-zrno-o:.5;
   --cov-sh:0 26px 44px -26px rgba(0,0,0,.9);--cov-steklo:rgba(10,12,11,.42);}
 
 /* ploščica: brez okvirja in ozadja, vsebina v stolpcu */
@@ -2920,60 +2884,73 @@ html.sc-sam{--vrh:max(12px,env(safe-area-inset-top));}
 .v5[data-view="grid"] .rows,.v5[data-view="grid"] .fak-grid,.v5[data-view="grid"] :is(#cenikList,.art-skupine){row-gap:28px;column-gap:20px;}
 
 /* naslovnica */
-.v5[data-view="grid"] .lcell:not(.open) .a-row .a-cli,
+.v5[data-view="grid"] .lcell:not(.open) .a-row .a-num,
 .v5[data-view="grid"] .lcell:not(.open) .row .row-name,
 .v5[data-view="grid"] :is(#cenikList,.art-skupine) .cgrp:not(.open) .cgrp-nm,
-.v5[data-view="grid"] .fak-grid .fak-card:not(.open) h3{
+.v5[data-view="grid"] .fak-grid .fak-card:not(.open) h3,
+.v5[data-view="grid"] .lcell:not(.open) .row.dk-kart .dk-nasl{
   position:relative;display:flex!important;align-items:center;justify-content:center;flex-wrap:wrap;gap:6px 8px;
   width:100%;height:auto!important;aspect-ratio:16 / 10;margin:0!important;padding:14px 18px;border-radius:var(--radius);overflow:hidden;isolation:isolate;
   font-family:var(--sans);font-size:clamp(14px,6.6cqi,22px)!important;font-weight:500!important;letter-spacing:-.02em;line-height:1.18!important;
   color:var(--cov-ink)!important;text-align:center;text-wrap:balance;white-space:normal!important;
-  background:radial-gradient(70% 92% at var(--p1,28% 22%),color-mix(in oklab,var(--c1,#7d8792) var(--cov-a1),transparent),transparent 72%),
-             radial-gradient(82% 100% at var(--p2,78% 88%),color-mix(in oklab,var(--c2,#cfd6dd) var(--cov-a2),transparent),transparent 74%),
+  background:radial-gradient(var(--r1,72% 95%) at var(--p1,28% 22%),color-mix(in oklab,var(--c1,#8f979e) calc(var(--cov-a1) * var(--j,1)),transparent),transparent 72%),
+             radial-gradient(var(--r2,85% 100%) at var(--p2,78% 88%),color-mix(in oklab,var(--c2,#cdd3d8) calc(var(--cov-a2) * var(--j,1)),transparent),transparent 74%),
              var(--cov-base);
   box-shadow:inset 0 0 0 1px var(--cov-rob);transition:transform .45s cubic-bezier(.2,.7,.2,1),box-shadow .45s ease;}
-.v5[data-view="grid"] .lcell:not(.open) .a-row .a-cli::after,
+.v5[data-view="grid"] .lcell:not(.open) .a-row .a-num::after,
 .v5[data-view="grid"] .lcell:not(.open) .row .row-name::after,
 .v5[data-view="grid"] :is(#cenikList,.art-skupine) .cgrp:not(.open) .cgrp-nm::after,
-.v5[data-view="grid"] .fak-grid .fak-card:not(.open) h3::after{content:"";position:absolute;inset:0;z-index:-1;background-image:var(--cov-zrno);opacity:.32;mix-blend-mode:soft-light;pointer-events:none;}
+.v5[data-view="grid"] .fak-grid .fak-card:not(.open) h3::after,
+.v5[data-view="grid"] .lcell:not(.open) .row.dk-kart .dk-nasl::after{content:"";position:absolute;inset:0;z-index:-1;background-image:var(--cov-zrno);opacity:var(--cov-zrno-o,.4);mix-blend-mode:soft-light;pointer-events:none;}
 .v5[data-view="grid"] .lcell:not(.open) .row .row-nm{overflow:visible;white-space:normal;text-overflow:clip;}
 @media(hover:hover){
-  .v5[data-view="grid"] .lcell:not(.open) .a-row:hover .a-cli,
+  .v5[data-view="grid"] .lcell:not(.open) .a-row:hover .a-num,
   .v5[data-view="grid"] .lcell:not(.open) .row:hover .row-name,
   .v5[data-view="grid"] :is(#cenikList,.art-skupine) .cgrp:not(.open) .cgrp-h:hover .cgrp-nm,
-  .v5[data-view="grid"] .fak-grid .fak-card:not(.open):hover h3{transform:translateY(-3px);box-shadow:inset 0 0 0 1px var(--cov-rob),var(--cov-sh);}
+  .v5[data-view="grid"] .fak-grid .fak-card:not(.open):hover h3,
+  .v5[data-view="grid"] .lcell:not(.open) .row.dk-kart:hover .dk-nasl{transform:translateY(-3px);box-shadow:inset 0 0 0 1px var(--cov-rob),var(--cov-sh);}
 }
 
 /* vrstica podatkov (pod naslovnico) in naslov s puščico */
 .v5[data-view="grid"] .lcell:not(.open) .a-row .a-foot,
 .v5[data-view="grid"] .lcell:not(.open) .row :is(.row-cenik,.u-znacke,.num),
 .v5[data-view="grid"] :is(#cenikList,.art-skupine) .cgrp:not(.open) .cgrp-count,
-.v5[data-view="grid"] .fak-grid .fak-card:not(.open) .fak-card-info .u-sub{margin:14px 0 0!important;font-family:var(--sans);font-size:var(--fs-13)!important;font-weight:400;color:var(--mid)!important;line-height:1.35;}
-.v5[data-view="grid"] .lcell:not(.open) .a-row .a-num,
+.v5[data-view="grid"] .fak-grid .fak-card:not(.open) .fak-card-info .u-sub,
+.v5[data-view="grid"] .lcell:not(.open) .row.dk-kart .dk-meta{margin:14px 0 0!important;font-family:var(--sans);font-size:var(--fs-13)!important;font-weight:400;color:var(--mid)!important;line-height:1.35;}
+.v5[data-view="grid"] .lcell:not(.open) .a-row .a-cli,
 .v5[data-view="grid"] .lcell:not(.open) .row .row-legal,
 .v5[data-view="grid"] :is(#cenikList,.art-skupine) .cgrp:not(.open) .cgrp-sub,
-.v5[data-view="grid"] .fak-grid .fak-card:not(.open) .fak-noga{margin:5px 0 0!important;font-family:var(--sans);font-size:var(--fs-15)!important;font-weight:500;letter-spacing:-.01em;line-height:1.35;color:var(--ink)!important;
+.v5[data-view="grid"] .fak-grid .fak-card:not(.open) .fak-noga,
+.v5[data-view="grid"] .lcell:not(.open) .row.dk-kart .dk-ime{margin:5px 0 0!important;font-family:var(--sans);font-size:var(--fs-15)!important;font-weight:500;letter-spacing:-.01em;line-height:1.35;color:var(--ink)!important;
   text-transform:none;overflow-wrap:anywhere;}
-.v5[data-view="grid"] .lcell:not(.open) .a-row .a-num::after,
+.v5[data-view="grid"] .lcell:not(.open) .a-row .a-cli::after,
 .v5[data-view="grid"] .lcell:not(.open) .row .row-legal::after,
 .v5[data-view="grid"] :is(#cenikList,.art-skupine) .cgrp:not(.open) .cgrp-sub::after{content:"›";display:inline-block;margin-left:7px;color:var(--mid);font-weight:400;transition:transform .25s ease;}
 @media(hover:hover){
-  .v5[data-view="grid"] .lcell:not(.open) :is(.row,.a-row):hover :is(.a-num,.row-legal)::after,
+  .v5[data-view="grid"] .lcell:not(.open) :is(.row,.a-row):hover :is(.a-cli,.row-legal)::after,
   .v5[data-view="grid"] :is(#cenikList,.art-skupine) .cgrp:not(.open) .cgrp-h:hover .cgrp-sub::after{transform:translateX(3px);color:var(--ink);}
 }
 
-/* spremni list: naslovnica (stranka) → datum · izdal · kosi → številka › ; potrditev v kotu naslovnice */
-.v5[data-view="grid"] .lcell:not(.open) .a-row{display:grid!important;grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto auto;grid-template-areas:"cli" "foot" "num";gap:0;align-content:start;align-items:start;text-align:left;}
-.v5[data-view="grid"] .lcell:not(.open) .a-row .a-cli{grid-area:cli;}
-.v5[data-view="grid"] .lcell:not(.open) .a-row .a-foot{grid-area:foot;display:flex;flex-wrap:wrap;gap:0 5px;align-self:start;padding:0;border:0;}
-.v5[data-view="grid"] .lcell:not(.open) .a-row .a-foot .num,.v5[data-view="grid"] .lcell:not(.open) .a-row .a-foot .a-izdal{display:inline;font-size:inherit;color:inherit;font-weight:400;margin:0;}
-.v5[data-view="grid"] .lcell:not(.open) .a-row .a-foot .a-izdal::before{content:'· ';}
-.v5[data-view="grid"] .lcell:not(.open) .a-row .a-num{grid-area:num;display:flex!important;align-items:center;gap:6px;}
+/* spremni list: naslovnica (številka) → stranka › ; datum je naslov dneva nad karticami; potrditev v kotu naslovnice */
+.v5[data-view="grid"] .lcell:not(.open) .a-row{display:grid!important;grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto auto;grid-template-areas:"num" "cli" "foot";gap:0;align-content:start;align-items:start;text-align:left;}
+.v5[data-view="grid"] .lcell:not(.open) .a-row .a-num{grid-area:num;font-size:clamp(18px,8.4cqi,30px)!important;font-variant-numeric:tabular-nums;letter-spacing:-.025em;}
+.v5[data-view="grid"] .lcell:not(.open) .a-row .a-num .a-pop{position:absolute;left:12px;bottom:10px;display:inline-flex;opacity:.85;will-change:transform;}   /* SVG na naslovnici v svojem sloju (Chrome na Androidu) */
+.v5[data-view="grid"] .lcell:not(.open) .a-row .a-cli{grid-area:cli;display:block!important;margin:12px 0 0!important;}
+.v5[data-view="grid"] .lcell:not(.open) .a-row .a-cli .a-izr{display:inline-flex;align-items:center;margin-left:8px;padding:1px 8px;border:1px solid var(--line);border-radius:var(--r-full);
+  font-size:var(--fs-11);font-weight:500;color:var(--mid);vertical-align:2px;}
+.v5[data-view="grid"] .lcell:not(.open) .a-row .a-foot{grid-area:foot;display:none!important;}
+.v5[data-view="grid"] .lcell:not(.open) .a-row .a-foot.z-mero{display:flex!important;margin:2px 0 0!important;}
+.v5[data-view="grid"] .lcell:not(.open) .a-row .a-foot.z-mero > :not(.a-mer){display:none!important;}
+.v5[data-view="grid"] .lcell:not(.open) .a-row .a-foot.z-mero .a-mer::before{content:none!important;}
 .v5[data-view="grid"] .lcell:not(.open) .a-row :is(.arh-chk,.a-sel){position:absolute!important;top:10px;right:10px;z-index:3;margin:0;grid-area:auto;}
 .v5[data-view="grid"] .lcell:not(.open) .a-row .arh-chk:not(.on){background:var(--cov-steklo);border-color:var(--cov-rob);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);}
-.v5[data-view="grid"] .lcell:not(.open) .a-row .a-izr{position:absolute;left:10px;bottom:10px;margin:0;padding:3px 9px;border-radius:var(--r-full);font-size:var(--fs-11);font-weight:500;letter-spacing:0;
-  background:var(--cov-steklo);color:var(--cov-ink);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);}
-.v5[data-view="grid"] .lcell.izbran:not(.open) .a-row .a-cli{box-shadow:inset 0 0 0 2px var(--ink);}
+.v5[data-view="grid"] .lcell.izbran:not(.open) .a-row .a-num{box-shadow:inset 0 0 0 2px var(--ink);}
+/* naslov dneva (Spremni listi, Domov): čez vso širino mreže; v seznamu nad vrsticami */
+.v5 .rows.po-dnevih .a-dan{grid-column:1 / -1;margin:22px 0 2px;font-size:var(--fs-14);font-weight:500;letter-spacing:-.005em;color:var(--ink);}
+.v5 .rows.po-dnevih .a-dan:first-child{margin-top:0;}
+.v5:not([data-view="grid"]) .rows.po-dnevih .a-dan{margin:18px 2px 8px;}
+.v5:not([data-view="grid"]) .rows.po-dnevih .a-dan:first-child{margin-top:0;}
+.v5[data-view="grid"] .rows.po-dnevih{row-gap:20px;}
 
 /* stranka (in uporabnik): naslovnica (ime) → cenik · kg → polni naziv › */
 .v5[data-view="grid"] .lcell:not(.open) .row{display:grid!important;grid-template-columns:auto minmax(0,1fr);grid-template-rows:auto auto auto;grid-template-areas:"nm nm" "cen kg" "leg leg";gap:0 5px;align-content:start;align-items:start;text-align:left;}
@@ -3014,10 +2991,19 @@ html.sc-sam{--vrh:max(12px,env(safe-area-inset-top));}
 }
 
 /* ── Prisotnost: stolpec ur dovolj širok za »7h 14min« (prej se je prekrival s stanjem) ── */
-.v5 .pz-seznam .row.pz:not(.okno-kartica){grid-template-columns:minmax(0,1fr) auto minmax(5.5rem,max-content) 16px;column-gap:16px;}
-.v5 .pz-seznam .row.pz:not(.okno-kartica) .pz-st{max-width:none;white-space:nowrap;}
-.v5 .pz-seznam .row.pz:not(.okno-kartica) .pris-zap-ure{text-align:right;white-space:nowrap;}
-@media(max-width:560px){ .v5 .pz-seznam .row.pz:not(.okno-kartica){grid-template-columns:minmax(0,1fr) auto minmax(3.25rem,max-content) 12px;column-gap:10px;} }
+/* stolpca stanja in ur imata stalno širino v vseh vrsticah → pike stanja in ure so poravnane v navpično črto */
+.v5 .pz-seznam .row.pz:not(.okno-kartica){grid-template-columns:minmax(0,1fr) 10.5rem 5.5rem 16px;column-gap:16px;}
+.v5 .pz-seznam .row.pz:not(.okno-kartica) .pz-st{justify-self:start;text-align:left;max-width:none;white-space:normal;align-items:flex-start;line-height:1.35;}
+.v5 .pz-seznam .row.pz:not(.okno-kartica) .pz-st::before{margin-top:.38em;flex:none;}
+.v5 .pz-seznam .row.pz:not(.okno-kartica) .pris-zap-ure{justify-self:end;text-align:right;white-space:nowrap;}
+/* telefon: stanje pod imenom (ime ima vso širino, stanja so poravnana na levem robu), ure desno */
+@media(max-width:560px){
+  .v5 .pz-seznam .row.pz:not(.okno-kartica){grid-template-columns:minmax(0,1fr) auto 12px;grid-template-areas:"ime ure chev" "st ure chev";column-gap:12px;row-gap:2px;}
+  .v5 .pz-seznam .row.pz:not(.okno-kartica) .row-name{grid-area:ime;}
+  .v5 .pz-seznam .row.pz:not(.okno-kartica) .pz-st{grid-area:st;font-size:var(--fs-13);}
+  .v5 .pz-seznam .row.pz:not(.okno-kartica) .pris-zap-ure{grid-area:ure;align-self:center;}
+  .v5 .pz-seznam .row.pz:not(.okno-kartica) .chev{grid-area:chev;align-self:center;}
+}
 
 /* ── glava Spremnih listov: »Izberi« ob »Nov spremni list« (orodna vrstica pod njima ostane v eni vrsti) ── */
 .v5 .head-akc .tb-sek{height:var(--tb-h);}
@@ -3032,3 +3018,250 @@ html.sc-sam{--vrh:max(12px,env(safe-area-inset-top));}
   .v5 #sec-arhiv .filtri #arhivIsci{flex:1 1 100%;}
   .v5 #sec-arhiv .filtri #arhivOrg:not(.hidden),.v5 #sec-arhiv .filtri #arhivSort{flex:1 1 0;min-width:0;}
 }
+
+
+/* ══ Vnos ur: izmene s kolesi (kot budilka) ══ */
+.v5 .vu-modal{max-width:460px;}
+.v5 .vu-vrste{display:flex;flex-direction:column;gap:10px;max-height:min(52vh,460px);overflow-y:auto;overscroll-behavior:contain;margin:0 -4px;padding:2px 4px;}
+.v5 .vu-izm{position:relative;display:grid;grid-template-columns:1fr 1fr 36px;gap:10px;align-items:end;padding:12px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--bg);}
+.v5 .vu-izm.vu-poudari{border-color:var(--line-strong);}
+.v5 .vu-izm.napaka{border-color:var(--st-bad);}
+.v5 .vu-sk{min-width:0;display:flex;flex-direction:column;gap:6px;}
+.v5 .vu-sk-t{display:flex;align-items:center;justify-content:space-between;gap:6px;min-height:20px;font-size:var(--fs-12);color:var(--mid);}
+.v5 .vu-odhod-x{height:20px;padding:0;border:0;background:none;color:var(--mid);font:500 var(--fs-12)/1 var(--sans);text-decoration:underline;text-underline-offset:3px;cursor:pointer;}
+.v5 .vu-odhod-x:hover{color:var(--ink);}
+.v5 .vu-odhod-x[hidden]{display:none;}
+.v5 .vu-odhod-x svg{width:12px;height:12px;}
+.v5 .vu-cas{position:relative;display:flex;align-items:center;justify-content:center;gap:2px;height:calc(var(--vu-h,40px) * 3);border-radius:var(--r-sm);background:var(--surface);overflow:hidden;}
+/* pas izbrane vrednosti in zbledela robova (kot kolo budilke) */
+.v5 .vu-cas::before{content:"";position:absolute;left:6px;right:6px;top:50%;height:var(--vu-h,40px);transform:translateY(-50%);border-radius:var(--r-sm);background:var(--green-m);pointer-events:none;}
+.v5 .vu-cas::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(var(--surface),transparent 34%,transparent 66%,var(--surface));}
+.v5 .vu-kolo{position:relative;z-index:1;width:46px;height:100%;overflow-y:auto;scroll-snap-type:y mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;outline:none;touch-action:pan-y;}
+.v5 .vu-kolo::-webkit-scrollbar{display:none;}
+.v5 .vu-kolo-pad{height:var(--vu-h,40px);}
+.v5 .vu-kolo-i{height:var(--vu-h,40px);display:flex;align-items:center;justify-content:center;scroll-snap-align:center;font-size:var(--fs-20);font-weight:500;font-variant-numeric:tabular-nums;color:var(--mid);opacity:.55;cursor:pointer;user-select:none;-webkit-user-select:none;transition:color .12s,opacity .12s;}
+.v5 .vu-kolo-i.on{color:var(--ink);opacity:1;font-weight:600;}
+.v5 .vu-kolo:focus-visible + .vu-dvo,.v5 .vu-kolo:focus-visible{box-shadow:none;}
+.v5 .vu-kolo:focus-visible .vu-kolo-i.on{text-decoration:underline;text-underline-offset:5px;}
+.v5 .vu-dvo{position:relative;z-index:1;font-size:var(--fs-20);font-weight:600;color:var(--ink);margin:0 1px 2px;}
+.v5 .vu-sk.prazno .vu-cas{display:none;}
+.v5 .vu-brez{display:none;height:calc(var(--vu-h,40px) * 3);flex-direction:column;justify-content:center;gap:8px;}
+.v5 .vu-sk.prazno .vu-brez{display:flex;}
+.v5 .vu-brez button{height:var(--ctrl-h-md);border:1px solid var(--line);border-radius:var(--r-full);background:var(--surface);color:var(--ink);font:500 var(--fs-14)/1 var(--sans);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;}
+.v5 .vu-brez button[hidden]{display:none;}
+.v5 .vu-brez button:hover{border-color:var(--line-strong);}
+.v5 .vu-brez svg{width:14px;height:14px;}
+.v5 .vu-izm .vu-x{align-self:start;width:36px;height:36px;margin-top:20px;}
+.v5 .vu-skupaj{margin:14px 2px 0;}
+@media(max-width:560px){
+  .v5 .vu-izm{grid-template-columns:1fr 1fr 32px;gap:8px;padding:10px;}
+  .v5 .vu-kolo{width:40px;}
+  .v5 .vu-izm .vu-x{width:32px;height:32px;}
+}
+.v5 .vu-brez .vu-zdaj{position:static;transform:none;right:auto;top:auto;height:var(--ctrl-h-md);padding:0 12px;}
+/* računalnik: polje ure s segmentoma (kot macOS) */
+.v5 .vu-cas.vu-polje{height:var(--ctrl-h);background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);gap:0;}
+.v5 .vu-cas.vu-polje::before,.v5 .vu-cas.vu-polje::after{content:none;}
+.v5 .vu-cas.vu-polje:focus-within{border-color:var(--line-strong);}
+.v5 .vu-seg{min-width:2.1ch;padding:3px 4px;border-radius:6px;font-size:var(--fs-18);font-weight:600;font-variant-numeric:tabular-nums;color:var(--ink);text-align:center;outline:none;cursor:ns-resize;user-select:none;-webkit-user-select:none;caret-color:transparent;}
+.v5 .vu-seg:focus{background:var(--ink);color:var(--bg);}
+.v5 .vu-cas.vu-polje .vu-dvo{font-size:var(--fs-18);margin:0;}
+@media(pointer:fine){ .v5 .vu-brez{height:var(--ctrl-h);flex-direction:row;} .v5 .vu-brez button{flex:1;height:100%;} .v5 .vu-izm .vu-x{margin-top:0;align-self:end;height:var(--ctrl-h);} .v5 .vu-izm{align-items:end;} }
+
+/* ══ Statistika: delež kg po strankah — ploščat krog + seznam (paleta preverjena: dataviz validator, svetlo/temno) ══ */
+.v5{--krog-1:#2a78d6;--krog-2:#eb6834;--krog-3:#1baf7a;--krog-4:#eda100;--krog-5:#e87ba4;--krog-0:#b8bfc6;}
+.v5[data-theme="dark"]{--krog-1:#3987e5;--krog-2:#d95926;--krog-3:#199e70;--krog-4:#c98500;--krog-5:#d55181;--krog-0:#4a5057;}
+.v5 .uc-krog-oder{display:block;margin-top:14px;}
+.v5 .uc-krog{display:grid;grid-template-columns:minmax(150px,220px) minmax(0,1fr);gap:28px;align-items:center;}
+.v5 .uc-krog-g{position:relative;width:100%;aspect-ratio:1;}
+.v5 .uc-krog-svg{display:block;width:100%;height:100%;overflow:visible;}
+.v5 .uc-krog-s{fill:none;stroke-width:26;transition:opacity .2s ease,stroke-width .2s ease;}
+.v5 .uc-krog-maska{fill:none;stroke:#fff;stroke-width:40;}
+.v5 .uc-krog.hot .uc-krog-s:not(.on){opacity:.28;}
+.v5 .uc-krog .uc-krog-s.on{stroke-width:30;}
+.v5 .uc-krog-sred{position:absolute;inset:22%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;pointer-events:none;}
+.v5 .uc-krog-st{font-size:clamp(18px,2.2vw,26px);font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:var(--ink);line-height:1.1;}
+.v5 .uc-krog-op{margin-top:4px;max-width:100%;font-size:var(--fs-12);color:var(--mid);line-height:1.3;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.v5 .uc-krog-leg{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px;min-width:0;transition:opacity .4s ease .35s;}
+.v5 .uc-krog.vstop .uc-krog-leg{opacity:0;transition:none;}
+.v5 .uc-krog-v{display:grid;grid-template-columns:10px minmax(0,1fr) auto 3.2em;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--r-sm);cursor:default;outline:none;transition:background .15s ease,opacity .2s ease;}
+.v5 .uc-krog-v:hover,.v5 .uc-krog-v.on,.v5 .uc-krog-v:focus-visible{background:var(--green-m);}
+.v5 .uc-krog.hot .uc-krog-v:not(.on){opacity:.5;}
+.v5 .uc-krog-pika{width:10px;height:10px;border-radius:50%;}
+.v5 .uc-krog-ime{min-width:0;font-size:var(--fs-14);color:var(--ink);overflow-wrap:anywhere;line-height:1.3;}
+.v5 .uc-krog-n{color:var(--mid);}
+.v5 .uc-krog-kg{font-size:var(--fs-13);color:var(--mid);font-variant-numeric:tabular-nums;white-space:nowrap;}
+.v5 .uc-krog-pct{font-size:var(--fs-14);font-weight:600;color:var(--ink);text-align:right;font-variant-numeric:tabular-nums;}
+.v5 .uc-krog-prazno{margin:24px 0;color:var(--mid);font-size:var(--fs-14);}
+@media(min-width:901px){ .v5 .uc-donut-row .uc-donut3d-card{height:auto;min-height:0;} }
+@media(max-width:560px){ .v5 .uc-krog{grid-template-columns:1fr;gap:18px;} .v5 .uc-krog-g{width:min(240px,72%);margin:0 auto;} }
+/* stolpci (Domov, Statistika): ena vrsta = ena barva (modra iz palete grafov), tanki stolpci z zaobljenim vrhom, zrak med njimi;
+   na Domov je poudarjen tekoči mesec, ostali so zbledeli */
+.v5 .bars-bar{justify-self:center;width:100%;max-width:24px;background:var(--krog-1);border-radius:4px 4px 0 0;}
+.v5 #sec-domov .bars-bar{background:color-mix(in oklab,var(--krog-1) 34%,transparent);}
+.v5 #sec-domov .bars-col.zdaj .bars-bar{background:var(--krog-1);}
+.v5 .bars-row{column-gap:6px;}
+
+/* prehod teme: animirajo se le žetoni na <html>; elementi med prehodom nimajo lastnih prehodov (sicer bi zaostajali) */
+html.sc-tema-anim{transition:--green .32s cubic-bezier(.4,0,.2,1),--green-l .32s cubic-bezier(.4,0,.2,1),--green-t .32s cubic-bezier(.4,0,.2,1),--green-m .32s cubic-bezier(.4,0,.2,1),--gold .32s cubic-bezier(.4,0,.2,1),--gold-m .32s cubic-bezier(.4,0,.2,1),--accent .32s cubic-bezier(.4,0,.2,1),--btn-ink .32s cubic-bezier(.4,0,.2,1),--ink .32s cubic-bezier(.4,0,.2,1),--mid .32s cubic-bezier(.4,0,.2,1),--bg .32s cubic-bezier(.4,0,.2,1),--surface .32s cubic-bezier(.4,0,.2,1),--topbar-bg .32s cubic-bezier(.4,0,.2,1),--band .32s cubic-bezier(.4,0,.2,1),--line .32s cubic-bezier(.4,0,.2,1),--line-strong .32s cubic-bezier(.4,0,.2,1),--wm-ink .32s cubic-bezier(.4,0,.2,1),--wm-green .32s cubic-bezier(.4,0,.2,1),--wm-blue .32s cubic-bezier(.4,0,.2,1),--st-ok .32s cubic-bezier(.4,0,.2,1),--st-warn .32s cubic-bezier(.4,0,.2,1),--st-bad .32s cubic-bezier(.4,0,.2,1),--st-ok-ink .32s cubic-bezier(.4,0,.2,1),--st-warn-ink .32s cubic-bezier(.4,0,.2,1),--st-bad-ink .32s cubic-bezier(.4,0,.2,1),--krog-1 .32s cubic-bezier(.4,0,.2,1),--krog-2 .32s cubic-bezier(.4,0,.2,1),--krog-3 .32s cubic-bezier(.4,0,.2,1),--krog-4 .32s cubic-bezier(.4,0,.2,1),--krog-5 .32s cubic-bezier(.4,0,.2,1),--krog-0 .32s cubic-bezier(.4,0,.2,1),--cov-ink .32s cubic-bezier(.4,0,.2,1),--cov-steklo .32s cubic-bezier(.4,0,.2,1),--cov-rob .32s cubic-bezier(.4,0,.2,1);}
+html.sc-tema-anim *,html.sc-tema-anim *::before,html.sc-tema-anim *::after{transition:none!important;}
+
+/* ══════════ PRIJAVA (4.67): naslovnica v slogu ikone + obrazec ══════════
+   Računalnik: levo velika naslovnica (siva mat podlaga z zrnom, mehki barvni madeži, ki počasi plavajo), slogan spodaj levo;
+   desno obrazec na sredini. Telefon: naslovnica je pas na vrhu, obrazec pod njim. */
+.v5 .auth-top{border-bottom:0;}
+.v5 .auth-main{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(340px,.85fr);grid-template-rows:minmax(0,1fr);gap:clamp(28px,5vw,88px);
+  align-items:stretch;justify-items:stretch;padding:4px clamp(16px,2.2vw,32px) clamp(16px,2.2vw,32px);}
+.v5 .auth-hero{position:relative;isolation:isolate;overflow:hidden;align-self:stretch;display:flex;align-items:flex-end;justify-content:flex-start;
+  min-height:420px;max-height:none;padding:clamp(28px,4vw,60px);border-radius:28px;text-align:left;background:var(--cov-base);box-shadow:inset 0 0 0 1px var(--cov-rob);}
+.v5 .auth-hero::after{content:"";position:absolute;inset:0;z-index:-1;background-image:var(--cov-zrno);opacity:var(--cov-zrno-o,.4);mix-blend-mode:soft-light;pointer-events:none;}
+.v5 .auth-hero-luci{position:absolute;inset:0;z-index:-2;filter:blur(8px);}
+.v5 .auth-hero-luci i{position:absolute;border-radius:50%;opacity:.9;will-change:transform;animation:authLuc 26s ease-in-out infinite alternate;}
+.v5 .auth-hero-luci i:nth-child(1){width:70%;height:80%;left:-12%;top:-18%;background:radial-gradient(closest-side,color-mix(in oklab,#1f8f5f calc(var(--cov-a1) * 1.2),transparent),transparent);}
+.v5 .auth-hero-luci i:nth-child(2){width:60%;height:70%;right:-14%;top:-10%;background:radial-gradient(closest-side,color-mix(in oklab,#2a78d6 var(--cov-a1),transparent),transparent);animation-duration:31s;animation-delay:-6s;}
+.v5 .auth-hero-luci i:nth-child(3){width:64%;height:72%;right:-8%;bottom:-24%;background:radial-gradient(closest-side,color-mix(in oklab,#7a5ae0 var(--cov-a1),transparent),transparent);animation-duration:29s;animation-delay:-14s;}
+.v5 .auth-hero-luci i:nth-child(4){width:46%;height:52%;left:6%;bottom:-20%;background:radial-gradient(closest-side,color-mix(in oklab,#6ed3a1 calc(var(--cov-a2) * 1.6),transparent),transparent);animation-duration:23s;animation-delay:-3s;}
+@keyframes authLuc{0%{transform:translate3d(0,0,0) scale(1);}50%{transform:translate3d(6%,4%,0) scale(1.08);}100%{transform:translate3d(-5%,6%,0) scale(.96);}}
+@media(prefers-reduced-motion:reduce){ .v5 .auth-hero-luci i{animation:none;} }
+.v5 .auth-claim{max-width:14ch;font-family:var(--sans);font-size:clamp(2.6rem,5.2vw,5rem);font-weight:600;line-height:1;letter-spacing:-.04em;color:var(--cov-ink);text-wrap:balance;}
+.v5 .auth-claim em{display:block;color:inherit;opacity:.55;}
+.v5 .auth-slot{align-self:center;justify-self:center;width:100%;max-width:380px;display:flex;flex-direction:column;align-items:stretch;}
+.v5 .auth-box{max-width:none;}
+.v5 .auth-box h1{font-family:var(--sans);font-size:clamp(1.9rem,2.4vw,2.4rem);font-weight:500;letter-spacing:-.03em;line-height:1.1;margin:0 0 32px;}
+.v5 .auth .field label{font-size:var(--fs-13);color:var(--mid);margin-bottom:8px;}
+.v5 .auth .btn{height:var(--ctrl-h);margin-top:8px;}
+.v5 .auth .under{margin-top:18px;text-align:center;}
+.v5 .auth-foot{position:static;margin:48px 0 0;text-align:center;}
+.v5 .profile-picker h1{font-family:var(--sans);font-size:clamp(1.9rem,2.4vw,2.4rem);font-weight:500;letter-spacing:-.03em;}
+@media(max-width:900px){
+  .v5 .auth-main{display:flex;flex-direction:column;align-items:stretch;gap:28px;padding:4px 16px 20px;}
+  .v5 .auth-hero{min-height:0;height:clamp(150px,26vh,230px);flex:none;padding:22px 24px;border-radius:24px;max-height:none;transition:height .3s ease,opacity .3s ease,margin .3s ease;}
+  .v5 .auth-claim{font-size:clamp(1.9rem,8.4vw,2.6rem);max-width:14ch;}
+  .v5 .auth-slot{max-width:460px;align-self:center;}
+  .v5 #auth.auth-tipk .auth-hero{height:0;padding-top:0;padding-bottom:0;opacity:0;margin-bottom:-28px;}
+  .v5 .auth-foot{margin:auto 0 0;padding-top:28px;}
+}
+
+/* ══════════ DOKUMENTI (4.67) ══════════
+   Kartica je .row kot drugod. Mreža: naslovnica (sličica slike / mapa / vrsta datoteke na sivi podlagi) → podatki → ime ›.
+   Seznam: mala naslovnica levo, ime in podatki. »⋯« je sosednji gumb v kotu (meni), datoteka se odpre v oknu. */
+.v5 .dk-rows > .lcell.dk-cell{position:relative;}
+.v5[data-view="list"] .dk-rows > .lcell.dk-cell{display:block;}
+.v5 .dk-kart .dk-tx{display:flex;flex-direction:column;gap:3px;min-width:0;}
+.v5 .dk-kart .dk-ime{font-size:var(--fs-16);font-weight:500;letter-spacing:-.01em;line-height:1.3;color:var(--ink);overflow-wrap:anywhere;}
+.v5 .dk-kart .dk-meta{font-size:var(--fs-13);line-height:1.4;color:var(--mid);overflow-wrap:anywhere;}
+/* ikone na naslovnici v svojem sloju: Chrome na Androidu sicer ob SVG na naslovnici ne izriše drugih SVG na strani (npr. iskalnega polja) */
+.v5 .dk-nasl .dk-ik{display:flex;color:var(--cov-ink);opacity:.74;will-change:transform;}
+.v5 .dk-nasl .dk-ik svg{width:clamp(22px,13cqi,38px);height:clamp(22px,13cqi,38px);stroke-width:1.5;}
+.v5 .dk-nasl .dk-vrsta,.v5 .dk-pred .dk-vrsta{font-family:var(--sans);font-weight:600;letter-spacing:.06em;color:var(--cov-ink);opacity:.8;}
+.v5 .dk-nasl .dk-vrsta{font-size:clamp(14px,8cqi,24px);}
+.v5 .dk-nasl img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .25s ease;}
+.v5 .dk-nasl img.ok{opacity:1;}
+.v5 .dk-nasl .dk-zakl{position:absolute;left:10px;bottom:10px;display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;
+  background:var(--cov-steklo);box-shadow:inset 0 0 0 1px var(--cov-rob);color:var(--cov-ink);will-change:transform;}
+.v5 .dk-nasl .dk-zakl svg{width:13px;height:13px;}
+/* mreža */
+.v5[data-view="grid"] .lcell:not(.open) .row.dk-kart{grid-template-columns:minmax(0,1fr);grid-template-areas:"n" "m" "t";gap:0;}
+.v5[data-view="grid"] .lcell:not(.open) .row.dk-kart .dk-nasl{grid-area:n;padding:0;}
+.v5[data-view="grid"] .lcell:not(.open) .row.dk-kart .dk-tx{display:contents;}
+.v5[data-view="grid"] .lcell:not(.open) .row.dk-kart .dk-meta{grid-area:m;}
+.v5[data-view="grid"] .lcell:not(.open) .row.dk-kart .dk-ime{grid-area:t;display:block;}
+.v5 .dk-kart .dk-zad{white-space:nowrap;}
+.v5 .dk-kart .dk-chev{display:none;}
+.v5[data-view="grid"] .lcell:not(.open) .row.dk-kart .dk-chev{display:inline-block;margin-left:7px;color:var(--mid);font-weight:400;transition:transform .25s ease,color .25s ease;}
+@media(hover:hover){ .v5[data-view="grid"] .lcell:not(.open) .row.dk-kart:hover .dk-chev{transform:translateX(3px);color:var(--ink);} }
+/* seznam */
+.v5[data-view="list"] .lcell .row.dk-kart{grid-template-columns:44px minmax(0,1fr);grid-template-areas:"n t";gap:14px;align-items:center;padding:12px 62px 12px 12px;}
+.v5[data-view="list"] .lcell .row.dk-kart .dk-nasl{grid-area:n;position:relative;display:flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:var(--r-md);overflow:hidden;isolation:isolate;container-type:inline-size;
+  background:radial-gradient(var(--r1,72% 95%) at var(--p1,28% 22%),color-mix(in oklab,var(--c1,#8f979e) calc(var(--cov-a1) * var(--j,1)),transparent),transparent 72%),
+             radial-gradient(var(--r2,85% 100%) at var(--p2,78% 88%),color-mix(in oklab,var(--c2,#cdd3d8) calc(var(--cov-a2) * var(--j,1)),transparent),transparent 74%),
+             var(--cov-base);box-shadow:inset 0 0 0 1px var(--cov-rob);}
+.v5[data-view="list"] .lcell .row.dk-kart .dk-nasl::after{content:"";position:absolute;inset:0;z-index:-1;background-image:var(--cov-zrno);opacity:var(--cov-zrno-o,.4);mix-blend-mode:soft-light;pointer-events:none;}
+.v5[data-view="list"] .lcell .row.dk-kart .dk-tx{grid-area:t;}
+.v5[data-view="list"] .lcell .row.dk-kart .dk-nasl .dk-ik svg{width:20px;height:20px;}
+.v5[data-view="list"] .lcell .row.dk-kart .dk-nasl .dk-vrsta{font-size:var(--fs-11);letter-spacing:.04em;}
+.v5[data-view="list"] .lcell .row.dk-kart .dk-nasl .dk-zakl{left:auto;right:2px;bottom:2px;width:18px;height:18px;}
+.v5[data-view="list"] .lcell .row.dk-kart .dk-nasl .dk-zakl svg{width:10px;height:10px;}
+/* »⋯« */
+.v5 .dk-vec{position:absolute;z-index:3;display:flex;align-items:center;justify-content:center;width:32px;height:32px;padding:0;border:0;border-radius:50%;cursor:pointer;
+  color:var(--cov-ink);background:var(--cov-steklo);box-shadow:inset 0 0 0 1px var(--cov-rob);will-change:transform;
+  transition:transform .45s cubic-bezier(.2,.7,.2,1),background-color .15s ease;}
+.v5[data-view="grid"] .dk-cell:has(.dk-slika) .dk-vec{-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);}   /* steklo le nad sliko (zamegljevanje na vsaki kartici je v dolgih mapah drago) */
+.v5 .dk-vec svg{width:18px;height:18px;stroke-width:2.6;}
+.v5[data-view="grid"] .dk-cell .dk-vec{top:10px;right:10px;}
+@media(hover:hover){ .v5[data-view="grid"] .dk-cell:hover .dk-vec{transform:translateY(-3px);} }
+.v5[data-view="list"] .dk-cell .dk-vec{top:50%;right:14px;width:36px;height:36px;margin-top:-22px;color:var(--mid);background:transparent;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none;}
+.v5[data-view="list"] .dk-cell .dk-vec:hover,.v5 .dk-vec[aria-expanded="true"]{background:var(--green-m);color:var(--ink);}
+.v5 .dk-vec:focus-visible{outline:2px solid var(--ink);outline-offset:2px;}
+.v5 .dk-cell:has(> .okno-vir) .dk-vec{visibility:hidden;}
+/* pot */
+.v5 .dk-pot{display:flex;align-items:center;flex-wrap:wrap;gap:2px;margin:-6px 0 16px -8px;font-size:var(--fs-14);}
+.v5 .dk-pot[hidden]{display:none;}
+.v5 .dk-crumb{appearance:none;-webkit-appearance:none;border:0;background:none;margin:0;padding:5px 8px;border-radius:var(--r-full);font:inherit;font-weight:500;line-height:1.3;color:var(--mid);overflow-wrap:anywhere;}
+.v5 button.dk-crumb{cursor:pointer;transition:background-color .15s ease,color .15s ease;}
+.v5 button.dk-crumb:hover{background:var(--green-m);color:var(--ink);}
+.v5 .dk-crumb.on{color:var(--ink);}
+.v5 .dk-sep{color:var(--mid);opacity:.55;}
+/* meni */
+.dk-meni{position:absolute;z-index:1300;min-width:188px;padding:6px;display:flex;flex-direction:column;gap:2px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);
+  box-shadow:var(--shadow-lg);animation:dkMeni .14s ease-out;transform-origin:top right;}
+.dk-meni button{appearance:none;-webkit-appearance:none;display:flex;align-items:center;width:100%;min-height:36px;margin:0;padding:0 12px;border:0;border-radius:var(--r-sm);background:none;
+  font-family:var(--sans);font-size:var(--fs-14);font-weight:500;color:var(--ink);text-align:left;cursor:pointer;}
+.dk-meni button:hover:not(:disabled),.dk-meni button:focus-visible{background:var(--green-m);outline:none;}
+.dk-meni button.danger{color:var(--st-bad-ink);}
+.dk-meni button.danger:hover:not(:disabled),.dk-meni button.danger:focus-visible{background:color-mix(in srgb,var(--st-bad) 8%,transparent);}
+.dk-meni button:disabled{color:var(--mid);opacity:.5;cursor:default;}
+@keyframes dkMeni{from{opacity:0;transform:translateY(-4px) scale(.98);}to{opacity:1;transform:none;}}
+@media(prefers-reduced-motion:reduce){ .dk-meni{animation:none;} }
+/* spusti za nalaganje */
+.v5 .dk-spusti{position:fixed;inset:calc(12px + var(--vrh,0px)) 12px 12px;z-index:1250;display:flex;align-items:center;justify-content:center;pointer-events:none;
+  border:2px dashed var(--line-strong);border-radius:var(--radius);background:color-mix(in srgb,var(--bg) 90%,transparent);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
+  font-size:var(--fs-18);font-weight:500;color:var(--ink);animation:dkMeni .14s ease-out;}
+.v5 .dk-spusti[hidden]{display:none;}
+/* okno datoteke */
+.v5 .okno .dk-okno{padding:18px 22px 22px;}
+@media(max-width:560px){ .v5 .okno .dk-okno{padding:16px 16px 18px;} }
+.v5 .dk-okno .dk-pred{position:relative;width:100%;display:flex;align-items:center;justify-content:center;aspect-ratio:16 / 10;margin:0 0 18px;border-radius:var(--r-md);overflow:hidden;isolation:isolate;
+  background:radial-gradient(var(--r1,72% 95%) at var(--p1,28% 22%),color-mix(in oklab,var(--c1,#8f979e) calc(var(--cov-a1) * var(--j,1)),transparent),transparent 72%),
+             radial-gradient(var(--r2,85% 100%) at var(--p2,78% 88%),color-mix(in oklab,var(--c2,#cdd3d8) calc(var(--cov-a2) * var(--j,1)),transparent),transparent 74%),
+             var(--cov-base);box-shadow:inset 0 0 0 1px var(--cov-rob);}
+.v5 .dk-okno .dk-pred::after{content:"";position:absolute;inset:0;z-index:-1;background-image:var(--cov-zrno);opacity:var(--cov-zrno-o,.4);mix-blend-mode:soft-light;pointer-events:none;}
+.v5 .dk-okno .dk-pred .dk-vrsta{font-size:clamp(22px,5vw,34px);}
+.v5 .dk-okno .dk-pred-slika{width:100%;aspect-ratio:4 / 3;max-height:min(56vh,520px);}
+.v5 .dk-okno .dk-pred-slika img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;cursor:zoom-in;animation:dkPojav .25s ease;}
+@keyframes dkPojav{from{opacity:0;}to{opacity:1;}}
+.v5 .dk-okno .okno-dl dd{overflow-wrap:anywhere;}
+.v5 .dk-okno .u-acts button{display:inline-flex;align-items:center;justify-content:center;gap:7px;}
+.v5 .dk-okno .u-acts button svg{width:16px;height:16px;flex:none;}
+.v5 .dk-okno .u-acts button.nalaga{cursor:progress;animation:nalagaPulz .7s ease-in-out infinite alternate;}
+@media(max-width:560px){ .v5 .dk-okno .u-acts:has([data-a="odpri"]):has([data-a="preime"]) [data-a="prenesi"]{grid-column:1 / -1;} }
+/* izbira mape */
+.v5 .dk-izbira{max-width:460px;}
+.v5 .dk-mape{display:flex;flex-direction:column;gap:2px;max-height:min(52vh,420px);overflow-y:auto;margin:4px -6px 18px;padding:2px 6px;}
+.v5 .dk-mapa-i{appearance:none;-webkit-appearance:none;display:flex;align-items:center;gap:12px;width:100%;min-height:44px;margin:0;padding:8px 12px;border:1px solid transparent;border-radius:var(--r-md);
+  background:none;font-family:var(--sans);font-size:var(--fs-15);font-weight:500;color:var(--ink);text-align:left;cursor:pointer;}
+.v5 .dk-mapa-i svg{width:20px;height:20px;flex:none;color:var(--mid);}
+.v5 .dk-mapa-i span{min-width:0;overflow-wrap:anywhere;line-height:1.35;}
+.v5 .dk-mapa-i:hover{background:var(--green-m);}
+.v5 .dk-mapa-i.on{border-color:var(--ink);background:var(--green-m);}
+.v5 .dk-mapa-i.on svg{color:var(--ink);}
+.v5 .dk-mapa-i:focus-visible{outline:2px solid var(--ink);outline-offset:1px;}
+/* skeniranje */
+.v5 .sken-modal{max-width:520px;}
+.v5 .sken-strani{min-height:120px;margin:4px 0 12px;padding:12px;border:1px dashed var(--line-strong);border-radius:var(--r-md);background:var(--bg);}
+.v5 .sken-strani:has(.sken-prazno){padding:0;}
+.v5 .sken-prazno{appearance:none;-webkit-appearance:none;display:flex;align-items:center;justify-content:center;flex:1 1 100%;align-self:stretch;min-height:118px;margin:0;padding:0;border:0;border-radius:inherit;
+  background:none;color:var(--mid);cursor:pointer;transition:background-color .15s ease,color .15s ease;}
+.v5 .sken-prazno svg{width:30px;height:30px;opacity:.6;}
+.v5 .sken-prazno:hover{background:var(--green-m);color:var(--ink);}
+.v5 .sken-prazno:focus-visible{outline:2px solid var(--ink);outline-offset:-2px;}
+.v5 .sken-th{border-radius:var(--r-sm);border-color:var(--line);}
+.v5 .sken-th-x{width:26px;height:26px;background:rgba(10,12,11,.62);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);}
+.v5 .sken-th-x svg{width:14px;height:14px;}
+.v5 .sken-add-row{display:flex;gap:8px;margin:0 0 18px;}
+.v5 .sken-add-row .cgrp-btn{flex:1 1 0;justify-content:center;}
+.v5 .sken-add-row .cgrp-btn svg{width:16px;height:16px;flex:none;}
+.v5 .sken-polja{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;margin:0 0 22px;}
+.v5 .sken-polja .ur-f{margin:0;min-width:0;}
+.v5 .sken-polja .sc-modal-input{margin:0;}
+@media(max-width:560px){ .v5 .sken-polja{grid-template-columns:minmax(0,1fr);} }

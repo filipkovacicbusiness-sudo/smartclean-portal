@@ -1,5 +1,22 @@
 [
  {
+  "v": "4.67",
+  "d": "2026-10-21",
+  "c": "2026-10-21T19:30:00+02:00",
+  "t": [
+   "Barve kartic imajo pomen: stranke, fakture ter ceniki in artikli so sivi, vsak z drugačnim vzorcem; spremni listi so zeleni (pregledan), oranžni (nepregledan) ali rdeči (prazen); uporabniki imajo vsak svojo, bolj različno barvo. Mirnejša temna paleta.",
+   "Spremni listi v mreži: številka je na kartici, kartice so razvrščene po dnevih (Danes, Včeraj …).",
+   "Vnos ur kot pri budilki: na telefonu vrtljivi kolesi s tresljajem, ki se vrtita v krogu; na računalniku polje z urami in minutami (tipkanje, puščici, kolesce miške). Nov vnos ima eno izmeno.",
+   "Statistika: nov krog deležev po strankah — natančen in ploščat, barva sledi stranki, v sredini skupaj ali izbrana stranka, ob krogu kg in odstotki. Stolpci na Domov in v Statistiki v novih barvah.",
+   "Prehod med svetlim in temnim načinom je gladek čez ves zaslon, tudi vrh in dno na iPhonu.",
+   "Nov zaslon za prijavo.",
+   "Domov: ob drsenju je v vrhu »Domov«.",
+   "Prisotnost: stanja in ure so poravnani; na telefonu je stanje pod imenom.",
+   "Dokumenti na novo: kartice kot drugod (predogled slik, mape, vrsta datoteke), datoteka se odpre v oknu s predogledom in dejanji, meni ⋯ (tudi desni klik), premik in kopiranje z izbiro mape, mapa je v naslovu strani (nazaj deluje), iskanje tudi po mapah, razvrščanje, koš z obnovo map z vsebino. Brez traku nalaganja.",
+   "Dokumenti, varnost: dostop ima le aktivno osebje; zaklep map in premik map preverja baza; datoteke največ 25 MB, brez SVG; imena v isti mapi se ne podvajajo."
+  ]
+ },
+ {
   "v": "4.66",
   "d": "2026-10-21",
   "c": "2026-10-21T17:40:00+02:00",
