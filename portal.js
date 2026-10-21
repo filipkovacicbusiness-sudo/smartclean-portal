@@ -39,10 +39,13 @@
       // Aplikacija z začetnega zaslona (iPhone): BREZ View Transition — med prelivanjem iOS ne posodobi
       // pasu ob uri (ta je barvo zamenjal šele po koncu). Namesto tega mehak barvni prehod vseh
       // elementov hkrati (tudi traku #sc-vrh), da se pas ob uri spreminja skupaj s stranjo.
-      if (de.classList.contains('sc-sam') && !_mirno) {
+      // Enako v Safariju na iPhonu/iPadu: med View Transition Safari pasova (zgoraj ob uri in spodnjo
+      // vrstico) pobarva iz posnetka strani in spodnjega po koncu ne osveži več.
+      var _ios = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      if ((de.classList.contains('sc-sam') || _ios) && !_mirno) {
         de.classList.add('sc-tema-prehod');
         de.dataset.theme = eff;
-        clearTimeout(de._temaUra); de._temaUra = setTimeout(function () { de.classList.remove('sc-tema-prehod'); }, 480);
+        clearTimeout(de._temaUra); de._temaUra = setTimeout(function () { de.classList.remove('sc-tema-prehod'); osveziPasove(); }, 480);
       }
       // Gladka animacija preklopa teme brez zatikanja:
       // View Transitions naredi GPU-navzkrižno pretapljanje (smooth), fallback je hipen preklop.
@@ -61,6 +64,16 @@
     } else {
       de.dataset.theme = eff;
     }
+  }
+  // Safari (iPhone) barve spodnjega pasu po spremembi teme sam ne osveži: vzame jo iz fiksnega elementa ob
+  // spodnjem robu (odprt meni) ali iz strani in jo ponovno oceni šele ob spremembi geometrije ali pomiku.
+  // Neviden sunek (1 px za en okvir) ga prisili, da pas pobarva v novo barvo.
+  function osveziPasove() {
+    try {
+      var sd = $('side'); if (sd && sd.classList.contains('on')) { sd.style.visibility = 'hidden'; requestAnimationFrame(function () { requestAnimationFrame(function () { sd.style.visibility = ''; }); }); }
+      var y = window.scrollY, gor = y > 0 ? -1 : 1;
+      window.scrollTo(0, y + gor); requestAnimationFrame(function () { window.scrollTo(0, y); });
+    } catch (e) {}
   }
   function oznaciTemo() {
     const p = temaPref();
@@ -323,7 +336,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.59 · BETA';
+  var APP_VERZIJA = '4.60 · BETA';
   var NALAGANJE = '<div class="sc-load" aria-hidden="true"><span class="sc-load-line"></span></div>';
   // Stale-while-revalidate: ob ponovnem obisku razdelka NE pobriši vsebine v nalagalnik —
   // obdrži prejšnjo (takojšen prikaz) in jo osveži v ozadju. Trak le ob prvem nalaganju.
@@ -6267,8 +6280,8 @@
       var splBtn = '<button type="button" class="cgrp-btn ghost sc-toggle' + (jeSpl ? ' on' : '') + '" data-splorg="' + g.org_id + '" data-splon="' + (jeSpl ? '1' : '0') + '">' + (jeSpl ? 'Splošni cenik: vklopljen' : 'Vklopi splošni cenik') + '</button>';
       var bar = OSEBJE ? '<div class="cgrp-bar"><button type="button" class="cgrp-btn ghost" data-izvozorg="' + g.org_id + '">Izvozi</button><button type="button" class="cgrp-btn ghost" data-uvozorg="' + g.org_id + '">Uvozi</button>' + splBtn + '</div>' : '';
       return '<div class="cgrp' + (open ? ' open' : '') + '" data-key="' + escape_(g.key) + '" data-org="' + escape_(g.org_id) + '"><div class="cgrp-head-row"><button type="button" class="cgrp-h' + (open ? ' open' : '') + '" data-cgrp="' + escape_(g.key) + '">' +
-        '<span class="cgrp-name"><span class="cgrp-nm">' + escape_(g.label) + '</span>' + sub + '</span>' +
-        '<span class="cgrp-count">' + sklonArtiklov(list.length) + '</span>' + (jeSpl ? SC_TAG : '') + '<span class="cgrp-chev" aria-hidden="true">›</span></button></div>' +
+        '<span class="cgrp-name"><span class="cgrp-nm">' + escape_(g.label) + (jeSpl ? SC_TAG : '') + '</span>' + sub + '</span>' +
+        '<span class="cgrp-count">' + sklonArtiklov(list.length) + '</span><span class="cgrp-chev" aria-hidden="true">›</span></button></div>' +
         '<div class="cgrp-body' + (open ? ' show' : '') + '">' + bar + rows + '</div></div>';
     }).join('');
     box.querySelectorAll('[data-cgrp]').forEach(function (h) {
@@ -7010,9 +7023,9 @@
       const kg = kgm[o.id] || 0;
       const _spl = strankaSplosni(o.id);
       return `<div class="lcell"><button class="row${_spl ? ' has-sc' : ''}" type="button" data-id="${o.id}" data-i="${i}" aria-expanded="false">
-      <span><span class="row-name"><span class="row-nm">${escape_(o.name)}</span></span><br><span class="row-legal">${o.legal_name ? escape_(o.legal_name) : ''}</span></span>
+      <span><span class="row-name"><span class="row-nm">${escape_(o.name)}</span>${_spl ? SC_TAG : ''}</span><br><span class="row-legal">${o.legal_name ? escape_(o.legal_name) : ''}</span></span>
       <span class="row-pct" title="Delež vseh količin ta mesec">${skupajKg ? (Math.round(kg / skupajKg * 1000) / 10).toLocaleString('sl-SI') + ' %' : '—'}</span>
-      <span class="num">${fmtKg(kg)}</span>${_spl ? SC_TAG : ''}
+      <span class="num">${fmtKg(kg)}</span>
       <span class="chev" aria-hidden="true">›</span>
     </button><div class="arts" id="a${i}"></div></div>`;
     }).join('') + '</div>';

@@ -1,5 +1,15 @@
 [
  {
+  "v": "4.60",
+  "d": "2026-10-21",
+  "c": "2026-10-21T18:30:00+02:00",
+  "t": [
+   "Meni na telefonu čez cel zaslon v barvi strani — brez pasu med menijem in Safarijevo spodnjo vrstico (preverjeno na iPhonu v Safariju, obe temi).",
+   "Preklop teme na iPhonu: zgornji in spodnji pas Safarija se po prehodu vedno obarvata v novo temo (prej je spodnji ostal v stari barvi).",
+   "Značka »Splošni cenik« je povsod tik za imenom stranke (seznam, mreža, telefon) — ni več naključno postavljena."
+  ]
+ },
+ {
   "v": "4.59",
   "d": "2026-10-21",
   "c": "2026-10-21T17:50:00+02:00",
