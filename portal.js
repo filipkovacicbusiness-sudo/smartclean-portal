@@ -360,7 +360,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.67 · BETA';
+  var APP_VERZIJA = '4.68 · BETA';
   var NALAGANJE = '<div class="sc-load" aria-hidden="true"><span class="sc-load-line"></span></div>';
   // Stale-while-revalidate: ob ponovnem obisku razdelka NE pobriši vsebine v nalagalnik —
   // obdrži prejšnjo (takojšen prikaz) in jo osveži v ozadju. Trak le ob prvem nalaganju.
@@ -3357,7 +3357,7 @@
         ser.rows.map(function (o) {
           return '<div class="bars-col" title="' + escape_(o.opis + ' · ' + fmtKg(o.kg)) + '">' +
             '<span class="bars-val">' + (o.kg ? Math.round(o.kg) : '&nbsp;') + '</span>' +
-            '<div class="bars-bar" style="height:' + Math.round(o.kg / naj * 84) + 'px"></div>' +
+            '<div class="bars-bar" style="--v:' + (o.kg / naj).toFixed(4) + '"></div>' +
             '<span class="bars-lab">' + escape_(o.lab) + '</span></div>';
         }).join('') + '</div>'
       : '<p class="u-sub" style="margin:14px 0 0">V izbranem obdobju ni podatkov.</p>') + '</div>';
@@ -3675,7 +3675,7 @@
     const naj = Math.max(...meseci.map(m => m.kos), 1);
     $('mesecni').innerHTML = '<div class="bars"><h3 class="sec-h">Kosov po mesecih</h3><div class="bars-row">' + meseci.map((m, i) => `<div class="bars-col${i === meseci.length - 1 ? ' zdaj' : ''}">
         <span class="bars-val">${m.kos ? stevilo(m.kos) : ''}</span>
-        <div class="bars-bar" style="height:${Math.round(m.kos / naj * 56)}px"></div>
+        <div class="bars-bar" style="--v:${(m.kos / naj).toFixed(4)}"></div>
         <span class="bars-lab">${escape_(m.ime)}</span></div>`).join('') + '</div></div>';
     const stKljuc = l => { const d = String(l.number || '').split('/'); return (parseInt(d[1], 10) || 0) * 1e7 + (parseInt(d[0], 10) || 0); };
     const razvrsceni = LISTI.slice().sort((a, b) => stKljuc(b) - stKljuc(a));
