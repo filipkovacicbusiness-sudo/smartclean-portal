@@ -1,5 +1,19 @@
 [
  {
+  "v": "4.71",
+  "d": "2026-10-23",
+  "c": "2026-10-23T16:30:00+02:00",
+  "t": [
+   "Aplikacija SmartClean RFID je zdaj ločena aplikacija za zaposlene na Chainway C72: Oddaja (s tiskom spremnih listov v dveh izvodih), Prevzem, Označi in Poišči. Portala ne odpre — zaposleni v njej vidijo le čipe.",
+   "Kdo dela: vsak se na C72 enkrat prijavi z geslom, nato izbere svoje ime in vpiše PIN (kot na tablici). Spremni list ima za izdajatelja prijavljeno osebo.",
+   "Uporabniki: pri zaposlenem nov gumb »Aplikacija RFID« (spreminja ga le super admin). Baza sama preverja dostop; osebje in admin imata čipe po vlogi.",
+   "Kiosk na C72: aplikacija je domači zaslon in naprava drugega ne odpre. Skrbnik ima v meniju »Nastavitve naprave« (npr. WiFi) in »Izklopi kiosk«.",
+   "UR4: aplikacija sama vključi priključene antene; moč je omejena na zakonsko mejo z anteno 9 dBi.",
+   "Čipi v portalu: kot prej s čitalcem kot tipkovnico (R1 na računalniku).",
+   "Nastavitve → Videz na telefonu: trak Svetlo / Temno / Samodejno ne sega več čez rob kartice."
+  ]
+ },
+ {
   "v": "4.70",
   "d": "2026-10-23",
   "c": "2026-10-23T13:30:00+02:00",

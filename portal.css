@@ -2638,6 +2638,12 @@ html[data-theme="dark"] .doc-stage{background:color-mix(in srgb,var(--ink) 6%,va
 .v5 :is(.pris-tab.on,.seg-b.on,.tema-b.on){background:var(--surface);color:var(--ink);box-shadow:var(--shadow-sm);}
 .v5[data-theme="dark"] :is(.pris-tab.on,.seg-b.on,.tema-b.on){background:rgba(255,255,255,.12);}
 .v5 .tema-b svg{width:15px;height:15px;}
+/* telefon: trak čez celo širino kartice, gumbi po širini besedila — nič ne sega čez rob (ozki telefoni brez ikon) */
+@media(max-width:560px){
+  .v5 .tema-izbira{display:flex;width:100%;}
+  .v5 .tema-b{flex:1 1 auto;min-width:0;padding:0 8px;}
+}
+@media(max-width:359px){.v5 .tema-b svg{display:none;}}
 
 /* žetoni (32 / 28) */
 .v5 .pris-chip-t{font-weight:500;}
@@ -3103,6 +3109,8 @@ html.sc-sam{--vrh:max(12px,env(safe-area-inset-top));}
 .v5 #sec-domov .bars-bar{background:color-mix(in oklab,var(--krog-1) 34%,transparent);}
 .v5 #sec-domov .bars-col.zdaj .bars-bar{background:var(--krog-1);}
 .v5 .bars-row{column-gap:6px;}
+/* najožji telefoni (320): datumi pod stolpci ostanejo v kartici */
+@media(max-width:359px){.v5 .bars-row{column-gap:4px;}.v5 .bars-lab{font-size:10px;letter-spacing:-.02em;}}
 
 /* prehod teme: animirajo se le žetoni na <html>; elementi med prehodom nimajo lastnih prehodov (sicer bi zaostajali) */
 html.sc-tema-anim{transition:--green .32s cubic-bezier(.4,0,.2,1),--green-l .32s cubic-bezier(.4,0,.2,1),--green-t .32s cubic-bezier(.4,0,.2,1),--green-m .32s cubic-bezier(.4,0,.2,1),--gold .32s cubic-bezier(.4,0,.2,1),--gold-m .32s cubic-bezier(.4,0,.2,1),--accent .32s cubic-bezier(.4,0,.2,1),--btn-ink .32s cubic-bezier(.4,0,.2,1),--ink .32s cubic-bezier(.4,0,.2,1),--mid .32s cubic-bezier(.4,0,.2,1),--bg .32s cubic-bezier(.4,0,.2,1),--surface .32s cubic-bezier(.4,0,.2,1),--topbar-bg .32s cubic-bezier(.4,0,.2,1),--band .32s cubic-bezier(.4,0,.2,1),--line .32s cubic-bezier(.4,0,.2,1),--line-strong .32s cubic-bezier(.4,0,.2,1),--wm-ink .32s cubic-bezier(.4,0,.2,1),--wm-green .32s cubic-bezier(.4,0,.2,1),--wm-blue .32s cubic-bezier(.4,0,.2,1),--st-ok .32s cubic-bezier(.4,0,.2,1),--st-warn .32s cubic-bezier(.4,0,.2,1),--st-bad .32s cubic-bezier(.4,0,.2,1),--st-ok-ink .32s cubic-bezier(.4,0,.2,1),--st-warn-ink .32s cubic-bezier(.4,0,.2,1),--st-bad-ink .32s cubic-bezier(.4,0,.2,1),--krog-1 .32s cubic-bezier(.4,0,.2,1),--krog-2 .32s cubic-bezier(.4,0,.2,1),--krog-3 .32s cubic-bezier(.4,0,.2,1),--krog-4 .32s cubic-bezier(.4,0,.2,1),--krog-5 .32s cubic-bezier(.4,0,.2,1),--krog-0 .32s cubic-bezier(.4,0,.2,1),--cov-ink .32s cubic-bezier(.4,0,.2,1),--cov-steklo .32s cubic-bezier(.4,0,.2,1),--cov-rob .32s cubic-bezier(.4,0,.2,1);}
@@ -3273,6 +3281,7 @@ html.sc-tema-anim *,html.sc-tema-anim *::before,html.sc-tema-anim *::after{trans
    Kosi: povzetek (kosov, pranj, pogrešani) in seznam artiklov; kos v oknu. */
 .v5 .rf-nacini{display:flex;width:100%;max-width:560px;margin:0 0 16px;}
 .v5 .rf-nacini .pris-tab{flex:1 1 0;}
+@media(max-width:359px){.v5 .rf-nacini .pris-tab{min-width:0;padding-left:4px;padding-right:4px;font-size:var(--fs-13);}}
 .v5 .rf-sken{display:flex;flex-direction:column;gap:16px;padding:20px 22px 22px;}
 .v5 .rf-art{margin:0;}
 .v5 .rf-stevec{display:flex;align-items:baseline;gap:12px;min-height:72px;}
@@ -3282,9 +3291,9 @@ html.sc-tema-anim *,html.sc-tema-anim *::before,html.sc-tema-anim *::after{trans
 .v5 .rf-isci{margin:0 0 16px;}
 .v5 .rf-cit{display:flex;flex-direction:column;gap:12px;}
 .v5 .rf-cit-vr{display:flex;flex-wrap:wrap;align-items:center;gap:10px 12px;}
-.v5 .rf-cit-izb{display:flex;align-items:center;gap:8px;flex:1 1 220px;min-width:0;}
-.v5 .rf-cit-izb .cs{flex:1 1 auto;min-width:0;}
-.v5 .rf-cit-izb .cgrp-btn{flex:0 0 auto;height:40px;padding:0 14px;font-size:var(--fs-13);}
+.v5 .rf-cit-izb{display:flex;flex-wrap:wrap;align-items:center;gap:8px;flex:1 1 220px;min-width:0;}
+.v5 .rf-cit-izb .cs,.v5 .rf-cit-izb select{flex:1 1 150px;min-width:0;}
+.v5 .rf-cit-izb .cgrp-btn{flex:0 1 auto;max-width:100%;min-height:40px;height:auto;padding:6px 14px;font-size:var(--fs-13);font-variant-numeric:tabular-nums;overflow-wrap:anywhere;}
 .v5 .rf-cit-izb [data-ur4][hidden]{display:none;}
 .v5 .rf-moc{display:flex;flex:1 1 260px;min-width:0;}
 .v5 .rf-moc .pris-tab{flex:1 1 0;padding:8px 8px;text-align:center;}

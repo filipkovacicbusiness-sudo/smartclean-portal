@@ -1,9 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- SmartClean RFID — portal (razdelek Čipi) z neposrednim čitalcem Chainway: vgrajen (C72), R1 (USB), UR4 (omrežje). -->
+<!-- SmartClean RFID — aplikacija za zaposlene (portal.smartclean.si/rfid/) z neposrednim čitalcem Chainway: vgrajen (C72),
+     R1 (USB), UR4 (omrežje). Na C72 je edino, kar je na napravi: domači zaslon in zaklep (kiosk), ko je nastavljena
+     kot lastnik naprave (adb shell dpm set-device-owner si.smartclean.rfid/.Skrbnik). -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="si.smartclean.rfid"
-    android:versionCode="1"
-    android:versionName="1.0">
+    android:versionCode="2"
+    android:versionName="1.1">
 
     <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="34" />
 
@@ -24,10 +26,17 @@
             android:exported="true"
             android:launchMode="singleTask"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|uiMode"
-            android:windowSoftInputMode="adjustResize">
+            android:windowSoftInputMode="adjustResize"
+            android:lockTaskMode="if_whitelisted">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- domači zaslon naprave: tipka Domov vrne v aplikacijo, po vklopu se odpre sama -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
             <!-- R1 na USB: Android ponudi odprtje aplikacije in ji da dovoljenje za napravo -->
             <intent-filter>
@@ -35,5 +44,15 @@
             </intent-filter>
             <meta-data android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED" android:resource="@xml/device_filter" />
         </activity>
+        <!-- lastnik naprave (kiosk): zaklep v aplikacijo, ta je domači zaslon -->
+        <receiver
+            android:name=".Skrbnik"
+            android:exported="true"
+            android:permission="android.permission.BIND_DEVICE_ADMIN">
+            <meta-data android:name="android.app.device_admin" android:resource="@xml/device_admin" />
+            <intent-filter>
+                <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>

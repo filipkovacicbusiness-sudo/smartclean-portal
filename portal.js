@@ -81,10 +81,7 @@
     var x = hexRgb(a), y = hexRgb(b);
     return '#' + [0, 1, 2].map(function (k) { return ('0' + Math.round(x[k] + (y[k] - x[k]) * t).toString(16)).slice(-2); }).join('');
   }
-  function nastaviPas(barva) {
-    try { var mc = document.querySelector('meta[name="theme-color"]'); if (mc) mc.setAttribute('content', barva); } catch (e) {}
-    try { if (window.ScRfid && /^#[0-9a-f]{6}$/i.test(barva)) window.ScRfid.barva(barva); } catch (e) {}   // aplikacija SmartClean RFID
-  }
+  function nastaviPas(barva) { try { var mc = document.querySelector('meta[name="theme-color"]'); if (mc) mc.setAttribute('content', barva); } catch (e) {} }
   // ali brskalnik zna zvezno spreminjati registrirane barvne žetone (@property): sicer hipna menjava
   function _temaZetoniAnimirani() {
     if (_temaZetoniAnimirani.v != null) return _temaZetoniAnimirani.v;
@@ -363,7 +360,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.70 · BETA';
+  var APP_VERZIJA = '4.71 · BETA';
   var NALAGANJE = '<div class="sc-load" aria-hidden="true"><span class="sc-load-line"></span></div>';
   // Stale-while-revalidate: ob ponovnem obisku razdelka NE pobriši vsebine v nalagalnik —
   // obdrži prejšnjo (takojšen prikaz) in jo osveži v ozadju. Trak le ob prvem nalaganju.
@@ -7759,7 +7756,7 @@
      Če ga še ni, to tu tudi piše — namesto strani 404. */
   // ?v= ob vsaki novi različici aplikacije (aplikacija/zgradi.py): brskalnik in predpomnilnik vzameta nov paket.
   var APK_POT = 'tablica/Pralnica-sync.apk?v=11.9';
-  var RFID_APK_POT = 'rfid/SmartClean-RFID.apk?v=1.0';   // aplikacija-rfid/zgradi.py
+  var RFID_APK_POT = 'rfid/SmartClean-RFID.apk?v=1.1';   // aplikacija-rfid/zgradi.py
 
   function wirePwa(scope) {
     var pb = (scope || document).querySelector('#pwaInstall');
@@ -8545,7 +8542,7 @@
      zabeleži in pri oddaji vsaki stranki sam ustvari spremni list (rfid_potrdi — ena transakcija, ključ
      potrditve prepreči dvojne liste). Označi: čipi izbrane stranke dobijo artikel. Kosi: pregled stranke.
      Skeniranje se hrani na napravi — osvežitev strani ga ne izgubi. */
-  var RF = { org: null, nacin: 'oddaja', idx: {}, vprasan: {}, sken: [], skenSet: {}, kljuc: null, art: '', arts: [], kosi: null, gen: 0, rezultat: null, most: null };
+  var RF = { org: null, nacin: 'oddaja', idx: {}, vprasan: {}, sken: [], skenSet: {}, kljuc: null, art: '', arts: [], kosi: null, gen: 0, rezultat: null };
   try {
     RF.org = localStorage.getItem('sc-rfid-org') || null;
     var _rfn = localStorage.getItem('sc-rfid-nacin'); if (_rfn) RF.nacin = _rfn;
@@ -8577,102 +8574,6 @@
   // polje takoj v fokusu: računalnik (R1) in ročni čitalec Chainway (tam tipkovnica ne moti, telefon je ne odpre sam)
   var RF_CITALEC = /\bC7\d\b|\bC6\d\b|Chainway/i.test(navigator.userAgent || '');
   function rfFokus() { var i = $('rfVnos'); if (i && (RF_CITALEC || matchMedia('(pointer:fine)').matches)) i.focus({ preventScroll: true }); }
-  // Aplikacija SmartClean RFID (Android, aplikacija-rfid/): čitalec Chainway neposredno, brez tipkovnice.
-  // window.ScRfid ukazuje čitalcu, dogodki »scrfid« prinesejo stanje in prebrane čipe (po paketih, vsak enkrat na branje).
-  var RF_MOST = (function () { try { return window.ScRfid && typeof window.ScRfid.stanje === 'function' ? window.ScRfid : null; } catch (e) { return null; } })();
-  var RF_BRALNIKI = { vgrajen: 'Vgrajen čitalec', r1: 'R1 · USB', ur4: 'UR4 · omrežje', preizkus: 'Preizkus' };
-  var RF_MOC = { blizu: 10, srednje: 20, dalec: 30 }, RF_MOC_IME = [['blizu', 'Blizu'], ['srednje', 'Srednje'], ['dalec', 'Daleč']];
-  function rfMostStanje() { if (!RF.most && RF_MOST) { try { RF.most = JSON.parse(RF_MOST.stanje()) || {}; } catch (e) { RF.most = {}; } } return RF.most || {}; }
-  function rfMostKlic(fn, arg) { try { if (RF_MOST) RF_MOST[fn](arg); } catch (e) {} }
-  // doseg po načinu: označevanje in iskanje blizu (le kos v roki), oddaja in prevzem daleč (cel voziček)
-  function rfMocNacin() { var m = {}; try { m = JSON.parse(localStorage.getItem('sc-rfid-moc') || '{}') || {}; } catch (e) {} return RF_MOC[m[RF.nacin]] ? m[RF.nacin] : (rfStranka() ? 'blizu' : 'dalec'); }
-  function rfMocNastavi(st, shrani) {
-    if (shrani) { try { var m = JSON.parse(localStorage.getItem('sc-rfid-moc') || '{}') || {}; m[RF.nacin] = st; localStorage.setItem('sc-rfid-moc', JSON.stringify(m)); } catch (e) {} }
-    rfMostKlic('moc', RF_MOC[st]);
-  }
-  function rfMocStopnja(dbm) { return dbm <= 14 ? 'blizu' : dbm <= 24 ? 'srednje' : 'dalec'; }
-  // čitalec v kartici: izbira čitalca in doseg, napaka povezave (le ko je), gumb nosi stanje (Beri / Ustavi / Povezujem / Poveži)
-  function rfCitHtml() {
-    return '<div class="rf-cit" id="rfCit"><div class="rf-cit-vr"><span class="rf-cit-izb"><select id="rfBralnik" aria-label="Čitalec"></select>' +
-      '<button type="button" class="cgrp-btn ghost" data-ur4 hidden>Naslov</button></span>' +
-      '<span class="pris-tabs rf-moc" role="tablist" aria-label="Doseg">' + RF_MOC_IME.map(function (m) { return '<button type="button" role="tab" class="pris-tab" data-moc="' + m[0] + '">' + m[1] + '</button>'; }).join('') + '</span></div>' +
-      '<p class="rf-cit-nap" aria-live="polite" hidden></p>' +
-      '<button type="button" class="rf-beri" id="rfBeri"><i class="rf-pika" aria-hidden="true"></i><span></span></button></div>';
-  }
-  function rfCitVezi() {
-    var c = $('rfCit'); if (!c) return;
-    var sel = $('rfBralnik');
-    sel.addEventListener('change', function () {
-      var v = sel.value; if (v === rfMostStanje().izbran) return;
-      if (v === 'ur4' && !rfMostStanje().ur4) { rfUr4Naslov(); return; }
-      rfMostKlic('izberi', v);
-    });
-    c.querySelectorAll('[data-moc]').forEach(function (b) { b.addEventListener('click', function () { rfMocNastavi(b.dataset.moc, true); }); });
-    c.querySelector('[data-ur4]').addEventListener('click', rfUr4Naslov);
-    $('rfBeri').addEventListener('click', function () {
-      var s = rfMostStanje();
-      if (s.bere) rfMostKlic('ustavi');
-      else if (s.povezan) rfMostKlic('zacni');
-      else if (s.izbran === 'ur4' && !s.ur4) rfUr4Naslov();
-      else rfMostKlic('izberi', s.izbran);   // ponovna povezava
-    });
-    rfCitOsvezi();
-  }
-  async function rfUr4Naslov() {
-    var v = await vnesiModal({ naslov: 'Naslov UR4', privzeto: rfMostStanje().ur4 || '', placeholder: '192.168.1.200', potrdi: 'Poveži' });
-    if (v != null && v.trim()) rfMostKlic('ur4', v.trim()); else rfCitOsvezi();
-  }
-  function rfCitOsvezi() {
-    var c = $('rfCit'); if (!c) return;
-    var s = rfMostStanje(), sel = $('rfBralnik'), bral = s.bralniki || [];
-    var ime = function (b) { return b.id === 'ur4' && s.ur4 ? 'UR4 · ' + s.ur4 : (RF_BRALNIKI[b.id] || b.ime); };
-    var kl = bral.map(ime).join(',');
-    if (sel.dataset.k !== kl) { sel.dataset.k = kl; sel.innerHTML = bral.map(function (b) { return '<option value="' + escape_(b.id) + '">' + escape_(ime(b)) + '</option>'; }).join(''); }
-    if (s.izbran && sel.value !== s.izbran) { sel.value = s.izbran; sel.dispatchEvent(new Event('change')); }
-    var st = s.odpiram ? 'odpiram' : s.bere ? 'bere' : s.povezan ? 'pripravljen' : 'napaka';
-    c.dataset.st = st;
-    var nap = c.querySelector('.rf-cit-nap'); nap.hidden = st !== 'napaka'; nap.textContent = st === 'napaka' ? (s.napaka || 'Čitalec ni povezan.') : '';
-    var stop = rfMocStopnja(s.moc || 20);
-    c.querySelectorAll('[data-moc]').forEach(function (b) { var on = b.dataset.moc === stop; b.classList.toggle('on', on); b.setAttribute('aria-selected', on); });
-    c.querySelector('[data-ur4]').hidden = s.izbran !== 'ur4';
-    var g = $('rfBeri');
-    g.querySelector('span').textContent = st === 'bere' ? 'Ustavi' : st === 'odpiram' ? 'Povezujem' : st === 'napaka' ? 'Poveži' : 'Beri';
-    g.disabled = st === 'odpiram'; g.classList.toggle('on', st === 'bere');
-  }
-  // prebrani čipi iz aplikacije
-  function rfMostEpci(seznam) {
-    var sec = $('sec-cipi'); if (!sec || sec.classList.contains('hidden')) return;
-    var epci = seznam.map(rfEpc).filter(Boolean); if (!epci.length) return;
-    var modal = document.querySelector('.sc-modal-back');
-    if (RF.nacin === 'kosi') {   // iskanje kosa: prvi čip te stranke odpre kos, branje se ustavi
-      if (modal && !modal.querySelector('.rf-kos-modal')) return;
-      if (!RF.org || !RF.kosi) return;
-      rfMostKlic('ustavi');
-      var k = null; epci.some(function (e) { k = RF.kosi.filter(function (x) { return x.epc === e; })[0] || null; return !!k; });
-      if (!k) { toast(epci.length === 1 ? 'Čip ' + rfKratko(epci[0]) + ' ni označen pri tej stranki.' : 'Ti čipi niso označeni pri tej stranki.'); return; }
-      var z = modal && modal.querySelector('[data-zapri]'); if (z) z.click();
-      rfKosOdpri(k);
-      return;
-    }
-    if (modal || (rfStranka() && !RF.org)) return;   // med potrjevanjem se skeniranje ne spreminja
-    if (RF.rezultat) { RF.rezultat = null; rfRisi(); }
-    epci.forEach(function (e) { rfDodaj(e, true); });
-  }
-  // začetek branja (sprožilec) kjer koli v portalu: odpre Čipi; po ustvarjenih listih začne novo skeniranje
-  function rfMostZacetek() {
-    if (document.querySelector('.sc-modal-back') || !sme('cipi', 'r')) return;
-    var sec = $('sec-cipi');
-    if (!sec || sec.classList.contains('hidden')) { pojdi('cipi'); return; }
-    if (RF.rezultat && RF.nacin !== 'kosi') { RF.rezultat = null; rfRisi(); }
-  }
-  if (RF_MOST) {
-    window.addEventListener('scrfid', function (ev) {
-      var d = ev.detail || {};
-      if (d.tip === 'stanje') { var prej = RF.most || {}; RF.most = d; rfCitOsvezi(); if (d.bere && !prej.bere) rfMostZacetek(); }
-      else if (d.tip === 'epc' && Array.isArray(d.epc)) rfMostEpci(d.epc);
-    });
-    rfMocNastavi(rfMocNacin());
-  }
 
   // kosi stranke (Označi, Kosi) in njeni artikli
   async function rfNalozi(org) {
@@ -8752,7 +8653,6 @@
     if (n === 'oznaci' && RF.sken.length) { RF.sken = RF.sken.filter(function (e) { return RF.vprasan[e] && !(RF.idx[e] || []).length; }); RF.skenSet = {}; RF.sken.forEach(function (e) { RF.skenSet[e] = 1; }); rfShrani(); }
     RF.nacin = n; RF.rezultat = null;
     try { localStorage.setItem('sc-rfid-nacin', n); } catch (e) {}
-    if (RF_MOST) rfMocNastavi(rfMocNacin());
     document.querySelectorAll('.rf-nacini [data-nacin]').forEach(function (b) { var on = b.dataset.nacin === n; b.classList.toggle('on', on); b.setAttribute('aria-selected', on); });
     rfFiltri(); rfRisi(); rfPod();
     if (rfStranka() && RF.org && !RF.kosi) rfIzberiStranko(RF.org);
@@ -8773,11 +8673,10 @@
       RF.arts.map(function (a) { return '<option value="' + escape_(a.id) + '"' + (a.id === RF.art ? ' selected' : '') + '>' + escape_(a.name) + '</option>'; }).join('') + '</select></label>' : '';
     t.innerHTML = '<div class="uc-card rf-sken">' + artSel +
       '<div class="rf-stevec" aria-live="polite"><b id="rfN">0</b><span id="rfNlab"></span></div>' +
-      (RF_MOST ? rfCitHtml() : '<input type="text" id="rfVnos" class="sc-modal-input rf-vnos" placeholder="Skeniraj čip" aria-label="Skeniraj čip" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" enterkeyhint="enter">') + '</div>' +
+      '<input type="text" id="rfVnos" class="sc-modal-input rf-vnos" placeholder="Skeniraj čip" aria-label="Skeniraj čip" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" enterkeyhint="enter"></div>' +
       '<div class="rf-rez" id="rfRez"></div>' + (w ? '<div class="u-acts rf-akc" id="rfAkc"></div>' : '');
     var as = $('rfArt'); if (as) as.addEventListener('change', function () { RF.art = as.value; rfOsvezi(); });
     rfVhod($('rfVnos'), rfDodaj);
-    rfCitVezi();
     rfOsvezi();
     rfFokus();
   }
@@ -8808,12 +8707,12 @@
   }, true);
 
   var _rfRaf = 0;
-  function rfDodaj(epc, izMosta) {
+  function rfDodaj(epc) {
     if (RF.nacin === 'kosi') { var k = (RF.kosi || []).filter(function (x) { return x.epc === epc; })[0]; if (k) rfKosOdpri(k); else toast('Čip ' + rfKratko(epc) + ' ni označen pri tej stranki.'); return; }
     if (RF.skenSet[epc]) return;
     if (!RF.sken.length) RF.kljuc = rfKljuc();   // novo skeniranje = nov ključ potrditve
     RF.skenSet[epc] = 1; RF.sken.push(epc); rfShrani();
-    if (!izMosta) { try { haptika(); } catch (e) {} }
+    try { haptika(); } catch (e) {}
     if (!_rfRaf) _rfRaf = requestAnimationFrame(function () { _rfRaf = 0; rfOsvezi(); });
     rfIsci();
   }
@@ -8975,7 +8874,7 @@
     var vrstica = function (kljuc, ime, n, meta, razred) {
       return '<button type="button" class="rf-tv' + (razred ? ' ' + razred : '') + '" data-sk="' + escape_(kljuc) + '"><span class="rf-tv-ime">' + escape_(ime) + '</span><span class="rf-tv-meta">' + escape_(meta) + '</span><b>' + stevilo(n) + '</b><span class="chev" aria-hidden="true">›</span></button>';
     };
-    var html = RF_MOST ? '<div class="uc-card rf-sken rf-isci">' + rfCitHtml() + '</div>' : '<input type="text" id="rfVnos" class="sc-modal-input rf-vnos rf-isci" placeholder="Skeniraj čip" aria-label="Poišči kos s čipom" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">';
+    var html = '<input type="text" id="rfVnos" class="sc-modal-input rf-vnos rf-isci" placeholder="Skeniraj čip" aria-label="Poišči kos s čipom" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">';
     if (!RF.kosi.length) html += '<div class="rows"><div class="empty"><h3>Brez označenega perila</h3>' + (sme('cipi', 'w') ? '<button type="button" class="btn ghost" data-rf-oznaci style="margin-top:14px">Označi</button>' : '') + '</div></div>';
     else {
       html += '<div class="rf-povz"><div class="stat"><div class="stat-num">' + stevilo(s.akt.length) + '</div><div class="stat-lab">Kosov</div></div>' +
@@ -8990,7 +8889,6 @@
     }
     t.innerHTML = html;
     rfVhod($('rfVnos'), rfDodaj);
-    rfCitVezi();
     var oz = t.querySelector('[data-rf-oznaci]'); if (oz) oz.addEventListener('click', function () { rfNacin('oznaci'); });
     t.querySelectorAll('.rf-tv').forEach(function (b) {
       b.addEventListener('click', function () {
@@ -9305,7 +9203,7 @@
     }
     const [rLjudje, {
       data: clanstva
-    }, rPini] = await Promise.all([sb.from('profiles').select('id,email,full_name,is_staff,super_admin,zaposleni,active,last_login,last_seen,web_dostop').order('email'), sb.from('memberships').select('user_id,org_id'),
+    }, rPini] = await Promise.all([sb.from('profiles').select('id,email,full_name,is_staff,super_admin,zaposleni,active,last_login,last_seen,web_dostop,rfid_dostop').order('email'), sb.from('memberships').select('user_id,org_id'),
       sb.rpc('app_pini_nastavljeni')]);
     const sPini = new Set(((rPini && rPini.data) || []).map(x => typeof x === 'string' ? x : (x && (x.app_pini_nastavljeni || x.user_id))));
     let ljudje = rLjudje.data;
@@ -9369,6 +9267,7 @@
         <div class="u-acts">
         ${(jaz || lahkoUredi) ? `<button data-act="ime" data-id="${u.id}" data-ime="${escape_(u.full_name || '')}">Preimenuj</button>` : ''}
         ${(jaz || lahkoUredi) ? `<button class="u-web${webOn ? ' on' : ''}" data-act="web" data-id="${u.id}" data-v="${webOn ? 0 : 1}">${webOn ? 'Aplikacija: dovoljena' : 'Aplikacija: ne'}</button>` : ''}
+        ${(lahkoUredi && JE_SUPER() && vlogaVal === 'zaposleni') ? `<button class="u-web${u.rfid_dostop ? ' on' : ''}" data-act="rfid" data-id="${u.id}" data-v="${u.rfid_dostop ? 0 : 1}">${u.rfid_dostop ? 'RFID: dovoljena' : 'RFID: ne'}</button>` : ''}
         ${lahkoUredi ? `<button data-act="active" data-id="${u.id}" data-v="${u.active ? 0 : 1}">${u.active ? 'Izklopi' : 'Vklopi'}</button>` : ''}
         ${(jaz || lahkoUredi) ? `<button data-act="pw" data-id="${u.id}">Novo geslo</button>` : ''}
         ${(jaz || lahkoUredi) ? `<button class="u-pin${pinSet ? ' on' : ''}" data-act="pin" data-id="${u.id}" data-ime="${escape_(u.full_name || '')}">${pinSet ? 'PIN nastavljen' : 'PIN za app'}</button>` : ''}
@@ -9484,6 +9383,12 @@
       }).eq('id', id);
       if (btn.dataset.v === '1') await sb.from('memberships').delete().eq('user_id', id);
       uMsg(error ? 'Ni uspelo: ' + escape_(error.message) : 'Vloga je spremenjena.', !!error);
+      loadUsers();
+      return;
+    }
+    if (act === 'rfid') {   // aplikacija SmartClean RFID na C72 (74_rfid_aplikacija.sql); osebje in admin jo imajo po vlogi
+      const { error } = await sb.from('profiles').update({ rfid_dostop: btn.dataset.v === '1' }).eq('id', id);
+      uMsg(error ? 'Ni uspelo: ' + escape_(error.message) : (btn.dataset.v === '1' ? 'Aplikacija RFID vključena.' : 'Aplikacija RFID izključena.'), !!error);
       loadUsers();
       return;
     }

@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="sl" translate="no" data-theme="light" class="v5 rfa">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover"/>
+<title>SmartClean RFID</title>
+<meta name="theme-color" content="#ffffff"/>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-src 'self' blob:; base-uri 'self'; form-action 'self'"/>
+<link rel="preload" href="../fonts/playfair-display-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin/>
+<link rel="stylesheet" href="../portal.css"/>
+<link rel="stylesheet" href="rfid.css"/>
+<script src="tema.js"></script>
+</head>
+<body>
+
+<!-- ══════════ KDO DELA: izbira osebe, prijava, PIN ══════════ -->
+<div class="auth" id="auth" hidden>
+  <header class="auth-top">
+    <div class="topbar-in">
+      <div class="wordmark" id="authLogo">Smart<span>Clean</span></div>
+      <button class="icon-btn" id="temaAuth" type="button" aria-label="Preklop teme">
+        <svg class="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.4 1.4M17.6 17.6L19 19M19 5l-1.4 1.4M6.4 17.6L5 19"/></svg>
+        <svg class="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
+    </div>
+  </header>
+  <div class="auth-main">
+    <div class="auth-slot">
+      <div class="profile-picker hidden" id="osebe">
+        <h1>Kdo dela?</h1>
+        <div class="pp-grid" id="osebeMreza"></div>
+        <div class="msg" id="osebeMsg" role="status" aria-live="polite"></div>
+      </div>
+      <div class="auth-box hidden" id="prijava">
+        <h1>Prijava</h1>
+        <form id="prijavaForm" novalidate>
+          <div class="field">
+            <label for="email">E-poštni naslov</label>
+            <input type="email" id="email" name="email" autocomplete="username" autocapitalize="off" required/>
+          </div>
+          <div class="field">
+            <label for="geslo">Geslo</label>
+            <input type="password" id="geslo" name="geslo" autocomplete="current-password" required/>
+          </div>
+          <button type="submit" class="btn" id="prijavaBtn">Prijavi se</button>
+        </form>
+        <p class="under"><button type="button" class="link-btn" id="nazajOsebe" hidden>Nazaj</button></p>
+        <div class="msg" id="prijavaMsg" role="status" aria-live="polite"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ DELO ══════════ -->
+<div class="rfa-app" id="app" hidden>
+  <header class="topbar">
+    <div class="topbar-in">
+      <div class="wordmark">Smart<span>Clean</span></div>
+      <button type="button" class="rfa-jaz" id="jaz" aria-haspopup="menu" aria-expanded="false"><span class="rfa-jaz-av" id="jazAv"></span><span class="rfa-jaz-ime" id="jazIme"></span></button>
+    </div>
+  </header>
+  <main class="rfa-main">
+    <span class="pris-tabs rf-nacini" role="tablist" id="nacini"></span>
+    <div id="rfTelo"></div>
+  </main>
+</div>
+
+<script src="../config.js"></script>
+<script src="../supabase.js"></script>
+<script src="rfid.js"></script>
+</body>
+</html>

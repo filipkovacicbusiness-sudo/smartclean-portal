@@ -9,6 +9,8 @@ import android.os.Looper;
 import com.rscja.deviceapi.RFIDWithUHFUART;
 import com.rscja.deviceapi.RFIDWithUHFUSB;
 import com.rscja.deviceapi.RFIDWithUHFUrxNetwork;
+import com.rscja.deviceapi.entity.AntennaConnectState;
+import com.rscja.deviceapi.entity.AntennaState;
 import com.rscja.deviceapi.enums.AntennaEnum;
 import com.rscja.deviceapi.interfaces.KeyEventCallback;
 
@@ -44,6 +46,9 @@ class Bralnik {
     static final boolean EMULATOR = Build.FINGERPRINT.contains("generic") || Build.HARDWARE.contains("ranchu")
             || Build.PRODUCT.contains("sdk") || Build.MODEL.contains("sdk");
     static final int MOC_MIN = 5, MOC_MAX = 30;
+    // UR4 z zunanjo anteno 9 dBi: EU (ETSI EN 302 208) dovoli 2 W ERP → na izhodu bralnika največ 27 dBm
+    static final int UR4_MOC_MAX = 27;
+    private static final AntennaEnum[] ANTENE = {AntennaEnum.ANT1, AntennaEnum.ANT2, AntennaEnum.ANT3, AntennaEnum.ANT4};
 
     private final Context ctx;
     private final Poslusalec pos;
@@ -259,6 +264,7 @@ class Bralnik {
                 }
                 r = new RFIDWithUHFUrxNetwork();
                 if (!r.init(gostitelj, vrata)) return false;
+                antene();
                 moc(moc);
                 r.setInventoryCallback(t -> prejel(t.getEPC()));
                 return true;
@@ -267,9 +273,26 @@ class Bralnik {
             public void ustavi() { r.stopInventory(); }
             public void zapri() { if (r == null) return; try { r.stopInventory(); } catch (Throwable ignored) { } r.free(); }
             public void moc(int d) {
-                for (AntennaEnum a : new AntennaEnum[]{AntennaEnum.ANT1, AntennaEnum.ANT2, AntennaEnum.ANT3, AntennaEnum.ANT4}) {
-                    try { r.setAntennaPower(a, d); } catch (Throwable ignored) { }
+                int m = Math.min(d, UR4_MOC_MAX);
+                for (AntennaEnum a : ANTENE) {
+                    try { r.setAntennaPower(a, m); } catch (Throwable ignored) { }
                 }
+            }
+            // vključi priključene antene (1 do 4); če bralnik tega ne pove, vsaj prvo
+            private void antene() {
+                try {
+                    List<AntennaConnectState> st = r.getAntennaConnectState();
+                    List<AntennaState> nove = new ArrayList<>();
+                    boolean katera = false;
+                    for (AntennaEnum a : ANTENE) {
+                        boolean on = false;
+                        if (st != null) for (AntennaConnectState s : st) if (s.getAntennaName() == a && s.isConnected()) on = true;
+                        nove.add(new AntennaState(a, on));
+                        katera |= on;
+                    }
+                    if (!katera) nove.set(0, new AntennaState(AntennaEnum.ANT1, true));
+                    r.setANT(nove);
+                } catch (Throwable ignored) { }
             }
         };
     }

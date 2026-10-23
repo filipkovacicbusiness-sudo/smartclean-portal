@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Zgradi aplikacijo SmartClean RFID (Android) brez Android Studia in Gradla.
 
-Aplikacija odpre portal (razdelek Čipi) in mu da neposreden dostop do čitalca Chainway
+Aplikacija odpre aplikacijo za zaposlene (portal.smartclean.si/rfid/) in ji da neposreden dostop do čitalca Chainway
 (vgrajen v C72, R1 prek USB, UR4 prek omrežja) — glej java/si/smartclean/rfid/.
 
 Uporaba (iz korena repozitorija):
@@ -20,8 +20,8 @@ import subprocess
 import sys
 import zipfile
 
-VERZIJA = "1.0"
-KODA = 1
+VERZIJA = "1.1"
+KODA = 2
 
 KOREN = pathlib.Path(__file__).resolve().parent.parent
 IZVOR = KOREN / "aplikacija-rfid"
@@ -63,9 +63,9 @@ def main():
 
     # nastavitve gradnje (naslov portala, ki ga sme aplikacija odpreti in mu dati čitalec)
     if preizkus:
-        shema, gostitelj, vrata, portal = "http", "localhost", 8830, "http://localhost:8830/"
+        shema, gostitelj, vrata, portal = "http", "localhost", 8830, "http://localhost:8830/rfid/"
     else:
-        shema, gostitelj, vrata, portal = "https", "portal.smartclean.si", -1, "https://portal.smartclean.si/"
+        shema, gostitelj, vrata, portal = "https", "portal.smartclean.si", -1, "https://portal.smartclean.si/rfid/"
     paket = GRADNJA / "gen/si/smartclean/rfid"
     paket.mkdir(parents=True)
     (paket / "Nastavitve.java").write_text(
@@ -74,7 +74,7 @@ def main():
         f'    static final String SHEMA = "{shema}";\n    static final String GOSTITELJ = "{gostitelj}";\n'
         f"    static final int VRATA = {vrata};\n"
         f"    static final boolean PREIZKUS = {'true' if preizkus else 'false'};\n"
-        f'    static final String PORTAL = "{portal}";\n    private Nastavitve() {{ }}\n}}\n', encoding="utf-8")
+        f'    static final String PORTAL = "{portal}";\n    static final String POT = "/rfid/";\n    private Nastavitve() {{ }}\n}}\n', encoding="utf-8")
     manifest = (IZVOR / "AndroidManifest.xml").read_text(encoding="utf-8")
     if preizkus:   # lokalni portal je http (samo na emulatorju / z adb reverse)
         manifest = manifest.replace('android:extractNativeLibs="true"', 'android:extractNativeLibs="true"\n        android:usesCleartextTraffic="true"')
