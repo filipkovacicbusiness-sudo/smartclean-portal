@@ -360,7 +360,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.68 · BETA';
+  var APP_VERZIJA = '4.69 · BETA';
   var NALAGANJE = '<div class="sc-load" aria-hidden="true"><span class="sc-load-line"></span></div>';
   // Stale-while-revalidate: ob ponovnem obisku razdelka NE pobriši vsebine v nalagalnik —
   // obdrži prejšnjo (takojšen prikaz) in jo osveži v ozadju. Trak le ob prvem nalaganju.
@@ -378,7 +378,7 @@
   // Razdelki, katerih vidnost/pravice je mogoče nastavljati po vlogah.
   var ADMIN_RAZDELKI = [
     ['domov', 'Domov'], ['dokumenti', 'Dokumenti'], ['prisotnost', 'Prisotnost'], ['stranke', 'Stranke'],
-    ['arhiv', 'Spremni listi'], ['artikli', 'Cenik & artikli'], ['fakture', 'Fakture'], ['uporabniki', 'Uporabniki'],
+    ['arhiv', 'Spremni listi'], ['cipi', 'Čipi'], ['artikli', 'Cenik & artikli'], ['fakture', 'Fakture'], ['uporabniki', 'Uporabniki'],
     ['statistika', 'Statistika'], ['gorivo', 'Gorivo'], ['konzola', 'Konzola'], ['aplikacija', 'Aplikacije'], ['katalog', 'Katalog']
   ];
   var ADMIN_VLOGE = ['super', 'admin', 'osebje', 'zaposleni', 'stranka'];
@@ -386,11 +386,11 @@
   // Privzete vidne pravice (r,w,x,d) — ujemajo se z obstajajočim obnašanjem.
   function _perm(r, w, x, d) { return { r: !!r, w: !!w, x: !!x, d: !!d }; }
   var ADMIN_PRIVZ = {
-    super: { gorivo: _perm(1, 1, 1, 1), domov: _perm(1, 1, 1, 1), prisotnost: _perm(1, 1, 1, 1), arhiv: _perm(1, 1, 1, 1), katalog: _perm(0, 0, 0, 0), statistika: _perm(1, 1, 1, 1), artikli: _perm(1, 1, 1, 1), stranke: _perm(1, 1, 1, 1), dokumenti: _perm(1, 1, 1, 1), aplikacija: _perm(1, 1, 1, 1), fakture: _perm(1, 1, 1, 1), uporabniki: _perm(1, 1, 1, 1) },
-    admin: { gorivo: _perm(1, 1, 1, 1), domov: _perm(1, 1, 1, 1), prisotnost: _perm(1, 1, 1, 1), arhiv: _perm(1, 1, 1, 1), katalog: _perm(0, 0, 0, 0), statistika: _perm(1, 1, 1, 1), artikli: _perm(1, 1, 1, 1), stranke: _perm(1, 1, 1, 1), dokumenti: _perm(1, 1, 1, 1), aplikacija: _perm(1, 1, 1, 1), fakture: _perm(1, 1, 1, 1), uporabniki: _perm(1, 1, 1, 1) },
-    osebje: { gorivo: _perm(0, 0, 0, 0), domov: _perm(1, 1, 1, 1), prisotnost: _perm(1, 1, 1, 1), arhiv: _perm(1, 1, 1, 1), katalog: _perm(0, 0, 0, 0), statistika: _perm(1, 1, 1, 1), artikli: _perm(1, 1, 1, 1), stranke: _perm(1, 1, 1, 1), dokumenti: _perm(1, 1, 1, 1), aplikacija: _perm(1, 1, 1, 1), fakture: _perm(0, 0, 0, 0), uporabniki: _perm(0, 0, 0, 0) },
-    zaposleni: { gorivo: _perm(0, 0, 0, 0), domov: _perm(1, 0, 0, 0), prisotnost: _perm(1, 0, 0, 1), arhiv: _perm(0, 0, 0, 0), katalog: _perm(0, 0, 0, 0), statistika: _perm(0, 0, 0, 0), artikli: _perm(0, 0, 0, 0), stranke: _perm(0, 0, 0, 0), dokumenti: _perm(0, 0, 0, 0), aplikacija: _perm(0, 0, 0, 0), fakture: _perm(0, 0, 0, 0), uporabniki: _perm(0, 0, 0, 0) },
-    stranka: { gorivo: _perm(0, 0, 0, 0), domov: _perm(1, 0, 0, 0), prisotnost: _perm(0, 0, 0, 0), arhiv: _perm(1, 0, 0, 1), katalog: _perm(1, 0, 0, 0), statistika: _perm(0, 0, 0, 0), artikli: _perm(0, 0, 0, 0), stranke: _perm(0, 0, 0, 0), dokumenti: _perm(0, 0, 0, 0), aplikacija: _perm(0, 0, 0, 0), fakture: _perm(0, 0, 0, 0), uporabniki: _perm(0, 0, 0, 0) }
+    super: { cipi: _perm(1, 1, 1, 1), gorivo: _perm(1, 1, 1, 1), domov: _perm(1, 1, 1, 1), prisotnost: _perm(1, 1, 1, 1), arhiv: _perm(1, 1, 1, 1), katalog: _perm(0, 0, 0, 0), statistika: _perm(1, 1, 1, 1), artikli: _perm(1, 1, 1, 1), stranke: _perm(1, 1, 1, 1), dokumenti: _perm(1, 1, 1, 1), aplikacija: _perm(1, 1, 1, 1), fakture: _perm(1, 1, 1, 1), uporabniki: _perm(1, 1, 1, 1) },
+    admin: { cipi: _perm(1, 1, 1, 1), gorivo: _perm(1, 1, 1, 1), domov: _perm(1, 1, 1, 1), prisotnost: _perm(1, 1, 1, 1), arhiv: _perm(1, 1, 1, 1), katalog: _perm(0, 0, 0, 0), statistika: _perm(1, 1, 1, 1), artikli: _perm(1, 1, 1, 1), stranke: _perm(1, 1, 1, 1), dokumenti: _perm(1, 1, 1, 1), aplikacija: _perm(1, 1, 1, 1), fakture: _perm(1, 1, 1, 1), uporabniki: _perm(1, 1, 1, 1) },
+    osebje: { cipi: _perm(1, 1, 1, 1), gorivo: _perm(0, 0, 0, 0), domov: _perm(1, 1, 1, 1), prisotnost: _perm(1, 1, 1, 1), arhiv: _perm(1, 1, 1, 1), katalog: _perm(0, 0, 0, 0), statistika: _perm(1, 1, 1, 1), artikli: _perm(1, 1, 1, 1), stranke: _perm(1, 1, 1, 1), dokumenti: _perm(1, 1, 1, 1), aplikacija: _perm(1, 1, 1, 1), fakture: _perm(0, 0, 0, 0), uporabniki: _perm(0, 0, 0, 0) },
+    zaposleni: { cipi: _perm(0, 0, 0, 0), gorivo: _perm(0, 0, 0, 0), domov: _perm(1, 0, 0, 0), prisotnost: _perm(1, 0, 0, 1), arhiv: _perm(0, 0, 0, 0), katalog: _perm(0, 0, 0, 0), statistika: _perm(0, 0, 0, 0), artikli: _perm(0, 0, 0, 0), stranke: _perm(0, 0, 0, 0), dokumenti: _perm(0, 0, 0, 0), aplikacija: _perm(0, 0, 0, 0), fakture: _perm(0, 0, 0, 0), uporabniki: _perm(0, 0, 0, 0) },
+    stranka: { cipi: _perm(0, 0, 0, 0), gorivo: _perm(0, 0, 0, 0), domov: _perm(1, 0, 0, 0), prisotnost: _perm(0, 0, 0, 0), arhiv: _perm(1, 0, 0, 1), katalog: _perm(1, 0, 0, 0), statistika: _perm(0, 0, 0, 0), artikli: _perm(0, 0, 0, 0), stranke: _perm(0, 0, 0, 0), dokumenti: _perm(0, 0, 0, 0), aplikacija: _perm(0, 0, 0, 0), fakture: _perm(0, 0, 0, 0), uporabniki: _perm(0, 0, 0, 0) }
   };
   var ROLE_CFG = null;  // { imena:{...}, perm:{ vloga:{ razdelek:{r,w,x,d} } } }
   function roleIme(v) { return (ROLE_CFG && ROLE_CFG.imena && ROLE_CFG.imena[v]) || ADMIN_IMENA_PRIVZ[v] || v; }
@@ -764,6 +764,7 @@
         if (JE_SUPER()) op.push(risiFakture);
         if (sme('uporabniki', 'r')) op.push(loadUsers);
         if (sme('dokumenti', 'r')) op.push(function () { return risiDokumenti(true); });
+        if (sme('cipi', 'r')) op.push(function () { return risiCipe(true); });
       } else if (JE_ZAPOSLENI()) {
         op.push(risiPrisotnost);
       } else if (MOJEPODJETJE) {
@@ -797,6 +798,7 @@
     artikli: '<path d="M3 12l8.5-8.5a2 2 0 0 1 1.4-.5H19a2 2 0 0 1 2 2v6.1a2 2 0 0 1-.6 1.4L12 21Z"/><circle cx="16.5" cy="7.5" r="1.3"/>',
     aplikacija: '<rect x="6.5" y="2.5" width="11" height="19" rx="2.5"/><path d="M10.5 5.5h3"/><path d="M12 18.2h.01"/>',
     dokumenti: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6"/><path d="M9 17h4"/>',
+    cipi: '<path d="M9 8.5a5 5 0 0 1 0 7"/><path d="M12.5 6a8.5 8.5 0 0 1 0 12"/><path d="M16 3.5a12 12 0 0 1 0 17"/><circle cx="5.5" cy="12" r="1.3"/>',
     konzola: '<path d="M3 11v2a1 1 0 0 0 1 1h2l4 4V6L6 10H4a1 1 0 0 0-1 1Z"/><path d="M15 8a4 4 0 0 1 0 8"/><path d="M18 5a8 8 0 0 1 0 14"/>',
     nastavitve: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
     admin: '<path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6z"/><path d="M9.5 12.2l1.8 1.8 3.4-3.6"/>',
@@ -808,7 +810,7 @@
     // Lastnik: vedno vse (Admin ureja pravice ostalih, sebi jih ne more odvzeti).
     if (JE_LASTNIK()) {
       return [['domov', 'Domov'], ['dokumenti', 'Dokumenti'], ['prisotnost', 'Prisotnost'], ['stranke', 'Stranke'],
-        ['arhiv', 'Spremni listi'], ['artikli', 'Cenik & artikli'], ['fakture', 'Fakture'], ['uporabniki', 'Uporabniki'],
+        ['arhiv', 'Spremni listi'], ['cipi', 'Čipi'], ['artikli', 'Cenik & artikli'], ['fakture', 'Fakture'], ['uporabniki', 'Uporabniki'],
         ['statistika', 'Statistika']];
     }
     // Ostali: vidnost razdelkov po pravicah vloge (nastavljivo v Admin).
@@ -1068,6 +1070,7 @@
     if (kam === 'konzola') { risiKonzola(); }
     if (kam === 'aplikacija') risiAplikacijo();
     if (kam === 'dokumenti') risiDokumenti();
+    if (kam === 'cipi') risiCipe();
     if (kam === 'ceniki') risiCeniki();
     if (kam === 'prisotnost') risiPrisotnost();
     if (kam === 'statistika' || kam === 'ucinek') risiUcinek();
@@ -7171,7 +7174,9 @@
     }).join('');
     html += '<div class="str-arts">' + (arts.length ? artRows : '<p class="meta">Brez artiklov v ceniku.</p>') + '</div>';
     html += `<p class="art-cenik-hint">${_na ? _na + ' ' + _besed + ' v ceniku' : ''}${OSEBJE ? `${_na ? ' · ' : ''}<button type="button" class="art-to-cenik" data-org="${orgId}">Uredi v Ceniku ›</button>` : ''}</p>`;
+    if (OSEBJE) html += '<div class="str-rfid"></div>';
     box.innerHTML = html;
+    if (OSEBJE) rfStrankaBlok(box.querySelector('.str-rfid'), orgId);
     if (OSEBJE) {
       { const eb = box.querySelector('.str-edit'); if (eb) eb.addEventListener('click', e => { e.stopPropagation(); urediStranko(box, orgId); }); }
       { const cl = box.querySelector('.art-to-cenik'); if (cl) cl.addEventListener('click', e => { e.stopPropagation(); var pre = strankaSkupina(orgId); _artOpen = {}; if (pre) _artOpen[pre] = true; pojdi('artikli'); }); }
@@ -8519,6 +8524,447 @@
     _dkSd.addEventListener('dragleave', function () { if (_dkGl && --_dkGl <= 0) _dkSkrij(); });
     _dkSd.addEventListener('drop', function (e) { if (!_dkGl) return; e.preventDefault(); _dkSkrij(); if (e.dataTransfer && e.dataTransfer.files) dokNalozi(e.dataTransfer.files); });
   } }
+
+  /* ══════════ ČIPI (UHF RFID) — perilo s čipi ══════════
+     Kos perila = čip (EPC) pri stranki + artikel te stranke (72_rfid.sql). Čitalec (Chainway C72 z aplikacijo
+     Keyboard Emulator, R1 na računalniku) vtipka EPC in Enter v polje za skeniranje.
+     Oddaja / Prevzem: skeniraš vse naenkrat (lahko več strank); portal kose razvrsti po strankah, Potrdi jih
+     zabeleži in pri oddaji vsaki stranki sam ustvari spremni list (rfid_potrdi — ena transakcija, ključ
+     potrditve prepreči dvojne liste). Označi: čipi izbrane stranke dobijo artikel. Kosi: pregled stranke.
+     Skeniranje se hrani na napravi — osvežitev strani ga ne izgubi. */
+  var RF = { org: null, nacin: 'oddaja', idx: {}, vprasan: {}, sken: [], skenSet: {}, kljuc: null, art: '', arts: [], kosi: null, gen: 0, rezultat: null };
+  try {
+    RF.org = localStorage.getItem('sc-rfid-org') || null;
+    var _rfn = localStorage.getItem('sc-rfid-nacin'); if (_rfn) RF.nacin = _rfn;
+    var _rfs = JSON.parse(localStorage.getItem('sc-rfid-sken') || 'null');
+    if (_rfs && Array.isArray(_rfs.sken)) { RF.sken = _rfs.sken.filter(function (e) { return /^[0-9A-F]{8,64}$/.test(e); }); RF.kljuc = _rfs.kljuc || null; RF.sken.forEach(function (e) { RF.skenSet[e] = 1; }); }
+  } catch (e) {}
+  var RF_NACINI = [['oddaja', 'Oddaja'], ['prevzem', 'Prevzem'], ['oznaci', 'Označi'], ['kosi', 'Kosi']];
+  var RF_PRALNICA_DNI = 3, RF_NEVIDEN_DNI = 45;   // pogrešan: v pralnici dlje kot 3 dni ali 45 dni brez skeniranja
+
+  function rfEpc(s) { var e = String(s || '').replace(/[^0-9A-Fa-f]/g, '').toUpperCase(); return /^[0-9A-F]{8,64}$/.test(e) ? e : null; }
+  function rfKratko(epc) { return '…' + String(epc || '').slice(-8); }
+  function rfDatum(ts) { return ts ? datum(isoLokalno(new Date(ts))) : ''; }
+  function rfKljuc() { try { return crypto.randomUUID(); } catch (e) { return 'xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx'.replace(/x/g, function () { return (Math.random() * 16 | 0).toString(16); }); } }
+  function rfShrani() { try { localStorage.setItem('sc-rfid-sken', JSON.stringify({ sken: RF.sken, kljuc: RF.kljuc })); } catch (e) {} }
+  function rfPogresan(k) {   // razlog ali ''
+    if (k.stanje !== 'aktiven' || !k.zadnjic) return '';
+    var dni = (Date.now() - new Date(k.zadnjic).getTime()) / 864e5;
+    if (k.zadnji_tip === 'prevzem' && dni > RF_PRALNICA_DNI) return 'v pralnici od ' + rfDatum(k.zadnjic);
+    if (dni > RF_NEVIDEN_DNI) return 'nazadnje ' + rfDatum(k.zadnjic);
+    return '';
+  }
+  function rfKje(k) {
+    if (k.stanje === 'izgubljen') return 'izgubljen';
+    if (k.stanje === 'odpisan') return 'odpisan';
+    return (k.zadnji_tip === 'prevzem' ? 'v pralnici' : 'pri stranki') + (k.zadnjic ? ' · ' + rfDatum(k.zadnjic) : '');
+  }
+  function rfArtIme(k) { var a = RF.arts.filter(function (x) { return x.id === k.article_id; })[0]; return a ? a.name : k.naziv; }
+  function rfStranka() { return RF.nacin === 'oznaci' || RF.nacin === 'kosi'; }   // ta načina potrebujeta izbrano stranko
+  // polje takoj v fokusu: računalnik (R1) in ročni čitalec Chainway (tam tipkovnica ne moti, telefon je ne odpre sam)
+  var RF_CITALEC = /\bC7\d\b|\bC6\d\b|Chainway/i.test(navigator.userAgent || '');
+  function rfFokus() { var i = $('rfVnos'); if (i && (RF_CITALEC || matchMedia('(pointer:fine)').matches)) i.focus({ preventScroll: true }); }
+
+  // kosi stranke (Označi, Kosi) in njeni artikli
+  async function rfNalozi(org) {
+    var gen = ++RF.gen;
+    var rez = await Promise.all([
+      vseVrstice(function (a, b) { return sb.from('rfid_kosi').select('id,epc,org_id,article_id,naziv,stanje,pranj,zadnji_tip,zadnjic,created_at').eq('org_id', org).order('created_at').range(a, b); }),
+      sb.from('articles').select('id,name,aktiven,sort_order').eq('org_id', org).order('sort_order')
+    ]);
+    if (gen !== RF.gen) return false;
+    if (rez[0].error) throw rez[0].error;
+    RF.kosi = rez[0].data || [];
+    RF.arts = (rez[1].data || []).filter(function (a) { return a.aktiven !== false && a.name; });
+    if (RF.art && !RF.arts.some(function (a) { return a.id === RF.art; })) RF.art = '';
+    return true;
+  }
+  // čipi → kosi (vse stranke; isti EPC je lahko pri več strankah). Sproti, po 200 naenkrat.
+  var _rfIsciT = null, _rfIscem = null;
+  function rfIsci(takoj) {
+    clearTimeout(_rfIsciT);
+    var izvedi = function () {
+      if (_rfIscem) return _rfIscem;
+      var manjka = RF.sken.filter(function (e) { return !RF.vprasan[e]; }).slice(0, 150);   // ~150 EPC na zahtevo (dolžina naslova)
+      if (!manjka.length) return Promise.resolve();
+      _rfIscem = (async function () {
+        var r = await sb.from('rfid_kosi').select('id,epc,org_id,article_id,naziv,stanje').in('epc', manjka);
+        if (r.error) throw r.error;
+        manjka.forEach(function (e) { RF.vprasan[e] = 1; RF.idx[e] = []; });
+        (r.data || []).forEach(function (k) { (RF.idx[k.epc] = RF.idx[k.epc] || []).push(k); });
+      })().then(function () { _rfIscem = null; rfOsvezi(); if (RF.sken.some(function (e) { return !RF.vprasan[e]; })) return izvedi(); },
+        function (e) { _rfIscem = null; throw e; });
+      return _rfIscem;
+    };
+    if (takoj) return izvedi();
+    _rfIsciT = setTimeout(function () { izvedi().catch(function () {}); }, 300);
+    return null;
+  }
+  function rfPozabi(epcs) { epcs.forEach(function (e) { delete RF.vprasan[e]; delete RF.idx[e]; }); }
+
+  async function risiCipe(prednalozi) {
+    var sel = $('rfOrg'), telo = $('cipiVsebina'); if (!sel || !telo) return;
+    var opt = '<option value="">Izberi stranko</option>' + ORGSEZNAM.map(function (o) { return '<option value="' + escape_(o.id) + '"' + (o.id === RF.org ? ' selected' : '') + '>' + escape_(o.name) + '</option>'; }).join('');
+    if (sel.innerHTML !== opt) sel.innerHTML = opt;
+    if (RF.org && !ORGSEZNAM.some(function (o) { return o.id === RF.org; })) RF.org = null;
+    if (!telo.dataset.zgr) {
+      telo.dataset.zgr = '1';
+      telo.innerHTML = '<span class="pris-tabs rf-nacini" role="tablist">' + RF_NACINI.map(function (n) {
+        return '<button type="button" role="tab" class="pris-tab' + (n[0] === RF.nacin ? ' on' : '') + '" data-nacin="' + n[0] + '" aria-selected="' + (n[0] === RF.nacin) + '">' + n[1] + '</button>';
+      }).join('') + '</span><div id="rfTelo"></div>';
+      telo.querySelectorAll('[data-nacin]').forEach(function (b) { b.addEventListener('click', function () { rfNacin(b.dataset.nacin); }); });
+      sel.addEventListener('change', function () { rfIzberiStranko(sel.value); });
+    }
+    rfFiltri();
+    if (prednalozi) { rfPod(); return; }
+    rfRisi(); rfPod();
+    if (RF.sken.length) rfIsci();
+    if (rfStranka() && RF.org && !RF.kosi) {
+      try { if (await rfNalozi(RF.org)) { rfRisi(); rfPod(); } }
+      catch (e) { var t0 = $('rfTelo'); if (t0) t0.innerHTML = '<div class="rows"><div class="empty"><h3>Nalaganje ni uspelo</h3><p class="u-sub">' + escape_(napakaBesedilo(e)) + '</p></div></div>'; }
+    }
+  }
+  function rfFiltri() { var f = $('rfOrg') && $('rfOrg').closest('.filtri'); if (f) f.hidden = !rfStranka(); }
+  function rfPod() {
+    var p = $('cipiPod'); if (!p) return;
+    if (rfStranka() && RF.org && RF.kosi) { var akt = RF.kosi.filter(function (k) { return k.stanje === 'aktiven'; }).length; p.textContent = akt ? sklonKosov(akt) + ' s čipi' : 'Brez označenega perila'; }
+    else p.textContent = '';
+  }
+  async function rfIzberiStranko(org) {
+    RF.org = org || null; RF.kosi = null; RF.arts = []; RF.art = '';
+    try { if (RF.org) localStorage.setItem('sc-rfid-org', RF.org); else localStorage.removeItem('sc-rfid-org'); } catch (e) {}
+    rfRisi(); rfPod();
+    if (!RF.org) return;
+    try { if (await rfNalozi(RF.org)) { rfRisi(); rfPod(); } } catch (e) { toast(napakaBesedilo(e)); }
+  }
+  function rfNacin(n) {
+    if (n === RF.nacin) return;
+    // v Označi gredo le neoznačeni čipi: že označen kos bi se sicer potiho prestavil na drug artikel
+    if (n === 'oznaci' && RF.sken.length) { RF.sken = RF.sken.filter(function (e) { return RF.vprasan[e] && !(RF.idx[e] || []).length; }); RF.skenSet = {}; RF.sken.forEach(function (e) { RF.skenSet[e] = 1; }); rfShrani(); }
+    RF.nacin = n; RF.rezultat = null;
+    try { localStorage.setItem('sc-rfid-nacin', n); } catch (e) {}
+    document.querySelectorAll('.rf-nacini [data-nacin]').forEach(function (b) { var on = b.dataset.nacin === n; b.classList.toggle('on', on); b.setAttribute('aria-selected', on); });
+    rfFiltri(); rfRisi(); rfPod();
+    if (rfStranka() && RF.org && !RF.kosi) rfIzberiStranko(RF.org);
+  }
+
+  function rfRisi() {
+    var t = $('rfTelo'); if (!t) return;
+    if (RF.rezultat) { rfRisiRezultat(t); return; }
+    if (rfStranka() && !RF.org) { t.innerHTML = '<div class="rows"><div class="empty"><h3>Izberi stranko</h3></div></div>'; return; }
+    if (RF.nacin === 'kosi') { rfRisiKosi(t); return; }
+    rfRisiSken(t);
+  }
+
+  // ── skeniranje ──
+  function rfRisiSken(t) {
+    var oz = RF.nacin === 'oznaci', w = sme('cipi', 'w');
+    var artSel = oz ? '<label class="ur-f rf-art"><span>Artikel</span><select id="rfArt"><option value="">Izberi artikel</option>' +
+      RF.arts.map(function (a) { return '<option value="' + escape_(a.id) + '"' + (a.id === RF.art ? ' selected' : '') + '>' + escape_(a.name) + '</option>'; }).join('') + '</select></label>' : '';
+    t.innerHTML = '<div class="uc-card rf-sken">' + artSel +
+      '<div class="rf-stevec" aria-live="polite"><b id="rfN">0</b><span id="rfNlab"></span></div>' +
+      '<input type="text" id="rfVnos" class="sc-modal-input rf-vnos" placeholder="Skeniraj čip" aria-label="Skeniraj čip" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" enterkeyhint="enter"></div>' +
+      '<div class="rf-rez" id="rfRez"></div>' + (w ? '<div class="u-acts rf-akc" id="rfAkc"></div>' : '');
+    var as = $('rfArt'); if (as) as.addEventListener('change', function () { RF.art = as.value; rfOsvezi(); });
+    rfVhod($('rfVnos'), rfDodaj);
+    rfOsvezi();
+    rfFokus();
+  }
+  // Čitalec kot tipkovnica: EPC in Enter (ali Tab, presledek). Prilepljen seznam razdeli. Brez končnega znaka
+  // sprejme polno številko (24+ znakov) po kratkem premoru.
+  function rfVhod(inp, ob) {
+    if (!inp) return;
+    var t = null;
+    function obdelaj(vse) {
+      clearTimeout(t);
+      var v = inp.value; if (!v) return;
+      var deli = v.split(/[\s,;]+/), zadnji = /[\s,;]$/.test(v) || vse ? '' : deli.pop();
+      deli.forEach(function (d) { var e = rfEpc(d); if (e) ob(e); });
+      inp.value = zadnji || '';
+      if (zadnji) t = setTimeout(function () { var e = rfEpc(inp.value); if (e && e.length >= 24) { inp.value = ''; ob(e); } }, 500);
+    }
+    inp.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === 'Tab') { if (inp.value) { e.preventDefault(); obdelaj(true); } } });
+    inp.addEventListener('input', function () { obdelaj(false); });
+  }
+  // Čitalec tipka, a polje ni v fokusu (npr. po dotiku seznama): znake preusmeri v polje.
+  document.addEventListener('keydown', function (e) {
+    if (e.ctrlKey || e.metaKey || e.altKey || !/^[0-9A-Fa-f]$/.test(e.key)) return;
+    var sec = $('sec-cipi'), inp = $('rfVnos'); if (!sec || sec.classList.contains('hidden') || !inp) return;
+    var a = document.activeElement, tip = a && a.tagName;
+    if (a === inp || tip === 'INPUT' || tip === 'TEXTAREA' || tip === 'SELECT' || (a && a.isContentEditable)) return;
+    if (_okno || document.querySelector('.sc-modal-back')) return;
+    inp.focus({ preventScroll: true });
+  }, true);
+
+  var _rfRaf = 0;
+  function rfDodaj(epc) {
+    if (RF.nacin === 'kosi') { var k = (RF.kosi || []).filter(function (x) { return x.epc === epc; })[0]; if (k) rfKosOdpri(k); else toast('Čip ' + rfKratko(epc) + ' ni označen pri tej stranki.'); return; }
+    if (RF.skenSet[epc]) return;
+    if (!RF.sken.length) RF.kljuc = rfKljuc();   // novo skeniranje = nov ključ potrditve
+    RF.skenSet[epc] = 1; RF.sken.push(epc); rfShrani();
+    try { haptika(); } catch (e) {}
+    if (!_rfRaf) _rfRaf = requestAnimationFrame(function () { _rfRaf = 0; rfOsvezi(); });
+    rfIsci();
+  }
+  // razvrstitev skeniranih: znani po strankah, neoznačeni, pri več strankah (ne štejejo)
+  function rfRazvrsti() {
+    var str = {}, nezn = [], dvo = [], cakam = 0, znanih = 0;
+    RF.sken.forEach(function (e) {
+      if (!RF.vprasan[e]) { cakam++; return; }
+      var vsi = (RF.idx[e] || []).filter(function (k) { return k.stanje !== 'odpisan'; });
+      if (!vsi.length) { nezn.push(e); return; }
+      var orgi = {}; vsi.forEach(function (k) { orgi[k.org_id] = 1; });
+      if (Object.keys(orgi).length > 1) { dvo.push(e); return; }
+      var k = vsi[0], g = str[k.org_id] || (str[k.org_id] = { org: k.org_id, ime: ORGIME[k.org_id] || 'Stranka', n: 0, art: {} });
+      g.n++; g.art[k.naziv] = (g.art[k.naziv] || 0) + 1; znanih++;
+    });
+    var seznam = Object.keys(str).map(function (o) { return str[o]; }).sort(function (a, b) { return a.ime.localeCompare(b.ime, 'sl'); });
+    return { stranke: seznam, nezn: nezn, dvo: dvo, cakam: cakam, znanih: znanih };
+  }
+  function rfOsvezi() {
+    var rez = $('rfRez'), nEl = $('rfN'), lab = $('rfNlab'); if (!rez || !nEl) return;
+    var akc = $('rfAkc'), w = sme('cipi', 'w'), vrst = [];
+    var vr = function (ime, n, razred, opis, gumb) {
+      return '<div class="rf-vr' + (razred ? ' ' + razred : '') + '"><span class="rf-vr-t"><span class="rf-vr-ime">' + escape_(ime) + '</span>' + (opis ? '<span class="rf-vr-op">' + escape_(opis) + '</span>' : '') + '</span>' +
+        (gumb || '') + '<b>' + stevilo(n) + '</b></div>';
+    };
+    var pocisti = '<button type="button" data-rf="pocisti"' + (RF.sken.length ? '' : ' disabled') + '>Počisti</button>';
+    if (RF.nacin === 'oznaci') {
+      if (!RF.org) return;
+      var novi = 0, enaki = 0, prest = {}, drugje = 0, cilj = (RF.arts.filter(function (x) { return x.id === RF.art; })[0] || {}).name || 'izbrani artikel';
+      RF.sken.forEach(function (e) {
+        if (!RF.vprasan[e]) return;
+        var vsi = RF.idx[e] || [], moj = vsi.filter(function (k) { return k.org_id === RF.org; })[0];
+        if (!moj) { novi++; if (vsi.length) drugje++; }
+        else if (RF.art && moj.article_id === RF.art) enaki++;
+        else { var i = rfArtIme(moj); prest[i] = (prest[i] || 0) + 1; }
+      });
+      var nPrest = Object.keys(prest).reduce(function (s, i) { return s + prest[i]; }, 0), n = novi + nPrest;
+      nEl.textContent = stevilo(n); lab.textContent = 'za označiti';
+      if (novi) vrst.push(vr('Novi čipi', novi));
+      Object.keys(prest).forEach(function (i) { vrst.push(vr('Prestavljeni', prest[i], 'opoz', i + ' → ' + cilj)); });
+      if (enaki) vrst.push(vr('Že označeni', enaki, 'tiho'));
+      if (drugje) vrst.push(vr('Tudi pri drugi stranki', drugje, 'opoz'));
+      if (akc) akc.innerHTML = pocisti + '<button type="button" class="ur-save" data-rf="oznaci"' + (n && RF.art ? '' : ' disabled') + '>' + (n ? 'Označi ' + sklonKosov(n) : 'Označi') + '</button>';
+    } else {
+      var r = rfRazvrsti(), odd = RF.nacin === 'oddaja';
+      nEl.textContent = stevilo(r.znanih);
+      lab.textContent = (r.znanih === 1 ? 'kos' : r.znanih === 2 ? 'kosa' : (r.znanih === 3 || r.znanih === 4) ? 'kosi' : 'kosov') + (r.stranke.length > 1 ? ' · ' + r.stranke.length + ' stranke' : '');
+      r.stranke.forEach(function (g) {
+        var arti = Object.keys(g.art).sort(function (a, b) { return g.art[b] - g.art[a] || a.localeCompare(b, 'sl'); });
+        vrst.push('<div class="rf-str"><div class="rf-str-h"><span>' + escape_(g.ime) + '</span>' + (w ? '<button type="button" class="cgrp-btn ghost" data-rf="odstrani" data-org="' + escape_(g.org) + '">Odstrani</button>' : '') + '<b>' + stevilo(g.n) + '</b></div>' +
+          arti.map(function (i) { return '<div class="rf-str-a"><span>' + escape_(i) + '</span><span>' + stevilo(g.art[i]) + '</span></div>'; }).join('') + '</div>');
+      });
+      if (r.nezn.length) vrst.push(vr('Neoznačeni', r.nezn.length, 'opoz', '', w ? '<button type="button" class="cgrp-btn ghost" data-rf="v-oznaci">Označi</button>' : ''));
+      if (r.dvo.length) vrst.push(vr('Čip pri več strankah', r.dvo.length, 'opoz'));
+      var ns = r.stranke.length;
+      if (akc) akc.innerHTML = pocisti + '<button type="button" class="ur-save" data-rf="potrdi"' + (r.znanih && !r.cakam ? '' : ' disabled') + '>' +
+        (odd ? (ns > 1 ? 'Potrdi · ' + ns + ' spremni listi' : 'Potrdi oddajo') : 'Potrdi prevzem') + '</button>';
+    }
+    rez.innerHTML = vrst.join('');
+    [akc, rez].forEach(function (host) { if (host) host.querySelectorAll('[data-rf]').forEach(function (b) { b.addEventListener('click', function () { rfAkcija(b.dataset.rf, b); }); }); });
+  }
+  function rfPocisti() { RF.sken = []; RF.skenSet = {}; RF.kljuc = null; rfShrani(); rfOsvezi(); }
+  async function rfAkcija(a, gumb) {
+    if (a === 'pocisti') {
+      var prej = RF.sken.slice(), kl = RF.kljuc; rfPocisti();
+      toast('Počiščeno', { besedilo: 'Razveljavi', ob: function () { prej.forEach(function (e) { if (!RF.skenSet[e]) { RF.skenSet[e] = 1; RF.sken.push(e); } }); RF.kljuc = kl; rfShrani(); rfOsvezi(); } });
+      return;
+    }
+    if (a === 'v-oznaci') { rfNacin('oznaci'); return; }
+    if (a === 'odstrani') {   // čipi sosednjega vozička (čitalec bere nekaj metrov daleč): stranko izločiš iz te potrditve
+      var org = gumb.dataset.org, ven = RF.sken.filter(function (e) { return (RF.idx[e] || []).some(function (k) { return k.org_id === org && k.stanje !== 'odpisan'; }); });
+      RF.sken = RF.sken.filter(function (e) { return ven.indexOf(e) < 0; }); RF.skenSet = {}; RF.sken.forEach(function (e) { RF.skenSet[e] = 1; }); rfShrani(); rfOsvezi();
+      toast((ORGIME[org] || 'Stranka') + ' odstranjena', { besedilo: 'Razveljavi', ob: function () { ven.forEach(function (e) { if (!RF.skenSet[e]) { RF.skenSet[e] = 1; RF.sken.push(e); } }); rfShrani(); rfOsvezi(); } });
+      return;
+    }
+    if (!sme('cipi', 'w')) return;
+    if (a === 'potrdi') { rfPotrdi(gumb); return; }
+    if (a === 'oznaci') {
+      gumb.disabled = true; gumb.classList.add('nalaga');
+      try {
+        var org = RF.org, epcs = RF.sken.filter(function (e) { var moj = (RF.idx[e] || []).filter(function (k) { return k.org_id === org; })[0]; return !moj || moj.article_id !== RF.art; });
+        var r = await sb.rpc('rfid_oznaci', { p_org: org, p_article: RF.art, p_epcs: epcs });
+        if (r.error) throw r.error;
+        var n = (r.data.novih || 0) + (r.data.prestavljenih || 0), art = (RF.arts.filter(function (x) { return x.id === RF.art; })[0] || {}).name || '';
+        logDodaj('Čipi', 'Označeno', (ORGIME[org] || '') + ' · ' + art + ' · ' + sklonKosov(n));
+        toast('Označeno: ' + sklonKosov(n) + ' · ' + art);
+        rfPozabi(RF.sken); RF.sken = []; RF.skenSet = {}; RF.kljuc = null; rfShrani();
+        if (org === RF.org) { await rfNalozi(org); rfRisi(); rfPod(); }
+      } catch (e) { toast(napakaBesedilo(e)); gumb.disabled = false; }
+      finally { gumb.classList.remove('nalaga'); }
+    }
+  }
+  // Potrdi: pregled po strankah → baza zabeleži in pri oddaji ustvari spremne liste
+  async function rfPotrdi(gumb) {
+    try { await rfIsci(true); } catch (e) { toast(napakaBesedilo(e)); return; }
+    var r = rfRazvrsti(), odd = RF.nacin === 'oddaja'; if (!r.znanih) return;
+    var ok = await potrdiModal({
+      naslov: odd ? (r.stranke.length > 1 ? 'Ustvari ' + r.stranke.length + ' spremne liste' : 'Ustvari spremni list') : 'Zabeleži prevzem',
+      sporocilo: r.stranke.map(function (g) { return g.ime + ' · ' + sklonKosov(g.n); }).join('\n') + (r.nezn.length || r.dvo.length ? '\n\nNe šteje se: ' + sklonKosov(r.nezn.length + r.dvo.length) : ''),
+      potrdi: odd ? 'Ustvari' : 'Zabeleži', preklici: 'Nazaj'
+    });
+    if (!ok) return;
+    if (!RF.kljuc) RF.kljuc = rfKljuc();
+    gumb.disabled = true; gumb.classList.add('nalaga');
+    try {
+      var tip = odd ? 'oddaja' : 'prevzem';
+      var x = await sb.rpc('rfid_potrdi', { p_tip: tip, p_epcs: RF.sken, p_kljuc: RF.kljuc, p_izdal: JAZIME || null });
+      if (x.error) throw x.error;
+      var listi = (x.data && x.data.listi) || [];
+      logDodaj('Čipi', odd ? 'Oddaja' : 'Prevzem', listi.map(function (l) { return (ORGIME[l.org] || '') + ' ' + sklonKosov(l.kosov) + (l.stevilka ? ' · ' + l.stevilka : ''); }).join(', '));
+      rfPozabi(RF.sken); RF.sken = []; RF.skenSet = {}; RF.kljuc = null; rfShrani(); RF.kosi = null;
+      if (odd) { RF.rezultat = { listi: listi }; try { await naloziListe(); } catch (e) {} rfRisi(); }
+      else { toast('Prevzem zabeležen: ' + sklonKosov(x.data.kosov || 0)); rfOsvezi(); }
+    } catch (e) { toast(napakaBesedilo(e)); }   // ključ ostane: ponovna potrditev ne ustvari dvojnih listov
+    finally { gumb.classList.remove('nalaga'); gumb.disabled = false; rfOsvezi(); }
+  }
+  function rfRisiRezultat(t) {
+    var listi = RF.rezultat.listi;
+    t.innerHTML = '<div class="uc-card rf-rezultat"><h3 class="sec-h">' + (listi.length === 1 ? 'Spremni list ustvarjen' : 'Ustvarjeni spremni listi') + '</h3>' +
+      '<div class="rf-listi">' + listi.map(function (l) { return '<div class="rf-list"><b>' + escape_(l.stevilka || '') + '</b><span>' + escape_(ORGIME[l.org] || '') + '</span><span class="u-sub">' + sklonKosov(l.kosov) + '</span></div>'; }).join('') + '</div>' +
+      '<div class="u-acts"><button type="button" data-rf-nova>Novo skeniranje</button><button type="button" data-rf-arhiv>Spremni listi</button><button type="button" class="ur-save" data-rf-tisk>' + IKO_TISK + 'Natisni</button></div></div>';
+    t.querySelector('[data-rf-nova]').addEventListener('click', function () { RF.rezultat = null; rfRisi(); });   // rfRisiSken sam postavi fokus
+    t.querySelector('[data-rf-arhiv]').addEventListener('click', function () { RF.rezultat = null; pojdi('arhiv'); });
+    t.querySelector('[data-rf-tisk]').addEventListener('click', function () { rfNatisni(listi.map(function (l) { return l.note; }).filter(Boolean), this); });
+  }
+  async function rfNatisni(ids, gumb) {
+    if (!ids.length) return;
+    gumb.disabled = true; gumb.classList.add('nalaga');
+    try {
+      if (ids.some(function (id) { return !LISTI.some(function (l) { return l.id === id; }); })) await naloziListe();
+      var stK = function (l) { var d = String(l.number || '').split('/'); return (parseInt(d[1], 10) || 0) * 1e7 + (parseInt(d[0], 10) || 0); };
+      var listi = LISTI.filter(function (l) { return ids.indexOf(l.id) >= 0; }).sort(function (a, b) { return stK(a) - stK(b); });
+      if (!listi.length) { toast('Spremnih listov ni bilo mogoče naložiti.'); return; }
+      await arhPostavke(listi.map(function (l) { return l.id; }));
+      var boxi = listi.map(function (l) { return { _note: l, _items: _POST_CACHE[l.id] || [] }; });
+      var en = boxi.length === 1, naslov = en ? 'Spremni list ' + (listi[0].number || '') : sklonListov(boxi.length);
+      predogledDokument({ naslov: naslov, docHtml: dokHtml(en ? naslov : 'Spremni listi', boxi.map(spremniTeloHtml)), pdf: function () { return spremniPdfDownload(boxi); } });
+    } catch (e) { toast(napakaBesedilo(e)); }
+    finally { gumb.disabled = false; gumb.classList.remove('nalaga'); }
+  }
+
+  // ── kosi stranke: po artiklih, pogrešani, zgodovina ──
+  function rfSkupine() {
+    var akt = RF.kosi.filter(function (k) { return k.stanje === 'aktiven'; }), poArt = {};
+    akt.forEach(function (k) {
+      var i = rfArtIme(k), kl = (k.article_id || '') + '|' + i;
+      var g = poArt[kl] || (poArt[kl] = { ime: i, kosi: [], pranj: 0, pog: 0 });
+      g.kosi.push(k); g.pranj += k.pranj || 0; if (rfPogresan(k)) g.pog++;
+    });
+    return { akt: akt, poArt: poArt,
+      pog: akt.filter(function (k) { return rfPogresan(k); }),
+      izg: RF.kosi.filter(function (k) { return k.stanje === 'izgubljen'; }),
+      odp: RF.kosi.filter(function (k) { return k.stanje === 'odpisan'; }) };
+  }
+  function rfRisiKosi(t) {
+    if (!RF.kosi) { t.innerHTML = ''; return; }
+    var s = rfSkupine(), sk = Object.keys(s.poArt).map(function (x) { return s.poArt[x]; }).sort(function (a, b) { return b.kosi.length - a.kosi.length || a.ime.localeCompare(b.ime, 'sl'); });
+    var povp = s.akt.length ? Math.round(s.akt.reduce(function (x, k) { return x + (k.pranj || 0); }, 0) / s.akt.length) : 0;
+    var vrstica = function (kljuc, ime, n, meta, razred) {
+      return '<button type="button" class="rf-tv' + (razred ? ' ' + razred : '') + '" data-sk="' + escape_(kljuc) + '"><span class="rf-tv-ime">' + escape_(ime) + '</span><span class="rf-tv-meta">' + escape_(meta) + '</span><b>' + stevilo(n) + '</b><span class="chev" aria-hidden="true">›</span></button>';
+    };
+    var html = '<input type="text" id="rfVnos" class="sc-modal-input rf-vnos rf-isci" placeholder="Skeniraj čip" aria-label="Poišči kos s čipom" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">';
+    if (!RF.kosi.length) html += '<div class="rows"><div class="empty"><h3>Brez označenega perila</h3>' + (sme('cipi', 'w') ? '<button type="button" class="btn ghost" data-rf-oznaci style="margin-top:14px">Označi</button>' : '') + '</div></div>';
+    else {
+      html += '<div class="rf-povz"><div class="stat"><div class="stat-num">' + stevilo(s.akt.length) + '</div><div class="stat-lab">Kosov</div></div>' +
+        '<div class="stat"><div class="stat-num">' + stevilo(povp) + '</div><div class="stat-lab">Pranj na kos</div></div>' +
+        '<div class="stat"><div class="stat-num' + (s.pog.length ? ' rf-st-opoz' : '') + '">' + stevilo(s.pog.length) + '</div><div class="stat-lab">Pogrešani</div></div></div>';
+      html += '<div class="rf-tab">';
+      if (s.pog.length) html += vrstica('pog', 'Pogrešani', s.pog.length, '', 'opoz');
+      sk.forEach(function (g, i) { html += vrstica('a' + i, g.ime, g.kosi.length, 'povprečno ' + stevilo(Math.round(g.pranj / g.kosi.length)) + ' pranj' + (g.pog ? ' · pogrešani ' + g.pog : '')); });
+      if (s.izg.length) html += vrstica('izg', 'Izgubljeni', s.izg.length, '', 'tiho');
+      if (s.odp.length) html += vrstica('odp', 'Odpisani', s.odp.length, '', 'tiho');
+      html += '</div>';
+    }
+    t.innerHTML = html;
+    rfVhod($('rfVnos'), rfDodaj);
+    var oz = t.querySelector('[data-rf-oznaci]'); if (oz) oz.addEventListener('click', function () { rfNacin('oznaci'); });
+    t.querySelectorAll('.rf-tv').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var k = b.dataset.sk, seznam, naslov;
+        if (k === 'pog') { seznam = s.pog; naslov = 'Pogrešani'; }
+        else if (k === 'izg') { seznam = s.izg; naslov = 'Izgubljeni'; }
+        else if (k === 'odp') { seznam = s.odp; naslov = 'Odpisani'; }
+        else { var g = sk[+k.slice(1)]; seznam = g.kosi; naslov = g.ime; }
+        rfSeznamOdpri(b, naslov, seznam);
+      });
+    });
+  }
+  function rfSeznamOdpri(gumb, naslov, seznam) {
+    var box = document.createElement('div'); box.className = 'rf-okno';
+    var urejeni = seznam.slice().sort(function (a, b) { return String(b.zadnjic || '').localeCompare(String(a.zadnjic || '')); });
+    box.innerHTML = '<div class="rf-kosi">' + urejeni.map(function (k) {
+      var p = rfPogresan(k);
+      return '<button type="button" class="rf-kos" data-id="' + escape_(k.id) + '"><span class="rf-kos-epc">' + escape_(rfKratko(k.epc)) + '</span>' +
+        '<span class="rf-kos-kje' + (p ? ' opoz' : '') + '">' + escape_(p || rfKje(k)) + '</span><span class="rf-kos-pr">' + stevilo(k.pranj || 0) + ' pranj</span></button>';
+    }).join('') + '</div>';
+    oknoOdpri(gumb, box, function () { return document.querySelector('.rf-tv[data-sk="' + gumb.dataset.sk + '"]'); }, {
+      glava: function () { var h = document.createElement('h3'); h.className = 'sec-h'; h.textContent = naslov + ' · ' + sklonKosov(seznam.length); return h; }
+    });
+    box.querySelectorAll('.rf-kos').forEach(function (b) { b.addEventListener('click', function () { var k = RF.kosi.filter(function (x) { return x.id === b.dataset.id; })[0]; if (k) rfKosOdpri(k); }); });
+  }
+  var RF_TIPI = { oznacevanje: 'Označen', prevzem: 'Prevzem', oddaja: 'Oddaja', oznacen: 'Prestavljen', stanje: 'Stanje' };
+  async function rfKosOdpri(k) {
+    var w = sme('cipi', 'w');
+    var back = document.createElement('div'); back.className = 'sc-modal-back';
+    back.innerHTML = '<div class="sc-modal rf-kos-modal" role="dialog" aria-modal="true"><h4>' + escape_(rfArtIme(k)) + '</h4>' +
+      '<dl class="okno-dl"><dt>Čip</dt><dd class="rf-epc">' + escape_(k.epc) + '</dd><dt>Stranka</dt><dd>' + escape_(ORGIME[k.org_id || RF.org] || '') + '</dd>' +
+      '<dt>Pranj</dt><dd>' + stevilo(k.pranj || 0) + '</dd><dt>Kje</dt><dd>' + escape_(rfPogresan(k) || rfKje(k)) + '</dd><dt>Označen</dt><dd>' + escape_(rfDatum(k.created_at)) + '</dd></dl>' +
+      '<div class="rf-zgod"></div>' +
+      '<div class="sc-modal-acts">' + (w ? (k.stanje !== 'aktiven' ? '<button type="button" class="sc-modal-btn ghost" data-st="aktiven">Spet v uporabi</button>' : '<button type="button" class="sc-modal-btn ghost" data-st="izgubljen">Izgubljen</button><button type="button" class="sc-modal-btn ghost" data-st="odpisan">Odpiši</button>') : '') +
+      '<button type="button" class="sc-modal-btn primary" data-zapri>Zapri</button></div></div>';
+    document.body.appendChild(back); _modalA11y(back); requestAnimationFrame(function () { back.classList.add('show'); });
+    var done = false;
+    function zapri() { if (done) return; done = true; back.classList.remove('show'); document.removeEventListener('keydown', onk, true); setTimeout(function () { back.remove(); }, 180); _modalVrniFokus(); }
+    function onk(e) { if (e.key === 'Escape') { e.stopPropagation(); zapri(); } }
+    document.addEventListener('keydown', onk, true);
+    back.addEventListener('click', function (e) { if (e.target === back) zapri(); });
+    back.querySelector('[data-zapri]').addEventListener('click', zapri);
+    back.querySelectorAll('[data-st]').forEach(function (b) {
+      b.addEventListener('click', async function () {
+        b.disabled = true;
+        var r = await sb.rpc('rfid_stanje', { p_kos: k.id, p_stanje: b.dataset.st });
+        if (r.error) { toast(napakaBesedilo(r.error)); b.disabled = false; return; }
+        logDodaj('Čipi', 'Stanje', (ORGIME[k.org_id || RF.org] || '') + ' · ' + rfArtIme(k) + ' ' + rfKratko(k.epc) + ' · ' + b.dataset.st);
+        k.stanje = b.dataset.st; zapri(); if (_okno) oknoZapri(true); rfRisi(); rfPod();
+      });
+    });
+    // zgodovina: skeniranja, ki vsebujejo kos (z morebitnim spremnim listom) + redki dogodki
+    var rez = await Promise.all([
+      sb.from('rfid_seje').select('tip,created_at,note_id').contains('kosi', [k.id]).order('created_at', { ascending: false }).limit(40),
+      sb.from('rfid_dogodki').select('tip,opis,created_at').eq('kos_id', k.id).order('created_at', { ascending: false }).limit(40)
+    ]);
+    var host = back.querySelector('.rf-zgod'); if (!host || rez[0].error || rez[1].error) return;
+    var vse = (rez[0].data || []).map(function (x) { var l = x.note_id && LISTI.filter(function (q) { return q.id === x.note_id; })[0]; return { tip: x.tip, opis: l ? 'spremni list ' + l.number : '', t: x.created_at }; })
+      .concat((rez[1].data || []).map(function (x) { return { tip: x.tip, opis: x.opis || '', t: x.created_at }; }))
+      .sort(function (a, b) { return String(b.t).localeCompare(String(a.t)); }).slice(0, 40);
+    host.innerHTML = vse.map(function (d) {
+      return '<div class="rf-zg"><span>' + escape_(RF_TIPI[d.tip] || d.tip) + (d.opis ? ' · ' + escape_(d.opis) : '') + '</span><span class="u-sub">' + escape_(datumcas(d.t)) + '</span></div>';
+    }).join('');
+  }
+
+  // ── Stranke: perilo s čipi v oknu stranke ──
+  async function rfStrankaBlok(el, orgId) {
+    if (!el) return;
+    if (!sme('cipi', 'r')) { el.remove(); return; }
+    var r = await vseVrstice(function (a, b) { return sb.from('rfid_kosi').select('article_id,naziv,stanje,pranj,zadnji_tip,zadnjic').eq('org_id', orgId).range(a, b); });
+    if (r.error || !(r.data || []).length) { el.remove(); return; }
+    var akt = r.data.filter(function (k) { return k.stanje === 'aktiven'; }), po = {}, pog = 0;
+    akt.forEach(function (k) { var g = po[k.naziv] || (po[k.naziv] = { n: 0, pr: 0 }); g.n++; g.pr += k.pranj || 0; if (rfPogresan(k)) pog++; });
+    var imena = Object.keys(po).sort(function (a, b) { return po[b].n - po[a].n; });
+    el.innerHTML = '<div class="str-rfid-h"><span class="sec-h">Perilo s čipi</span><span class="u-sub">' + sklonKosov(akt.length) + (pog ? ' · pogrešani ' + pog : '') + '</span></div>' +
+      imena.map(function (i) { return '<div class="str-rfid-v"><span>' + escape_(i) + '</span><span class="u-sub">' + stevilo(po[i].n) + ' · povprečno ' + stevilo(Math.round(po[i].pr / po[i].n)) + ' pranj</span></div>'; }).join('') +
+      '<p class="art-cenik-hint"><button type="button" class="art-to-cenik" data-rf-odpri>Odpri v Čipih ›</button></p>';
+    el.querySelector('[data-rf-odpri]').addEventListener('click', function (e) {
+      e.stopPropagation();
+      try { localStorage.setItem('sc-rfid-nacin', 'kosi'); localStorage.setItem('sc-rfid-org', orgId); } catch (x) {}
+      if (RF.org !== orgId) { RF.org = orgId; RF.kosi = null; RF.arts = []; RF.art = ''; }
+      RF.nacin = 'kosi'; RF.rezultat = null;
+      document.querySelectorAll('.rf-nacini [data-nacin]').forEach(function (b) { var on = b.dataset.nacin === 'kosi'; b.classList.toggle('on', on); b.setAttribute('aria-selected', on); });
+      pojdi('cipi');
+    });
+  }
 
   /* ══════════ MOJ RAČUN ══════════ */
   /* ── Moj profil: prikaz avatarja + polj ── */

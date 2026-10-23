@@ -1,5 +1,19 @@
 [
  {
+  "v": "4.69",
+  "d": "2026-10-23",
+  "c": "2026-10-23T11:30:00+02:00",
+  "t": [
+   "Nov razdelek Čipi (UHF RFID): čitalec Chainway C72 ali R1 vpiše čip v polje »Skeniraj čip«.",
+   "Oddaja: skeniraš vse perilo naenkrat (lahko več strank), portal ga razvrsti po strankah, Potrdi pa vsaki stranki sam ustvari spremni list (naslednja številka, današnji datum, kosi po artiklih, teža) — nato jih natisneš vse naenkrat.",
+   "Prevzem: enako skeniranje, Potrdi zabeleži, da je perilo v pralnici.",
+   "Označi: izbereš stranko in artikel, skeniraš nove čipe in jih shraniš.",
+   "Kosi: perilo stranke po artiklih, število pranj, pogrešani (v pralnici dlje kot 3 dni ali 45 dni neskeniran), izgubljeni, odpisani in zgodovina vsakega kosa. Kos najdeš tudi tako, da ga skeniraš.",
+   "Stranke: v oknu stranke je pregled njenega perila s čipi.",
+   "Varnost: čipe vidi le aktivno osebje; števila pranj in stanj ni mogoče spreminjati mimo skeniranja; dvojni klik ali ponovitev po izpadu omrežja ne ustvari dvojnih spremnih listov; skeniranje ostane shranjeno tudi ob osvežitvi strani."
+  ]
+ },
+ {
   "v": "4.68",
   "d": "2026-10-23",
   "c": "2026-10-23T10:30:00+02:00",
