@@ -1,5 +1,20 @@
 [
  {
+  "v": "4.70",
+  "d": "2026-10-23",
+  "c": "2026-10-23T13:30:00+02:00",
+  "t": [
+   "Nova aplikacija SmartClean RFID za Android (Nastavitve → Aplikacije): odpre Čipe in sama upravlja čitalec — vgrajenega v Chainway C72 (sprožilec), R1 prek USB ali UR4 prek omrežja. Prebere stotine čipov naenkrat, vsak nov čip potrdi kratek pisk.",
+   "Doseg Blizu / Srednje / Daleč: označevanje in iskanje kosa sta samodejno blizu (le kos v roki), oddaja in prevzem daleč (cel voziček). Izbira se zapomni za vsak način posebej.",
+   "Sprožilec kjer koli v portalu odpre Čipe; po ustvarjenih spremnih listih z novim pritiskom začneš novo skeniranje.",
+   "Kosi: skeniran kos se odpre takoj in branje se ustavi; naslednji čip zamenja odprti kos.",
+   "Med potrjevanjem se novi čipi ne dodajajo — ustvari se točno to, kar piše v oknu.",
+   "Žive spremembe: spremni list, ustvarjen na tablici, telefonu ali čitalcu, se v Spremnih listih in na Domov pokaže sam, brez osvežitve (nov list za trenutek zasveti). Čipi se osvežijo sami, ko druga naprava označi kos ali potrdi oddajo. Med urejanjem se nič ne prerisuje.",
+   "Aplikacija: tisk spremnih listov prek Androidovega tiskanja, zaslon med branjem ne ugasne, brez povezave sama poskusi znova, v ozadju ne troši baterije.",
+   "Uporabniki → Vloge in pravice na telefonu: vseh pet vlog je v dveh vrsticah, »Stranka« ne sega več čez rob zaslona."
+  ]
+ },
+ {
   "v": "4.69",
   "d": "2026-10-23",
   "c": "2026-10-23T11:30:00+02:00",

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Tema" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/ozadje</item>
+        <item name="android:statusBarColor">@color/ozadje</item>
+        <item name="android:navigationBarColor">@color/ozadje</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+    <color name="ozadje">#FFFFFF</color>
+    <color name="ic_launcher_background">#F2F8F4</color>
+</resources>

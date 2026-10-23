@@ -81,7 +81,10 @@
     var x = hexRgb(a), y = hexRgb(b);
     return '#' + [0, 1, 2].map(function (k) { return ('0' + Math.round(x[k] + (y[k] - x[k]) * t).toString(16)).slice(-2); }).join('');
   }
-  function nastaviPas(barva) { try { var mc = document.querySelector('meta[name="theme-color"]'); if (mc) mc.setAttribute('content', barva); } catch (e) {} }
+  function nastaviPas(barva) {
+    try { var mc = document.querySelector('meta[name="theme-color"]'); if (mc) mc.setAttribute('content', barva); } catch (e) {}
+    try { if (window.ScRfid && /^#[0-9a-f]{6}$/i.test(barva)) window.ScRfid.barva(barva); } catch (e) {}   // aplikacija SmartClean RFID
+  }
   // ali brskalnik zna zvezno spreminjati registrirane barvne žetone (@property): sicer hipna menjava
   function _temaZetoniAnimirani() {
     if (_temaZetoniAnimirani.v != null) return _temaZetoniAnimirani.v;
@@ -360,7 +363,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.69 · BETA';
+  var APP_VERZIJA = '4.70 · BETA';
   var NALAGANJE = '<div class="sc-load" aria-hidden="true"><span class="sc-load-line"></span></div>';
   // Stale-while-revalidate: ob ponovnem obisku razdelka NE pobriši vsebine v nalagalnik —
   // obdrži prejšnjo (takojšen prikaz) in jo osveži v ozadju. Trak le ob prvem nalaganju.
@@ -744,6 +747,7 @@
     zazeniCustomSelecte();
     try { pokaziObvestila(); } catch (e) {}
     try { narociObvestila(); } catch (e) {}
+    try { narociZivo(); } catch (e) {}
     try { preberiReload(); } catch (e) {}
     try { morebitiPromoBio(); } catch (e) {}
     // V OZADJU prednaloži razdelke, do katerih ima uporabnik dostop, da se ob
@@ -3537,12 +3541,14 @@
     // Zberi liste s starim zapisom (postavka brez povezave na artikel → article_id IS NULL)
     // Pregled CELE tabele postavk je daleč najdražja poizvedba ob prijavi, rabimo
     // pa jo le za oznako »star zapis« in števec nepotrjenih — zato v ozadje.
-    STAR_SET = new Set();
+    // nabor ostane do novega (živo osveževanje bi sicer oznake za trenutek skrilo)
     if (OSEBJE) naloziStarSet();
   }
-  var _starP = null;
+  var _starP = null, _starZadnji = 0;
   function naloziStarSet() {
     if (_starP) return _starP;
+    if (Date.now() - _starZadnji < 120000) return Promise.resolve();   // najdražja poizvedba: ob živem osveževanju največ vsaki 2 min
+    _starZadnji = Date.now();
     _starP = (async function () {
       try {
         const rs = await vseVrstice((od, do_) =>
@@ -3551,9 +3557,9 @@
         const set = new Set();
         (rs && rs.data ? rs.data : []).forEach(r => { if (r && r.note_id) set.add(r.note_id); });
         STAR_SET = set;
-        try { risiPregled(); } catch (e) {}
-        try { risiArhiv(); } catch (e) {}
+        try { zivNarisi([]); } catch (e) {}   // le viden razdelek in šele, ko nihče ne ureja
       } catch (e) {
+        _starZadnji = 0;
         STAR_SET = new Set();
         try { console.warn('[star_set] oznak »star zapis« ni bilo mogoče naložiti:', (e && e.message) || e); } catch (_) {}
       } finally { _starP = null; }
@@ -7753,6 +7759,7 @@
      Če ga še ni, to tu tudi piše — namesto strani 404. */
   // ?v= ob vsaki novi različici aplikacije (aplikacija/zgradi.py): brskalnik in predpomnilnik vzameta nov paket.
   var APK_POT = 'tablica/Pralnica-sync.apk?v=11.9';
+  var RFID_APK_POT = 'rfid/SmartClean-RFID.apk?v=1.0';   // aplikacija-rfid/zgradi.py
 
   function wirePwa(scope) {
     var pb = (scope || document).querySelector('#pwaInstall');
@@ -7782,23 +7789,29 @@
     }
     var _odpri = '<a class="btn prog-act" href="mobile/" target="_blank" rel="noopener">' + IKO_OUT + 'Odpri</a>';
 
-    var apkVer = (/[?&]v=([^&]+)/.exec(APK_POT) || [])[1] || '';
+    var ver = function (pot) { var v = (/[?&]v=([^&]+)/.exec(pot) || [])[1]; return v ? 'Različica ' + escape_(v) : ''; };
+    var prenesi = function (u) { return '<a class="btn prog-act apk-dl" href="' + escape_(u) + '" download>' + IKO_DL + 'Prenesi<span class="apk-mb"></span></a>'; };
+    var rfidUrl = new URL(RFID_APK_POT, location.href).href;
     p.innerHTML = '<div class="prog-grid">' +
       _progCard(IKO_WEB, 'Spletna aplikacija', '', _odpri) +
-      _progCard(IKO_DL, 'Tablica (Android)', apkVer ? 'Različica ' + escape_(apkVer) : '', '<a class="btn prog-act apk-dl" href="' + escape_(url) + '" download>' + IKO_DL + 'Prenesi<span class="apk-mb"></span></a>', 'apkTablet') +
+      _progCard(IKO_DL, 'Tablica (Android)', ver(APK_POT), prenesi(url), 'apkTablet') +
+      (sme('cipi', 'r') ? _progCard('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">' + IKONE.cipi + '</svg>', 'SmartClean RFID (Android)', ver(RFID_APK_POT), prenesi(rfidUrl), 'apkRfid') : '') +
       '</div>';
 
     // Gumb »Prenesi« je viden TAKOJ (skupaj z ostalimi); velikost (MB) se le pripiše, ko HEAD odgovori.
-    fetch(url, { method: 'HEAD' }).then(function (r) {
-      if (!r.ok) throw new Error('ni ga');
-      var mb = Number(r.headers.get('content-length') || 0) / 1048576;
-      var t = document.getElementById('apkTablet'); if (!t) return;
-      var mbEl = t.querySelector('.apk-mb');
-      if (mbEl && mb) mbEl.textContent = ' · ' + mb.toFixed(1) + ' MB';
-    }).catch(function () {
-      var t = document.getElementById('apkTablet'); if (!t) return;
-      var a = t.querySelector('.apk-dl');
-      if (a) a.outerHTML = '<span class="prog-badge off">Trenutno ni na voljo</span>';
+    [[url, 'apkTablet'], [rfidUrl, 'apkRfid']].forEach(function (a) {
+      if (!document.getElementById(a[1])) return;
+      fetch(a[0], { method: 'HEAD' }).then(function (r) {
+        if (!r.ok) throw new Error('ni ga');
+        var mb = Number(r.headers.get('content-length') || 0) / 1048576;
+        var t = document.getElementById(a[1]); if (!t) return;
+        var mbEl = t.querySelector('.apk-mb');
+        if (mbEl && mb) mbEl.textContent = ' · ' + mb.toFixed(1) + ' MB';
+      }).catch(function () {
+        var t = document.getElementById(a[1]); if (!t) return;
+        var dl = t.querySelector('.apk-dl');
+        if (dl) dl.outerHTML = '<span class="prog-badge off">Trenutno ni na voljo</span>';
+      });
     });
   }
 
@@ -8532,7 +8545,7 @@
      zabeleži in pri oddaji vsaki stranki sam ustvari spremni list (rfid_potrdi — ena transakcija, ključ
      potrditve prepreči dvojne liste). Označi: čipi izbrane stranke dobijo artikel. Kosi: pregled stranke.
      Skeniranje se hrani na napravi — osvežitev strani ga ne izgubi. */
-  var RF = { org: null, nacin: 'oddaja', idx: {}, vprasan: {}, sken: [], skenSet: {}, kljuc: null, art: '', arts: [], kosi: null, gen: 0, rezultat: null };
+  var RF = { org: null, nacin: 'oddaja', idx: {}, vprasan: {}, sken: [], skenSet: {}, kljuc: null, art: '', arts: [], kosi: null, gen: 0, rezultat: null, most: null };
   try {
     RF.org = localStorage.getItem('sc-rfid-org') || null;
     var _rfn = localStorage.getItem('sc-rfid-nacin'); if (_rfn) RF.nacin = _rfn;
@@ -8564,6 +8577,102 @@
   // polje takoj v fokusu: računalnik (R1) in ročni čitalec Chainway (tam tipkovnica ne moti, telefon je ne odpre sam)
   var RF_CITALEC = /\bC7\d\b|\bC6\d\b|Chainway/i.test(navigator.userAgent || '');
   function rfFokus() { var i = $('rfVnos'); if (i && (RF_CITALEC || matchMedia('(pointer:fine)').matches)) i.focus({ preventScroll: true }); }
+  // Aplikacija SmartClean RFID (Android, aplikacija-rfid/): čitalec Chainway neposredno, brez tipkovnice.
+  // window.ScRfid ukazuje čitalcu, dogodki »scrfid« prinesejo stanje in prebrane čipe (po paketih, vsak enkrat na branje).
+  var RF_MOST = (function () { try { return window.ScRfid && typeof window.ScRfid.stanje === 'function' ? window.ScRfid : null; } catch (e) { return null; } })();
+  var RF_BRALNIKI = { vgrajen: 'Vgrajen čitalec', r1: 'R1 · USB', ur4: 'UR4 · omrežje', preizkus: 'Preizkus' };
+  var RF_MOC = { blizu: 10, srednje: 20, dalec: 30 }, RF_MOC_IME = [['blizu', 'Blizu'], ['srednje', 'Srednje'], ['dalec', 'Daleč']];
+  function rfMostStanje() { if (!RF.most && RF_MOST) { try { RF.most = JSON.parse(RF_MOST.stanje()) || {}; } catch (e) { RF.most = {}; } } return RF.most || {}; }
+  function rfMostKlic(fn, arg) { try { if (RF_MOST) RF_MOST[fn](arg); } catch (e) {} }
+  // doseg po načinu: označevanje in iskanje blizu (le kos v roki), oddaja in prevzem daleč (cel voziček)
+  function rfMocNacin() { var m = {}; try { m = JSON.parse(localStorage.getItem('sc-rfid-moc') || '{}') || {}; } catch (e) {} return RF_MOC[m[RF.nacin]] ? m[RF.nacin] : (rfStranka() ? 'blizu' : 'dalec'); }
+  function rfMocNastavi(st, shrani) {
+    if (shrani) { try { var m = JSON.parse(localStorage.getItem('sc-rfid-moc') || '{}') || {}; m[RF.nacin] = st; localStorage.setItem('sc-rfid-moc', JSON.stringify(m)); } catch (e) {} }
+    rfMostKlic('moc', RF_MOC[st]);
+  }
+  function rfMocStopnja(dbm) { return dbm <= 14 ? 'blizu' : dbm <= 24 ? 'srednje' : 'dalec'; }
+  // čitalec v kartici: izbira čitalca in doseg, napaka povezave (le ko je), gumb nosi stanje (Beri / Ustavi / Povezujem / Poveži)
+  function rfCitHtml() {
+    return '<div class="rf-cit" id="rfCit"><div class="rf-cit-vr"><span class="rf-cit-izb"><select id="rfBralnik" aria-label="Čitalec"></select>' +
+      '<button type="button" class="cgrp-btn ghost" data-ur4 hidden>Naslov</button></span>' +
+      '<span class="pris-tabs rf-moc" role="tablist" aria-label="Doseg">' + RF_MOC_IME.map(function (m) { return '<button type="button" role="tab" class="pris-tab" data-moc="' + m[0] + '">' + m[1] + '</button>'; }).join('') + '</span></div>' +
+      '<p class="rf-cit-nap" aria-live="polite" hidden></p>' +
+      '<button type="button" class="rf-beri" id="rfBeri"><i class="rf-pika" aria-hidden="true"></i><span></span></button></div>';
+  }
+  function rfCitVezi() {
+    var c = $('rfCit'); if (!c) return;
+    var sel = $('rfBralnik');
+    sel.addEventListener('change', function () {
+      var v = sel.value; if (v === rfMostStanje().izbran) return;
+      if (v === 'ur4' && !rfMostStanje().ur4) { rfUr4Naslov(); return; }
+      rfMostKlic('izberi', v);
+    });
+    c.querySelectorAll('[data-moc]').forEach(function (b) { b.addEventListener('click', function () { rfMocNastavi(b.dataset.moc, true); }); });
+    c.querySelector('[data-ur4]').addEventListener('click', rfUr4Naslov);
+    $('rfBeri').addEventListener('click', function () {
+      var s = rfMostStanje();
+      if (s.bere) rfMostKlic('ustavi');
+      else if (s.povezan) rfMostKlic('zacni');
+      else if (s.izbran === 'ur4' && !s.ur4) rfUr4Naslov();
+      else rfMostKlic('izberi', s.izbran);   // ponovna povezava
+    });
+    rfCitOsvezi();
+  }
+  async function rfUr4Naslov() {
+    var v = await vnesiModal({ naslov: 'Naslov UR4', privzeto: rfMostStanje().ur4 || '', placeholder: '192.168.1.200', potrdi: 'Poveži' });
+    if (v != null && v.trim()) rfMostKlic('ur4', v.trim()); else rfCitOsvezi();
+  }
+  function rfCitOsvezi() {
+    var c = $('rfCit'); if (!c) return;
+    var s = rfMostStanje(), sel = $('rfBralnik'), bral = s.bralniki || [];
+    var ime = function (b) { return b.id === 'ur4' && s.ur4 ? 'UR4 · ' + s.ur4 : (RF_BRALNIKI[b.id] || b.ime); };
+    var kl = bral.map(ime).join(',');
+    if (sel.dataset.k !== kl) { sel.dataset.k = kl; sel.innerHTML = bral.map(function (b) { return '<option value="' + escape_(b.id) + '">' + escape_(ime(b)) + '</option>'; }).join(''); }
+    if (s.izbran && sel.value !== s.izbran) { sel.value = s.izbran; sel.dispatchEvent(new Event('change')); }
+    var st = s.odpiram ? 'odpiram' : s.bere ? 'bere' : s.povezan ? 'pripravljen' : 'napaka';
+    c.dataset.st = st;
+    var nap = c.querySelector('.rf-cit-nap'); nap.hidden = st !== 'napaka'; nap.textContent = st === 'napaka' ? (s.napaka || 'Čitalec ni povezan.') : '';
+    var stop = rfMocStopnja(s.moc || 20);
+    c.querySelectorAll('[data-moc]').forEach(function (b) { var on = b.dataset.moc === stop; b.classList.toggle('on', on); b.setAttribute('aria-selected', on); });
+    c.querySelector('[data-ur4]').hidden = s.izbran !== 'ur4';
+    var g = $('rfBeri');
+    g.querySelector('span').textContent = st === 'bere' ? 'Ustavi' : st === 'odpiram' ? 'Povezujem' : st === 'napaka' ? 'Poveži' : 'Beri';
+    g.disabled = st === 'odpiram'; g.classList.toggle('on', st === 'bere');
+  }
+  // prebrani čipi iz aplikacije
+  function rfMostEpci(seznam) {
+    var sec = $('sec-cipi'); if (!sec || sec.classList.contains('hidden')) return;
+    var epci = seznam.map(rfEpc).filter(Boolean); if (!epci.length) return;
+    var modal = document.querySelector('.sc-modal-back');
+    if (RF.nacin === 'kosi') {   // iskanje kosa: prvi čip te stranke odpre kos, branje se ustavi
+      if (modal && !modal.querySelector('.rf-kos-modal')) return;
+      if (!RF.org || !RF.kosi) return;
+      rfMostKlic('ustavi');
+      var k = null; epci.some(function (e) { k = RF.kosi.filter(function (x) { return x.epc === e; })[0] || null; return !!k; });
+      if (!k) { toast(epci.length === 1 ? 'Čip ' + rfKratko(epci[0]) + ' ni označen pri tej stranki.' : 'Ti čipi niso označeni pri tej stranki.'); return; }
+      var z = modal && modal.querySelector('[data-zapri]'); if (z) z.click();
+      rfKosOdpri(k);
+      return;
+    }
+    if (modal || (rfStranka() && !RF.org)) return;   // med potrjevanjem se skeniranje ne spreminja
+    if (RF.rezultat) { RF.rezultat = null; rfRisi(); }
+    epci.forEach(function (e) { rfDodaj(e, true); });
+  }
+  // začetek branja (sprožilec) kjer koli v portalu: odpre Čipi; po ustvarjenih listih začne novo skeniranje
+  function rfMostZacetek() {
+    if (document.querySelector('.sc-modal-back') || !sme('cipi', 'r')) return;
+    var sec = $('sec-cipi');
+    if (!sec || sec.classList.contains('hidden')) { pojdi('cipi'); return; }
+    if (RF.rezultat && RF.nacin !== 'kosi') { RF.rezultat = null; rfRisi(); }
+  }
+  if (RF_MOST) {
+    window.addEventListener('scrfid', function (ev) {
+      var d = ev.detail || {};
+      if (d.tip === 'stanje') { var prej = RF.most || {}; RF.most = d; rfCitOsvezi(); if (d.bere && !prej.bere) rfMostZacetek(); }
+      else if (d.tip === 'epc' && Array.isArray(d.epc)) rfMostEpci(d.epc);
+    });
+    rfMocNastavi(rfMocNacin());
+  }
 
   // kosi stranke (Označi, Kosi) in njeni artikli
   async function rfNalozi(org) {
@@ -8643,6 +8752,7 @@
     if (n === 'oznaci' && RF.sken.length) { RF.sken = RF.sken.filter(function (e) { return RF.vprasan[e] && !(RF.idx[e] || []).length; }); RF.skenSet = {}; RF.sken.forEach(function (e) { RF.skenSet[e] = 1; }); rfShrani(); }
     RF.nacin = n; RF.rezultat = null;
     try { localStorage.setItem('sc-rfid-nacin', n); } catch (e) {}
+    if (RF_MOST) rfMocNastavi(rfMocNacin());
     document.querySelectorAll('.rf-nacini [data-nacin]').forEach(function (b) { var on = b.dataset.nacin === n; b.classList.toggle('on', on); b.setAttribute('aria-selected', on); });
     rfFiltri(); rfRisi(); rfPod();
     if (rfStranka() && RF.org && !RF.kosi) rfIzberiStranko(RF.org);
@@ -8663,10 +8773,11 @@
       RF.arts.map(function (a) { return '<option value="' + escape_(a.id) + '"' + (a.id === RF.art ? ' selected' : '') + '>' + escape_(a.name) + '</option>'; }).join('') + '</select></label>' : '';
     t.innerHTML = '<div class="uc-card rf-sken">' + artSel +
       '<div class="rf-stevec" aria-live="polite"><b id="rfN">0</b><span id="rfNlab"></span></div>' +
-      '<input type="text" id="rfVnos" class="sc-modal-input rf-vnos" placeholder="Skeniraj čip" aria-label="Skeniraj čip" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" enterkeyhint="enter"></div>' +
+      (RF_MOST ? rfCitHtml() : '<input type="text" id="rfVnos" class="sc-modal-input rf-vnos" placeholder="Skeniraj čip" aria-label="Skeniraj čip" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" enterkeyhint="enter">') + '</div>' +
       '<div class="rf-rez" id="rfRez"></div>' + (w ? '<div class="u-acts rf-akc" id="rfAkc"></div>' : '');
     var as = $('rfArt'); if (as) as.addEventListener('change', function () { RF.art = as.value; rfOsvezi(); });
     rfVhod($('rfVnos'), rfDodaj);
+    rfCitVezi();
     rfOsvezi();
     rfFokus();
   }
@@ -8697,12 +8808,12 @@
   }, true);
 
   var _rfRaf = 0;
-  function rfDodaj(epc) {
+  function rfDodaj(epc, izMosta) {
     if (RF.nacin === 'kosi') { var k = (RF.kosi || []).filter(function (x) { return x.epc === epc; })[0]; if (k) rfKosOdpri(k); else toast('Čip ' + rfKratko(epc) + ' ni označen pri tej stranki.'); return; }
     if (RF.skenSet[epc]) return;
     if (!RF.sken.length) RF.kljuc = rfKljuc();   // novo skeniranje = nov ključ potrditve
     RF.skenSet[epc] = 1; RF.sken.push(epc); rfShrani();
-    try { haptika(); } catch (e) {}
+    if (!izMosta) { try { haptika(); } catch (e) {} }
     if (!_rfRaf) _rfRaf = requestAnimationFrame(function () { _rfRaf = 0; rfOsvezi(); });
     rfIsci();
   }
@@ -8864,7 +8975,7 @@
     var vrstica = function (kljuc, ime, n, meta, razred) {
       return '<button type="button" class="rf-tv' + (razred ? ' ' + razred : '') + '" data-sk="' + escape_(kljuc) + '"><span class="rf-tv-ime">' + escape_(ime) + '</span><span class="rf-tv-meta">' + escape_(meta) + '</span><b>' + stevilo(n) + '</b><span class="chev" aria-hidden="true">›</span></button>';
     };
-    var html = '<input type="text" id="rfVnos" class="sc-modal-input rf-vnos rf-isci" placeholder="Skeniraj čip" aria-label="Poišči kos s čipom" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">';
+    var html = RF_MOST ? '<div class="uc-card rf-sken rf-isci">' + rfCitHtml() + '</div>' : '<input type="text" id="rfVnos" class="sc-modal-input rf-vnos rf-isci" placeholder="Skeniraj čip" aria-label="Poišči kos s čipom" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">';
     if (!RF.kosi.length) html += '<div class="rows"><div class="empty"><h3>Brez označenega perila</h3>' + (sme('cipi', 'w') ? '<button type="button" class="btn ghost" data-rf-oznaci style="margin-top:14px">Označi</button>' : '') + '</div></div>';
     else {
       html += '<div class="rf-povz"><div class="stat"><div class="stat-num">' + stevilo(s.akt.length) + '</div><div class="stat-lab">Kosov</div></div>' +
@@ -8879,6 +8990,7 @@
     }
     t.innerHTML = html;
     rfVhod($('rfVnos'), rfDodaj);
+    rfCitVezi();
     var oz = t.querySelector('[data-rf-oznaci]'); if (oz) oz.addEventListener('click', function () { rfNacin('oznaci'); });
     t.querySelectorAll('.rf-tv').forEach(function (b) {
       b.addEventListener('click', function () {
@@ -10054,6 +10166,59 @@
         try { preveriReload(); } catch (e) {}
       }, 60000);
     }
+  }
+  /* ── Živo usklajevanje s tablico, telefonom, aplikacijo RFID in drugimi zavihki ──
+     Spremni listi in čipi, ki jih spremeni druga naprava, se pokažejo sami (realtime); nov list
+     za trenutek zasveti. Rezerva: ob vrnitvi v zavihek in vsaki 2 min, ko živa povezava ne deluje.
+     Med urejanjem (odprto okno, vnos) prikaz počaka — podatki se osvežijo, slika šele po urejanju. */
+  var _zivKanal = null, _zivZivo = false, _zivT = null, _zivRfT = null, _zivZadnje = Date.now();
+  function narociZivo() {
+    if (!sb || !OSEBJE || _zivKanal) return;
+    try {
+      sb.auth.getSession().then(function (s) {
+        try { var tok = s && s.data && s.data.session && s.data.session.access_token; if (tok && sb.realtime && sb.realtime.setAuth) sb.realtime.setAuth(tok); } catch (e) {}
+        _zivKanal = sb.channel('portal-zivo')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'delivery_notes' }, zivListi)
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'delivery_note_items' }, zivListi)
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'rfid_kosi' }, zivCipi)
+          .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'rfid_seje' }, zivCipi)
+          .subscribe(function (st) { _zivZivo = st === 'SUBSCRIBED'; });
+      });
+    } catch (e) {}
+    document.addEventListener('visibilitychange', function () { if (!document.hidden && Date.now() - _zivZadnje > 60000) { zivListi(); zivCipi(); } });
+    setInterval(function () { if (!document.hidden && !_zivZivo && Date.now() - _zivZadnje > 120000) { zivListi(); zivCipi(); } }, 30000);
+  }
+  function zivListi() { clearTimeout(_zivT); _zivT = setTimeout(zivOsveziListe, 800); }   // več sprememb naenkrat = ena osvežitev
+  async function zivOsveziListe() {
+    _zivZadnje = Date.now();
+    var prej = {}; LISTI.forEach(function (l) { prej[l.id] = 1; });
+    try { await naloziListe(); } catch (e) { return; }
+    zivNarisi(LISTI.filter(function (l) { return !prej[l.id]; }).map(function (l) { return l.id; }));
+  }
+  function zivNarisi(novi) {
+    var sec = document.querySelector('.sec:not(.hidden)'), id = sec && sec.id;
+    if (id !== 'sec-arhiv' && id !== 'sec-domov') return;   // drugi razdelki preberejo sveže liste ob odprtju
+    if (zaposlenZDelom()) { clearTimeout(_zivT); _zivT = setTimeout(function () { zivNarisi(novi); }, 3000); return; }
+    var sy = window.scrollY;
+    if (id === 'sec-arhiv') risiArhiv(); else risiPregled();
+    requestAnimationFrame(function () {
+      window.scrollTo(0, sy);
+      (novi || []).forEach(function (nid) {
+        var k = document.querySelector('.a-row[data-id="' + String(nid).replace(/"/g, '\\"') + '"]');
+        if (k) { k.classList.add('arh-flash'); setTimeout(function () { k.classList.remove('arh-flash'); }, 1700); }
+      });
+    });
+  }
+  // čipi: druga naprava je označila ali skenirala — Kosi se osvežijo, neznani čipi v skeniranju se poiščejo znova
+  function zivCipi() {
+    clearTimeout(_zivRfT);
+    _zivRfT = setTimeout(function () {
+      var sec = $('sec-cipi'); if (!sec || sec.classList.contains('hidden')) { RF.kosi = null; return; }
+      if (RF.sken.length) { RF.sken.forEach(function (e) { if (!(RF.idx[e] || []).length) delete RF.vprasan[e]; }); rfIsci(); }
+      if (RF.nacin === 'kosi' && RF.org && !_okno && !document.querySelector('.sc-modal-back')) {
+        rfNalozi(RF.org).then(function (ok) { if (ok) { rfRisi(); rfPod(); } }, function () {});
+      }
+    }, 900);
   }
   /* ── Potisnjena osvežitev vseh (po posodobitvi portala) ── */
   async function preberiReload() {

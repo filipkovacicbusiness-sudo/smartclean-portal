@@ -1671,7 +1671,7 @@ html[data-view="grid"] :is(#cenikList,.art-skupine) .sc-isolate .cgrp:not(.open)
 .adm-tabs{flex-wrap:wrap;max-width:100%;}
 /* telefon: vse vloge vidne brez drsenja — mreža 3 + 2 (nič odrezanega) */
 @media(max-width:560px){
-  .pris-tabs.adm-tabs{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));border-radius:var(--r-md);}
+  .pris-tabs.adm-tabs,.v5 .pris-tabs.adm-tabs{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));border-radius:var(--r-md);}
   .pris-tabs.adm-tabs .pris-tab{grid-column:span 2;white-space:nowrap;padding:8px 6px;border-radius:var(--r-sm);}
   .pris-tabs.adm-tabs .pris-tab:nth-child(n+4){grid-column:span 3;}
 }
@@ -3280,6 +3280,29 @@ html.sc-tema-anim *,html.sc-tema-anim *::before,html.sc-tema-anim *::after{trans
 .v5 .rf-stevec span{font-size:var(--fs-15);color:var(--mid);}
 .v5 .rf-vnos{width:100%;margin:0;font-variant-numeric:tabular-nums;letter-spacing:.02em;}
 .v5 .rf-isci{margin:0 0 16px;}
+.v5 .rf-cit{display:flex;flex-direction:column;gap:12px;}
+.v5 .rf-cit-vr{display:flex;flex-wrap:wrap;align-items:center;gap:10px 12px;}
+.v5 .rf-cit-izb{display:flex;align-items:center;gap:8px;flex:1 1 220px;min-width:0;}
+.v5 .rf-cit-izb .cs{flex:1 1 auto;min-width:0;}
+.v5 .rf-cit-izb .cgrp-btn{flex:0 0 auto;height:40px;padding:0 14px;font-size:var(--fs-13);}
+.v5 .rf-cit-izb [data-ur4][hidden]{display:none;}
+.v5 .rf-moc{display:flex;flex:1 1 260px;min-width:0;}
+.v5 .rf-moc .pris-tab{flex:1 1 0;padding:8px 8px;text-align:center;}
+.v5 .rf-cit-nap{display:flex;align-items:center;gap:10px;margin:0;font-size:var(--fs-14);color:var(--mid);}
+.v5 .rf-cit-nap[hidden]{display:none;}
+.v5 .rf-cit-nap::before{content:"";flex:0 0 auto;width:8px;height:8px;border-radius:50%;background:var(--st-warn);}
+.v5 .rf-pika{flex:0 0 auto;width:9px;height:9px;border-radius:50%;}
+@keyframes rfBere{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--st-ok) 60%,transparent)}70%{box-shadow:0 0 0 7px color-mix(in srgb,var(--st-ok) 0%,transparent)}100%{box-shadow:0 0 0 0 transparent}}
+.v5 .rf-beri{appearance:none;-webkit-appearance:none;display:flex;align-items:center;justify-content:center;gap:10px;width:100%;height:56px;margin:0;padding:0 18px;
+  border:1px solid var(--line-strong);border-radius:var(--r-md);background:var(--surface);color:var(--ink);font:inherit;font-size:var(--fs-16);font-weight:600;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation;transition:background-color .18s ease,border-color .18s ease,color .18s ease;}
+.v5 .rf-beri .rf-pika{display:none;}
+.v5 .rf-beri:active{transform:scale(.99);}
+.v5 .rf-beri:disabled{opacity:.6;cursor:default;}
+.v5 .rf-cit[data-st="odpiram"] .rf-beri span{animation:nalagaPulz .7s ease-in-out infinite alternate;}
+.v5 .rf-beri.on{background:var(--ink);border-color:var(--ink);color:var(--surface);}
+.v5 .rf-beri.on .rf-pika{display:block;background:var(--st-ok);animation:rfBere 1.1s ease-out infinite;}
+.v5 .rf-sken.rf-isci{padding:16px;}
 .v5 .rf-rez{display:flex;flex-direction:column;gap:8px;margin:14px 0 0;}
 .v5 .rf-rez:empty{display:none;}
 .v5 .rf-vr{display:flex;align-items:center;gap:12px;min-height:56px;padding:10px 16px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);}
