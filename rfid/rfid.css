@@ -67,3 +67,8 @@ html.rfa,html.rfa body{background:var(--bg);}
 .rfa-prazno h3{margin:0;font-size:var(--fs-16);font-weight:500;color:var(--mid);}
 .rfa-vec{margin-top:4px;}
 @media(max-width:560px){.rfa-kos{padding:16px;}}
+
+/* C72 in telefoni: vrstica na vrhu je pritrjena (portal.css, hover:none) — vsebina pod njo, ne za njo (4.76) */
+@media (hover:none) and (pointer:coarse){
+  .rfa-app{padding-top:calc(65px + var(--pov-h,0px) + env(safe-area-inset-top));transition:padding-top .25s ease;}
+}

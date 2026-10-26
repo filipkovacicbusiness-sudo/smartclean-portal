@@ -14,9 +14,75 @@
   'use strict';
   var cfg = window.SC_CONFIG || {};
   var sb = null;
+
+  /* ══════════ POVEZAVA (enako kot portal) ══════════
+     Trak »Ni povezave« pod zgornjo vrstico; sam preverja čez 2, 4, 8 … do 30 s (»Poskusi zdaj« takoj).
+     Ob vrnitvi za trenutek pozeleni, živi kanal se znova poveže, čipi se osvežijo. */
+  var POV = { stanje: 'ok', cakaj: 2000, ura: null, tik: null, do: 0, el: null };
+  var _izvFetch = window.fetch.bind(window);
+  function povFetch(vir, opt) {
+    return _izvFetch(vir, opt).then(function (r) { if (POV.stanje === 'ni' || POV.stanje === 'povezujem') povNazaj(); return r; },
+      function (e) { if (!(e && e.name === 'AbortError')) povIzpad(); throw e; });
+  }
+  function povTrak() {
+    if (!POV.el) {
+      POV.el = document.createElement('div'); POV.el.className = 'pov-trak'; POV.el.setAttribute('role', 'status'); POV.el.setAttribute('aria-live', 'polite');
+      POV.el.innerHTML = '<span class="pov-pika" aria-hidden="true"></span><span class="pov-t"></span><button type="button" class="pov-zdaj">Poskusi zdaj</button>';
+      POV.el.querySelector('.pov-zdaj').addEventListener('click', function () { povPoskus(); });
+    }
+    var glava = [document.querySelector('#app .topbar'), document.querySelector('#auth .auth-top')].filter(function (h) { return h && h.getClientRects().length > 0; })[0];   // offsetParent je pri pritrjeni (fixed) vrstici vedno null
+    if (glava && POV.el.parentNode !== glava) glava.appendChild(POV.el);
+    return POV.el;
+  }
+  function povRisi() {
+    var el = povTrak(), t = el.querySelector('.pov-t'), z = el.querySelector('.pov-zdaj');
+    el.dataset.st = POV.stanje;
+    if (POV.stanje === 'ok') { el.classList.remove('show'); return; }
+    el.classList.add('show');
+    if (POV.stanje === 'spet') { t.textContent = 'Spet povezano'; z.hidden = true; }
+    else if (POV.stanje === 'povezujem') { t.textContent = 'Povezujem …'; z.hidden = true; }
+    else { t.textContent = 'Ni povezave · znova čez ' + Math.max(1, Math.ceil((POV.do - Date.now()) / 1000)) + ' s'; z.hidden = false; }
+  }
+  function povIzpad() {
+    if (POV.stanje === 'ni' || POV.stanje === 'povezujem') return;
+    POV.stanje = 'ni'; POV.cakaj = 2000; povNacrtuj();
+  }
+  function povNacrtuj() {
+    clearTimeout(POV.ura); clearInterval(POV.tik);
+    POV.do = Date.now() + POV.cakaj;
+    POV.ura = setTimeout(povPoskus, POV.cakaj);
+    POV.tik = setInterval(function () { if (POV.stanje === 'ni') povRisi(); }, 1000);
+    povRisi();
+  }
+  async function povPreveri() {
+    if (!cfg.url) return navigator.onLine !== false;
+    var ctl = new AbortController(), t = setTimeout(function () { ctl.abort(); }, 6000);
+    try { var r = await _izvFetch(cfg.url + '/auth/v1/health', { headers: { apikey: cfg.key }, cache: 'no-store', signal: ctl.signal }); return r.status < 500; }
+    catch (e) { return false; } finally { clearTimeout(t); }
+  }
+  async function povPoskus() {
+    if (POV.stanje === 'ok' || POV.stanje === 'spet') return;
+    clearTimeout(POV.ura); clearInterval(POV.tik);
+    POV.stanje = 'povezujem'; povRisi();
+    if (await povPreveri()) { povNazaj(); return; }
+    POV.stanje = 'ni'; POV.cakaj = Math.min(30000, POV.cakaj * 2); povNacrtuj();
+  }
+  function povNazaj() {
+    if (POV.stanje === 'ok' || POV.stanje === 'spet') return;
+    clearTimeout(POV.ura); clearInterval(POV.tik);
+    POV.stanje = 'spet'; povRisi();
+    try { if (sb && sb.realtime) sb.realtime.connect(); } catch (e) {}
+    try { if (JAZ) zivCipi(); else if (!$('osebe').classList.contains('hidden')) zagon2(); } catch (e) {}   // »Kdo dela« po neuspeli prijavi: znova
+    setTimeout(function () { if (POV.stanje === 'spet') { POV.stanje = 'ok'; povRisi(); } }, 1800);
+  }
+  window.addEventListener('offline', povIzpad);
+  window.addEventListener('online', function () { if (POV.stanje === 'ni') povPoskus(); });
+  document.addEventListener('visibilitychange', function () { if (!document.hidden && navigator.onLine === false) povIzpad(); });
+  if (navigator.onLine === false) setTimeout(povIzpad, 0);
+
   try {
     if (window.supabase && window.supabase.createClient && cfg.url) {
-      sb = window.supabase.createClient(cfg.url, cfg.key, { auth: { storageKey: 'sc-rfid-seja', persistSession: true, autoRefreshToken: true, detectSessionInUrl: false } });
+      sb = window.supabase.createClient(cfg.url, cfg.key, { global: { fetch: povFetch }, auth: { storageKey: 'sc-rfid-seja', persistSession: true, autoRefreshToken: true, detectSessionInUrl: false } });
     }
   } catch (e) { sb = null; }
   var $ = function (id) { return document.getElementById(id); };
@@ -838,7 +904,6 @@
     }
     if (OSEBE.length) risiOsebe(); else prijavaPokazi();
   }
-  window.addEventListener('online', function () { if (!JAZ && !$('osebe').classList.contains('hidden')) zagon2(); });
   function zagon2() { var zadnji = LS.beri('sc-rfid-zadnji', null), o = zadnji && oseba(zadnji); if (o) preklopi(o); else $('osebeMsg').textContent = ''; }
   if ('serviceWorker' in navigator && location.protocol === 'https:') { try { navigator.serviceWorker.register('sw.js', { scope: './' }); } catch (e) {} }
   zagon();

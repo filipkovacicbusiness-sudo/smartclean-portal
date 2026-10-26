@@ -2307,6 +2307,13 @@ html[data-view] .pz-seznam .row .num::before{content:none;}
 .ur-post .cs{min-width:0;max-width:none;}
 .ur-form{overflow-x:clip;padding-inline:4px;margin-inline:-4px;}   /* clip (ne hidden): hidden bi naredil lasten drsni okvir in spodnja vrstica ne bi ostala pritrjena; 4 px ob straneh, da fokusna obroba polj (3 px) ni odrezana */
 .ur-grid.nl-2{grid-template-columns:repeat(2,minmax(0,1fr));}
+/* Nov spremni list — pregled pred shranjevanjem: polja obrazca le za branje (isti okvir, brez urejanja) */
+.ur-form[hidden]{display:none!important;}
+.nl-pv{display:flex;align-items:center;min-height:var(--ctrl-h,44px);padding:9px 14px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);color:var(--ink);font-size:var(--fs-16);line-height:1.35;overflow-wrap:anywhere;}
+.nl-pv-txt{align-items:flex-start;white-space:pre-wrap;}
+.nl-pv-vr{display:grid;grid-template-columns:auto minmax(0,1fr) 92px;gap:8px;align-items:center;margin-bottom:6px;}
+.nl-pv-kos{justify-content:center;font-weight:600;font-variant-numeric:tabular-nums;}
+@media(max-width:560px){.nl-pv-vr{grid-template-columns:auto minmax(0,1fr) 64px;gap:6px;}}
 .nl-izdal{font-size:var(--fs-13);color:var(--mid);margin:-2px 0 10px;}
 .nl-izdal b{color:var(--ink);font-weight:600;}
 /* nov list: prazne količine niso napaka (se ne shranijo) — brez rumenih okvirjev povsod */
@@ -3401,4 +3408,34 @@ html.sc-tema-anim *,html.sc-tema-anim *::before,html.sc-tema-anim *::after{trans
   .v5 .u-acts.rf-akc:not(.a-ikone):not(.nl-akc){display:grid;grid-template-columns:auto minmax(0,1fr);}
   .v5 .rf-akc button[data-rf="pocisti"]{margin-right:0;padding-left:18px;padding-right:18px;}
   .v5 .rf-rezultat .u-acts .ur-save{grid-column:1 / -1;}
+}
+
+/* ══════════ POVEZAVA (4.76) — trak pod zgornjo vrstico, ko baza ni dosegljiva ══════════ */
+.pov-trak{display:flex;align-items:center;justify-content:center;gap:10px;height:0;overflow:hidden;opacity:0;padding:0 16px;white-space:nowrap;
+  background:color-mix(in srgb,var(--st-warn) 14%,var(--bg));color:var(--ink);font-size:var(--fs-14);font-weight:500;
+  border-top:0 solid color-mix(in srgb,var(--st-warn) 30%,var(--line));transition:height .25s ease,opacity .2s ease,background-color .3s ease;}
+/* stalna višina (--pov-h): vsebina, meni in stranska vrstica se premaknejo za točno toliko */
+html{--pov-h:0px;}
+html:has(.pov-trak.show){--pov-h:44px;}
+.pov-trak.show{height:var(--pov-h);opacity:1;border-top-width:1px;}
+.pov-trak[data-st="spet"]{background:color-mix(in srgb,var(--st-ok) 14%,var(--bg));border-top-color:color-mix(in srgb,var(--st-ok) 30%,var(--line));}
+.pov-pika{flex:0 0 auto;width:8px;height:8px;border-radius:50%;background:var(--st-warn);}
+.pov-trak[data-st="povezujem"] .pov-pika{animation:nalagaPulz .7s ease-in-out infinite alternate;}
+.pov-trak[data-st="spet"] .pov-pika{background:var(--st-ok);}
+.pov-t{font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;}
+.pov-zdaj{appearance:none;-webkit-appearance:none;flex:0 0 auto;margin:0;padding:6px;border:0;background:none;color:var(--ink);font:inherit;font-weight:600;text-decoration:underline;text-underline-offset:3px;cursor:pointer;}
+.pov-zdaj[hidden]{display:none;}
+@media(max-width:359px){ .pov-trak{gap:6px;padding:0 10px;font-size:var(--fs-13);} }
+html:has(.pov-trak.show) .side{top:calc(65px + var(--pov-h));}
+html:has(.pov-trak.show) .scrim{top:calc(64px + var(--pov-h) + env(safe-area-inset-top));}
+@media(max-width:900px){
+  html:has(.pov-trak.show) .side{top:calc(64px + var(--pov-h) + env(safe-area-inset-top));}
+  /* glava prijave ima na telefonu stalno višino — trak mora biti POD njo, ne čez »Kdo dela?« */
+  .auth-top:has(.pov-trak){height:auto;}
+  .auth-top:has(.pov-trak) > .topbar-in{height:58px;}
+}
+/* telefon/tablica: vrstica na vrhu je pritrjena (fixed, glej #sc-vrh) — vsebina se umakne še za trak */
+@media (hover:none) and (pointer:coarse){
+  .app.show{transition:padding-top .25s ease;}
+  html:has(.pov-trak.show) .app.show{padding-top:calc(65px + var(--pov-h) + env(safe-area-inset-top));}
 }
