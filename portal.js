@@ -360,7 +360,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.72 · BETA';
+  var APP_VERZIJA = '4.73 · BETA';
   var NALAGANJE = '<div class="sc-load" aria-hidden="true"><span class="sc-load-line"></span></div>';
   // Stale-while-revalidate: ob ponovnem obisku razdelka NE pobriši vsebine v nalagalnik —
   // obdrži prejšnjo (takojšen prikaz) in jo osveži v ozadju. Trak le ob prvem nalaganju.
@@ -6086,6 +6086,7 @@
     var pr = await sb.rpc('posodobi_ime_artikla', { p_sifra: sifra, p_ime: nm });
     if (pr && pr.error) { await sb.from('articles').update({ name: nm }).eq('cena_sifra', sifra); }
     if (CLANI) CLANI.forEach(function (a) { if (a.cena_sifra === sifra) a.name = nm; });
+    pozabiPostavke();   // postavke listov so v pomnilniku s starim imenom — ob naslednjem odprtju se preberejo znova
   }
   // Isti artikel (ID) sme biti na spremnem listu le 1×: podvojene združi (sešteje kose).
   function zdruziPodvojene(arr) {
@@ -10099,7 +10100,7 @@
         try { var tok = s && s.data && s.data.session && s.data.session.access_token; if (tok && sb.realtime && sb.realtime.setAuth) sb.realtime.setAuth(tok); } catch (e) {}
         _zivKanal = sb.channel('portal-zivo')
           .on('postgres_changes', { event: '*', schema: 'public', table: 'delivery_notes' }, zivListi)
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'delivery_note_items' }, zivListi)
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'delivery_note_items' }, zivPostavke)
           .on('postgres_changes', { event: '*', schema: 'public', table: 'rfid_kosi' }, zivCipi)
           .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'rfid_seje' }, zivCipi)
           .subscribe(function (st) { _zivZivo = st === 'SUBSCRIBED'; });
@@ -10108,7 +10109,9 @@
     document.addEventListener('visibilitychange', function () { if (!document.hidden && Date.now() - _zivZadnje > 60000) { zivListi(); zivCipi(); } });
     setInterval(function () { if (!document.hidden && !_zivZivo && Date.now() - _zivZadnje > 120000) { zivListi(); zivCipi(); } }, 30000);
   }
-  function zivListi() { clearTimeout(_zivT); _zivT = setTimeout(zivOsveziListe, 800); }   // več sprememb naenkrat = ena osvežitev
+  function zivListi() { clearTimeout(_zivT); _zivT = setTimeout(zivOsveziListe, 800); }
+  // postavke je spremenila druga naprava (urejanje, preimenovanje artikla): shranjene postavke tega lista ne veljajo več
+  function zivPostavke(p) { var n = p && ((p.new && p.new.note_id) || (p.old && p.old.note_id)); pozabiPostavke(n || null); zivListi(); }   // več sprememb naenkrat = ena osvežitev
   async function zivOsveziListe() {
     _zivZadnje = Date.now();
     var prej = {}; LISTI.forEach(function (l) { prej[l.id] = 1; });
