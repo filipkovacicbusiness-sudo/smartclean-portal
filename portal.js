@@ -360,7 +360,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.71 · BETA';
+  var APP_VERZIJA = '4.72 · BETA';
   var NALAGANJE = '<div class="sc-load" aria-hidden="true"><span class="sc-load-line"></span></div>';
   // Stale-while-revalidate: ob ponovnem obisku razdelka NE pobriši vsebine v nalagalnik —
   // obdrži prejšnjo (takojšen prikaz) in jo osveži v ozadju. Trak le ob prvem nalaganju.
@@ -4260,16 +4260,24 @@
     el.innerHTML = '<button type="button" class="arh-ozn" title="Prikaži vse liste">Samo nepotrjeni · ' + stevilo(n) + IKO_ZAPRI + '</button>';
     el.firstChild.addEventListener('click', function () { ARH_NEPOTRJENI = false; risiArhiv(); });
   }
+  // stanje kartice takoj ob dotiku: razred in barva naslovnice (CSS jo zvezno prelije, @property --c1/--c2)
+  function arhStanjeKartice(lcell, potrjen) {
+    if (!lcell) return;
+    var stat = potrjen ? 'green' : 'yellow', b = BARVE_STANJA[stat], r = lcell.querySelector('.a-row');
+    lcell.classList.remove('arh-green', 'arh-yellow'); lcell.classList.add('arh-' + stat);
+    if (r && b) { r.style.setProperty('--c1', b[0]); r.style.setProperty('--c2', b[1]); }
+  }
   async function potrdiList(chk) {
     const id = chk.dataset.pot; if (!id) return;
     const naVkljuceno = !chk.classList.contains('on');
     chk.classList.toggle('on', naVkljuceno);
     chk.innerHTML = naVkljuceno ? IKO_KLJUKICA : '';
     const lcell = chk.closest('.lcell');
-    if (lcell) { lcell.classList.remove('arh-green', 'arh-yellow'); lcell.classList.add(naVkljuceno ? 'arh-green' : 'arh-yellow'); }
+    arhStanjeKartice(lcell, naVkljuceno);
     chk.title = naVkljuceno ? 'potrjeno — klikni za preklic' : 'klikni za potrditev (urejeno)';
+    const rec0 = (LISTI || []).find(x => x.id === id); if (rec0) rec0.potrjeno = naVkljuceno;   // osvežitev med čakanjem ne vrne stare barve
     const { error } = await sb.from('delivery_notes').update({ potrjeno: naVkljuceno }).eq('id', id);
-    if (error) { toast(napakaBesedilo(error)); chk.classList.toggle('on', !naVkljuceno); chk.innerHTML = !naVkljuceno ? IKO_KLJUKICA : ''; if (lcell) { lcell.classList.remove('arh-green', 'arh-yellow'); lcell.classList.add(!naVkljuceno ? 'arh-green' : 'arh-yellow'); } return; }
+    if (error) { toast(napakaBesedilo(error)); if (rec0) rec0.potrjeno = !naVkljuceno; chk.classList.toggle('on', !naVkljuceno); chk.innerHTML = !naVkljuceno ? IKO_KLJUKICA : ''; arhStanjeKartice(lcell, !naVkljuceno); return; }
     const rec = (LISTI || []).find(x => x.id === id); if (rec) rec.potrjeno = naVkljuceno;
     toast(naVkljuceno ? 'Potrjeno kot urejeno.' : 'Potrditev preklicana.');
   }
@@ -4356,14 +4364,21 @@
     var ids = LISTI.filter(l => ARH_IZB.has(l.id) && jeZaPotrditev(l)).map(l => l.id);
     if (!ids.length) return;
     bp._tece = true; bp.disabled = true; bp.classList.add('nalaga');
+    // kartice se prebarvajo takoj (prehod), seznam se izriše znova šele, ko je prehod končan
+    var celice = ids.map(function (id) { var a = document.querySelector('#arhivList .a-row[data-id="' + id + '"]'); return a && a.closest('.lcell'); });
+    celice.forEach(function (c) { arhStanjeKartice(c, true); });
+    var _zac = Date.now();
     try {
       var r = await sb.from('delivery_notes').update({ potrjeno: true }).in('id', ids);
-      if (r.error) { toast('Potrjevanje ni uspelo. Poskusi znova.'); console.warn(r.error); return; }
+      if (r.error) { celice.forEach(function (c) { arhStanjeKartice(c, false); }); toast('Potrjevanje ni uspelo. Poskusi znova.'); console.warn(r.error); return; }
       LISTI.forEach(l => { if (ids.indexOf(l.id) >= 0) l.potrjeno = true; });
       ids.forEach(id => ARH_IZB.delete(id));
       logDodaj('Arhiv', 'Potrjeno', sklonListov(ids.length));
       toast('Potrjeno: ' + sklonListov(ids.length) + '.');
-    } finally { bp._tece = false; bp.classList.remove('nalaga'); risiArhiv(); }
+    } finally {
+      bp._tece = false; bp.classList.remove('nalaga');
+      setTimeout(risiArhiv, Math.max(0, 650 - (Date.now() - _zac)));
+    }
   }
   // Izbrani listi v enem dokumentu (vsak na svoji strani A4), po številki naraščajoče.
   async function arhIzbiraNatisni() {

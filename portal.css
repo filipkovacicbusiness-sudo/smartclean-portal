@@ -26,6 +26,9 @@
 /* ── Prehod teme (4.67): barvni žetoni so registrirani kot <color>, zato se lahko zvezno spremenijo sami;
    vsi elementi jih berejo hkrati → cel zaslon preide v isti hitrosti (portal.js: uporabiTemo). ── */
 @property --green{syntax:"<color>";inherits:true;initial-value:transparent;}
+/* barvi naslovnice (naslovnica() v portal.js) — registrirani, da se ob menjavi stanja (potrditev lista) barva zvezno prelije */
+@property --c1{syntax:"<color>";inherits:true;initial-value:#8f979e;}
+@property --c2{syntax:"<color>";inherits:true;initial-value:#cdd3d8;}
 @property --green-l{syntax:"<color>";inherits:true;initial-value:transparent;}
 @property --green-t{syntax:"<color>";inherits:true;initial-value:transparent;}
 @property --green-m{syntax:"<color>";inherits:true;initial-value:transparent;}
@@ -2297,7 +2300,7 @@ html[data-view] .pz-seznam .row .num::before{content:none;}
 .ur-post{grid-template-columns:28px auto minmax(0,1fr) 92px 34px;}
 .ur-post > *{min-width:0;}
 .ur-post .cs{min-width:0;max-width:none;}
-.ur-form{overflow-x:clip;}   /* clip (ne hidden): hidden bi naredil lasten drsni okvir in spodnja vrstica ne bi ostala pritrjena */
+.ur-form{overflow-x:clip;padding-inline:4px;margin-inline:-4px;}   /* clip (ne hidden): hidden bi naredil lasten drsni okvir in spodnja vrstica ne bi ostala pritrjena; 4 px ob straneh, da fokusna obroba polj (3 px) ni odrezana */
 .ur-grid.nl-2{grid-template-columns:repeat(2,minmax(0,1fr));}
 .nl-izdal{font-size:var(--fs-13);color:var(--mid);margin:-2px 0 10px;}
 .nl-izdal b{color:var(--ink);font-weight:600;}
@@ -2904,7 +2907,7 @@ html.sc-sam{--vrh:max(12px,env(safe-area-inset-top));}
   background:radial-gradient(var(--r1,72% 95%) at var(--p1,28% 22%),color-mix(in oklab,var(--c1,#8f979e) calc(var(--cov-a1) * var(--j,1)),transparent),transparent 72%),
              radial-gradient(var(--r2,85% 100%) at var(--p2,78% 88%),color-mix(in oklab,var(--c2,#cdd3d8) calc(var(--cov-a2) * var(--j,1)),transparent),transparent 74%),
              var(--cov-base);
-  box-shadow:inset 0 0 0 1px var(--cov-rob);transition:transform .45s cubic-bezier(.2,.7,.2,1),box-shadow .45s ease;}
+  box-shadow:inset 0 0 0 1px var(--cov-rob);transition:transform .45s cubic-bezier(.2,.7,.2,1),box-shadow .45s ease,--c1 .6s ease,--c2 .6s ease;}
 .v5[data-view="grid"] .lcell:not(.open) .a-row .a-num::after,
 .v5[data-view="grid"] .lcell:not(.open) .row .row-name::after,
 .v5[data-view="grid"] :is(#cenikList,.art-skupine) .cgrp:not(.open) .cgrp-nm::after,
@@ -3281,7 +3284,8 @@ html.sc-tema-anim *,html.sc-tema-anim *::before,html.sc-tema-anim *::after{trans
    Kosi: povzetek (kosov, pranj, pogrešani) in seznam artiklov; kos v oknu. */
 .v5 .rf-nacini{display:flex;width:100%;max-width:560px;margin:0 0 16px;}
 .v5 .rf-nacini .pris-tab{flex:1 1 0;}
-@media(max-width:359px){.v5 .rf-nacini .pris-tab{min-width:0;padding-left:4px;padding-right:4px;font-size:var(--fs-13);}}
+/* najožji telefoni (320): zavihki v vrstici se stisnejo, nič ne sega čez trak */
+@media(max-width:359px){.v5 .pris-tabs:not(.adm-tabs) > .pris-tab{min-width:0;padding-left:6px;padding-right:6px;font-size:var(--fs-13);}.v5 .rf-nacini .pris-tab{padding-left:4px;padding-right:4px;}}
 .v5 .rf-sken{display:flex;flex-direction:column;gap:16px;padding:20px 22px 22px;}
 .v5 .rf-art{margin:0;}
 .v5 .rf-stevec{display:flex;align-items:baseline;gap:12px;min-height:72px;}
