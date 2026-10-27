@@ -37,7 +37,7 @@
       // ampak se zvezno spremenijo SAMI barvni žetoni (--bg, --ink, --surface …, registrirani z @property v portal.css).
       // Vsi elementi v vsakem trenutku dobijo isto vmesno barvo → cel zaslon hkrati. Barva sistemskih pasov
       // (theme-color) se med prehodom posodablja sproti z isto krivuljo; na koncu Safari pasova še enkrat vzorči.
-      var mirno = false; try { mirno = matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+      var mirno = false; try { mirno = matchMedia('(prefers-reduced-motion: reduce)').matches || de.classList.contains('zm-brez-anim'); } catch (e) {}
       var animira = !mirno && _temaZetoniAnimirani();
       clearTimeout(de._temaUra); cancelAnimationFrame(de._temaRaf || 0);
       if (!animira) {
@@ -153,6 +153,54 @@
   (function initPogled() {
     document.querySelectorAll('.pogled-seg .seg-b').forEach(b => b.addEventListener('click', () => nastaviPogled(b.dataset.view)));
     uporabiPogled(); osveziPogledSege();
+  })();
+  /* ── Zmogljivost (le na tej napravi, ne sinhronizira se): Samodejno / Polno / Varčno ali po meri ──
+     Varčno izklopi animacije, zameglitev (backdrop-filter je za šibke grafične čipe najdražji), teksturo
+     kartic (šum SVG z mešanjem barv na vsaki kartici) in nalaganje razdelkov vnaprej (podatki ob zagonu).
+     Samodejno je varčno, če naprava varčuje s podatki, želi manj gibanja ali ima ≤ 2 GB pomnilnika / ≤ 2 jedri. */
+  var ZM_KLJUCI = ['anim', 'steklo', 'tekstura', 'vnaprej'];
+  function zmSibka() {
+    try {
+      if (navigator.connection && navigator.connection.saveData) return true;
+      if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return true;
+      if (navigator.deviceMemory && navigator.deviceMemory <= 2) return true;
+      if (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 2) return true;
+    } catch (e) {}
+    return false;
+  }
+  function zmBeri() {
+    var z = null; try { z = JSON.parse(localStorage.getItem('sc-zmogljivost') || 'null'); } catch (e) {}
+    if (!z || ['auto', 'polno', 'varcno', 'meri'].indexOf(z.nacin) < 0) z = { nacin: 'auto' };
+    var vse = z.nacin === 'polno' ? true : z.nacin === 'varcno' ? false : z.nacin === 'auto' ? !zmSibka() : null;
+    var r = { nacin: z.nacin };
+    ZM_KLJUCI.forEach(function (k) { r[k] = vse != null ? vse : z[k] !== false; });
+    return r;
+  }
+  function zmUporabi() {
+    var z = zmBeri(), de = document.documentElement;
+    de.classList.toggle('zm-brez-anim', !z.anim);
+    de.classList.toggle('zm-brez-stekla', !z.steklo);
+    de.classList.toggle('zm-brez-teksture', !z.tekstura);
+    return z;
+  }
+  // manj gibanja: sistemska želja ali Zmogljivost → Animacije izklopljene (vse animacije v JS to preverijo)
+  function manjGibanja() { try { return document.documentElement.classList.contains('zm-brez-anim') || !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) { return false; } }
+  function zmOznaci() {
+    var z = zmBeri();
+    document.querySelectorAll('[data-zm]').forEach(function (b) { b.classList.toggle('on', b.dataset.zm === z.nacin); });
+    document.querySelectorAll('.zm-chk input').forEach(function (c) { c.checked = !!z[c.dataset.zk]; });
+  }
+  function zmNastavi(nacin, kljuc, vrednost) {
+    var z = zmBeri(), nov = { nacin: nacin || 'meri' };
+    if (kljuc) { ZM_KLJUCI.forEach(function (k) { nov[k] = z[k]; }); nov[kljuc] = !!vrednost; }
+    try { localStorage.setItem('sc-zmogljivost', JSON.stringify(nov)); } catch (e) {}
+    zmUporabi(); zmOznaci();
+  }
+  (function initZmogljivost() {
+    zmUporabi();
+    document.querySelectorAll('[data-zm]').forEach(function (b) { b.addEventListener('click', function () { zmNastavi(b.dataset.zm); }); });
+    document.querySelectorAll('.zm-chk input').forEach(function (c) { c.addEventListener('change', function () { zmNastavi(null, c.dataset.zk, c.checked); }); });
+    zmOznaci();
   })();
   // ── Sinhronizacija nastavitev med napravami (shranjeno v profil uporabnika) ──
   var SINH_KLJUCI = ['sc-portal-theme', 'sc-view', 'sc-menu-order', 'sc-cust-order', 'sc-cenik-order'];
@@ -297,6 +345,34 @@
 
   const sb = URL_ && KEY ? createClient(URL_, KEY, { global: { fetch: povFetch }, realtime: { heartbeatCallback: povUtrip } }) : null;
 
+  /* ══════════ ISTI PODATKI ENKRAT ══════════
+     Ob zagonu portal v ozadju pripravi razdelke (prednaloziRazdelke) in vsak je sam bral iste tabele
+     (artikli, cenik, liste obdobja za obračun) — 2- do 4-krat v nekaj sekundah. Zahteva z istim ključem, ki
+     pravkar teče ali je tekla pred manj kot 8 s, se ne ponovi. Vsako pisanje iz portala (insert, update,
+     upsert, delete, klic funkcije v bazi) in vsaka sprememba v živem toku to pozabita: po spremembi se vedno
+     bere znova, prav tako ob poznejšem odpiranju razdelka. */
+  var _DELI = {}, DELI_MS = 8000;
+  function deli(kljuc, fn) {
+    var z = _DELI[kljuc];
+    if (z && (z.teka || Date.now() - z.cas < DELI_MS)) return z.p;
+    var v = { teka: true, cas: 0, p: null };
+    v.p = Promise.resolve().then(fn).then(function (r) { v.teka = false; v.cas = Date.now(); if (r && r.error && _DELI[kljuc] === v) delete _DELI[kljuc]; return r; },
+      function (e) { if (_DELI[kljuc] === v) delete _DELI[kljuc]; throw e; });
+    _DELI[kljuc] = v;
+    return v.p;
+  }
+  function pozabiDeli() { _DELI = {}; }
+  var DELI_BRALNE = { touch_seen: 1, touch_last_login: 1, stranka_kosi: 1, app_prosta_stevilka: 1, app_pini_nastavljeni: 1, dn_weight: 1 };   // klici, ki le berejo
+  if (sb) {
+    var _sbFrom = sb.from.bind(sb), _sbRpc = sb.rpc.bind(sb);
+    sb.from = function (t) {
+      var q = _sbFrom(t);
+      ['insert', 'update', 'upsert', 'delete'].forEach(function (m) { var f = q[m]; if (typeof f === 'function') q[m] = function () { pozabiDeli(); return f.apply(q, arguments); }; });
+      return q;
+    };
+    sb.rpc = function (ime) { if (!DELI_BRALNE[ime]) pozabiDeli(); return _sbRpc.apply(null, arguments); };
+  }
+
   /* ══════════ PRIJAVA ══════════ */
   $('loginForm').addEventListener('submit', async e => {
     e.preventDefault();
@@ -418,15 +494,13 @@
      last_login = čas prijave; last_seen = zadnji utrip (na spletu, če < 2 min).
      Uporabimo varno RPC funkcijo, z rezervo na neposredni zapis (osebje sme). */
   var _utripTimer = null;
+  // touch_last_login / touch_seen zapišeta čas v profil (security definer, le za prijavljenega);
+  // prejšnja dodatna neposredna posodobitev profila je isto zapisala še enkrat (3 pisanja ob vsakem zagonu)
   function zabeleziPrijavo(uid) {
-    // ločeni klici, da last_login deluje tudi če stolpca last_seen (še) ni
     try { sb.rpc('touch_last_login').then(function () {}, function () {}); } catch (e) {}
-    try { sb.from('profiles').update({ last_login: new Date().toISOString() }).eq('id', uid).then(function () {}, function () {}); } catch (e) {}
-    try { sb.from('profiles').update({ last_seen: new Date().toISOString() }).eq('id', uid).then(function () {}, function () {}); } catch (e) {}
   }
   function utripni(uid) {
     try { sb.rpc('touch_seen').then(function () {}, function () {}); } catch (e) {}
-    try { sb.from('profiles').update({ last_seen: new Date().toISOString() }).eq('id', uid).then(function () {}, function () {}); } catch (e) {}
   }
   function zacniUtrip(uid) {
     ustaviUtrip();
@@ -448,7 +522,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.77 · BETA';
+  var APP_VERZIJA = '4.78 · BETA';
   var NALAGANJE = '<div class="sc-load" aria-hidden="true"><span class="sc-load-line"></span></div>';
   // Stale-while-revalidate: ob ponovnem obisku razdelka NE pobriši vsebine v nalagalnik —
   // obdrži prejšnjo (takojšen prikaz) in jo osveži v ozadju. Trak le ob prvem nalaganju.
@@ -842,6 +916,7 @@
   // Prednalaganje: renderira razdelke v skrite bloke (nastavi dataset.loaded), zamaknjeno,
   // da ne pošljemo vseh poizvedb naenkrat. Napake tiho spregleda.
   function prednaloziRazdelke() {
+    if (!zmBeri().vnaprej) return;   // Zmogljivost: brez nalaganja vnaprej (razdelek se naloži ob odprtju)
     var op = [];
     try {
       if (OSEBJE) {
@@ -2619,7 +2694,7 @@
     }).join('');
   }
   async function naloziSkupineImena() {
-    try { var r = await sb.from('article_groups').select('prefix,name'); if (!r.error) { SKUPINE_IME = {}; (r.data || []).forEach(function (x) { if (x.name) SKUPINE_IME[x.prefix] = x.name; }); } } catch (e) {}
+    try { var r = await deli('skupine', function () { return sb.from('article_groups').select('prefix,name'); }); if (!r.error) { SKUPINE_IME = {}; (r.data || []).forEach(function (x) { if (x.name) SKUPINE_IME[x.prefix] = x.name; }); } } catch (e) {}
   }
   // Enoten prikaz teže: brez presledka, vejica, nad 1000 kg v tonah.
   // 1kg · 12,45kg · 123,45kg · 1,2345t · 12,345t
@@ -3084,14 +3159,22 @@
 
   async function naloziUcinek() {
     var meja = danLocal(new Date(Date.now() - 400 * 24 * 3600 * 1000).getTime());
-    var rl = await vseVrstice(function (a, b) { return sb.from('delivery_notes').select('id,org_id,doc_date,weight_kg').is('deleted_at', null).gte('doc_date', meja).order('doc_date', { ascending: true }).range(a, b); });
-    UCEN_LISTI = (rl && rl.data) ? rl.data : [];
+    // osebje ima v LISTI že vse liste (brez izbrisanih, živo osveženo) — iste vrstice, brez še ene poizvedbe
+    var izListi = OSEBJE && Array.isArray(LISTI) && !LISTI_NAPAKA;
+    if (izListi) {
+      UCEN_LISTI = LISTI.filter(function (l) { return l.doc_date && l.doc_date >= meja; })
+        .map(function (l) { return { id: l.id, org_id: l.org_id, doc_date: l.doc_date, weight_kg: l.weight_kg }; })
+        .sort(function (a, b) { return a.doc_date < b.doc_date ? -1 : a.doc_date > b.doc_date ? 1 : (a.id < b.id ? -1 : a.id > b.id ? 1 : 0); });
+    } else {
+      var rl = await vseVrstice(function (a, b) { return sb.from('delivery_notes').select('id,org_id,doc_date,weight_kg').is('deleted_at', null).gte('doc_date', meja).order('doc_date', { ascending: true }).range(a, b); });
+      UCEN_LISTI = (rl && rl.data) ? rl.data : [];
+    }
     var rd = await vseVrstice(function (a, b) { return sb.from('att_events').select('id,employee_id,ts,type').gte('ts', meja + 'T00:00:00Z').order('ts', { ascending: true }).range(a, b); });
     UCEN_DOG = (rd && rd.data) ? rd.data : [];
     // Vsota kg po strankah za VES čas (za 3D krog »Vse«).
     try {
-      var rv = await vseVrstice(function (a, b) { return sb.from('delivery_notes').select('org_id,weight_kg').is('deleted_at', null).range(a, b); });
-      var m = {}; (rv && rv.data ? rv.data : []).forEach(function (l) { if (l.org_id) m[l.org_id] = (m[l.org_id] || 0) + (parseFloat(l.weight_kg) || 0); });
+      var vse = izListi ? LISTI : ((await vseVrstice(function (a, b) { return sb.from('delivery_notes').select('org_id,weight_kg').is('deleted_at', null).range(a, b); })).data || []);
+      var m = {}; vse.forEach(function (l) { if (l.org_id) m[l.org_id] = (m[l.org_id] || 0) + (parseFloat(l.weight_kg) || 0); });
       _kgVseMap = m;
     } catch (e) { _kgVseMap = null; }
   }
@@ -3348,7 +3431,7 @@
       el.addEventListener('blur', function () { poudari(null); });
       el.addEventListener('click', function () { poudari(root.querySelector('[data-i="' + el.dataset.i + '"].on.uc-krog-s') && el.classList.contains('uc-krog-s') ? null : el.dataset.i); });
     });
-    var reduce = false; try { reduce = matchMedia('(prefers-reduced-motion:reduce)').matches; } catch (e) {}
+    var reduce = manjGibanja();
     if (animiraj && !reduce) {   // krog se izriše v smeri urinega kazalca, seznam se pojavi za njim
       var m = root.querySelector('.uc-krog-maska'), C = parseFloat(m.style.strokeDasharray);
       m.style.strokeDashoffset = C; root.classList.add('vstop');
@@ -3681,7 +3764,7 @@
     function fr(now) { if (!t0) t0 = now; var p = Math.min(1, (now - t0) / dur); el._v = od + (target - od) * ease(p); el.textContent = _fmtStat(el._v, fmt, false, target); if (p < 1) requestAnimationFrame(fr); else el.textContent = _fmtStat(target, fmt, true); }
     requestAnimationFrame(fr);
   }
-  function _brezGibanja() { try { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion:reduce)').matches); } catch (e) { return false; } }
+  function _brezGibanja() { return manjGibanja(); }
   // prej = vrednosti pred osvežitvijo v živo: brez nove vstopne animacije, šteje le številka, ki se je spremenila.
   // Osvežitev med vstopno animacijo (npr. zakasnjena poizvedba ob zagonu) jo nadaljuje, ne začne znova.
   var _statT0 = 0;
@@ -3701,7 +3784,7 @@
   async function _domUreSek() {
     var mk = danes10().slice(0, 7), evs;
     if (UCEN_DOG) { evs = UCEN_DOG.filter(function (d) { return d.ts && d.ts.slice(0, 7) === mk; }); }
-    else { var r = await vseVrstice(function (a, b) { return sb.from('att_events').select('employee_id,ts,type').gte('ts', mk + '-01T00:00:00Z').order('ts', { ascending: true }).order('id', { ascending: true }).range(a, b); }); evs = (r && r.data) ? r.data : []; }
+    else { var r = await deli('ure|' + mk, function () { return vseVrstice(function (a, b) { return sb.from('att_events').select('employee_id,ts,type').gte('ts', mk + '-01T00:00:00Z').order('ts', { ascending: true }).order('id', { ascending: true }).range(a, b); }); }); evs = (r && r.data) ? r.data : []; }
     var byEmp = {}; evs.forEach(function (d) { (byEmp[d.employee_id] = byEmp[d.employee_id] || []).push(d); });
     var sek = 0;
     Object.keys(byEmp).forEach(function (eid) { var a = byEmp[eid].sort(function (x, y) { return x.ts < y.ts ? -1 : 1; }); var odprt = null; a.forEach(function (d) { if (d.type === 'in') { if (!odprt) odprt = d; } else if (d.type === 'out') { if (odprt) { sek += (new Date(d.ts) - new Date(odprt.ts)) / 1000; odprt = null; } } }); });
@@ -3823,7 +3906,7 @@
      ne scale, zato se besedilo med animacijo ne razteguje. */
   var _okno = null;
   var OKNO_KRIVULJA = 'cubic-bezier(.22,.61,.36,1)';   // ista krivulja kot prej razpiranje kartice
-  function oknoMirno() { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } }
+  function oknoMirno() { return manjGibanja(); }
   // Glava okna je kopija kartice (isti podatki, ista statusna barva), postavljena za okno.
   function oknoGlava() {
     var o = _okno; if (!o) return;
@@ -4584,9 +4667,11 @@
   // pozabiti, sicer se ob ponovnem odprtju lista prikažejo stare količine,
   // čeprav je shranjevanje uspelo. Brez argumenta počisti vse.
   function pozabiPostavke(id) { if (id) { delete _POST_CACHE[id]; } else { _POST_CACHE = {}; } }
+  var _POST_NALAGA = {};   // listi, katerih postavke se ravno nalagajo (dva klica ob zagonu)
   async function prednaloziPostavke(listi) {
-    var ids = (listi || []).map(function (l) { return l.id; }).filter(function (id) { return id && !_POST_CACHE[id]; }).slice(0, 80);
+    var ids = (listi || []).map(function (l) { return l.id; }).filter(function (id) { return id && !_POST_CACHE[id] && !_POST_NALAGA[id]; }).slice(0, 80);
     if (!ids.length) return;
+    ids.forEach(function (id) { _POST_NALAGA[id] = 1; });
     try {
       // Stranično (brez meje 1000): pri 80 listih bi vsota postavk lahko presegla privzeto mejo in bi kateri list dobil nepopolne postavke.
       var r = await vseVrstice(function (a, b) {
@@ -4597,6 +4682,7 @@
         ids.forEach(function (id) { _POST_CACHE[id] = by[id] || []; });
       }
     } catch (e) {}
+    finally { ids.forEach(function (id) { delete _POST_NALAGA[id]; }); }
   }
   // Postavke lista v okvir: iz predpomnilnika (takoj) ali z enim poizvedovanjem.
   async function naloziDetajl(box, id) {
@@ -5550,7 +5636,7 @@
   // Zberi in izračunaj skupine po strankah za obdobje (orgIds: null/[] = vse, sicer seznam ID-jev).
   async function fakZberi(od, doo, orgIds) {
     // Naloži VSE spremne liste v obdobju (stranično), brez trde meje — da noben list/stranka ne izpade iz obračuna.
-    const r = await vseVrstice(function (a, b) {
+    const r = await deli('fak|' + od + '|' + doo + '|' + (orgIds && orgIds.length ? orgIds.slice().sort().join(',') : ''), () => vseVrstice(function (a, b) {
       let q = sb.from('delivery_notes')
         .select('id,number,doc_date,weight_kg,total_pieces,org_id,transport,potrjeno,delivery_note_items(article_name,article_id,pieces)')
         .is('deleted_at', null)
@@ -5559,7 +5645,7 @@
       if (orgIds && orgIds.length === 1) q = q.eq('org_id', orgIds[0]);
       else if (orgIds && orgIds.length) q = q.in('org_id', orgIds);
       return q;
-    });
+    }));
     if (r.error) return { error: r.error };
     const notes = r.data || [];
     const poOrg = {};
@@ -6283,6 +6369,9 @@
   }
   async function nalozicenik(force) {
     if (CENIK && CENIKMAP && !force) return { ok: true };
+    return deli('cenik', _naloziCenik);
+  }
+  async function _naloziCenik() {
     var r = await vseVrstice(function (a, b) { return sb.from('pricelist').select('sifra,koda,naziv,em,cena1,cena2,teza,org_id,sort_order,deleted_at,cena_potrjena').is('deleted_at', null).order('naziv').range(a, b); });
     if (r.error) {
       var r2 = await vseVrstice(function (a, b) { return sb.from('pricelist').select('sifra,koda,naziv,em,cena1,cena2').order('naziv').range(a, b); });
@@ -6307,20 +6396,19 @@
   }
   async function naloziClane(force) {
     if (CLANI && !force) return CLANI;
-    var r = await vseVrstice(function (a, b) { return sb.from('articles').select('id,org_id,name,cena_sifra,sort_order').range(a, b); });
-    CLANI = r.error ? [] : (r.data || []);
-    return CLANI;
+    return deli('clani', async function () {
+      var r = await vseVrstice(function (a, b) { return sb.from('articles').select('id,org_id,name,cena_sifra,sort_order,teza').range(a, b); });
+      CLANI = r.error ? [] : (r.data || []);
+      return CLANI;
+    });
   }
   function produktPoId(id) { id = normId(id); if (!id || !CENIK) return null; return CENIK.find(function (x) { return normId(x.koda) === id; }) || null; }
   async function naloziArtMap(orgFilter) {
-    // POZOR: brez paginacije PostgREST vrne največ 1000 vrstic; vseh artiklov je
-    // lahko več (vse stranke) → nekateri odpadejo in fakture kažejo »—«. Zato beri po straneh.
-    const r = await vseVrstice(function (a, b) {
-      let q = sb.from('articles').select('id,org_id,name,cena_sifra,teza').order('id', { ascending: true }).range(a, b);
-      if (orgFilter) q = q.eq('org_id', orgFilter);
-      return q;
-    });
-    const data = r.error ? [] : (r.data || []);
+    // Vsi artikli (po straneh, ne le 1000) — iz skupnega seznama, ki si ga v 8 s delijo Statistika, Fakture in Artikli.
+    // Vrstni red po id kot prej v poizvedbi: pri dveh artiklih stranke z istim imenom obvelja zadnji.
+    await naloziClane(true);
+    const data = (CLANI || []).filter(function (a) { return !orgFilter || a.org_id === orgFilter; })
+      .sort(function (a, b) { return a.id < b.id ? -1 : a.id > b.id ? 1 : 0; });
     const map = {}; const tez = {}; const byId = {};
     data.forEach(a => {
       var key = a.org_id + '|' + String(a.name || '').trim().toLowerCase();
@@ -10375,9 +10463,9 @@
     document.addEventListener('visibilitychange', function () { if (!document.hidden && Date.now() - _zivZadnje > 60000) { zivListi(); zivCipi(); } });
     setInterval(function () { if (!document.hidden && !_zivZivo && Date.now() - _zivZadnje > 120000) { zivListi(); zivCipi(); } }, 30000);
   }
-  function zivListi() { clearTimeout(_zivT); _zivT = setTimeout(zivOsveziListe, 800); }
+  function zivListi() { pozabiDeli(); clearTimeout(_zivT); _zivT = setTimeout(zivOsveziListe, 800); }
   // postavke je spremenila druga naprava (urejanje, preimenovanje artikla): shranjene postavke tega lista ne veljajo več
-  function zivPostavke(p) { var n = p && ((p.new && p.new.note_id) || (p.old && p.old.note_id)); pozabiPostavke(n || null); zivListi(); }   // več sprememb naenkrat = ena osvežitev
+  function zivPostavke(p) { var n = p && ((p.new && p.new.note_id) || (p.old && p.old.note_id)); pozabiPostavke(n || null); zivListi(); }   // zivListi pozabi tudi skupne podatke   // več sprememb naenkrat = ena osvežitev
   async function zivOsveziListe() {
     _zivZadnje = Date.now();
     var prej = {}; LISTI.forEach(function (l) { prej[l.id] = 1; });
@@ -10400,6 +10488,7 @@
   }
   // čipi: druga naprava je označila ali skenirala — Kosi se osvežijo, neznani čipi v skeniranju se poiščejo znova
   function zivCipi() {
+    pozabiDeli();
     clearTimeout(_zivRfT);
     _zivRfT = setTimeout(function () {
       var sec = $('sec-cipi'); if (!sec || sec.classList.contains('hidden')) { RF.kosi = null; return; }

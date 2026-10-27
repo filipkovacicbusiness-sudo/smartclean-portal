@@ -1,5 +1,16 @@
 [
  {
+  "v": "4.78",
+  "d": "2026-10-27",
+  "c": "2026-10-27T17:00:00+01:00",
+  "t": [
+   "Hitrejši zagon: portal ob zagonu ne bere več istih podatkov po večkrat — artikli, cenik in skupine se naložijo enkrat (prej do 4-krat), Statistika uporabi že naložene spremne liste (prej je še enkrat prenesla vse liste), prisotnost tekočega meseca in postavke zadnjih listov enkrat. 26 poizvedb namesto 40, okoli polovica manj prenosa — opazno na telefonu in počasni povezavi. Vse je prikazano enako kot prej.",
+   "Ob prijavi portal zapiše čas prijave z dvema klicema namesto petimi, utrip prisotnosti vsakih 45 s z enim namesto dveh.",
+   "Nastavitve → Zmogljivost (le za to napravo): Samodejno, Polno ali Varčno, ali posebej Animacije, Prosojnost in zameglitev, Tekstura kartic in Nalaganje razdelkov vnaprej. Samodejno na šibki napravi (varčevanje s podatki, manj gibanja, malo pomnilnika) izbere varčno.",
+   "Aplikacija RFID: v meniju osebe »Varčni prikaz« (brez animacij in zameglitve)."
+  ]
+ },
+ {
   "v": "4.77",
   "d": "2026-10-27",
   "c": "2026-10-27T15:00:00+01:00",

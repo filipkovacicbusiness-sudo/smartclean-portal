@@ -324,6 +324,20 @@ body:has(> .app.show) .sc-hex [class*="hw"]{animation-play-state:paused}
             <button type="button" class="seg-b" data-view="grid">Mreža</button>
           </div>
         </div>
+        <div class="panel" id="zmPanel">
+          <h3 class="sec-h">Zmogljivost</h3>
+          <div class="seg zm-seg" role="group" aria-label="Zmogljivost">
+            <button type="button" class="seg-b" data-zm="auto">Samodejno</button>
+            <button type="button" class="seg-b" data-zm="polno">Polno</button>
+            <button type="button" class="seg-b" data-zm="varcno">Varčno</button>
+          </div>
+          <div class="zm-sez">
+            <label class="zm-v"><span>Animacije</span><span class="adm-chk zm-chk"><input type="checkbox" data-zk="anim"><span></span></span></label>
+            <label class="zm-v"><span>Prosojnost in zameglitev</span><span class="adm-chk zm-chk"><input type="checkbox" data-zk="steklo"><span></span></span></label>
+            <label class="zm-v"><span>Tekstura kartic</span><span class="adm-chk zm-chk"><input type="checkbox" data-zk="tekstura"><span></span></span></label>
+            <label class="zm-v"><span>Nalaganje razdelkov vnaprej</span><span class="adm-chk zm-chk"><input type="checkbox" data-zk="vnaprej"><span></span></span></label>
+          </div>
+        </div>
         <div class="panel hidden" id="bioPanel">
           <h3 class="sec-h" data-bio-naslov>Prijava s prstnim odtisom ali obrazom</h3>
           <div class="bio-row">

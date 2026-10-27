@@ -197,6 +197,16 @@
   function zvNapaka() { zvTon(196, 0.32, 0.16); }
   document.addEventListener('pointerdown', function () { zvKontekst(); }, { capture: true, once: true });
 
+  /* ══════════ VARČNI PRIKAZ ══════════
+     Kot portal (Nastavitve → Zmogljivost): brez animacij in zameglitve (portal.css: zm-brez-anim, zm-brez-stekla).
+     Brez izbire je vklopljen na šibki napravi (varčevanje s podatki, manj gibanja, ≤ 2 GB pomnilnika ali ≤ 2 jedri). */
+  function rfaVarcno() {
+    var v = LS.beri('sc-rfa-varcno', null); if (v === true || v === false) return v;
+    try { return !!((navigator.connection && navigator.connection.saveData) || (navigator.deviceMemory && navigator.deviceMemory <= 2) || (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 2) || matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) { return false; }
+  }
+  function rfaVarcnoUporabi() { var v = rfaVarcno(), de = document.documentElement; de.classList.toggle('zm-brez-anim', v); de.classList.toggle('zm-brez-stekla', v); }
+  rfaVarcnoUporabi();
+
   function potrdiModal(o) { return modal(o, false); }
   function vnesiModal(o) { return modal(o, true); }
   function modalOdprt() { return !!document.querySelector('.sc-modal-back, .rfa-pin'); }
@@ -407,7 +417,7 @@
   function meniZunaj(e) { var m = document.querySelector('.dk-meni'); if (m && !m.contains(e.target) && !$('jaz').contains(e.target)) zapriMeni(); }
   function meni() {
     if (document.querySelector('.dk-meni')) { zapriMeni(); return; }
-    var it = [['zamenjaj', 'Zamenjaj osebo'], ['tema', temaJe() === 'dark' ? 'Svetla tema' : 'Temna tema'], ['zvok', ZV.vkl ? 'Izklopi zvok' : 'Vklopi zvok']];
+    var it = [['zamenjaj', 'Zamenjaj osebo'], ['tema', temaJe() === 'dark' ? 'Svetla tema' : 'Temna tema'], ['zvok', ZV.vkl ? 'Izklopi zvok' : 'Vklopi zvok'], ['varcno', rfaVarcno() ? 'Polni prikaz' : 'Varčni prikaz']];
     if (rfZadnjiListi()) it.unshift(['zadnji', 'Natisni zadnje']);
     if (JAZ && JAZ.skrbnik && kiosk()) it.push(['naprava', 'Nastavitve naprave'], ['kiosk', 'Izklopi kiosk']);
     var m = document.createElement('div'); m.className = 'dk-meni'; m.setAttribute('role', 'menu');
@@ -424,6 +434,7 @@
         else if (b.dataset.a === 'zadnji') { var zl = rfZadnjiListi(); if (zl) rfNatisni(zl.map(function (l) { return l.note; }), null); }
         else if (b.dataset.a === 'tema') temaNastavi(temaJe() === 'dark' ? 'light' : 'dark');
         else if (b.dataset.a === 'zvok') { ZV.vkl = !ZV.vkl; LS.pisi('sc-rfa-zvok', ZV.vkl); if (ZV.vkl) zvTik(); }
+        else if (b.dataset.a === 'varcno') { LS.pisi('sc-rfa-varcno', !rfaVarcno()); rfaVarcnoUporabi(); }
         else if (b.dataset.a === 'naprava') { try { window.ScRfid.nastavitve(); } catch (e) {} }
         else if (b.dataset.a === 'kiosk') {
           potrdiModal({ naslov: 'Izklopi kiosk?', potrdi: 'Izklopi', nevarno: true }).then(function (da) { if (da) { try { window.ScRfid.kioskIzklopi(); } catch (e) {} } });

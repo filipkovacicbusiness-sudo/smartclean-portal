@@ -3495,3 +3495,21 @@ html:has(.pov-trak.show) .scrim{top:calc(64px + var(--pov-h) + env(safe-area-ins
   .app.show{transition:padding-top .25s ease;}
   html:has(.pov-trak.show) .app.show{padding-top:calc(65px + var(--pov-h) + env(safe-area-inset-top));}
 }
+
+/* ══════════ ZMOGLJIVOST (4.78) — Nastavitve → Zmogljivost (na tej napravi) ══════════ */
+.zm-seg{margin:0 0 14px;}
+.zm-sez{display:flex;flex-direction:column;border-top:1px solid var(--line);}
+.zm-v{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:48px;padding:6px 2px;border-bottom:1px solid var(--line);font-size:var(--fs-15);color:var(--ink);cursor:pointer;}
+.zm-v:last-child{border-bottom:0;}
+.zm-v > span:first-child{min-width:0;overflow-wrap:anywhere;}
+.zm-v .adm-chk{flex:0 0 auto;position:relative;}
+/* Animacije izklopljene: vse se zgodi takoj (konec animacije in prehoda se še sproži — logika ostane ista) */
+html.zm-brez-anim *,html.zm-brez-anim *::before,html.zm-brez-anim *::after{animation-duration:.001ms!important;animation-delay:0s!important;animation-iteration-count:1!important;
+  transition-duration:.001ms!important;transition-delay:0s!important;scroll-behavior:auto!important;}
+/* brez zameglitve: polna podlaga, kjer je bila prosojna (vrstica na vrhu, dejanja pri čipih) */
+html.zm-brez-stekla *,html.zm-brez-stekla *::before,html.zm-brez-stekla *::after{-webkit-backdrop-filter:none!important;backdrop-filter:none!important;}
+html.zm-brez-stekla .topbar{background:var(--bg);}
+html.zm-brez-stekla .v5 .rf-akc,html.v5.zm-brez-stekla .rf-akc{background:var(--surface);}
+/* brez teksture: kartice ohranijo barvo stranke (prelivi), brez šuma SVG z mešanjem barv */
+html.v5.zm-brez-teksture{--cov-zrno:none;--cov-zrno-o:0;}
+
