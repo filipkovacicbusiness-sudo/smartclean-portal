@@ -1,5 +1,22 @@
 [
  {
+  "v": "4.77",
+  "d": "2026-10-27",
+  "c": "2026-10-27T15:00:00+01:00",
+  "t": [
+   "Čipi (aplikacija RFID in portal): »Že oddano« — če je bil voziček (ali sosednji) v zadnjih 12 urah že oddan, je stranka označena že pred potrditvijo, baza pa ob potrditvi vpraša: Izloči ali Vseeno ustvari. Dvojnih spremnih listov ni več — ne ob ponovnem skeniranju, ne z dveh naprav hkrati, ne po izpadu povezave.",
+   "Izpad povezave med potrditvijo: ponovitev nikoli ne ustvari dvojnih listov in ne izpusti na novo prebranih čipov; čipi, prebrani med potrjevanjem, ostanejo za naslednje skeniranje. Menjava med Oddaja in Prevzem začne novo potrditev.",
+   "Označi: kos, ki je označen pri drugi stranki, ali kos z drugim artiklom se ne prestavi sam (lahko le leži zraven) — samo z »Preseli« oziroma »Prestavi«. Preseljen kos obdrži pranja in zgodovino; odpisan ali izgubljen kos se z istim artiklom vrne v uporabo.",
+   "»Odstrani« (sosednji voziček) velja tudi, ko čitalec isti voziček prebere znova.",
+   "Aplikacija RFID: nov, mirnejši videz — čitalec in doseg v eni vrstici (izbira v oknu), pregled pred potrditvijo kot seznam po strankah, ustvarjeni listi z oznako in velikim gumbom Natisni, »Natisni zadnje« v meniju, zvok ob uspehu in napaki. Oddaja ima privzeto doseg Srednje (manj čipov s sosednjih vozičkov).",
+   "Aplikacija RFID: gumb Beri na zaslonu zdaj zanesljivo bere in ustavi; branje z gumba se samo ustavi po 6 s brez novih čipov, vsako branje pa ob izhodu iz aplikacije. Oseba brez PIN-a vstopi le z geslom.",
+   "Počasna povezava: ko omrežje komaj deluje, se pokaže trak »Počasna povezava« (portal in aplikacija RFID), poleg »Ni povezave« ob izpadu.",
+   "Prisotnost na telefonu: v pogledu Oseba čas prihoda in odhoda ne sega več čez ure — vrstica je kot pri Dan (dan in ure zgoraj, časi pod njimi).",
+   "Spremni list na telefonu: dolgo ime artikla se prelomi v dve vrstici (prej je raztegnilo okno čez zaslon in porezalo količine).",
+   "Aplikacija za C72 1.2: čitalec se sam znova odpre, če ga je vzel drug program; tisk je zanesljivejši (tudi v kiosku); tipka Nazaj zapre okno namesto koraka nazaj."
+  ]
+ },
+ {
   "v": "4.76",
   "d": "2026-10-26",
   "c": "2026-10-26T17:30:00+01:00",

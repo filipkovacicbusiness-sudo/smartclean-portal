@@ -70,6 +70,8 @@ public class Glavna extends Activity implements Bralnik.Poslusalec {
     private final Handler ui = new Handler(Looper.getMainLooper());
     private DevicePolicyManager dpm;
     private ComponentName skrbnik;
+    private WebView tisk;       // okno za tisk živi, dokler ga ne zamenja naslednji tisk (sicer ga lahko pobere zbiralnik smeti)
+    private boolean tiskam;     // odprt je sistemski dialog za tisk: časovnikov oken ne ustavljaj (predogled bi obstal)
 
     @Override
     protected void onCreate(Bundle shranjeno) {
@@ -106,7 +108,7 @@ public class Glavna extends Activity implements Bralnik.Poslusalec {
             @Override public void doUpdateVisitedHistory(WebView v, String url, boolean ponovno) { trenutni = url == null ? "" : url; }
             @Override public void onPageFinished(WebView v, String url) {
                 trenutni = url == null ? "" : url;
-                if (dovoljen(Uri.parse(trenutni))) v.evaluateJavascript(MOST_JS, null);
+                if (dovoljen(Uri.parse(trenutni))) { v.evaluateJavascript(MOST_JS, null); v.clearHistory(); }
                 else if (NAPAKA_URL.equals(trenutni)) v.evaluateJavascript("document.body.dataset.portal=" + JSONObject.quote(Nastavitve.PORTAL), null);
             }
             // portal ni dosegljiv (prvi zagon brez povezave; pozneje ga ima portal v predpomnilniku): zaslon z gumbom, sam poskusi znova
@@ -162,18 +164,25 @@ public class Glavna extends Activity implements Bralnik.Poslusalec {
     // v ozadju portal miruje (baterija ročnega čitalca); ob vrnitvi se sam osveži (visibilitychange)
     @Override protected void onResume() {
         super.onResume();
+        tiskam = false;
         if (web != null) { web.onResume(); web.resumeTimers(); }
-        if (kiosk()) { try { startLockTask(); } catch (Exception e) { Log.w("SmartCleanRFID", "zaklep", e); } }   // tudi po vrnitvi iz nastavitev naprave
+        kioskNastavi();   // tudi, če je bila naprava nastavljena za kiosk, ko je aplikacija že tekla
+        zaklepni();       // tudi po vrnitvi iz nastavitev naprave
     }
-    @Override protected void onPause() { if (web != null) { web.onPause(); web.pauseTimers(); } super.onPause(); }
+    @Override protected void onPause() {
+        bralnik.ustavi();   // branje ne teče naprej v ozadju (baterija, 1 W)
+        if (web != null) { web.onPause(); if (!tiskam) web.pauseTimers(); }
+        super.onPause();
+    }
     @Override protected void onStop() { bralnik.zapri(); super.onStop(); }   // čitalec sprosti v ozadju (baterija, druge aplikacije)
     @Override protected void onSaveInstanceState(Bundle o) { super.onSaveInstanceState(o); if (web != null && !naNapaki) web.saveState(o); }
     @Override protected void onDestroy() {
         ui.removeCallbacksAndMessages(null);
         if (omrezje != null) { try { ((ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE)).unregisterNetworkCallback(omrezje); } catch (Exception ignored) { } }
         bralnik.konec();
-        if (ton != null) ton.release();
+        if (ton != null) { ton.release(); ton = null; }
         if (web != null) web.destroy();
+        if (tisk != null) { tisk.destroy(); tisk = null; }
         super.onDestroy();
     }
 
@@ -190,11 +199,22 @@ public class Glavna extends Activity implements Bralnik.Poslusalec {
     // ── kiosk (le kot lastnik naprave): aplikacija je domači zaslon, zaklenjena na zaslonu ──
     private boolean izklapljam;   // »Izklopi kiosk« teče: nič več zaklepanja
     private boolean kiosk() { return !izklapljam && dpm != null && dpm.isDeviceOwnerApp(getPackageName()); }
-
-    private void kioskNastavi() {
+    // tisk v kiosku: sistemski dialog in storitve tiskanja morajo biti dovoljeni (sicer jih zaklep ne odpre)
+    private static final String[] TISK_PAKETI = {"com.android.printspooler", "com.android.bips", "com.google.android.printservice.recommendation",
+            "com.hp.android.printservice", "org.mopria.printplugin", "com.mopria.printplugin"};
+    private void zaklepni() {
         if (!kiosk()) return;
+        try { if (dpm.isLockTaskPermitted(getPackageName())) startLockTask(); } catch (Exception e) { Log.w("SmartCleanRFID", "zaklep", e); }
+    }
+
+    private static boolean kioskNastavljen;   // enkrat na proces (tudi, če je naprava postala kiosk, ko je aplikacija tekla)
+    private void kioskNastavi() {
+        if (!kiosk() || kioskNastavljen) return;
         try {
-            dpm.setLockTaskPackages(skrbnik, new String[]{getPackageName()});
+            String[] pak = new String[TISK_PAKETI.length + 1];
+            pak[0] = getPackageName();
+            System.arraycopy(TISK_PAKETI, 0, pak, 1, TISK_PAKETI.length);
+            dpm.setLockTaskPackages(skrbnik, pak);
             if (Build.VERSION.SDK_INT >= 28) {   // ura in baterija vidni, gumb za izklop deluje
                 dpm.setLockTaskFeatures(skrbnik, DevicePolicyManager.LOCK_TASK_FEATURE_SYSTEM_INFO | DevicePolicyManager.LOCK_TASK_FEATURE_GLOBAL_ACTIONS);
             }
@@ -202,6 +222,7 @@ public class Glavna extends Activity implements Bralnik.Poslusalec {
             dom.addCategory(Intent.CATEGORY_HOME);
             dom.addCategory(Intent.CATEGORY_DEFAULT);
             dpm.addPersistentPreferredActivity(skrbnik, dom, new ComponentName(this, Glavna.class));
+            kioskNastavljen = true;
         } catch (Exception e) { Log.w("SmartCleanRFID", "kiosk", e); }
     }
 
@@ -221,17 +242,18 @@ public class Glavna extends Activity implements Bralnik.Poslusalec {
         try { dpm.clearDeviceOwnerApp(getPackageName()); } catch (Exception e) { Log.w("SmartCleanRFID", "izklop", e); }
     }
 
+    // Nazaj = Escape v aplikaciji (zapre okno ali meni). Zgodovine okna ne uporablja: stran je ena aplikacija,
+    // korak nazaj bi odprl staro stanje ali zaslon »Ni povezave«. Aplikacije ne zapre (na C72 je edina).
     @Override
     public void onBackPressed() {
-        if (web != null && !naNapaki && web.canGoBack()) web.goBack();
-        else if (!kiosk()) super.onBackPressed();   // v kiosku tipka Nazaj aplikacije ne zapre
+        if (web != null && !naNapaki) web.evaluateJavascript("document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}))", null);
     }
 
     // zaklep tudi, ko okno dobi fokus (v onResume je lahko še prezgodaj)
     @Override
     public void onWindowFocusChanged(boolean fokus) {
         super.onWindowFocusChanged(fokus);
-        if (fokus && kiosk()) { try { startLockTask(); } catch (Exception e) { Log.w("SmartCleanRFID", "zaklep", e); } }
+        if (fokus && !tiskam) zaklepni();
     }
 
     private static boolean sprozilec(int k) {
@@ -264,9 +286,10 @@ public class Glavna extends Activity implements Bralnik.Poslusalec {
         try {
             JSONObject o = new JSONObject().put("tip", "epc").put("epc", new JSONArray(novi));
             ui.post(() -> {
+                if (isDestroyed()) return;
                 dogodek(o.toString());
                 long t = SystemClock.uptimeMillis();
-                if (ton != null && t - zadnjiPisk > 70) { zadnjiPisk = t; ton.startTone(ToneGenerator.TONE_PROP_BEEP, 40); }
+                if (ton != null && t - zadnjiPisk > 70) { zadnjiPisk = t; try { ton.startTone(ToneGenerator.TONE_PROP_BEEP, 40); } catch (Exception ignored) { } }
             });
         } catch (Exception ignored) { }
     }
@@ -293,11 +316,21 @@ public class Glavna extends Activity implements Bralnik.Poslusalec {
     }
 
     private void tiskaj(String html, String ime) {
-        WebView t = new WebView(this);
+        final String naslov = ime == null || ime.trim().isEmpty() ? "SmartClean" : ime;
+        if (tisk != null) { tisk.destroy(); tisk = null; }
+        final WebView t = new WebView(this);
+        tisk = t;
         t.setWebViewClient(new WebViewClient() {
+            private boolean poslano;   // onPageFinished lahko pride dvakrat: en dialog
             @Override public void onPageFinished(WebView v, String url) {
+                if (poslano || v != tisk) return;
+                poslano = true;
                 PrintManager pm = (PrintManager) getSystemService(Context.PRINT_SERVICE);
-                if (pm != null) pm.print(ime, v.createPrintDocumentAdapter(ime), new PrintAttributes.Builder().setMediaSize(PrintAttributes.MediaSize.ISO_A4).build());
+                if (pm == null) return;
+                try {
+                    tiskam = true;
+                    pm.print(naslov, v.createPrintDocumentAdapter(naslov), new PrintAttributes.Builder().setMediaSize(PrintAttributes.MediaSize.ISO_A4).build());
+                } catch (Exception e) { tiskam = false; Log.w("SmartCleanRFID", "tisk", e); }
             }
         });
         t.getSettings().setJavaScriptEnabled(false);
@@ -307,7 +340,7 @@ public class Glavna extends Activity implements Bralnik.Poslusalec {
     /** window.ScRfid — vse metode delujejo le, ko je odprt portal. */
     private class Most {
         @JavascriptInterface public String stanje() { return mostDovoljen() ? bralnik.stanjeJson() : "{}"; }
-        @JavascriptInterface public void izberi(String id) { if (mostDovoljen()) bralnik.izberi(id); }
+        @JavascriptInterface public void izberi(String id) { if (mostDovoljen() && ("vgrajen".equals(id) || "r1".equals(id) || "ur4".equals(id) || ("preizkus".equals(id) && Bralnik.EMULATOR))) bralnik.izberi(id); }
         @JavascriptInterface public void zacni() { if (mostDovoljen()) bralnik.zacni(); }
         @JavascriptInterface public void ustavi() { if (mostDovoljen()) bralnik.ustavi(); }
         @JavascriptInterface public void moc(int dbm) { if (mostDovoljen()) bralnik.nastaviMoc(dbm); }

@@ -43,8 +43,9 @@ class Bralnik {
         void moc(int dbm);
     }
 
-    static final boolean EMULATOR = Build.FINGERPRINT.contains("generic") || Build.HARDWARE.contains("ranchu")
-            || Build.PRODUCT.contains("sdk") || Build.MODEL.contains("sdk");
+    // le preizkusna gradnja: v objavi naprava z nenavadnim prstnim odtisom ne izgubi vgrajenega čitalca
+    static final boolean EMULATOR = Nastavitve.PREIZKUS && (Build.FINGERPRINT.contains("generic") || Build.HARDWARE.contains("ranchu")
+            || Build.PRODUCT.contains("sdk") || Build.MODEL.contains("sdk"));
     static final int MOC_MIN = 5, MOC_MAX = 30;
     // UR4 z zunanjo anteno 9 dBi: EU (ETSI EN 302 208) dovoli 2 W ERP → na izhodu bralnika največ 27 dBm
     static final int UR4_MOC_MAX = 27;
@@ -117,9 +118,19 @@ class Bralnik {
 
     void zacni() {
         izvedi(() -> {
-            if (akt == null || bere) return;
+            if (bere) return;
+            if (akt == null && !odpiram) odpriVrsto(izbran);   // ob zagonu ni uspelo ali ga je vzel drug program: odpri znova
+            if (akt == null) return;                          // odpriVrsto je že sporočil napako
             synchronized (seja) { seja.clear(); cakajo.clear(); }
-            try { bere = akt.zacni(); } catch (Throwable e) { bere = false; napaka = "Branje se ni začelo."; }
+            boolean ok;
+            try { ok = akt.zacni(); } catch (Throwable e) { ok = false; }
+            if (!ok) {   // modul ne odgovori (npr. drug program ga je vmes sprostil): zapri, odpri, poskusi še enkrat
+                zapriAkt();
+                odpriVrsto(izbran);
+                if (akt != null) { try { ok = akt.zacni(); } catch (Throwable e) { ok = false; } }
+            }
+            bere = ok;
+            if (!ok) { zapriAkt(); napaka = "Čitalec se ni odzval. Pritisni znova."; }   // naslednji pritisk ga odpre znova
             obvesti();
         });
     }
@@ -134,7 +145,7 @@ class Bralnik {
     }
 
     void zapri() { izvedi(this::zapriAkt); }
-    void konec() { izvedi(this::zapriAkt); nit.shutdown(); }
+    void konec() { ui.removeCallbacksAndMessages(null); izvedi(this::zapriAkt); nit.shutdown(); }
 
     private void izvedi(Runnable r) {
         try { nit.execute(r); } catch (java.util.concurrent.RejectedExecutionException ignored) { }   // po koncu aktivnosti
@@ -205,7 +216,7 @@ class Bralnik {
             case "ur4": return "UR4 ni dosegljiv.";
             case "r1": return "R1 ni priključen.";
             case "preizkus": return "";
-            default: return "Ta naprava nima vgrajenega čitalca.";
+            default: return "Vgrajenega čitalca ni bilo mogoče odpreti.";
         }
     }
 

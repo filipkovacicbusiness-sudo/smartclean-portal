@@ -19,6 +19,9 @@ self.addEventListener('fetch', function (e) {
   }
   e.respondWith(fetch(req, { cache: 'no-cache' }).then(function (r) {
     if (r.ok) { var c = r.clone(); caches.open(CACHE).then(function (k) { k.put(req, c); }).catch(function () {}); }
+    else if (req.mode === 'navigate' && r.status >= 500) {   // strežnik ne odgovarja pravilno: shranjena aplikacija, ne stran z napako
+      return caches.match('./index.html').then(function (h) { return h || r; });
+    }
     return r;
   }).catch(function () {
     return caches.match(req, { ignoreSearch: true }).then(function (h) { return h || caches.match('./index.html'); });

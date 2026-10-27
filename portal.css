@@ -515,7 +515,12 @@ html[data-view="grid"] .lcell .a-row .a-sel{left:auto;right:14px;top:12px;margin
 /* Vsaka postavka v ENI vrstici (predolgo ime → …), da so ločnice na enakih višinah. */
 .a-det li{font-size:var(--fs-14);height:34px;padding:0;display:flex;align-items:center;justify-content:space-between;gap:12px;
   color:var(--ink);border-bottom:1px solid var(--line);max-width:none;break-inside:avoid;-webkit-column-break-inside:avoid;white-space:nowrap;}
-.a-det li span{min-width:0;overflow-wrap:anywhere;}
+.a-det li span{min-width:0;overflow:hidden;text-overflow:ellipsis;}
+/* telefon: en stolpec, ime v več vrstic (prej je dolgo ime raztegnilo okno čez zaslon in porezalo količine) */
+@media(max-width:560px){
+  .a-det li{height:auto;min-height:34px;padding:6px 0;white-space:normal;}
+  .a-det li span{overflow:visible;text-overflow:clip;overflow-wrap:anywhere;}
+}
 .a-det li b{color:var(--ink);font-weight:700;font-variant-numeric:tabular-nums;flex:0 0 auto;}
 .a-row[aria-expanded="true"] .chev{transform:rotate(90deg);}
 
@@ -2754,6 +2759,21 @@ html[data-theme="dark"] .doc-stage{background:color-mix(in srgb,var(--ink) 6%,va
   .v5 #sec-prisotnost .pris-tbl-dan td.pris-pairs:empty{display:none;}
   .v5 #sec-prisotnost .pris-tbl-dan tfoot tr{grid-template-areas:"ime ure dod";border-top:2px solid var(--line);border-bottom:0;}
   .v5 #sec-prisotnost .pris-tbl-dan tfoot td:nth-child(2){display:none;}
+  /* Oseba (mesec ene osebe) enako kot dan: dan, ure in + v vrstici, prihodi/odhodi pod njimi — prej je bil čip širši od stolpca in je segel čez ure */
+  .v5 #sec-prisotnost .pris-tbl-oseba thead{display:none;}
+  .v5 #sec-prisotnost .pris-tbl-oseba,.v5 #sec-prisotnost .pris-tbl-oseba tbody,.v5 #sec-prisotnost .pris-tbl-oseba tfoot{display:block;width:100%;}
+  .v5 #sec-prisotnost .pris-tbl-oseba tr{display:grid;grid-template-columns:minmax(0,1fr) auto auto;grid-template-areas:"dan ure dod" "par par par";align-items:center;column-gap:10px;
+    padding:8px 8px;border-bottom:1px solid var(--line);}
+  .v5 #sec-prisotnost .pris-tbl-oseba tbody tr:last-child{border-bottom:0;}
+  .v5 #sec-prisotnost .pris-tbl-oseba td{display:block;width:auto!important;height:auto;padding:0;border:0;background:none;}
+  .v5 #sec-prisotnost .pris-tbl-oseba tr.pris-vikend{background:var(--green-m);}
+  .v5 #sec-prisotnost .pris-tbl-oseba td:nth-child(1){grid-area:dan;}
+  .v5 #sec-prisotnost .pris-tbl-oseba td.pris-pairs{grid-area:par;padding-top:2px;}
+  .v5 #sec-prisotnost .pris-tbl-oseba td.pris-pairs:empty,.v5 #sec-prisotnost .pris-tbl-oseba td.pris-pairs:has(> .u-sub:only-child){display:none;}
+  .v5 #sec-prisotnost .pris-tbl-oseba td.pris-ure{grid-area:ure;text-align:right;white-space:nowrap;}
+  .v5 #sec-prisotnost .pris-tbl-oseba td.pris-act{grid-area:dod;}
+  .v5 #sec-prisotnost .pris-tbl-oseba tfoot tr{grid-template-areas:"dan ure dod";border-top:2px solid var(--line);border-bottom:0;}
+  .v5 #sec-prisotnost .pris-tbl-oseba tfoot td:nth-child(2){display:none;}
   .v5 #sec-arhiv .filtri .cs[data-za="arhivOrg"]{flex:1 1 auto;}
   .v5 #sec-arhiv .filtri .cs[data-za="arhivSort"]{flex:none;}
 }
@@ -3394,6 +3414,42 @@ html.sc-tema-anim *,html.sc-tema-anim *::before,html.sc-tema-anim *::after{trans
 .v5 .rf-list span:nth-child(2){overflow-wrap:anywhere;}
 .v5 .rf-list .u-sub{white-space:nowrap;}
 .v5 .rf-rezultat .u-acts button svg{width:16px;height:16px;margin-right:6px;vertical-align:-3px;}
+/* ── Čipi 4.77: že oddano, pregled pred potrditvijo, uspeh (portal in aplikacija RFID) ── */
+.v5 .rf-stevec b{display:inline-block;transform-origin:left 70%;}
+.v5 .rf-stevec b.rf-bump{animation:rfBump .22s ease;}
+@keyframes rfBump{0%{transform:scale(1)}40%{transform:scale(1.05)}100%{transform:scale(1)}}
+.v5 .rf-str.opoz{border-color:color-mix(in srgb,var(--st-warn) 50%,var(--line));background:color-mix(in srgb,var(--st-warn) 6%,var(--surface));}
+.v5 .rf-str-ze{display:flex;align-items:center;gap:8px;margin:6px 0 2px;font-size:var(--fs-13);font-weight:600;color:var(--st-warn-ink);}
+.v5 .rf-str-ze::before{content:"";flex:0 0 auto;width:7px;height:7px;border-radius:50%;background:var(--st-warn);}
+.v5 .rf-akc button:disabled:not(.nalaga){opacity:.38;cursor:default;}
+@media(max-width:359px){ .v5 .rf-akc .rf-akc-dod{display:none;} }   /* najožji: »Potrdi«, število listov pove okno potrditve */
+.v5 .rf-okno-p{max-width:440px;}
+.v5 .rf-pv{display:flex;flex-direction:column;margin:10px 0 18px;border-top:1px solid var(--line);}
+.v5 .rf-pv-v{display:flex;align-items:center;gap:12px;min-height:50px;padding:8px 2px;border-bottom:1px solid var(--line);}
+.v5 .rf-pv-t{display:flex;flex-direction:column;gap:2px;flex:1 1 auto;min-width:0;}
+.v5 .rf-pv-ime{font-size:var(--fs-15);font-weight:500;overflow-wrap:anywhere;}
+.v5 .rf-pv-op{font-size:var(--fs-13);color:var(--mid);overflow-wrap:anywhere;}
+.v5 .rf-pv-v > b{flex:0 0 auto;font-size:var(--fs-18);font-weight:600;font-variant-numeric:tabular-nums;}
+.v5 .rf-pv-v.opoz .rf-pv-op{color:var(--st-warn-ink);font-weight:600;}
+.v5 .rf-pv-v.opoz > b{color:var(--st-warn);}
+.v5 .rf-pv-v.tiho{opacity:.65;}
+.v5 .rf-okno-p .sc-modal-acts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+.v5 .rf-okno-p .sc-modal-acts .sc-modal-btn{width:100%;padding:0 12px;}
+.v5 .rf-okno-p .sc-modal-acts:has(> :nth-child(3)) .sc-modal-btn.primary{grid-column:1 / -1;order:-1;}
+.v5 .rf-uspeh{display:flex;align-items:center;gap:12px;margin:0 0 10px;}
+.v5 .rf-uspeh .sec-h{margin:0;}
+.v5 .rf-uspeh-i{flex:0 0 auto;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--st-ok);color:#fff;animation:rfUspeh .38s cubic-bezier(.2,.9,.3,1.3) both;}
+.v5 .rf-uspeh-i svg{width:20px;height:20px;}
+.v5 .rf-rezultat.ze .rf-uspeh-i{background:var(--st-warn);}
+@keyframes rfUspeh{0%{transform:scale(.4);opacity:0}100%{transform:none;opacity:1}}
+.v5 .rf-rez-akc{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;margin-top:18px;}
+.v5 .rf-rez-akc button{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:52px;margin:0;padding:0 20px;border:1px solid var(--line-strong);border-radius:var(--r-full);
+  background:var(--surface);color:var(--ink);font:inherit;font-size:var(--fs-15);font-weight:600;cursor:pointer;touch-action:manipulation;}
+.v5 .rf-rez-akc .ur-save{background:var(--ink);border-color:var(--ink);color:var(--bg);}
+.v5 .rf-rez-akc svg{width:18px;height:18px;}
+.v5 .rf-rez-akc button:disabled{opacity:.6;}
+@media(min-width:561px){ .v5 .rf-rez-akc{grid-template-columns:auto auto;justify-content:end;} .v5 .rf-rez-akc:has(> :nth-child(3)){grid-template-columns:auto auto auto;} .v5 .rf-rez-akc button{width:auto;} .v5 .rf-rez-akc .ur-save{order:2;} }
+@media(prefers-reduced-motion:reduce){ .v5 .rf-stevec b.rf-bump,.v5 .rf-uspeh-i{animation:none;} }
 .v5 .str-rfid{margin:18px 0 0;padding:16px 0 0;border-top:1px solid var(--line);}
 .v5 .str-rfid:empty{display:none;}
 .v5 .str-rfid-h{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:0 0 8px;}
@@ -3420,7 +3476,7 @@ html:has(.pov-trak.show){--pov-h:44px;}
 .pov-trak.show{height:var(--pov-h);opacity:1;border-top-width:1px;}
 .pov-trak[data-st="spet"]{background:color-mix(in srgb,var(--st-ok) 14%,var(--bg));border-top-color:color-mix(in srgb,var(--st-ok) 30%,var(--line));}
 .pov-pika{flex:0 0 auto;width:8px;height:8px;border-radius:50%;background:var(--st-warn);}
-.pov-trak[data-st="povezujem"] .pov-pika{animation:nalagaPulz .7s ease-in-out infinite alternate;}
+.pov-trak:is([data-st="povezujem"],[data-st="pocasi"]) .pov-pika{animation:nalagaPulz .7s ease-in-out infinite alternate;}
 .pov-trak[data-st="spet"] .pov-pika{background:var(--st-ok);}
 .pov-t{font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;}
 .pov-zdaj{appearance:none;-webkit-appearance:none;flex:0 0 auto;margin:0;padding:6px;border:0;background:none;color:var(--ink);font:inherit;font-weight:600;text-decoration:underline;text-underline-offset:3px;cursor:pointer;}
