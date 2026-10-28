@@ -2826,6 +2826,7 @@ html.v5 .okno .a-det .a-det-pad > ul:has(> li:nth-child(7)){columns:2;column-gap
 /* ── Obvestilo z dejanjem (Natisni, Razveljavi); širina po vsebini, ne polovica zaslona ── */
 .v5 .sc-toast{width:max-content;max-width:calc(100vw - 32px);}
 .v5 .sc-toast.z-akcijo{display:flex;align-items:center;gap:14px;padding-right:8px;pointer-events:auto;}
+.sc-toast:not(.show),.v5 .sc-toast.z-akcijo:not(.show){pointer-events:none!important;}   /* skrit (tudi med izginjanjem) ne lovi dotikov */
 .v5 .sc-toast-akc{height:32px;padding:0 14px;border:0;border-radius:var(--r-full);background:rgba(255,255,255,.16);color:inherit;font:500 var(--fs-14)/1 var(--sans);cursor:pointer;white-space:nowrap;}
 .v5 .sc-toast-akc:hover{background:rgba(255,255,255,.26);}
 .v5[data-theme="dark"] .sc-toast-akc{background:rgba(0,0,0,.08);}
@@ -3470,9 +3471,10 @@ html.sc-tema-anim *,html.sc-tema-anim *::before,html.sc-tema-anim *::after{trans
 .pov-trak{display:flex;align-items:center;justify-content:center;gap:10px;height:0;overflow:hidden;opacity:0;padding:0 16px;white-space:nowrap;
   background:color-mix(in srgb,var(--st-warn) 14%,var(--bg));color:var(--ink);font-size:var(--fs-14);font-weight:500;
   border-top:0 solid color-mix(in srgb,var(--st-warn) 30%,var(--line));transition:height .25s ease,opacity .2s ease,background-color .3s ease;}
-/* stalna višina (--pov-h): vsebina, meni in stranska vrstica se premaknejo za točno toliko */
+/* stalna višina (--pov-h): vsebina, meni in stranska vrstica se premaknejo za točno toliko.
+   Razred pov-vidno na <html> postavi skript (povRisi) — :has() starejši WebView (C72) ne pozna. */
 html{--pov-h:0px;}
-html:has(.pov-trak.show){--pov-h:44px;}
+html.pov-vidno{--pov-h:44px;}
 .pov-trak.show{height:var(--pov-h);opacity:1;border-top-width:1px;}
 .pov-trak[data-st="spet"]{background:color-mix(in srgb,var(--st-ok) 14%,var(--bg));border-top-color:color-mix(in srgb,var(--st-ok) 30%,var(--line));}
 .pov-pika{flex:0 0 auto;width:8px;height:8px;border-radius:50%;background:var(--st-warn);}
@@ -3482,18 +3484,20 @@ html:has(.pov-trak.show){--pov-h:44px;}
 .pov-zdaj{appearance:none;-webkit-appearance:none;flex:0 0 auto;margin:0;padding:6px;border:0;background:none;color:var(--ink);font:inherit;font-weight:600;text-decoration:underline;text-underline-offset:3px;cursor:pointer;}
 .pov-zdaj[hidden]{display:none;}
 @media(max-width:359px){ .pov-trak{gap:6px;padding:0 10px;font-size:var(--fs-13);} }
-html:has(.pov-trak.show) .side{top:calc(65px + var(--pov-h));}
-html:has(.pov-trak.show) .scrim{top:calc(64px + var(--pov-h) + env(safe-area-inset-top));}
+html.pov-vidno .side{top:calc(65px + var(--pov-h));}
+html.pov-vidno .scrim{top:calc(64px + var(--pov-h) + env(safe-area-inset-top));}
 @media(max-width:900px){
-  html:has(.pov-trak.show) .side{top:calc(64px + var(--pov-h) + env(safe-area-inset-top));}
-  /* glava prijave ima na telefonu stalno višino — trak mora biti POD njo, ne čez »Kdo dela?« */
-  .auth-top:has(.pov-trak){height:auto;}
-  .auth-top:has(.pov-trak) > .topbar-in{height:58px;}
+  html.pov-vidno .side{top:calc(64px + var(--pov-h) + env(safe-area-inset-top));}
+  /* glava prijave ima na telefonu stalno višino — trak mora biti POD njo, ne čez »Kdo dela?« (z-pov: glava s trakom) */
+  .auth-top.z-pov{height:auto;}
+  .auth-top.z-pov > .topbar-in{height:58px;}
+  html.pov-vidno .pg-mini{top:calc(64px + var(--pov-h) + env(safe-area-inset-top));}
 }
+@media(max-width:560px){ html.pov-vidno .notif-panel{top:calc(64px + var(--pov-h) + env(safe-area-inset-top) + 6px);} }
 /* telefon/tablica: vrstica na vrhu je pritrjena (fixed, glej #sc-vrh) — vsebina se umakne še za trak */
 @media (hover:none) and (pointer:coarse){
   .app.show{transition:padding-top .25s ease;}
-  html:has(.pov-trak.show) .app.show{padding-top:calc(65px + var(--pov-h) + env(safe-area-inset-top));}
+  html.pov-vidno .app.show{padding-top:calc(65px + var(--pov-h) + env(safe-area-inset-top));}
 }
 
 /* ══════════ ZMOGLJIVOST (4.78) — Nastavitve → Zmogljivost (na tej napravi) ══════════ */

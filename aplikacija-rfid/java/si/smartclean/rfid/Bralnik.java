@@ -5,6 +5,7 @@ import android.content.SharedPreferences;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 
 import com.rscja.deviceapi.RFIDWithUHFUART;
 import com.rscja.deviceapi.RFIDWithUHFUSB;
@@ -22,6 +23,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Čitalci Chainway za portal: vgrajen (C72, sprožilec), R1 (USB), UR4 (omrežje, do 4 antene).
@@ -63,6 +65,9 @@ class Bralnik {
     private volatile int moc;
     private volatile String ur4;
     private Vmesnik akt;
+    private final AtomicBoolean zacetekVVrsti = new AtomicBoolean();   // en začetek naenkrat: pritiski med počasnim odpiranjem se ne nalagajo
+    private volatile long zadnjiNeuspeh;                              // zadnje neuspešno odpiranje (ponovno samo po premoru)
+    private RFIDWithUHFUrxNetwork ur4R;                                // en objekt UR4: vsak nov pusti v SDK dve niti
 
     private final LinkedHashSet<String> seja = new LinkedHashSet<>();
     private final List<String> cakajo = new ArrayList<>();
@@ -116,22 +121,35 @@ class Bralnik {
         });
     }
 
+    // Začetek branja. Vgrajen čitalec se sam znova odpre (ob zagonu ni uspelo ali ga je vzel drug program),
+    // a največ enkrat na pritisk in ne prej kot 3 s po neuspehu; R1 in UR4 le z »Poveži« (njuno odpiranje traja sekunde).
     void zacni() {
+        if (!zacetekVVrsti.compareAndSet(false, true)) return;
         izvedi(() -> {
-            if (bere) return;
-            if (akt == null && !odpiram) odpriVrsto(izbran);   // ob zagonu ni uspelo ali ga je vzel drug program: odpri znova
-            if (akt == null) return;                          // odpriVrsto je že sporočil napako
-            synchronized (seja) { seja.clear(); cakajo.clear(); }
-            boolean ok;
-            try { ok = akt.zacni(); } catch (Throwable e) { ok = false; }
-            if (!ok) {   // modul ne odgovori (npr. drug program ga je vmes sprostil): zapri, odpri, poskusi še enkrat
-                zapriAkt();
-                odpriVrsto(izbran);
-                if (akt != null) { try { ok = akt.zacni(); } catch (Throwable e) { ok = false; } }
-            }
-            bere = ok;
-            if (!ok) { zapriAkt(); napaka = "Čitalec se ni odzval. Pritisni znova."; }   // naslednji pritisk ga odpre znova
-            obvesti();
+            try {
+                if (bere) return;
+                boolean vgrajen = "vgrajen".equals(izbran);
+                boolean smeOdpreti = vgrajen && SystemClock.uptimeMillis() - zadnjiNeuspeh > 3000;
+                if (akt == null && !odpiram && smeOdpreti) odpriVrsto(izbran);
+                if (akt == null) { if (!vgrajen || !smeOdpreti) obvesti(); return; }   // napako je že sporočil odpriVrsto
+                synchronized (seja) { seja.clear(); cakajo.clear(); }
+                boolean ok;
+                try { ok = akt.zacni(); } catch (Throwable e) { ok = false; }
+                if (!ok && vgrajen) {   // modul ne odgovori (npr. drug program ga je vmes sprostil): zapri, odpri, poskusi še enkrat
+                    zapriAkt();
+                    napaka = "";
+                    odpriVrsto(izbran);
+                    if (akt != null) { try { ok = akt.zacni(); } catch (Throwable e) { ok = false; } }
+                }
+                bere = ok;
+                if (!ok) {
+                    boolean bilOdprt = akt != null;
+                    zapriAkt();
+                    zadnjiNeuspeh = SystemClock.uptimeMillis();
+                    if (bilOdprt || napaka.isEmpty()) napaka = "Čitalec se ni odzval. Pritisni znova.";   // natančnejšo napako odpiranja ohrani
+                }
+                obvesti();
+            } finally { zacetekVVrsti.set(false); }
         });
     }
 
@@ -273,7 +291,8 @@ class Bralnik {
                     gostitelj = n.substring(0, dv);
                     try { vrata = Integer.parseInt(n.substring(dv + 1)); } catch (NumberFormatException e) { napaka = "Neveljaven naslov UR4."; return false; }
                 }
-                r = new RFIDWithUHFUrxNetwork();
+                if (ur4R == null) ur4R = new RFIDWithUHFUrxNetwork();
+                r = ur4R;
                 if (!r.init(gostitelj, vrata)) return false;
                 antene();
                 moc(moc);

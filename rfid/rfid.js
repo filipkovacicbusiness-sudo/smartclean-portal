@@ -20,13 +20,15 @@
      Ob vrnitvi za trenutek pozeleni, živi kanal se znova poveže, čipi se osvežijo.
      »Počasna povezava«: zahteva visi več kot 6 s ali živi kanal ne odgovori na utrip → izmeri majhno
      zahtevo; traja več kot 2,5 s → trak (počasna poizvedba na hitri povezavi ga ne prižge). */
-  var POV = { stanje: 'ok', cakaj: 2000, ura: null, tik: null, do: 0, el: null, merim: false, pocasiUra: null };
+  var POV = { stanje: 'ok', cakaj: 2000, ura: null, tik: null, do: 0, el: null, merim: false, pocasiUra: null, vidno: 0 };
   var _izvFetch = window.fetch.bind(window);
   function povFetch(vir, opt) {
     var visi = setTimeout(povMeri, 6000);
     return _izvFetch(vir, opt).then(function (r) { clearTimeout(visi); if (POV.stanje === 'ni' || POV.stanje === 'povezujem') povNazaj(); return r; },
-      function (e) { clearTimeout(visi); if (!(e && e.name === 'AbortError')) povIzpad(); throw e; });
+      function (e) { clearTimeout(visi); if (!(e && e.name === 'AbortError')) povNapaka(); throw e; });
   }
+  // ena spodletela zahteva še ni izpad (iOS jo ob vrnitvi v aplikacijo rad zavrne, branje se samo ponovi): najprej izmeri
+  function povNapaka() { if (navigator.onLine === false) povIzpad(); else povMeri(); }
   async function povMeri() {
     if (POV.merim || (POV.stanje !== 'ok' && POV.stanje !== 'pocasi')) return;
     POV.merim = true;
@@ -41,7 +43,10 @@
     clearTimeout(POV.pocasiUra);
     POV.pocasiUra = setTimeout(function () { if (POV.stanje === 'pocasi') { POV.stanje = 'ok'; povRisi(); } }, 20000);
   }
-  function povUtrip(st, ms) { if (st === 'timeout') povMeri(); else if (st === 'ok' && ms > 4000) povPocasi(); }
+  function povUtrip(st, ms) {   // čas utripa teče od pošiljanja: čas v ozadju ali zamrznjene strani ne šteje
+    if (document.hidden || Date.now() - POV.vidno < (ms || 0) + 1000) return;
+    if (st === 'timeout' || (st === 'ok' && ms > 4000)) povMeri();
+  }
   function povTrak() {
     if (!POV.el) {
       POV.el = document.createElement('div'); POV.el.className = 'pov-trak'; POV.el.setAttribute('role', 'status'); POV.el.setAttribute('aria-live', 'polite');
@@ -49,12 +54,16 @@
       POV.el.querySelector('.pov-zdaj').addEventListener('click', function () { povPoskus(); });
     }
     var glava = [document.querySelector('#app .topbar'), document.querySelector('#auth .auth-top')].filter(function (h) { return h && h.getClientRects().length > 0; })[0];   // offsetParent je pri pritrjeni (fixed) vrstici vedno null
-    if (glava && POV.el.parentNode !== glava) glava.appendChild(POV.el);
+    if (glava && POV.el.parentNode !== glava) {
+      if (POV.el.parentNode) POV.el.parentNode.classList.remove('z-pov');
+      glava.appendChild(POV.el); glava.classList.add('z-pov');
+    }
     return POV.el;
   }
   function povRisi() {
     var el = povTrak(), t = el.querySelector('.pov-t'), z = el.querySelector('.pov-zdaj');
     el.dataset.st = POV.stanje;
+    document.documentElement.classList.toggle('pov-vidno', POV.stanje !== 'ok');
     if (POV.stanje === 'ok') { el.classList.remove('show'); return; }
     el.classList.add('show');
     if (POV.stanje === 'spet') { t.textContent = 'Spet povezano'; z.hidden = true; }
@@ -83,7 +92,9 @@
     if (POV.stanje === 'ok' || POV.stanje === 'spet') return;
     clearTimeout(POV.ura); clearInterval(POV.tik);
     POV.stanje = 'povezujem'; povRisi();
-    if (await povPreveri()) { povNazaj(); return; }
+    var ok = await povPreveri();
+    if (POV.stanje !== 'povezujem') return;   // vmes je uspela druga zahteva (trak je že »Spet povezano«)
+    if (ok) { povNazaj(); return; }
     POV.stanje = 'ni'; POV.cakaj = Math.min(30000, POV.cakaj * 2); povNacrtuj();
   }
   function povNazaj() {
@@ -96,7 +107,8 @@
   }
   window.addEventListener('offline', povIzpad);
   window.addEventListener('online', function () { if (POV.stanje === 'ni') povPoskus(); });
-  document.addEventListener('visibilitychange', function () { if (!document.hidden && navigator.onLine === false) povIzpad(); });
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) { POV.vidno = Date.now(); if (navigator.onLine === false) povIzpad(); } });
+  document.addEventListener('resume', function () { POV.vidno = Date.now(); });   // zamrznjena stran (Chrome) se je zbudila
   if (navigator.onLine === false) setTimeout(povIzpad, 0);
 
   try {
@@ -127,7 +139,14 @@
     var d = String(ime || '').trim().split(/\s+/).filter(Boolean);
     return ((d[0] || '?').charAt(0) + (d.length > 1 ? d[d.length - 1].charAt(0) : '')).toUpperCase();
   }
-  function jeOmrezna(e) { return /fetch|network|load failed|timeout|ni povezave/i.test(String((e && (e.message || e.name)) || e || '')); }
+  function jeOmrezna(e) { return /fetch|network|load failed|timeout|ni povezave|aborterror/i.test(String((e && (e.message || e.name)) || e || '')); }
+  // klic z rokom: brez odgovora v 30 s se prekine (sicer gumb ostane v nalaganju, dokler povezava ne odneha sama)
+  function zRokom(q, ms) {
+    var ctl = new AbortController(), t = null;
+    if (q && typeof q.abortSignal === 'function') q = q.abortSignal(ctl.signal);
+    var rok = new Promise(function (r) { t = setTimeout(function () { ctl.abort(); r({ data: null, error: { message: 'AbortError: ni odgovora v ' + Math.round((ms || 30000) / 1000) + ' s', code: '' } }); }, ms || 30000); });
+    return Promise.race([Promise.resolve(q), rok]).then(function (r) { clearTimeout(t); return r; }, function (e) { clearTimeout(t); throw e; });
+  }
   function napakaBesedilo(e) {
     var m = String((e && (e.message || e.error_description || e.details)) || e || '').trim(), k = String((e && e.code) || '');
     if (jeOmrezna(m)) return 'Ni povezave z internetom.';
@@ -140,14 +159,24 @@
   function toast(t, akcija) {
     if (!_toast) { _toast = document.createElement('div'); _toast.className = 'sc-toast'; _toast.setAttribute('role', 'status'); _toast.setAttribute('aria-live', 'polite'); document.body.appendChild(_toast); }
     _toast.textContent = t;
+    _toast._n = (_toast._n || 0) + 1;
     _toast.classList.toggle('z-akcijo', !!akcija);
     if (akcija) {
       var b = document.createElement('button'); b.type = 'button'; b.className = 'sc-toast-akc'; b.textContent = akcija.besedilo;
-      b.addEventListener('click', function () { _toast.classList.remove('show'); try { akcija.ob(); } catch (e) {} });
+      b.addEventListener('click', function () { toastSkrij(); try { akcija.ob(); } catch (e) {} });
       _toast.appendChild(b);
     }
+    // nad vrstico z gumbi (Potrdi), kjerkoli je — pri kratkem seznamu je sredi zaslona, ne na dnu
+    var akc = document.getElementById('rfAkc'), r = akc && !$('app').hidden ? akc.getBoundingClientRect() : null;
+    _toast.style.bottom = r && r.height && r.top < innerHeight ? Math.max(24, innerHeight - r.top + 12) + 'px' : '';
     requestAnimationFrame(function () { _toast.classList.add('show'); });
-    clearTimeout(_toastUra); _toastUra = setTimeout(function () { _toast.classList.remove('show'); }, akcija ? 6000 : 3200);
+    clearTimeout(_toastUra); _toastUra = setTimeout(toastSkrij, akcija ? 6000 : 3200);
+  }
+  // po izginotju brez gumba: skrit »Razveljavi« ne sme ostati pod prstom (bil je čez Potrdi)
+  function toastSkrij() {
+    if (!_toast) return;
+    var n = _toast._n; _toast.classList.remove('show');
+    setTimeout(function () { if (_toast._n !== n || _toast.classList.contains('show')) return; _toast.classList.remove('z-akcijo'); var b = _toast.querySelector('.sc-toast-akc'); if (b) b.remove(); }, 260);
   }
   function modal(opts, vnos) {
     return new Promise(function (resolve) {
@@ -161,14 +190,18 @@
       back.querySelector('[data-yes]').textContent = opts.potrdi || 'Potrdi';
       document.body.appendChild(back);
       requestAnimationFrame(function () { back.classList.add('show'); });
-      var done = false;
+      var done = false, t0 = Date.now();
+      function zgodaj() { return Date.now() - t0 < 350; }   // drugi dotik dvojnega pritiska, ki je okno odprl
       function zapri(v) { if (done) return; done = true; back.classList.remove('show'); document.removeEventListener('keydown', tipka); setTimeout(function () { back.remove(); }, 180); resolve(v); }
-      function tipka(e) { if (e.key === 'Escape') zapri(vnos ? null : false); else if (e.key === 'Enter' && !RF_MOST) { e.preventDefault(); zapri(vnos ? inp.value : true); } }
-      back.querySelector('[data-no]').addEventListener('click', function () { zapri(vnos ? null : false); });
-      back.querySelector('[data-yes]').addEventListener('click', function () { zapri(vnos ? inp.value : true); });
-      back.addEventListener('click', function (e) { if (e.target === back) zapri(vnos ? null : false); });
+      function tipka(e) {
+        if (e.key === 'Escape') zapri(vnos ? null : false);
+        else if (e.key === 'Enter') { e.preventDefault(); if (!RF_MOST) zapri(vnos ? inp.value : true); }   // C72: Enter tipka čitalec (Keyboard Emulator), ne oseba
+      }
+      back.querySelector('[data-no]').addEventListener('click', function () { if (!zgodaj()) zapri(vnos ? null : false); });
+      back.querySelector('[data-yes]').addEventListener('click', function () { if (!zgodaj()) zapri(vnos ? inp.value : true); });
+      back.addEventListener('click', function (e) { if (e.target === back && !zgodaj()) zapri(vnos ? null : false); });
       document.addEventListener('keydown', tipka);
-      setTimeout(function () { if (inp) { inp.focus(); inp.select(); } else back.querySelector('[data-yes]').focus(); }, 60);
+      setTimeout(function () { if (inp) { inp.focus(); inp.select(); } else if (!RF_MOST) back.querySelector('[data-yes]').focus(); }, 60);
     });
   }
   /* ══════════ ZVOK ══════════
@@ -199,10 +232,14 @@
 
   /* ══════════ VARČNI PRIKAZ ══════════
      Kot portal (Nastavitve → Zmogljivost): brez animacij in zameglitve (portal.css: zm-brez-anim, zm-brez-stekla).
-     Brez izbire je vklopljen na šibki napravi (varčevanje s podatki, manj gibanja, ≤ 2 GB pomnilnika ali ≤ 2 jedri). */
+     Brez izbire je vklopljen na šibki napravi (kot portal: ≤ 1 GB, 2–3 GB s ≤ 4 jedri ali ≤ 2 jedri), ob varčevanju s
+     podatki in želji po manj gibanja. C72 (8 jeder, 3 GB → Chrome javi 2) ni šibka naprava. */
   function rfaVarcno() {
     var v = LS.beri('sc-rfa-varcno', null); if (v === true || v === false) return v;
-    try { return !!((navigator.connection && navigator.connection.saveData) || (navigator.deviceMemory && navigator.deviceMemory <= 2) || (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 2) || matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) { return false; }
+    try {
+      var mem = navigator.deviceMemory, jed = navigator.hardwareConcurrency;
+      return !!((navigator.connection && navigator.connection.saveData) || (mem && mem < 2) || (mem && mem <= 2 && jed && jed <= 4) || (jed && jed <= 2) || matchMedia('(prefers-reduced-motion: reduce)').matches);
+    } catch (e) { return false; }
   }
   function rfaVarcnoUporabi() { var v = rfaVarcno(), de = document.documentElement; de.classList.toggle('zm-brez-anim', v); de.classList.toggle('zm-brez-stekla', v); }
   rfaVarcnoUporabi();
@@ -239,6 +276,7 @@
     $('osebe').classList.toggle('hidden', kaj !== 'osebe');
     $('prijava').classList.toggle('hidden', kaj !== 'prijava');
     if (kaj !== 'app') { zapriMeni(); rfMostKlic('ustavi'); }
+    if (POV.stanje !== 'ok') povRisi();   // trak gre v glavo, ki je zdaj vidna
   }
   function risiOsebe(msg) {
     pokazi('osebe');
@@ -250,7 +288,7 @@
     $('osebeMsg').textContent = msg || '';
     m.querySelectorAll('[data-uid]').forEach(function (b) { b.addEventListener('click', function () { var o = oseba(b.dataset.uid); if (o) izberi(o); }); });
     m.querySelectorAll('[data-odstrani]').forEach(function (b) { b.addEventListener('click', function () { odstraniOsebo(b.dataset.odstrani); }); });
-    $('osebaNova').addEventListener('click', function () { prijavaPokazi(); });
+    $('osebaNova').addEventListener('click', function () { VSTOP++; prijavaPokazi(); });
   }
   async function odstraniOsebo(uid) {
     var o = oseba(uid); if (!o) return;
@@ -267,7 +305,9 @@
     $('nazajOsebe').hidden = !OSEBE.length;
     setTimeout(function () { (email ? $('geslo') : $('email')).focus(); }, 60);
   }
-  async function podatki() { var r = await sb.rpc('rfid_podatki'); if (r.error) throw r.error; return r.data || {}; }
+  async function podatki() { var r = await zRokom(sb.rpc('rfid_podatki')); if (r.error) throw r.error; return r.data || {}; }
+  // vstop (zagon, prijava, menjava osebe): le zadnji začeti sme odpreti aplikacijo — počasen zagon ne prepiše izbrane osebe
+  var VSTOP = 0;
   async function pinHash(uid) {
     try { var r = await sb.from('app_pini').select('hash').eq('user_id', uid).maybeSingle(); if (r.error) return null; return (r.data && r.data.hash) ? String(r.data.hash) : ''; } catch (e) { return null; }
   }
@@ -276,6 +316,7 @@
     var em = $('email').value.trim(), pw = $('geslo').value, btn = $('prijavaBtn'), m = $('prijavaMsg');
     if (!em || !pw) { m.textContent = 'Vpiši e-poštni naslov in geslo.'; return; }
     if (!sb) { m.textContent = 'Ni povezave z internetom.'; return; }
+    var g = ++VSTOP;
     btn.disabled = true; btn.textContent = 'Prijavljam …'; m.textContent = '';
     try {
       var r = await sb.auth.signInWithPassword({ email: em, password: pw });
@@ -286,17 +327,19 @@
       var o = { uid: s.user.id, email: s.user.email || em, ime: p.ime || em, refresh: s.refresh_token, pin: (await pinHash(s.user.id)) || '', napake: 0 };
       OSEBE = OSEBE.filter(function (x) { return x.uid !== o.uid; }); OSEBE.push(o); shraniOsebe();
       $('geslo').value = '';
-      vstopi(o, p);
+      if (g === VSTOP) vstopi(o, p);
     } catch (er) {
       m.textContent = /invalid login|invalid_grant|credentials/i.test((er && er.message) || '') ? 'Napačen e-poštni naslov ali geslo.' : napakaBesedilo(er);
     } finally { btn.disabled = false; btn.textContent = 'Prijavi se'; }
   }
   function izberi(o) {
+    VSTOP++;
     if (o.pin) pinVnos(o, function () { preklopi(o); });
     else prijavaPokazi('', o.email);   // brez PIN-a v portalu: geslo, sicer bi lahko kdorkoli vstopil kot ta oseba
   }
   async function preklopi(o) {
     $('osebeMsg').textContent = '';
+    var g = ++VSTOP;
     try {
       var s = (await sb.auth.getSession()).data.session;
       if (!s || s.user.id !== o.uid) {
@@ -304,9 +347,11 @@
         if (r.error || !r.data || !r.data.session) throw (r.error || new Error('seja'));
       }
       var p = await podatki();
+      if (g !== VSTOP) return;
       vstopi(o, p);
       pinHash(o.uid).then(function (h) { if (h != null && h !== (o.pin || '')) { o.pin = h; shraniOsebe(); } });
     } catch (e) {
+      if (g !== VSTOP) return;
       if (e && e.code === '42501') { risiOsebe(NI_DOSTOPA); return; }
       if (jeOmrezna(e)) { risiOsebe('Ni povezave z internetom.'); return; }
       prijavaPokazi('Prijava je potekla.', o.email);
@@ -317,6 +362,7 @@
     if (p.ime && p.ime !== o.ime) { o.ime = p.ime; shraniOsebe(); }
     STRANKE = Array.isArray(p.stranke) ? p.stranke : []; IME = {};
     STRANKE.forEach(function (s) { IME[s.id] = s.ime; });
+    rfOznaciVelja();
     if (RF.org && !IME[RF.org]) { RF.org = null; RF.art = ''; }
     LS.pisi('sc-rfid-zadnji', o.uid);
     $('jazIme').textContent = JAZ.ime; $('jazAv').textContent = zacetnice(JAZ.ime);
@@ -328,11 +374,12 @@
   function rfBrezDostopa() { if (!JAZ) return; JAZ = null; LS.pisi('sc-rfid-zadnji', null); risiOsebe(NI_DOSTOPA); }
   async function rfPreveriDostop() {
     if (!JAZ || !sb || $('app').hidden) return;
+    var uid = JAZ.uid;
     try {
-      var p = await podatki(); if (!JAZ) return;
+      var p = await podatki(); if (!JAZ || JAZ.uid !== uid) return;   // vmes druga oseba
       JAZ.skrbnik = !!p.skrbnik;
       if (Array.isArray(p.stranke) && p.stranke.length) { STRANKE = p.stranke; IME = {}; STRANKE.forEach(function (s) { IME[s.id] = s.ime; }); }
-    } catch (e) { if (e && e.code === '42501') rfBrezDostopa(); }
+    } catch (e) { if (e && e.code === '42501' && JAZ && JAZ.uid === uid) rfBrezDostopa(); }
   }
   setInterval(rfPreveriDostop, 10 * 60000);
 
@@ -400,10 +447,10 @@
       if (buf.length === PIN_DOLZ) setTimeout(preveri, 90);
     }
     function tipkovnica(e) {
-      if (RF_MOST) return;
+      if (e.key === 'Escape') { e.preventDefault(); pritisni('nazaj'); return; }   // tudi tipka Nazaj na C72
+      if (RF_MOST) return;   // števke na C72 lahko tipka čitalec (Keyboard Emulator): PIN le z zaslona
       if (/^[0-9]$/.test(e.key)) { e.preventDefault(); pritisni(e.key); }
       else if (e.key === 'Backspace') { e.preventDefault(); pritisni('brisi'); }
-      else if (e.key === 'Escape') { e.preventDefault(); pritisni('nazaj'); }
     }
     el.querySelectorAll('[data-t]').forEach(function (b) { b.addEventListener('click', function () { pritisni(b.dataset.t); }); });
     document.addEventListener('keydown', tipkovnica, true);
@@ -449,15 +496,16 @@
      (lahko več strank), aplikacija razvrsti po strankah, Potrdi pri oddaji vsaki ustvari spremni list.
      Označi: stranka + artikel + novi čipi. Poišči: skeniran kos (stranka, artikel, pranja, zgodovina). */
   var RF = { nacin: 'oddaja', idx: {}, vprasan: {}, sken: [], skenSet: {}, kljuc: null, org: null, art: '', arts: {}, rezultat: null, most: null, najdeni: null, gen: 0,
-    izlocene: {}, vkl: { prest: false, drugje: false }, isciGen: 0, isciNapake: 0, vrsta: [], oznacujem: false };
+    izlocene: {}, vkl: { prest: false, drugje: false }, isciGen: 0, isciNapake: 0, vrsta: [], oznacujem: false, potrjujem: false };
   (function () {
     var n = LS.beri('sc-rfa-nacin', 'oddaja'); if (['oddaja', 'prevzem', 'oznaci', 'poisci'].indexOf(n) >= 0) RF.nacin = n;
     // stranka in artikel za Označi veljata 8 ur (naslednji dan ali druga oseba začne brez)
     var oz = LS.beri('sc-rfa-oznaci', null);
     if (oz && oz.cas && Date.now() - oz.cas < 8 * 3600e3) { RF.org = oz.org || null; RF.art = oz.art || ''; }
-    var s = LS.beri('sc-rfa-sken', null) || LS.beri('sc-rfid-sken', null);   // pred 4.77: skupen ključ s portalom
+    var nov = LS.beri('sc-rfa-sken', null), s = nov || LS.beri('sc-rfid-sken', null);   // pred 4.77: skupen ključ s portalom
     if (s && Array.isArray(s.sken)) {
-      RF.sken = s.sken.filter(function (e) { return /^[0-9A-F]{8,64}$/.test(e); }); RF.kljuc = s.kljuc || null; RF.sken.forEach(function (e) { RF.skenSet[e] = 1; });
+      RF.sken = s.sken.filter(function (e) { return /^[0-9A-F]{8,64}$/.test(e); }); RF.sken.forEach(function (e) { RF.skenSet[e] = 1; });
+      RF.kljuc = nov ? (s.kljuc || null) : null;   // ključa iz skupnega zapisa ne uporabi (lahko ga je porabil portal)
       if (s.izlocene && typeof s.izlocene === 'object') RF.izlocene = s.izlocene;
     }
   })();
@@ -472,8 +520,18 @@
   function rfKljuc() { try { return crypto.randomUUID(); } catch (e) { return 'xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx'.replace(/x/g, function () { return (Math.random() * 16 | 0).toString(16); }); } }
   function rfShrani() { LS.pisi('sc-rfa-sken', { sken: RF.sken, kljuc: RF.kljuc, izlocene: RF.izlocene }); }
   function rfShraniOznaci() { LS.pisi('sc-rfa-oznaci', RF.org ? { org: RF.org, art: RF.art, cas: Date.now() } : null); }
+  // stranka in artikel za Označi veljata 8 ur od zadnje uporabe (preverjeno tudi, ko aplikacija pride iz ozadja)
+  function rfOznaciVelja() {
+    var oz = LS.beri('sc-rfa-oznaci', null);
+    if (!RF.org || (oz && oz.cas && Date.now() - oz.cas < 8 * 3600e3)) return true;
+    RF.org = null; RF.art = ''; RF.vkl = { prest: false, drugje: false }; rfShraniOznaci();
+    return false;
+  }
+  // vrstice čipa pri živih strankah (izbrisane in neaktivne stranke baza preskoči, odpisani kosi ne štejejo)
+  function rfZivi(e) { return (RF.idx[e] || []).filter(function (k) { return k.stanje !== 'odpisan' && IME[k.org_id]; }); }
   // stranka, ki jo je oseba v tem skeniranju odstranila (sosednji voziček): njeni čipi se ne štejejo in ne pošljejo
-  function rfIzlocen(e) { var v = RF.idx[e]; return !!(v && v.length && v.every(function (k) { return k.stanje === 'odpisan' || RF.izlocene[k.org_id]; })); }
+  function rfIzlocen(e) { var v = rfZivi(e); return !!(v.length && v.every(function (k) { return RF.izlocene[k.org_id]; })); }
+
   function rfZaPoslati() { return RF.sken.filter(function (e) { return !rfIzlocen(e); }); }
   function rfPogresan(k) {
     if (k.stanje !== 'aktiven' || !k.zadnjic) return '';
@@ -513,9 +571,9 @@
     return null;
   }
   // čipov ni bilo mogoče preveriti: sporoči (enkrat) in poskusi znova, dokler kaj čaka
-  function rfIsciNapaka(e) {
+  function rfIsciNapaka(e, vedno) {
     if (e && e.code === '42501') { rfBrezDostopa(); return; }
-    if (!RF.isciNapake) toast(jeOmrezna(e) || (e && e.name === 'AbortError') ? 'Ni povezave z internetom.' : 'Čipov ni bilo mogoče preveriti.');
+    if (!RF.isciNapake || vedno) toast(jeOmrezna(e) || (e && e.name === 'AbortError') ? 'Ni povezave z internetom.' : 'Čipov ni bilo mogoče preveriti.');
     RF.isciNapake++;
     clearTimeout(_rfIsciT);
     _rfIsciT = setTimeout(function () { if (RF.sken.some(function (x) { return !rfZnan(x); })) izvedi2(); }, Math.min(30000, 2000 * Math.pow(2, RF.isciNapake - 1)));
@@ -542,7 +600,7 @@
   function rfNacin(n) {
     if (n === RF.nacin) return;
     // v Označi gredo le neoznačeni čipi: že označen kos bi se sicer potiho prestavil na drug artikel
-    if (n === 'oznaci' && RF.sken.length) { RF.sken = RF.sken.filter(function (e) { return rfZnan(e) && !(RF.idx[e] || []).some(function (k) { return k.stanje !== 'odpisan'; }); }); RF.skenSet = {}; RF.sken.forEach(function (e) { RF.skenSet[e] = 1; }); }
+    if (n === 'oznaci' && RF.sken.length) { RF.sken = RF.sken.filter(function (e) { return rfZnan(e) && !rfZivi(e).length; }); RF.skenSet = {}; RF.sken.forEach(function (e) { RF.skenSet[e] = 1; }); }
     RF.kljuc = null; RF.vkl = { prest: false, drugje: false };
     rfShrani();
     RF.nacin = n; RF.rezultat = null; RF.najdeni = null;
@@ -569,7 +627,7 @@
       '<div class="rf-rez" id="rfRez"></div><div class="u-acts rf-akc" id="rfAkc"></div>';
     if (oz) {
       $('rfOrg').addEventListener('change', function () { rfIzberiStranko($('rfOrg').value); });
-      $('rfArt').addEventListener('change', function () { RF.art = $('rfArt').value; rfShraniOznaci(); rfOsvezi(); });
+      $('rfArt').addEventListener('change', function () { RF.art = $('rfArt').value; RF.vkl = { prest: false, drugje: false }; rfShraniOznaci(); rfOsvezi(); });
       if (RF.org) rfNapolniArtikle();
     }
     rfVezi();
@@ -634,13 +692,14 @@
     if (RF.nacin === 'poisci') { rfPoisci(epci); return; }
     if (RF.nacin === 'oznaci' && !RF.org) { rfBrezStranke(); return; }
     var novih = 0;
-    epci.forEach(function (epc) { if (RF.skenSet[epc]) return; RF.skenSet[epc] = 1; RF.sken.push(epc); novih++; });
+    epci.forEach(function (epc) { if (RF.skenSet[epc]) return; RF.skenSet[epc] = 1; RF.sken.push(epc); delete RF.vprasan[epc]; novih++; });   // podatek iz prejšnjega skeniranja je lahko star
     rfBeriZiv(novih);
-    if (!novih) { if (!_rfIscem && RF.sken.some(function (e) { return !rfZnan(e); })) rfIsci(); return; }
-    RF.kljuc = null;   // drugačno skeniranje = nov ključ potrditve (stari je morda že porabljen pri neuspeli potrditvi)
+    if (!novih) { if (!_rfIscem && RF.sken.some(function (e) { return !rfZnan(e); })) rfIsci(); return 0; }
+    if (!RF.potrjujem) RF.kljuc = null;   // drugačno skeniranje = nov ključ potrditve; med klicem ostane (ponovitev po izpadu ne sme dobiti novega)
     rfShrani(); zvTik();
     if (!_rfRaf) _rfRaf = requestAnimationFrame(function () { _rfRaf = 0; rfOsvezi(); });
     rfIsci();
+    return novih;
   }
   function rfDodaj(epc) { rfDodajVec([epc]); }
   // Označi brez stranke: čitalec bere, a se nič ne zgodi — pokaži, kaj manjka
@@ -667,12 +726,12 @@
   }
   function sklonListovToz(n) { var m = n % 100; return stevilo(n) + ' ' + (m === 1 ? 'spremni list' : m === 2 ? 'spremna lista' : (m === 3 || m === 4) ? 'spremne liste' : 'spremnih listov'); }
   function rfRazvrsti(brez) {
-    var str = {}, nezn = [], dvo = [], cakam = 0, znanih = 0;
+    var str = {}, nezn = [], dvo = [], cakam = 0, znanih = 0, izl = {};
     RF.sken.forEach(function (e) {
       if (brez && brez[e]) return;
       if (!rfZnan(e)) { cakam++; return; }
-      if (rfIzlocen(e)) return;
-      var vsi = (RF.idx[e] || []).filter(function (k) { return k.stanje !== 'odpisan'; });
+      if (rfIzlocen(e)) { var o = rfZivi(e)[0].org_id; izl[o] = (izl[o] || 0) + 1; return; }
+      var vsi = rfZivi(e);
       if (!vsi.length) { nezn.push(e); return; }
       var orgi = {}; vsi.forEach(function (k) { orgi[k.org_id] = 1; });
       if (Object.keys(orgi).length > 1) { dvo.push(e); return; }
@@ -681,16 +740,16 @@
       if (rfZeOddan(k)) { g.ze++; if (String(k.zadnjic) > g.zeCas) g.zeCas = String(k.zadnjic); }
     });
     var seznam = Object.keys(str).map(function (o) { return str[o]; }).sort(function (a, b) { return a.ime.localeCompare(b.ime, 'sl'); });
-    return { stranke: seznam, nezn: nezn, dvo: dvo, cakam: cakam, znanih: znanih };
+    return { stranke: seznam, nezn: nezn, dvo: dvo, cakam: cakam, znanih: znanih, izl: izl };
   }
   // Označi: čipi, ki jih je treba poslati (novi, drug artikel, znova v uporabi, pri drugi stranki)
   function rfZaOznaciti() {
     return RF.sken.filter(function (e) {
       if (!rfZnan(e)) return false;
       var vsi = RF.idx[e] || [], moj = vsi.filter(function (k) { return k.org_id === RF.org; })[0];
-      var tuji = vsi.some(function (k) { return k.org_id !== RF.org && k.stanje !== 'odpisan'; });
+      var tuji = rfZivi(e).some(function (k) { return k.org_id !== RF.org; });
       if (tuji && !RF.vkl.drugje) return false;                                       // tuj kos (lahko le leži zraven)
-      if (moj && moj.article_id !== RF.art && moj.stanje === 'aktiven' && !RF.vkl.prest) return false;   // drug artikel iste stranke
+      if (moj && moj.article_id !== RF.art && !RF.vkl.prest) return false;            // drug artikel iste stranke (tudi odpisan ali izgubljen)
       return !moj || moj.article_id !== RF.art || moj.stanje !== 'aktiven' || tuji;
     });
   }
@@ -714,7 +773,7 @@
       if (RF.org) RF.sken.forEach(function (e) {
         if (!rfZnan(e)) return;
         var vsi = RF.idx[e] || [], moj = vsi.filter(function (k) { return k.org_id === RF.org; })[0], tuj = false;
-        vsi.forEach(function (k) { if (k.org_id !== RF.org && k.stanje !== 'odpisan') { tuj = true; var s = IME[k.org_id] || 'Druga stranka'; drugje[s] = (drugje[s] || 0) + 1; } });
+        rfZivi(e).forEach(function (k) { if (k.org_id !== RF.org) { tuj = true; var s = IME[k.org_id]; drugje[s] = (drugje[s] || 0) + 1; } });
         if (!moj) { if (!tuj) novi++; }
         else if (RF.art && moj.article_id === RF.art) { if (moj.stanje !== 'aktiven') znova++; else enaki++; }
         else { var i = rfArtIme(moj); prest[i] = (prest[i] || 0) + 1; }
@@ -727,7 +786,7 @@
       Object.keys(prest).forEach(function (i, ix) { vrst.push(vr('Drug artikel', prest[i], RF.vkl.prest ? '' : 'opoz', i + ' → ' + cilj, ix ? '' : vklGumb('prest'))); });
       Object.keys(drugje).forEach(function (s, ix) { vrst.push(vr('Pri drugi stranki', drugje[s], RF.vkl.drugje ? '' : 'opoz', s + ' → ' + ta, ix ? '' : vklGumb('drugje'))); });
       if (enaki) vrst.push(vr('Že označeni', enaki, 'tiho'));
-      if (akc) akc.innerHTML = pocisti + '<button type="button" class="ur-save" data-rf="oznaci"' + (n && !cakaO && rfArtikelZnan() && !RF.oznacujem ? '' : ' disabled') + '>' + (n ? 'Označi ' + sklonKosov(n) : 'Označi') + '</button>';
+      if (akc) akc.innerHTML = pocisti + '<button type="button" class="ur-save' + (RF.oznacujem ? ' nalaga' : '') + '" data-rf="oznaci"' + (n && !cakaO && rfArtikelZnan() && !RF.oznacujem ? '' : ' disabled') + '>' + (n ? 'Označi ' + sklonKosov(n) : 'Označi') + '</button>';
     } else {
       var r = rfRazvrsti(), odd = RF.nacin === 'oddaja';
       rfStevec(nEl, r.znanih);
@@ -735,13 +794,15 @@
       r.stranke.forEach(function (g) {
         var arti = Object.keys(g.art).sort(function (a, b) { return g.art[b] - g.art[a] || a.localeCompare(b, 'sl'); });
         var ze = odd && g.ze ? '<div class="rf-str-ze">' + esc(rfZeBesedilo(g)) + '</div>' : '';
-        vrst.push('<div class="rf-str' + (ze ? ' opoz' : '') + '"><div class="rf-str-h"><span>' + esc(g.ime) + '</span><button type="button" class="cgrp-btn ghost" data-rf="odstrani" data-org="' + esc(g.org) + '">Odstrani</button><b>' + stevilo(g.n) + '</b></div>' + ze +
+        vrst.push('<div class="rf-str' + (ze ? ' opoz' : '') + '"><div class="rf-str-h"><span>' + esc(g.ime) + '</span><button type="button" class="cgrp-btn ghost" data-rf="odstrani" data-org="' + esc(g.org) + '"' + (RF.potrjujem ? ' disabled' : '') + '>Odstrani</button><b>' + stevilo(g.n) + '</b></div>' + ze +
           arti.map(function (i) { return '<div class="rf-str-a"><span>' + esc(i) + '</span><span>' + stevilo(g.art[i]) + '</span></div>'; }).join('') + '</div>');
       });
       if (r.nezn.length) vrst.push(vr('Neoznačeni', r.nezn.length, 'opoz', '', '<button type="button" class="cgrp-btn ghost" data-rf="v-oznaci">Označi</button>'));
       if (r.dvo.length) vrst.push(vr('Čip pri več strankah', r.dvo.length, 'opoz'));
+      Object.keys(r.izl).forEach(function (o) { vrst.push(vr(IME[o] || 'Stranka', r.izl[o], 'tiho', 'izločeno', '<button type="button" class="cgrp-btn ghost" data-rf="vrni" data-org="' + esc(o) + '"' + (RF.potrjujem ? ' disabled' : '') + '>Vrni</button>')); });
       var ns = r.stranke.length;
-      if (akc) akc.innerHTML = pocisti + '<button type="button" class="ur-save" data-rf="potrdi"' + (r.znanih && !r.cakam ? '' : ' disabled') + '>' +
+      if (RF.potrjujem) pocisti = pocisti.replace('data-rf="pocisti"', 'data-rf="pocisti" disabled');
+      if (akc) akc.innerHTML = pocisti + '<button type="button" class="ur-save' + (RF.potrjujem ? ' nalaga' : '') + '" data-rf="potrdi"' + (r.znanih && !r.cakam && !RF.potrjujem ? '' : ' disabled') + '>' +
         (odd ? (ns > 1 ? 'Potrdi<span class="rf-akc-dod"> · ' + sklonListov(ns) + '</span>' : 'Potrdi oddajo') : 'Potrdi prevzem') + '</button>';
     }
     rez.innerHTML = vrst.join('');
@@ -754,7 +815,8 @@
     var m = {}; posnetek.forEach(function (e) { m[e] = 1; });
     rfPozabi(posnetek, true);
     RF.sken = RF.sken.filter(function (e) { return !m[e]; }); RF.skenSet = {}; RF.sken.forEach(function (e) { RF.skenSet[e] = 1; });
-    RF.kljuc = null; if (!RF.sken.length) { RF.izlocene = {}; RF.vkl = { prest: false, drugje: false }; }
+    RF.vrsta = RF.vrsta.filter(function (e) { return !m[e]; });   // isti čipi, ki so med oknom čakali v vrsti, niso novo skeniranje
+    RF.kljuc = null; RF.izlocene = {}; RF.vkl = { prest: false, drugje: false };   // izločitev in vklop veljata le za to potrditev (sicer bi naslednji voziček te stranke tiho izpustil)
     rfShrani();
   }
   async function rfAkcija(a, gumb) {
@@ -769,27 +831,34 @@
       rfNacin('oznaci'); return;
     }
     if (a === 'vkl-prest' || a === 'vkl-drugje') { var kk = a.slice(4); RF.vkl[kk] = !RF.vkl[kk]; rfOsvezi(); return; }
+    if (a === 'vrni') { delete RF.izlocene[gumb.dataset.org]; RF.kljuc = null; rfShrani(); rfOsvezi(); return; }
     if (a === 'odstrani') {   // čipi sosednjega vozička: stranko izločiš iz te potrditve
       var org = gumb.dataset.org;
       RF.izlocene[org] = 1; RF.kljuc = null; rfShrani(); rfOsvezi();   // ostane izločena tudi ob naslednjem branju istega vozička
       toast((IME[org] || 'Stranka') + ' odstranjena', { besedilo: 'Razveljavi', ob: function () { delete RF.izlocene[org]; RF.kljuc = null; rfShrani(); rfOsvezi(); } });
       return;
     }
-    if (a === 'potrdi') { rfPotrdi(gumb); return; }
+    if (a === 'potrdi') { rfPotrdi(); return; }
     if (a === 'oznaci') {
       if (RF.oznacujem) return;
       rfMostKlic('ustavi');
-      RF.oznacujem = true; gumb.disabled = true; gumb.classList.add('nalaga');
+      RF.oznacujem = true; rfOsvezi();
       try {
+        try { await rfIsci(true); } catch (e) { zvNapaka(); rfIsciNapaka(e, true); return; }   // vsi čipi s svežimi podatki: pošlje se točno to, kar je prikazano
         var o = RF.org, epcs = rfZaOznaciti(), posnetek = RF.sken.slice();
-        var r = await sb.rpc('rfid_oznaci', { p_org: o, p_article: RF.art, p_epcs: epcs });
+        if (!o || !epcs.length || !rfArtikelZnan()) return;
+        var r = await zRokom(sb.rpc('rfid_oznaci', { p_org: o, p_article: RF.art, p_epcs: epcs, p_preseli: !!RF.vkl.drugje }));
         if (r.error) throw r.error;
-        var d = r.data || {}, n = (d.novih || 0) + (d.prestavljenih || 0), art = ((RF.arts[o] || []).filter(function (x) { return x.id === RF.art; })[0] || {}).ime || '';
+        var d = r.data || {}, n = (d.novih || 0) + (d.prestavljenih || 0) + (d.preseljenih || 0), art = ((RF.arts[o] || []).filter(function (x) { return x.id === RF.art; })[0] || {}).ime || '';
+        var drugje = Array.isArray(d.drugje) ? d.drugje : [], dm = {}; drugje.forEach(function (e) { dm[e] = 1; });
         zvUspeh();
-        toast((n ? 'Označeno: ' + sklonKosov(n) + (art ? ' · ' + art : '') : 'Označeno') + (d.preseljenih ? ' · ' + stevilo(d.preseljenih) + ' od druge stranke' : ''));
-        rfOdstraniPoslane(posnetek);   // čipi, prebrani med klicem, ostanejo
+        toast((n ? 'Označeno: ' + sklonKosov(n) + (art ? ' · ' + art : '') : 'Označeno') + (d.preseljenih ? ' · ' + stevilo(d.preseljenih) + ' od druge stranke' : '') +
+          (drugje.length ? ' · ' + stevilo(drugje.length) + ' pri drugi stranki' : ''));
+        rfShraniOznaci();   // 8 ur od zadnje uporabe
+        rfOdstraniPoslane(posnetek.filter(function (e) { return !dm[e]; }));   // čipi, prebrani med klicem, ostanejo; tudi tisti, ki jih je medtem označila druga naprava
+        if (drugje.length) { rfPozabi(drugje); izvedi2(); }
       } catch (e) { zvNapaka(); toast(napakaBesedilo(e)); if (e && e.code === '42501') rfBrezDostopa(); }
-      finally { RF.oznacujem = false; gumb.classList.remove('nalaga'); rfOsvezi(); }
+      finally { RF.oznacujem = false; rfOsvezi(); }
     }
   }
   // okno s seznamom (potrditev, že oddano): vrstice in gumbi; Escape ali dotik ozadja = prvi gumb
@@ -808,69 +877,73 @@
       });
       document.body.appendChild(back);
       requestAnimationFrame(function () { back.classList.add('show'); });
-      var done = false;
+      var done = false, t0 = Date.now();
       function zapri(v) { if (done) return; done = true; back.classList.remove('show'); document.removeEventListener('keydown', tipka); setTimeout(function () { back.remove(); }, 180); resolve(v); }
-      function tipka(e) {
-        if (e.key === 'Escape') zapri(prvi);
-        else if (e.key === 'Enter') { e.preventDefault(); var g = gumbi.filter(function (x) { return x.glavni; })[0]; zapri(g ? g.v : prvi); }
-      }
-      back.addEventListener('click', function (e) { if (e.target === back) zapri(prvi); });
+      // Enter ne potrdi nikoli (čitalec kot tipkovnica pošlje EPC + Enter) — ustvari se le z dotikom gumba
+      function tipka(e) { if (e.key === 'Escape') zapri(prvi); else if (e.key === 'Enter') e.preventDefault(); }
+      back.addEventListener('click', function (e) { if (Date.now() - t0 < 350) { e.stopPropagation(); return; } if (e.target === back) zapri(prvi); }, true);   // drugi dotik dvojnega pritiska na Potrdi
       document.addEventListener('keydown', tipka);
-      setTimeout(function () { var p = back.querySelector('.sc-modal-btn.primary'); if (p) p.focus(); }, 60);
+      setTimeout(function () { var m = back.querySelector('.sc-modal'); m.setAttribute('tabindex', '-1'); m.focus({ preventScroll: true }); }, 60);
     });
   }
   // Potrdi: pregled po strankah → baza zabeleži in pri oddaji ustvari spremne liste
-  async function rfPotrdi(gumb) {
+  async function rfPotrdi() {
+    if (RF.potrjujem) return;   // drugi dotik, osvežitev med klicem: en sam
     rfMostKlic('ustavi');   // pregled naj ostane, kot je
-    try { await rfIsci(true); } catch (e) { zvNapaka(); rfIsciNapaka(e); return; }
-    var r = rfRazvrsti(), odd = RF.nacin === 'oddaja'; if (!r.znanih) return;
-    var vrst = r.stranke.map(function (g) { var z = odd && g.ze; return { ime: g.ime, n: g.n, opis: z ? rfZeBesedilo(g) : '', cls: z ? 'opoz' : '' }; });
-    if (r.nezn.length + r.dvo.length) vrst.push({ ime: 'Ne šteje se', n: r.nezn.length + r.dvo.length, cls: 'tiho',
-      opis: [r.nezn.length ? stevilo(r.nezn.length) + ' neoznačenih' : '', r.dvo.length ? stevilo(r.dvo.length) + ' pri več strankah' : ''].filter(Boolean).join(' · ') });
-    var ok = await rfOkno({ naslov: odd ? 'Ustvari ' + sklonListovToz(r.stranke.length) : 'Zabeleži prevzem', vrstice: vrst,
-      gumbi: [{ t: 'Nazaj', v: false }, { t: odd ? 'Ustvari' : 'Zabeleži', v: true, glavni: true }] });
-    if (ok) await rfPotrdiIzvedi(gumb, true, 0);
-  }
-  async function rfPotrdiIzvedi(gumb, preveri, poskus) {
-    var odd = RF.nacin === 'oddaja', d = null, napaka = null, posnetek = RF.sken.slice(), epcs = rfZaPoslati();
-    if (!RF.kljuc) { RF.kljuc = rfKljuc(); rfShrani(); }   // shranjen PRED klicem: ponovitev po izpadu ga uporabi znova (nič dvakrat)
-    gumb.disabled = true; gumb.classList.add('nalaga');
+    RF.potrjujem = true; rfOsvezi();
     try {
-      var x = await sb.rpc('rfid_potrdi', { p_tip: odd ? 'oddaja' : 'prevzem', p_epcs: epcs, p_kljuc: RF.kljuc, p_izdal: JAZ ? JAZ.ime : null, p_preveri: !!preveri });
+      try { await rfIsci(true); } catch (e) { zvNapaka(); rfIsciNapaka(e, true); return; }
+      var r = rfRazvrsti(), odd = RF.nacin === 'oddaja'; if (!r.znanih) return;
+      var vrst = r.stranke.map(function (g) { var z = odd && g.ze; return { ime: g.ime, n: g.n, opis: z ? rfZeBesedilo(g) : '', cls: z ? 'opoz' : '' }; });
+      if (r.nezn.length + r.dvo.length) vrst.push({ ime: 'Ne šteje se', n: r.nezn.length + r.dvo.length, cls: 'tiho',
+        opis: [r.nezn.length ? stevilo(r.nezn.length) + ' neoznačenih' : '', r.dvo.length ? stevilo(r.dvo.length) + ' pri več strankah' : ''].filter(Boolean).join(' · ') });
+      var ok = await rfOkno({ naslov: odd ? 'Ustvari ' + sklonListovToz(r.stranke.length) : 'Zabeleži prevzem', vrstice: vrst,
+        gumbi: [{ t: 'Nazaj', v: false }, { t: odd ? 'Ustvari' : 'Zabeleži', v: true, glavni: true }] });
+      if (ok) await rfPotrdiIzvedi(true, 0);
+    } finally { RF.potrjujem = false; if (!RF.rezultat) rfOsvezi(); }
+  }
+  async function rfPotrdiIzvedi(preveri, poskus) {
+    var odd = RF.nacin === 'oddaja', d = null, napaka = null, posnetek = RF.sken.slice(), epcs = rfZaPoslati();
+    if (!epcs.length) return;
+    if (!RF.kljuc) { RF.kljuc = rfKljuc(); rfShrani(); }   // shranjen PRED klicem: ponovitev po izpadu ga uporabi znova (nič dvakrat)
+    rfOsvezi();
+    try {
+      var x = await zRokom(sb.rpc('rfid_potrdi', { p_tip: odd ? 'oddaja' : 'prevzem', p_epcs: epcs, p_kljuc: RF.kljuc, p_izdal: JAZ ? JAZ.ime : null, p_preveri: !!preveri }));
       if (x.error) throw x.error;
       d = x.data || {};
     } catch (e) { napaka = e; }   // ključ ostane: ponovna potrditev ne ustvari dvojnih listov
-    finally { if (gumb.isConnected) { gumb.classList.remove('nalaga'); gumb.disabled = false; } }
     if (napaka) {
       // ključ je že porabila druga vsebina (izpad, nato spremenjeno skeniranje): nov ključ; že oddano ujame preverjanje
-      if (/kljuc_porabljen/.test(String(napaka.message || '')) && !poskus) { RF.kljuc = rfKljuc(); rfShrani(); return rfPotrdiIzvedi(gumb, true, 1); }
+      if (/kljuc_porabljen/.test(String(napaka.message || '')) && !poskus) { RF.kljuc = rfKljuc(); rfShrani(); return rfPotrdiIzvedi(true, 1); }
       zvNapaka(); toast(napakaBesedilo(napaka)); if (napaka.code === '42501') rfBrezDostopa();
-      rfOsvezi(); return;
+      return;
     }
-    if (Array.isArray(d.ze_oddano) && d.ze_oddano.length) { await rfZeOddano(gumb, d.ze_oddano); return; }
+    if (Array.isArray(d.ze_oddano) && d.ze_oddano.length) { await rfZeOddano(d.ze_oddano, posnetek); return; }
     rfOdstraniPoslane(posnetek);
     zvUspeh();
     if (odd) { RF.rezultat = { listi: d.listi || [] }; rfZapomniListe(RF.rezultat.listi); rfRisi(); }
     else { toast('Prevzem zabeležen: ' + sklonKosov(d.kosov || 0)); rfOsvezi(); }
   }
   // baza: del kosov je bil v zadnjih 12 urah že oddan (isti ali sosednji voziček, druga naprava)
-  async function rfZeOddano(gumb, ze) {
+  async function rfZeOddano(ze, posnetek) {
     var ven = {}; ze.forEach(function (z) { (z.epc || []).forEach(function (e) { ven[e] = 1; }); });
-    var ostane = rfRazvrsti(ven).znanih;
+    var ostane = rfRazvrsti(ven).znanih, vsehStr = {};
+    rfRazvrsti().stranke.forEach(function (g) { vsehStr[g.org] = g.n; });
     zvNapaka();
     var izb = await rfOkno({ naslov: 'Že oddano', vrstice: ze.map(function (z) {
+        var vseh = vsehStr[z.org] || 0;
         return { ime: z.ime || IME[z.org] || 'Stranka', n: z.kosov, cls: 'opoz',
-          opis: [(z.listi || []).map(function (l) { return l.stevilka; }).filter(Boolean).join(', '), rfUra(z.cas)].filter(Boolean).join(' · ') };
+          opis: [vseh > z.kosov ? stevilo(z.kosov) + ' od ' + stevilo(vseh) : '', (z.listi || []).map(function (l) { return l.stevilka; }).filter(Boolean).join(', '), rfUra(z.cas)].filter(Boolean).join(' · ') };
       }),
       gumbi: [{ t: 'Nazaj', v: 0 }, { t: 'Vseeno ustvari', v: 2 }, { t: ostane ? 'Izloči in ustvari' : 'Izloči', v: 1, glavni: true }] });
-    if (izb === 2) { await rfPotrdiIzvedi(gumb, false, 0); return; }
+    if (izb === 2) { await rfPotrdiIzvedi(false, 0); return; }
     if (izb !== 1) return;
     RF.sken = RF.sken.filter(function (e) { return !ven[e]; }); RF.skenSet = {}; RF.sken.forEach(function (e) { RF.skenSet[e] = 1; }); RF.kljuc = null; rfShrani();
-    if (ostane) { await rfPotrdiIzvedi(gumb, true, 0); return; }
-    // vse je že oddano: pokaži obstoječe liste (lahko se natisnejo znova)
+    if (rfRazvrsti().znanih) { await rfPotrdiIzvedi(true, 0); return; }
+    // vse je že oddano: pokaži obstoječe liste (lahko se natisnejo znova); čipi, prebrani med klicem, ostanejo
     var listi = [];
     ze.forEach(function (z) { (z.listi || []).forEach(function (l) { listi.push({ org: z.org, note: l.note, stevilka: l.stevilka, kosov: (z.listi || []).length === 1 ? z.kosov : null }); }); });
-    rfOdstraniPoslane(RF.sken.slice());
+    rfOdstraniPoslane(posnetek);
     RF.rezultat = { listi: listi, ze: true }; rfRisi();
   }
   // zadnji ustvarjeni listi (3 dni, kot tisk v bazi): natisni znova iz menija
@@ -1127,8 +1200,12 @@
     if ($('app').hidden) return;
     var epci = seznam.map(rfEpc).filter(Boolean); if (!epci.length) return;
     if (modalOdprt()) { RF.vrsta = RF.vrsta.concat(epci); rfVrstaCakaj(); return; }   // okno je odprto: počakaj, ne zavrzi (C72 jih v tem pritisku ne pošlje znova)
-    if (RF.rezultat) { RF.rezultat = null; rfRisi(); }
-    rfDodajVec(epci);   // Poišči: prvi označen čip se odpre, branje se ustavi
+    rfDodajNaRezultat(epci);   // Poišči: prvi označen čip se odpre, branje se ustavi
+  }
+  // rezultat (ustvarjeni listi) ostane, dokler ne pride res nov čip
+  function rfDodajNaRezultat(epci) {
+    var bil = !!RF.rezultat, novih = rfDodajVec(epci);
+    if (bil && novih) { RF.rezultat = null; rfRisi(); }
   }
   var _rfVrstaT = null;
   function rfVrstaCakaj() {
@@ -1136,7 +1213,7 @@
     _rfVrstaT = setTimeout(function () {
       if (modalOdprt()) { rfVrstaCakaj(); return; }
       var v = RF.vrsta; RF.vrsta = [];
-      if (v.length && !$('app').hidden) { if (RF.rezultat) { RF.rezultat = null; rfRisi(); } rfDodajVec(v); }
+      if (v.length && !$('app').hidden) rfDodajNaRezultat(v);
     }, 400);
   }
   // čuvaj: branje z gumba Beri se ustavi po 6 s brez novih čipov, vsako branje po 60 s (baterija, toplota pri 1 W)
@@ -1183,7 +1260,11 @@
       if (RF.nacin === 'poisci' && RF.najdeni) rfPoisci([RF.najdeni.epc], true);
     }, 900);
   }
-  document.addEventListener('visibilitychange', function () { if (!document.hidden && JAZ) { zivCipi(); rfPreveriDostop(); rfPreveriRazlicico(); } });
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden || !JAZ) return;
+    if (!rfOznaciVelja() && RF.nacin === 'oznaci' && !RF.rezultat) rfRisi();
+    zivCipi(); rfPreveriDostop(); rfPreveriRazlicico();
+  });
 
   /* ══════════ NOVA RAZLIČICA ══════════
      C72 je lahko odprt ves dan: ko je objavljena nova različica, se aplikacija naloži znova, a le, ko miruje
@@ -1194,8 +1275,14 @@
       var r = await _izvFetch('../spremembe.json?v=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
       var j = await r.json(), v = j && j[0] && j[0].v; if (!v) return;
       if (_rfVer == null) { _rfVer = v; return; }
-      if (v !== _rfVer && !RF.sken.length && !RF.rezultat && !modalOdprt() && !(RF.most && RF.most.bere)) location.reload();
+      if (v !== _rfVer && rfMiruje()) location.reload();
     } catch (e) {}
+  }
+  // brez skeniranja, okna, rezultata, branja, klica v teku, odprtega menija, najdenega kosa in napol vpisane prijave
+  function rfMiruje() {
+    var pr = !$('prijava').classList.contains('hidden') && ($('email').value || $('geslo').value);
+    return !RF.sken.length && !RF.vrsta.length && !RF.rezultat && !RF.najdeni && !RF.potrjujem && !RF.oznacujem && !modalOdprt() &&
+      !document.querySelector('.dk-meni') && !(RF.most && RF.most.bere) && !pr;
   }
   setInterval(rfPreveriRazlicico, 20 * 60000);
 
@@ -1208,20 +1295,22 @@
     $('jaz').addEventListener('click', meni);
     if (!sb) { prijavaPokazi('Ni povezave z internetom.'); return; }
     rfPreveriRazlicico();
-    var zadnji = LS.beri('sc-rfid-zadnji', null), o = zadnji && oseba(zadnji), s = null, pozno = false;
-    var cakaj = setTimeout(function () { pozno = true; if (OSEBE.length) risiOsebe('Povezujem …'); else prijavaPokazi(); }, 4000);   // ne prazen zaslon
+    var zadnji = LS.beri('sc-rfid-zadnji', null), o = zadnji && oseba(zadnji), s = null, pozno = false, g = ++VSTOP;
+    // ne prazen zaslon: po 4 s »Kdo dela« (ali prijava), dokler seja in podatki ne pridejo; izbira osebe vmes ima prednost (VSTOP)
+    var cakaj = setTimeout(function () { pozno = true; if (OSEBE.length) risiOsebe('Povezujem …'); else prijavaPokazi(); }, 4000);
     try { s = (await sb.auth.getSession()).data.session; } catch (e) {}
-    clearTimeout(cakaj);
-    if (pozno && ($('osebe').classList.contains('hidden') || document.querySelector('.rfa-pin'))) return;   // oseba je medtem že nekaj izbrala
-    if (pozno) $('osebeMsg').textContent = '';
+    if (g !== VSTOP) { clearTimeout(cakaj); return; }
     if (o && s && s.user && s.user.id === o.uid) {   // zadnja oseba ostane prijavljena
-      try { vstopi(o, await podatki()); return; }
+      try { var p = await podatki(); clearTimeout(cakaj); if (g !== VSTOP) return; vstopi(o, p); return; }
       catch (e) {
+        clearTimeout(cakaj);
+        if (g !== VSTOP) return;
         if (e && e.code === '42501') { risiOsebe(NI_DOSTOPA); return; }
         if (jeOmrezna(e)) { risiOsebe('Ni povezave z internetom.'); return; }
       }
     }
-    if (OSEBE.length) risiOsebe(); else prijavaPokazi();
+    clearTimeout(cakaj);
+    if (OSEBE.length) risiOsebe(); else if (!pozno) prijavaPokazi();   // prijava je že odprta: ne briši, kar je oseba vmes vpisala
   }
   function zagon2() { var zadnji = LS.beri('sc-rfid-zadnji', null), o = zadnji && oseba(zadnji); if (o) preklopi(o); else $('osebeMsg').textContent = ''; }
   if ('serviceWorker' in navigator && location.protocol === 'https:') { try { navigator.serviceWorker.register('sw.js', { scope: './' }); } catch (e) {} }

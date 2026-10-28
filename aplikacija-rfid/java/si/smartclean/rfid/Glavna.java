@@ -204,12 +204,14 @@ public class Glavna extends Activity implements Bralnik.Poslusalec {
             "com.hp.android.printservice", "org.mopria.printplugin", "com.mopria.printplugin"};
     private void zaklepni() {
         if (!kiosk()) return;
+        kioskNastavi();
         try { if (dpm.isLockTaskPermitted(getPackageName())) startLockTask(); } catch (Exception e) { Log.w("SmartCleanRFID", "zaklep", e); }
     }
 
-    private static boolean kioskNastavljen;   // enkrat na proces (tudi, če je naprava postala kiosk, ko je aplikacija tekla)
+    // nastavi, ko aplikacija še ni dovoljena za zaklep (tudi, če je naprava postala kiosk, ko je aplikacija tekla)
     private void kioskNastavi() {
-        if (!kiosk() || kioskNastavljen) return;
+        if (!kiosk()) return;
+        try { if (dpm.isLockTaskPermitted(getPackageName())) return; } catch (Exception ignored) { }
         try {
             String[] pak = new String[TISK_PAKETI.length + 1];
             pak[0] = getPackageName();
@@ -222,7 +224,6 @@ public class Glavna extends Activity implements Bralnik.Poslusalec {
             dom.addCategory(Intent.CATEGORY_HOME);
             dom.addCategory(Intent.CATEGORY_DEFAULT);
             dpm.addPersistentPreferredActivity(skrbnik, dom, new ComponentName(this, Glavna.class));
-            kioskNastavljen = true;
         } catch (Exception e) { Log.w("SmartCleanRFID", "kiosk", e); }
     }
 
@@ -322,6 +323,13 @@ public class Glavna extends Activity implements Bralnik.Poslusalec {
         tisk = t;
         t.setWebViewClient(new WebViewClient() {
             private boolean poslano;   // onPageFinished lahko pride dvakrat: en dialog
+            // vsa okna si delijo en proces za izris: ob njegovem padcu bi brez tega Android zaprl celo aplikacijo
+            @Override public boolean onRenderProcessGone(WebView v, RenderProcessGoneDetail d) {
+                if (v == tisk) tisk = null;
+                tiskam = false;
+                try { v.destroy(); } catch (Exception ignored) { }
+                return true;
+            }
             @Override public void onPageFinished(WebView v, String url) {
                 if (poslano || v != tisk) return;
                 poslano = true;

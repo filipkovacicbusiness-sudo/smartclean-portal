@@ -20,8 +20,8 @@ import subprocess
 import sys
 import zipfile
 
-VERZIJA = "1.2"
-KODA = 3
+VERZIJA = "1.3"
+KODA = 4
 
 KOREN = pathlib.Path(__file__).resolve().parent.parent
 IZVOR = KOREN / "aplikacija-rfid"

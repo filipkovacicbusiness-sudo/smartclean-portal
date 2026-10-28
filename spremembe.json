@@ -1,5 +1,22 @@
 [
  {
+  "v": "4.79",
+  "d": "2026-10-28",
+  "c": "2026-10-28T12:00:00+01:00",
+  "t": [
+   "Čipi (portal in aplikacija RFID): Potrdi teče le enkrat naenkrat — med klicem je gumb v nalaganju, drugi dotik, osvežitev v živo ali nov prebran čip ne odpre druge potrditve in ne zamenja ključa (ponovitev po izpadu ne ustvari dvojnih listov). Brez odgovora v 30 s se klic prekine z jasnim sporočilom; ponovna potrditev vrne že ustvarjene liste.",
+   "Čipi: skrito sporočilo »Odstranjena · Razveljavi« ni več ostalo nevidno čez gumb Potrdi (dotik Potrdi je lahko razveljavil odstranitev). Sporočilo je v aplikaciji RFID vedno nad vrstico z gumbi.",
+   "Čipi: pregled pred ustvarjanjem se ne potrdi z drugim dotikom dvojnega pritiska ali s tipko Enter (čitalec kot tipkovnica pošlje Enter) — ustvari se le z dotikom gumba.",
+   "Čipi: odstranjena stranka je vidna kot vrstica »izločeno« z gumbom Vrni in velja le za to potrditev (prej je ostala tiho izločena tudi pri naslednjem vozičku). Odpisan čip je spet viden kot neoznačen, izbrisane in neaktivne stranke se štejejo kot v bazi. Pri delno že oddanem vozičku okno pokaže »x od N«.",
+   "Označi: pošlje se točno to, kar je prikazano (drug artikel, tudi odpisan kos, le s »Prestavi«; kos pri drugi stranki le s »Preseli« — to zdaj preverja tudi baza). Izbira stranke iz vrstice »Neoznačeni« v portalu pokaže pravo stranko tudi v seznamu.",
+   "Baza (76): označevanje, potrditev in ročno stanje se zvrstijo (dve napravi hkrati), »že oddano« le za zadnjo oddajo kosa, preseljen kos ohrani pranja, profila ni mogoče prevzeti z zamenjavo id.",
+   "Aplikacija RFID: počasen zagon ne prepiše izbrane osebe, PIN zapre tudi tipka Nazaj na C72, stranka in artikel za Označi veljata 8 ur od zadnje uporabe, nova različica se naloži le, ko aplikacija res miruje, brez povezave se ne naloži po nepotrebnem.",
+   "C72 1.3: zanesljivejši zagon čitalca (brez ponavljanja ob vsakem pritisku), tisk se ne sesuje ob pomanjkanju pomnilnika, kiosk se nastavi ob vsakem vklopu. Nova različica je v razdelku Aplikacije.",
+   "Povezava: ena spodletela zahteva ne prižge več traku »Ni povezave« (najprej preveri), čas v ozadju ne šteje kot počasna povezava, trak deluje tudi na starejšem brskalniku v napravi.",
+   "Popravki: teža na Domov pri tonah šteje v tonah, napaka pri nalaganju artiklov ne pobriše cenika strank, postavke lista po spremembi na drugi napravi niso več stare, pregled novega lista se ne preskoči z dvojnim dotikom. Samodejna zmogljivost ne izbere več varčnega na iPhonu in C72."
+  ]
+ },
+ {
   "v": "4.78",
   "d": "2026-10-27",
   "c": "2026-10-27T17:00:00+01:00",

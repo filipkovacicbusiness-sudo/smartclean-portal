@@ -98,3 +98,6 @@ html.rfa,html.rfa body{background:var(--bg);}
 @media (hover:none) and (pointer:coarse){
   .rfa-app{padding-top:calc(65px + var(--pov-h,0px) + env(safe-area-inset-top));transition:padding-top .25s ease;}
 }
+/* okno potrditve dobi fokus (bralnik zaslona), ne gumb — Enter s čitalca ne sme potrditi */
+.rfa .rf-okno-p:focus{outline:none;}
+
