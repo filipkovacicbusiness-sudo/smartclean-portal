@@ -45,9 +45,16 @@ self.addEventListener('fetch', function (e) {
   /* Koda/HTML: vedno preveri strežnik (no-cache) → sveža koda brez menjave imen. */
   e.respondWith(
     fetch(req, { cache: 'no-cache' }).then(function (res) {
-      var c = res.clone(); caches.open(CACHE).then(function (k) { k.put(req, c); }).catch(function () {}); return res;
+      if (!res.ok) return res;
+      var c = res.clone();
+      caches.open(CACHE).then(function (k) {   // ena kopija na datoteko: starejše različice (?v=…) iste poti ven
+        return k.keys().then(function (zs) { zs.forEach(function (r) { var u = new URL(r.url); if (u.pathname === url.pathname && u.search !== url.search) k.delete(r); }); return k.put(req, c); });
+      }).catch(function () {});
+      return res;
     }).catch(function () {
-      return caches.match(req).then(function (h) { return h || caches.match('./index.html'); });
+      // brez povezave: točna kopija, sicer ista datoteka druge različice; stran (navigacija) → index.html, skripta nikoli ne dobi HTML
+      return caches.match(req).then(function (h) { return h || caches.match(req, { ignoreSearch: true }); })
+        .then(function (h) { return h || (req.mode === 'navigate' ? caches.match('./index.html', { ignoreSearch: true }) : Response.error()); });
     })
   );
 });

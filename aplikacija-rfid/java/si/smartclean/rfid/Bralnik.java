@@ -56,7 +56,8 @@ class Bralnik {
     private final Context ctx;
     private final Poslusalec pos;
     private final SharedPreferences nas;
-    private final ExecutorService nit = Executors.newSingleThreadExecutor();
+    // ena nit za ves proces (ne za okno): ob ponovnem ustvarjanju aktivnosti se stari čitalec sprosti pred odprtjem novega
+    private static final ExecutorService NIT = Executors.newSingleThreadExecutor();
     private final Handler ui = new Handler(Looper.getMainLooper());
 
     private volatile String izbran;
@@ -68,7 +69,8 @@ class Bralnik {
     private final AtomicBoolean zacetekVVrsti = new AtomicBoolean();   // en začetek naenkrat: pritiski med počasnim odpiranjem se ne nalagajo
     private volatile boolean zelim;                                   // oseba želi brati (drži sprožilec, Beri): zastareli začetki in ustavitve v vrsti se preskočijo
     private volatile long zadnjiNeuspeh;                              // zadnje neuspešno odpiranje (ponovno samo po premoru)
-    private RFIDWithUHFUrxNetwork ur4R;                                // en objekt UR4: vsak nov pusti v SDK dve niti
+    private static RFIDWithUHFUrxNetwork ur4R;                         // en objekt UR4 na proces: vsak nov pusti v SDK dve niti
+    private volatile boolean zamujen;                                 // pritisk med začetkom v teku: po njem začni znova
 
     private final LinkedHashSet<String> seja = new LinkedHashSet<>();
     private final List<String> cakajo = new ArrayList<>();
@@ -126,7 +128,8 @@ class Bralnik {
     // a največ enkrat na pritisk in ne prej kot 3 s po neuspehu; R1 in UR4 le z »Poveži« (njuno odpiranje traja sekunde).
     void zacni() {
         zelim = true;
-        if (!zacetekVVrsti.compareAndSet(false, true)) return;   // začetek že teče: upošteva novo željo (zelim)
+        if (!zacetekVVrsti.compareAndSet(false, true)) { zamujen = true; return; }   // začetek že teče: po njem še enkrat (glej finally)
+        zamujen = false;
         izvedi(() -> {
             try {
                 if (bere || !zelim) return;   // že bere ali je oseba medtem spustila sprožilec
@@ -138,7 +141,7 @@ class Bralnik {
                     if (!vgrajen || !smeOdpreti) obvesti();
                     return;
                 }
-                synchronized (seja) { seja.clear(); cakajo.clear(); }
+                synchronized (seja) { seja.clear(); }   // čipi, ki še čakajo na pošiljanje (zadnjih 100 ms), gredo vseeno na stran
                 boolean ok;
                 try { ok = akt.zacni(); } catch (Throwable e) { ok = false; }
                 if (!ok && vgrajen) {   // modul ne odgovori (npr. drug program ga je vmes sprostil): zapri, odpri, poskusi še enkrat
@@ -146,6 +149,9 @@ class Bralnik {
                     napaka = "";
                     odpriVrsto(izbran);
                     if (akt != null) { try { ok = akt.zacni(); } catch (Throwable e) { ok = false; } }
+                } else if (!ok && akt != null) {   // R1/UR4 (šibko omrežje): še en poskus, preden se povezava zavrže
+                    SystemClock.sleep(300);
+                    try { ok = akt.zacni(); } catch (Throwable e) { ok = false; }
                 }
                 if (ok && !zelim) { try { akt.ustavi(); } catch (Throwable ignored) { } ok = false; napaka = ""; obvesti(); return; }   // spuščen med odpiranjem
                 bere = ok;
@@ -153,10 +159,15 @@ class Bralnik {
                     boolean bilOdprt = akt != null;
                     zapriAkt();
                     zadnjiNeuspeh = SystemClock.uptimeMillis();
-                    if (bilOdprt || napaka.isEmpty()) napaka = "Čitalec se ni odzval. Pritisni znova.";   // natančnejšo napako odpiranja ohrani
+                    if (!vgrajen) napaka = "Čitalec ni povezan.";   // stran pokaže »Poveži« (znova pritisniti ne pomaga)
+                    else if (bilOdprt || napaka.isEmpty()) napaka = "Čitalec se ni odzval. Pritisni znova.";   // natančnejšo napako odpiranja ohrani
                 }
                 obvesti();
-            } finally { zacetekVVrsti.set(false); }
+            } finally {
+                zacetekVVrsti.set(false);
+                // pritisk med tem začetkom (npr. med ustavljanjem po prezgodnjem spustu): oseba drži sprožilec, a nič ne bere
+                if (zamujen && zelim && !bere && akt != null) { zamujen = false; zacni(); }
+            }
         });
     }
 
@@ -171,10 +182,10 @@ class Bralnik {
     }
 
     void zapri() { izvedi(this::zapriAkt); }
-    void konec() { ui.removeCallbacksAndMessages(null); izvedi(this::zapriAkt); nit.shutdown(); }
+    void konec() { ui.removeCallbacksAndMessages(null); izvedi(this::zapriAkt); }
 
     private void izvedi(Runnable r) {
-        try { nit.execute(r); } catch (java.util.concurrent.RejectedExecutionException ignored) { }   // po koncu aktivnosti
+        try { NIT.execute(r); } catch (java.util.concurrent.RejectedExecutionException ignored) { }
     }
 
     void nastaviMoc(int dbm) {

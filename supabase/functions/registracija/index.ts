@@ -41,6 +41,13 @@ Deno.serve(async (req) => {
   }
 });
 
+// pošiljanje v ozadju (odgovor ne čaka na Resend: enak čas za obstoječe in neobstoječe naslove)
+declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void } | undefined;
+function vOzadju(p: Promise<unknown>) {
+  const varno = p.catch((e) => console.error("ozadje", e));
+  if (typeof EdgeRuntime !== "undefined" && EdgeRuntime?.waitUntil) EdgeRuntime.waitUntil(varno); else return varno;
+}
+
 const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
 
 const VLOGE: Record<string, string> = { admin: "Admin", osebje: "Osebje", zaposleni: "Zaposleni", stranka: "Stranka" };
@@ -83,7 +90,7 @@ async function omejeno(kljuc: string, najvec: number, minut: number) {
   if (error) throw error;
   return (count ?? 0) >= najvec;
 }
-async function zabelezi(kljuc: string) { await admin.from("omejitve").insert({ kljuc }); }
+async function zabelezi(kljuc: string) { const { error } = await admin.from("omejitve").insert({ kljuc }); if (error) throw error; }
 async function pocisti() { await admin.from("omejitve").delete().lt("cas", new Date(Date.now() - 24 * 60 * MINUTA).toISOString()); }
 
 async function povabilo(id: { koda?: string; id?: string }) {
@@ -183,24 +190,22 @@ function pismoGeslo(otp: string) {
   };
 }
 
-// ── zadnja koda za e-naslov in namen; preveri rok, poskuse in ujemanje ──
-async function preveriKodo(email: string, namen: "registracija" | "geslo", otp: string, ip: string) {
-  const { data: z, error } = await admin.from("eposta_kode").select("*").eq("email", email).eq("namen", namen)
-    .order("ustvarjeno", { ascending: false }).limit(1).maybeSingle();
+// ── koda iz e-pošte: preverjanje atomarno v bazi (reg_poskus: zaklep vrstice, 5 poskusov na kodo, 10 napak na naslov v 24 h) ──
+async function preveriKodo(email: string, namen: "registracija" | "geslo", otp: string) {
+  const hash = /^\d{6}$/.test(otp) ? await zgosti(otp + ":" + email) : "-";
+  const { data: r, error } = await admin.rpc("reg_poskus", { p_email: email, p_namen: namen, p_hash: hash });
   if (error) throw error;
-  if (!z) return { napaka: "Koda ni več veljavna. Zahtevajte novo.", status: 410 };
-  if (new Date(z.velja_do).getTime() < Date.now()) return { napaka: "Koda je potekla. Zahtevajte novo.", status: 410 };
-  if (z.poskusi >= 5) return { napaka: "Preveč napačnih poskusov. Zahtevajte novo kodo.", status: 429 };
-  if (!/^\d{6}$/.test(otp) || (await zgosti(otp + ":" + email)) !== z.koda_hash) {
-    await admin.from("eposta_kode").update({ poskusi: z.poskusi + 1 }).eq("id", z.id);
-    await zabelezi("koda-napaka:" + ip);
-    return { napaka: z.poskusi + 1 >= 5 ? "Preveč napačnih poskusov. Zahtevajte novo kodo." : "Koda ni pravilna.", status: 400 };
-  }
-  return { z };
+  if (r?.ok) return { z: r as { id: string; ime: string | null; povabilo_id: string | null } };
+  const n = String(r?.napaka ?? "ni");
+  if (n === "koda") return { napaka: "Koda ni pravilna.", status: 400 };
+  if (n === "poteklo") return { napaka: "Koda je potekla. Zahtevajte novo.", status: 410 };
+  if (n === "poskusi") return { napaka: "Preveč napačnih poskusov. Zahtevajte novo kodo.", status: 429 };
+  if (n === "zaklenjeno") return { napaka: "Preveč napačnih poskusov. Poskusite jutri.", status: 429 };
+  return { napaka: "Koda ni več veljavna. Zahtevajte novo.", status: 410 };
 }
 
 // nova koda (zapis zamenja prejšnjega) in pismo; ob napaki pošiljanja zapis odstrani
-async function novaKoda(o: { namen: "registracija" | "geslo"; email: string; ime?: string | null; povabilo_id?: string | null }) {
+async function novaKoda(o: { namen: "registracija" | "geslo"; email: string; ime?: string | null; povabilo_id?: string | null }): Promise<{ napaka?: string; koda?: string }> {
   const otp = sestMestna();
   await admin.from("eposta_kode").delete().eq("email", o.email).eq("namen", o.namen);
   const { data: zap, error } = await admin.from("eposta_kode").insert({
@@ -211,7 +216,6 @@ async function novaKoda(o: { namen: "registracija" | "geslo"; email: string; ime
   const p = o.namen === "registracija" ? pismoRegistracija(o.ime ?? "", otp) : pismoGeslo(otp);
   const r = await poslji(o.email, p.zadeva, p.html, p.besedilo);
   if (r.napaka) { await admin.from("eposta_kode").delete().eq("id", zap.id); return r; }
-  await zabelezi("koda:" + o.email);
   return {};
 }
 // največ 5 kod na uro na naslov in ne pogosteje kot na minuto
@@ -231,11 +235,9 @@ async function obravnavaj(req: Request): Promise<Response> {
   const dejanje = String(telo.dejanje ?? "");
   if (Math.random() < 0.05) await pocisti();
 
-  // napačne kode (povabila in e-poštne) z istega naslova IP: po 20 v 15 minutah premor
-  if (await omejeno("koda-napaka:" + ip, 20, 15)) return odgovor({ napaka: "Preveč poskusov. Poskusite čez nekaj minut." }, 429);
-
-  // ── preveri kodo povabila ────────────────────────────────────────
+  // ── preveri kodo povabila (50 bitov: omejitev po IP je le proti hrupu) ──
   if (dejanje === "preveri") {
+    if (await omejeno("koda-napaka:" + ip, 60, 15)) return odgovor({ napaka: "Preveč poskusov. Poskusite čez nekaj minut." }, 429);
     const k = normKoda(telo.koda);
     if (!KODA_OK.test(k)) { await zabelezi("koda-napaka:" + ip); return odgovor({ napaka: "Koda ni veljavna." }, 400); }
     const pv = await povabilo({ koda: k });
@@ -251,16 +253,19 @@ async function obravnavaj(req: Request): Promise<Response> {
     if (ime.length < 2) return odgovor({ napaka: "Vpišite ime in priimek.", polje: "ime" }, 400);
     if (!emailOk(email)) return odgovor({ napaka: "E-naslov ni veljaven.", polje: "email" }, 400);
     const gn = gesloNapaka(geslo); if (gn) return odgovor({ napaka: gn, polje: "geslo" }, 400);
-    if (await omejeno("zacni:" + ip, 10, 60)) return odgovor({ napaka: "Preveč poskusov. Poskusite čez eno uro." }, 429);
+    if (await omejeno("zacni:" + ip, 20, 60)) return odgovor({ napaka: "Preveč poskusov. Poskusite čez eno uro." }, 429);
+    await zabelezi("zacni:" + ip);
     const pv = await povabilo({ koda: k });
     if (!pv.p) return odgovor({ napaka: pv.napaka }, pv.status);
+    if (await omejeno("zacni-pov:" + pv.p.id, 10, 60)) return odgovor({ napaka: "Preveč poskusov s tem povabilom. Poskusite čez eno uro." }, 429);
+    await zabelezi("zacni-pov:" + pv.p.id);
     const { data: obst, error: oErr } = await admin.rpc("reg_uporabnik", { p_email: email });
     if (oErr) throw oErr;
     if (obst) return odgovor({ napaka: "Račun s tem e-naslovom že obstaja. Prijavite se ali uporabite »Pozabljeno geslo«.", polje: "email" }, 409);
     const pre = await prepogosto(email); if (pre) return odgovor({ napaka: pre }, 429);
     const r = await novaKoda({ namen: "registracija", email, ime, povabilo_id: pv.p.id });
     if (r.napaka) return odgovor(r, r.koda === "NI_EPOSTE" ? 503 : 502);
-    await zabelezi("zacni:" + ip);
+    await zabelezi("koda:" + email);
     return odgovor({ ok: true });
   }
 
@@ -274,51 +279,60 @@ async function obravnavaj(req: Request): Promise<Response> {
     const pre = await prepogosto(email); if (pre) return odgovor({ napaka: pre }, 429);
     const r = await novaKoda({ namen: "registracija", email, ime: z.ime, povabilo_id: z.povabilo_id });
     if (r.napaka) return odgovor(r, r.koda === "NI_EPOSTE" ? 503 : 502);
+    await zabelezi("koda:" + email);
     return odgovor({ ok: true });
   }
 
   // ── potrdi kodo iz e-pošte → račun z vlogo iz povabila ────────────
+  // Račun nastane zaklenjen (ban), reg_dokoncaj v eni transakciji porabi povabilo ter nastavi pravice in stranko,
+  // šele nato se odklene. Če se klic prekine vmes, ga ponovitev z isto kodo nadaljuje (user_metadata.povabilo).
   if (dejanje === "potrdi") {
     const email = normEmail(telo.email), otp = String(telo.koda ?? "").replace(/\D/g, ""), geslo = String(telo.geslo ?? "");
-    const pk = await preveriKodo(email, "registracija", otp, ip);
+    const gn = gesloNapaka(geslo); if (gn) return odgovor({ napaka: gn, polje: "geslo" }, 400);
+    const pk = await preveriKodo(email, "registracija", otp);
     if (!pk.z) return odgovor({ napaka: pk.napaka }, pk.status);
     const z = pk.z;
-    const gn = gesloNapaka(geslo); if (gn) return odgovor({ napaka: gn, polje: "geslo" }, 400);
+    if (!z.povabilo_id) return odgovor({ napaka: "Koda ni več veljavna. Zahtevajte novo." }, 410);
     const pv = await povabilo({ id: z.povabilo_id }); if (!pv.p) return odgovor({ napaka: pv.napaka }, pv.status);
 
-    const { data: nov, error: nErr } = await admin.auth.admin.createUser({ email, password: geslo, email_confirm: true, user_metadata: { full_name: z.ime } });
+    let uid = "", nov = true;
+    const { data: ust, error: nErr } = await admin.auth.admin.createUser({
+      email, password: geslo, email_confirm: true, ban_duration: "876000h", user_metadata: { full_name: z.ime, povabilo: z.povabilo_id },
+    });
     if (nErr) {
       const sib = sibkoGeslo(nErr as never); if (sib) return odgovor({ napaka: sib, polje: "geslo" }, 400);
-      if (/already|registered|exists/i.test(nErr.message)) return odgovor({ napaka: "Račun s tem e-naslovom že obstaja.", polje: "email" }, 409);
-      throw nErr;
+      if (!/already|registered|exists/i.test(nErr.message)) throw nErr;
+      // že obstaja: nadaljuj le nedokončano registracijo z istim povabilom
+      const { data: u0 } = await admin.rpc("reg_uporabnik", { p_email: email });
+      const { data: g } = u0?.id ? await admin.auth.admin.getUserById(u0.id) : { data: null };
+      const zaklenjen = !!(g?.user as { banned_until?: string } | undefined)?.banned_until;   // nedokončan = še zaklenjen
+      if (!g?.user || g.user.user_metadata?.povabilo !== z.povabilo_id || !zaklenjen) {
+        return odgovor({ napaka: "Račun s tem e-naslovom že obstaja.", polje: "email" }, 409);
+      }
+      uid = g.user.id; nov = false;
+      const { error: pwErr } = await admin.auth.admin.updateUserById(uid, { password: geslo });
+      if (pwErr) { const sib2 = sibkoGeslo(pwErr as never); if (sib2) return odgovor({ napaka: sib2, polje: "geslo" }, 400); throw pwErr; }
+    } else uid = ust.user.id;
+
+    const { data: dok, error: dErr } = await admin.rpc("reg_dokoncaj", { p_povabilo: z.povabilo_id, p_user: uid, p_ime: z.ime });
+    if (dErr || !dok?.ok) {
+      if (nov) { const { error: xErr } = await admin.auth.admin.deleteUser(uid); if (xErr) console.error("brisanje računa", xErr); }
+      if (dErr) throw dErr;
+      return odgovor({ napaka: dok?.napaka === "ustvarjalec" ? "Povabilo ni več veljavno. Prosite za novo." : "Povabilo ni več veljavno." }, 410);
     }
-    const uid = nov.user.id;
-    const razveljavi = async () => {   // povabilo spet prosto, računa ni
-      await admin.from("povabila").update({ porabljeno: null, porabil: null }).eq("id", z.povabilo_id).eq("porabil", uid);
-      await admin.auth.admin.deleteUser(uid);
-    };
-    const { data: por, error: rErr } = await admin.rpc("reg_porabi", { p_povabilo: z.povabilo_id, p_user: uid });
-    if (rErr || !por) { await admin.auth.admin.deleteUser(uid); if (rErr) throw rErr; return odgovor({ napaka: "Povabilo ni več veljavno." }, 410); }
-    const vloga = String(por.vloga);
-    const { error: pErr } = await admin.from("profiles").update({
-      full_name: z.ime, is_staff: vloga === "osebje" || vloga === "admin", super_admin: vloga === "admin",
-      zaposleni: vloga === "zaposleni", rfid_dostop: por.rfid === true, active: true,
-    }).eq("id", uid);
-    if (pErr) { await razveljavi(); throw pErr; }
-    if (vloga === "stranka" && por.org) {
-      const { error: cErr } = await admin.from("memberships").insert({ user_id: uid, org_id: por.org, role: "owner" });
-      if (cErr) { await razveljavi(); throw cErr; }
-    }
+    const { error: oErr } = await admin.auth.admin.updateUserById(uid, { ban_duration: "none" });
+    if (oErr) throw oErr;
     await admin.from("eposta_kode").delete().eq("email", email).eq("namen", "registracija");
 
     // obvestilo v portalu: kdor je povabil, in lastnik
     try {
-      const stranka = vloga === "stranka" ? await imeStranke(por.org) : null;
+      const vloga = String(dok.vloga);
+      const stranka = vloga === "stranka" ? await imeStranke(dok.org) : null;
       const { data: lastnik } = await admin.from("profiles").select("id").ilike("email", LASTNIK).maybeSingle();
-      const komu = [...new Set([por.ustvaril, lastnik?.id].filter(Boolean))];
+      const komu = [...new Set([dok.ustvaril, lastnik?.id].filter(Boolean))];
       if (komu.length) {
         await admin.from("obvestila").insert(komu.map((id) => ({
-          naslov: "Nov uporabnik", sporocilo: z.ime + " · " + VLOGE[vloga] + (stranka ? " · " + stranka : "") + " — registracija s povabilom.", prejemnik: id, tip: "toast",
+          naslov: "Nov uporabnik", sporocilo: (z.ime ?? email) + " · " + VLOGE[vloga] + (stranka ? " · " + stranka : "") + " — registracija s povabilom.", prejemnik: id, tip: "toast",
         })));
       }
     } catch (e) { console.error("obvestilo", e); }
@@ -330,29 +344,34 @@ async function obravnavaj(req: Request): Promise<Response> {
     const email = normEmail(telo.email);
     if (!emailOk(email)) return odgovor({ napaka: "E-naslov ni veljaven." }, 400);
     if (!Deno.env.get("RESEND_API_KEY")) return odgovor({ napaka: "E-pošta še ni nastavljena. Sporočite skrbniku portala.", koda: "NI_EPOSTE" }, 503);
-    if (await omejeno("pozabljeno:" + ip, 10, 60)) return odgovor({ napaka: "Preveč poskusov. Poskusite čez eno uro." }, 429);
+    if (await omejeno("pozabljeno:" + ip, 20, 60)) return odgovor({ napaka: "Preveč poskusov. Poskusite čez eno uro." }, 429);
     await zabelezi("pozabljeno:" + ip);
+    // omejitev na naslov velja enako za vse naslove (obstoječe in neobstoječe): odgovor ne izda, ali račun obstaja
+    const pre = await prepogosto(email); if (pre) return odgovor({ napaka: pre }, 429);
+    await zabelezi("koda:" + email);
     const { data: u, error } = await admin.rpc("reg_uporabnik", { p_email: email });
     if (error) throw error;
-    if (!u || !u.potrjen || !u.aktiven) return odgovor({ ok: true });
-    const pre = await prepogosto(email); if (pre) return odgovor({ napaka: pre }, 429);
-    const r = await novaKoda({ namen: "geslo", email });
-    if (r.napaka) return odgovor(r, r.koda === "NI_EPOSTE" ? 503 : 502);
+    if (u && u.potrjen && u.aktiven) {
+      const p = novaKoda({ namen: "geslo", email }).then((r) => { if (r.napaka) console.error("pozabljeno", r.napaka); });
+      const caka = vOzadju(p); if (caka) await caka;
+    }
     return odgovor({ ok: true });
   }
 
   // ── novo geslo s kodo ─────────────────────────────────────────────
   if (dejanje === "ponastavi") {
     const email = normEmail(telo.email), otp = String(telo.koda ?? "").replace(/\D/g, ""), geslo = String(telo.geslo ?? "");
-    const pk = await preveriKodo(email, "geslo", otp, ip);
-    if (!pk.z) return odgovor({ napaka: pk.napaka }, pk.status);
     const gn = gesloNapaka(geslo); if (gn) return odgovor({ napaka: gn, polje: "geslo" }, 400);
+    const pk = await preveriKodo(email, "geslo", otp);
+    if (!pk.z) return odgovor({ napaka: pk.napaka }, pk.status);
     const { data: u, error } = await admin.rpc("reg_uporabnik", { p_email: email });
     if (error) throw error;
     if (!u || !u.aktiven) return odgovor({ napaka: "Račun ni več aktiven." }, 410);
     const { error: gErr } = await admin.auth.admin.updateUserById(u.id, { password: geslo });
     if (gErr) { const sib = sibkoGeslo(gErr as never); if (sib) return odgovor({ napaka: sib, polje: "geslo" }, 400); throw gErr; }
     await admin.from("eposta_kode").delete().eq("email", email).eq("namen", "geslo");
+    const { error: sErr } = await admin.rpc("reg_odjavi", { p_user: u.id });   // seje na drugih napravah (tudi napadalčeve) ne veljajo več
+    if (sErr) console.error("odjava sej", sErr);
     return odgovor({ ok: true });
   }
 

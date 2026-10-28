@@ -142,7 +142,7 @@
     var d = String(ime || '').trim().split(/\s+/).filter(Boolean);
     return ((d[0] || '?').charAt(0) + (d.length > 1 ? d[d.length - 1].charAt(0) : '')).toUpperCase();
   }
-  function jeOmrezna(e) { return /fetch|network|load failed|timeout|ni povezave|aborterror/i.test(String((e && (e.message || e.name)) || e || '')); }
+  function jeOmrezna(e) { return !!(e && e.code === 'TIMEOUT') || /fetch|network|load failed|timeout|ni povezave|aborterror/i.test(String((e && (e.message || e.name)) || e || '')); }
   // klic z rokom: brez odgovora v 30 s se prekine (sicer gumb ostane v nalaganju, dokler povezava ne odneha sama)
   function zRokom(q, ms) {
     var ctl = new AbortController(), t = null;
@@ -936,6 +936,10 @@
       return;
     }
     if (Array.isArray(d.ze_oddano) && d.ze_oddano.length) { await rfZeOddano(d.ze_oddano, izbor); return; }
+    if (!(odd ? (d.listi || []).length : (d.kosov || 0))) {   // strežnik ni ustvaril ničesar (stranka vmes izbrisana, čip pri več strankah …): ne uspeh, skeniranje ostane
+      zvNapaka(); toast('Nič ni bilo zabeleženo: stanje čipov se je vmes spremenilo'); RF.kljuc = null; rfShrani();
+      rfPozabi(RF.sken); izvedi2(); return;
+    }
     rfOdstraniPoslane(posnetek);
     zvUspeh();
     if (odd) { RF.rezultat = { listi: d.listi || [] }; rfZapomniListe(RF.rezultat.listi); rfRisi(); }
@@ -1253,10 +1257,10 @@
   }
   document.addEventListener('visibilitychange', function () { if (document.hidden) rfMostKlic('ustavi'); });
   if (RF_MOST) {
-    var brezEnter = function (e) {
-      if (e.key !== 'Enter') return;
+    var brezEnter = function (e) {   // čitalec kot tipkovnica: ne Enter in ne črke v izbirnik (izbira po prvi črki bi tiho zamenjala stranko ali artikel)
       var t = e.target, tag = t && t.tagName;
-      if (tag !== 'INPUT' && tag !== 'TEXTAREA') e.preventDefault();
+      if (e.key === 'Enter') { if (tag !== 'INPUT' && tag !== 'TEXTAREA') e.preventDefault(); return; }
+      if (tag === 'SELECT' && e.key && e.key.length === 1) e.preventDefault();
     };
     document.addEventListener('keydown', brezEnter, true); document.addEventListener('keypress', brezEnter, true);
     window.addEventListener('scrfid', function (ev) {
@@ -1298,13 +1302,14 @@
   /* ══════════ NOVA RAZLIČICA ══════════
      C72 je lahko odprt ves dan: ko je objavljena nova različica, se aplikacija naloži znova, a le, ko miruje
      (brez skeniranja, okna, rezultata in branja) — nič se ne izgubi. */
-  var RF_VER = '4.84';   // ob objavi enako kot APP_VERZIJA v portalu (prvi »v« v spremembe.json)
+  var RF_VER = '4.85';   // ob objavi enako kot APP_VERZIJA v portalu (prvi »v« v spremembe.json)
   async function rfPreveriRazlicico() {
     try {
       var r = await _izvFetch('../spremembe.json?v=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
       var j = await r.json(), v = j && j[0] && j[0].v; if (!v || String(v) === RF_VER) return;
-      if (LS.beri('sc-rfa-nalozeno', '') === v || !rfMiruje()) return;   // za vsako različico največ enkrat (če predpomnilnik še vrne staro kodo)
-      LS.pisi('sc-rfa-nalozeno', v); location.reload();
+      var bil = LS.beri('sc-rfa-nalozeno', null); if (!bil || typeof bil !== 'object' || bil.v !== v) bil = { v: v, n: 0, t: 0 };
+      if (bil.n >= 3 || Date.now() - bil.t < 10 * 60000 || !rfMiruje()) return;   // največ 3-krat na različico, vsaj 10 min narazen (predpomnilnik lahko vrne staro kodo): brez zanke
+      LS.pisi('sc-rfa-nalozeno', { v: v, n: bil.n + 1, t: Date.now() }); location.reload();
     } catch (e) {}
   }
   // brez skeniranja, okna, rezultata, branja, klica v teku, odprtega menija, najdenega kosa in napol vpisane prijave
@@ -1327,13 +1332,14 @@
     var zadnji = LS.beri('sc-rfid-zadnji', null), o = zadnji && oseba(zadnji), s = null, pozno = false, g = ++VSTOP;
     // ne prazen zaslon: po 4 s »Kdo dela« (ali prijava), dokler seja in podatki ne pridejo; izbira osebe vmes ima prednost (VSTOP)
     var cakaj = setTimeout(function () { pozno = true; if (OSEBE.length) risiOsebe('Povezujem …'); else prijavaPokazi(); }, 4000);
+    var prehiten = function () { clearTimeout(cakaj); if (pozno && $('osebeMsg').textContent === 'Povezujem …') $('osebeMsg').textContent = ''; };   // oseba je vmes izbrala sama
     try { s = (await sb.auth.getSession()).data.session; } catch (e) {}
-    if (g !== VSTOP) { clearTimeout(cakaj); if (pozno && $('osebeMsg').textContent === 'Povezujem …') $('osebeMsg').textContent = ''; return; }
+    if (g !== VSTOP) { prehiten(); return; }
     if (o && s && s.user && s.user.id === o.uid) {   // zadnja oseba ostane prijavljena
-      try { var p = await podatki(); clearTimeout(cakaj); if (g !== VSTOP) return; vstopi(o, p); return; }
+      try { var p = await podatki(); clearTimeout(cakaj); if (g !== VSTOP) { prehiten(); return; } vstopi(o, p); return; }
       catch (e) {
         clearTimeout(cakaj);
-        if (g !== VSTOP) return;
+        if (g !== VSTOP) { prehiten(); return; }
         if (e && e.code === '42501') { risiOsebe(NI_DOSTOPA); return; }
         if (jeOmrezna(e)) { risiOsebe('Ni povezave z internetom.'); return; }
       }

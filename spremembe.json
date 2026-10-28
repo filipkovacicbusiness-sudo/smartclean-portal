@@ -1,5 +1,16 @@
 [
  {
+  "v": "4.85",
+  "d": "2026-10-28",
+  "c": "2026-10-28T20:35:00+01:00",
+  "t": [
+   "Uporabniki: čakajoča povabila so spet vidna na vrhu seznama in jih je mogoče preklicati; okna povabil imajo pravi rob; dolge značke se na karticah lomijo (prej so segle pod sosednjo kartico). Admina lahko povabi le lastnik.",
+   "Varnost (pregled vsega skupaj): koda iz e-pošte se preverja v bazi — največ 5 poskusov na kodo in 10 na naslov na dan; po novem geslu se odjavijo vse seje; pozabljeno geslo ne izda, ali račun obstaja; lastniku pravic ne more odvzeti nihče; slike profila največ 2 MB.",
+   "Aplikacija RFID in aplikacija za C72 1.5: počasna povezava pri menjavi osebe ne vodi več na geslo; čitalec kot tipkovnica ne more spremeniti izbrane stranke ali artikla; če strežnik ne zabeleži ničesar, skeniranje ostane; pritiski sprožilca med odpiranjem čitalca se ne izgubijo, R1 in UR4 se ob eni napaki ne odklopita.",
+   "Zagon: stran vedno dobi pripadajočo kodo, tudi med objavo — portal ne obstane na zagonskem zaslonu."
+  ]
+ },
+ {
   "v": "4.84",
   "d": "2026-10-28",
   "c": "2026-10-28T19:55:00+01:00",

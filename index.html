@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover"/>
 <title>SmartClean Portal</title>
 <!-- Tema pred prvim izrisom + zagonski zaslon (zunanja datoteka — CSP dovoli le 'self'). -->
-<script src="boot.js"></script>
+<script src="boot.js?v=4.85"></script>
 <!-- Pisava logotipa takoj (vzporedno s CSS), da se logotip na zagonskem zaslonu ne izriše najprej v nadomestni pisavi. -->
 <link rel="preload" href="fonts/playfair-display-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin/>
 <!-- Zagonski zaslon (splash): pokrije nalaganje in se gladko pretopi v portal. -->
@@ -50,7 +50,7 @@ html.sc-sam.sc-pod-uro[data-theme="light"] #sc-vrh{background:#0a0a0a;}
 <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png?v=4"/>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230a0a0a'/%3E%3Ctext x='32' y='42' font-family='Georgia,%27Times New Roman%27,serif' font-size='36' font-weight='700' text-anchor='middle'%3E%3Ctspan fill='%23e8f1eb'%3ES%3C/tspan%3E%3Ctspan fill='%236ed3a1'%3EC%3C/tspan%3E%3C/text%3E%3C/svg%3E"/>
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https://anrhtgbckxrccnafcmsz.supabase.co; connect-src 'self' https://anrhtgbckxrccnafcmsz.supabase.co wss://anrhtgbckxrccnafcmsz.supabase.co; base-uri 'none'; form-action 'none'; object-src 'none'"/>
-<link rel="stylesheet" href="portal.css"/>
+<link rel="stylesheet" href="portal.css?v=4.85"/>
 <style id="hexfx">
 .sc-hex{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;opacity:1}
 .auth,.app{position:relative;z-index:1}
@@ -175,7 +175,7 @@ body:has(> .app.show) .sc-hex [class*="hw"]{animation-play-state:paused}
           </div>
           <div class="field">
             <label for="regEmail">E-poštni naslov</label>
-            <input type="email" id="regEmail" autocomplete="email" autocapitalize="off" spellcheck="false"/>
+            <input type="email" id="regEmail" autocomplete="username" autocapitalize="off" spellcheck="false"/>
           </div>
           <div class="field">
             <label for="regGeslo">Geslo</label>
@@ -595,10 +595,10 @@ body:has(> .app.show) .sc-hex [class*="hw"]{animation-play-state:paused}
     <div class="msg" id="bioPromoMsg" role="status" aria-live="polite"></div>
   </div>
 </div>
-<script src="start.js"></script>
+<script src="start.js?v=4.85"></script>
 <script src="config.js"></script>
-<script src="supabase.js"></script>
+<script src="supabase.js?v=4.85"></script>
 <!-- pdfgen.js se naloži šele ob prvi izdelavi PDF-ja (glej zagotoviPdf() v portal.js). -->
-<script src="portal.js"></script>
+<script src="portal.js?v=4.85"></script>
 </body>
 </html>

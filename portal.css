@@ -3582,3 +3582,11 @@ html.v5.zm-brez-teksture{--cov-zrno:none;--cov-zrno-o:0;}
 .v5 .pov-okno .pov-akc button.danger{order:3;flex:1 0 100%;margin:4px 0 0;background:none;border-color:transparent;}   /* preklic pod deljenjem, kot besedilo */
 .v5 .auth form.reg .under{display:flex;justify-content:center;flex-wrap:wrap;gap:6px 22px;}
 .pov-nov [hidden]{display:none!important;}
+.v5 .okno .pov-vsebina{padding:18px 22px 22px;}
+@media(max-width:560px){ .v5 .okno .pov-vsebina{padding:14px 16px 18px;} }
+/* Uporabniki (mreža): značke v svoji vrstici (lomljive), datum pod njimi — dolga stranka ne sme pod sosednjo kartico */
+.v5[data-view="grid"] #usersList .lcell:not(.open) .row{grid-template-areas:"nm nm" "cen cen" "kg kg" "leg leg";grid-template-rows:auto auto auto auto;}
+.v5[data-view="grid"] #usersList .lcell:not(.open) .row .num{margin-top:4px!important;}
+.v5[data-view="grid"] #usersList .lcell:not(.open) .row .num::before{content:none!important;}
+.v5 #usersList .u-znacke{flex-wrap:wrap;}
+.v5 #usersList .u-znacke .pill{white-space:normal;overflow-wrap:anywhere;}
