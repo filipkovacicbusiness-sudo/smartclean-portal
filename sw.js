@@ -5,7 +5,7 @@
    Slike/pisave: cache-first (redko se menjajo). APK: vedno z mreže (3+ MB, ob novi
    različici bi sicer tablica dobila star paket iz predpomnilnika). */
 var CACHE = 'sc-portal';
-var PRECACHE = ['./boot.js', './portal.css', './portal.js', './start.js', './supabase.js', './index.html',
+var PRECACHE = ['./boot.js', './portal.css', './portal.js', './start.js', './supabase.js', './config.js', './index.html',
   './pdfgen.js', './spremni-pdf.js'];   // lena modula za PDF — prednaloži, da PDF deluje tudi brez povezave
 self.addEventListener('install', function (e) {
   e.waitUntil(
@@ -34,7 +34,7 @@ self.addEventListener('fetch', function (e) {
   var req = e.request; if (req.method !== 'GET') return;
   var url = new URL(req.url);
   if (url.origin !== self.location.origin) return;   /* Supabase / zunanje pusti */
-  if (/\/config\.js$/.test(url.pathname)) return;     /* config vedno svež */
+  /* config.js: z mreže (vedno svež), brez povezave iz predpomnilnika — sicer se portal brez povezave ne zažene */
   if (/\.apk$/i.test(url.pathname)) return;           /* APK vedno z mreže */
   if (jeMedij(url.pathname)) {
     e.respondWith(caches.match(req).then(function (hit) {
@@ -45,6 +45,9 @@ self.addEventListener('fetch', function (e) {
   /* Koda/HTML: vedno preveri strežnik (no-cache) → sveža koda brez menjave imen. */
   e.respondWith(
     fetch(req, { cache: 'no-cache' }).then(function (res) {
+      if (res.status >= 500) {   // strežnik ne odgovarja pravilno: shranjena kopija, če obstaja
+        return caches.match(req).then(function (h) { return h || caches.match(req, { ignoreSearch: true }); }).then(function (h) { return h || res; });
+      }
       if (!res.ok) return res;
       var c = res.clone();
       caches.open(CACHE).then(function (k) {   // ena kopija na datoteko: starejše različice (?v=…) iste poti ven

@@ -3589,4 +3589,5 @@ html.v5.zm-brez-teksture{--cov-zrno:none;--cov-zrno-o:0;}
 .v5[data-view="grid"] #usersList .lcell:not(.open) .row .num{margin-top:4px!important;}
 .v5[data-view="grid"] #usersList .lcell:not(.open) .row .num::before{content:none!important;}
 .v5 #usersList .u-znacke{flex-wrap:wrap;}
-.v5 #usersList .u-znacke .pill{white-space:normal;overflow-wrap:anywhere;}
+.v5 #usersList .u-znacke .pill{white-space:normal;overflow-wrap:anywhere;border-radius:10px;}
+#usersList .lcell > .pov-vsebina{display:none;}   /* vsebina povabila le v oknu */

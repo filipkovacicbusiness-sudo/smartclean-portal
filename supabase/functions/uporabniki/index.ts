@@ -127,6 +127,8 @@ async function obravnavaj(req: Request): Promise<Response> {
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
       return odgovor({ napaka: "E-naslov ni veljaven." }, 400);
     }
+    const vlogaZ = String(telo.vloga ?? "");
+    if (vlogaZ === "admin" && !jeLastnik) return odgovor({ napaka: "Admina lahko doda le lastnik." }, 403);
     const novo = geslo();
 
     const { data: ustvarjen, error } = await admin.auth.admin.createUser({
@@ -169,9 +171,17 @@ async function obravnavaj(req: Request): Promise<Response> {
     if (!jeLastnik && await tarcaJeLastnik(id)) {
       return odgovor({ napaka: "Gesla lastnika ne morete spremeniti." }, 403);
     }
+    if (!jeLastnik && id !== user.id) {   // kot v portalu: admin ureja le nižje vloge
+      const { data: t } = await admin.from("profiles").select("super_admin").eq("id", id).maybeSingle();
+      if (t?.super_admin) return odgovor({ napaka: "Gesla admina lahko spremeni le lastnik." }, 403);
+    }
     const novo = geslo();
     const { error } = await admin.auth.admin.updateUserById(id, { password: novo });
     if (error) return odgovor({ napaka: error.message }, 400);
+    if (id !== user.id) {   // tuj račun: odjava drugod (lastnega skrbnik ne odjavi samega sebe)
+      const { error: oErr } = await admin.rpc("reg_odjavi", { p_user: id });
+      if (oErr) console.error("odjava sej", oErr);
+    }
     return odgovor({ ok: true, geslo: novo });
   }
 
@@ -181,7 +191,7 @@ async function obravnavaj(req: Request): Promise<Response> {
   }
 
   if (dejanje === "izbrisi") {
-    if (!jeSuper) return odgovor({ napaka: "Za brisanje računov nimate pravic." }, 403);
+    if (!jeLastnik) return odgovor({ napaka: "Račune briše le lastnik." }, 403);
     const id = String(telo.id ?? "");
     if (!id) return odgovor({ napaka: "Manjka račun." }, 400);
 

@@ -1,5 +1,15 @@
 [
  {
+  "v": "4.86",
+  "d": "2026-10-28",
+  "c": "2026-10-28T21:40:00+01:00",
+  "t": [
+   "Aplikacija RFID: zapoznela prijava ene osebe na počasni povezavi ne more več tiho zamenjati osebe, ki dela (zapisi so bili sicer lahko pod drugim imenom); po neuspeli menjavi se prejšnja oseba ob vrnitvi povezave ne prijavi sama. Aplikacija za C72 1.6: sprožilec med odpiranjem čitalca in spust zanesljivo.",
+   "Varnost (drugi krog pregleda): Admina postavi ali odstavi le lastnik, kode povabil za admina vidi le lastnik; registracija se ob dvojnem kliku ali prekinitvi dokonča pravilno; po novem geslu se odstranijo tudi ključi za prijavo z obrazom; omejitve kod so atomarne.",
+   "Povabila in prijava: koda iz povezave ostane tudi po odjavi drugega uporabnika; zaprto okno povabila ne pusti kode QR v seznamu; stran in koda se ob neujemanju različic sami uskladita; portal se zažene tudi brez povezave (nastavitve so shranjene)."
+  ]
+ },
+ {
   "v": "4.85",
   "d": "2026-10-28",
   "c": "2026-10-28T20:35:00+01:00",

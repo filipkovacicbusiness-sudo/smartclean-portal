@@ -272,6 +272,8 @@
   if (sb) sb.auth.onAuthStateChange(function (ev, s) {
     if (!s || !s.user || !s.refresh_token) return;
     var o = oseba(s.user.id); if (o && o.refresh !== s.refresh_token) { o.refresh = s.refresh_token; shraniOsebe(); }
+    // med delom se seja ne sme zamenjati na drugo osebo (zapoznela osvežitev prejšnje menjave): sicer bi se vse beležilo pod njo
+    if (JAZ && s.user.id !== JAZ.uid && !$('app').hidden) { JAZ = null; LS.pisi('sc-rfid-zadnji', null); risiOsebe('Seja je bila prekinjena.'); }
   });
 
   function pokazi(kaj) {
@@ -339,6 +341,7 @@
   }
   function izberi(o) {
     VSTOP++;
+    var z = LS.beri('sc-rfid-zadnji', null); if (z && z !== o.uid) LS.pisi('sc-rfid-zadnji', null);   // ob vrnitvi povezave ne vstopi samodejno prejšnja oseba
     if (o.pin) pinVnos(o, function () { preklopi(o); });
     else prijavaPokazi('', o.email);   // brez PIN-a v portalu: geslo, sicer bi lahko kdorkoli vstopil kot ta oseba
   }
@@ -350,9 +353,13 @@
       if (!s || s.user.id !== o.uid) {
         var r = await zRokom(sb.auth.refreshSession({ refresh_token: o.refresh }));
         if (r.error || !r.data || !r.data.session) throw (r.error || new Error('seja'));
+        // supabase-js vrne osvežitev, ki še teče — lahko od prejšnje osebe (rok je potekel, klic pa ne): ne vstopi kot ona
+        if (r.data.session.user.id !== o.uid) throw { message: 'Ni povezave z internetom.', code: 'TIMEOUT' };
       }
       var p = await podatki();
       if (g !== VSTOP) return;
+      var s2 = (await sb.auth.getSession()).data.session;
+      if (!s2 || s2.user.id !== o.uid) { risiOsebe('Ni povezave z internetom.'); return; }   // seja se je vmes zamenjala
       vstopi(o, p);
       pinHash(o.uid).then(function (h) { if (h != null && h !== (o.pin || '')) { o.pin = h; shraniOsebe(); } });
     } catch (e) {
@@ -938,7 +945,7 @@
     if (Array.isArray(d.ze_oddano) && d.ze_oddano.length) { await rfZeOddano(d.ze_oddano, izbor); return; }
     if (!(odd ? (d.listi || []).length : (d.kosov || 0))) {   // strežnik ni ustvaril ničesar (stranka vmes izbrisana, čip pri več strankah …): ne uspeh, skeniranje ostane
       zvNapaka(); toast('Nič ni bilo zabeleženo: stanje čipov se je vmes spremenilo'); RF.kljuc = null; rfShrani();
-      rfPozabi(RF.sken); izvedi2(); return;
+      rfPozabi(RF.sken); rfPreveriDostop().then(izvedi2, izvedi2); return;   // tudi seznam strank (stranka je bila morda izklopljena)
     }
     rfOdstraniPoslane(posnetek);
     zvUspeh();
@@ -1302,13 +1309,13 @@
   /* ══════════ NOVA RAZLIČICA ══════════
      C72 je lahko odprt ves dan: ko je objavljena nova različica, se aplikacija naloži znova, a le, ko miruje
      (brez skeniranja, okna, rezultata in branja) — nič se ne izgubi. */
-  var RF_VER = '4.85';   // ob objavi enako kot APP_VERZIJA v portalu (prvi »v« v spremembe.json)
+  var RF_VER = '4.86';   // ob objavi enako kot APP_VERZIJA v portalu (prvi »v« v spremembe.json)
   async function rfPreveriRazlicico() {
     try {
       var r = await _izvFetch('../spremembe.json?v=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
       var j = await r.json(), v = j && j[0] && j[0].v; if (!v || String(v) === RF_VER) return;
       var bil = LS.beri('sc-rfa-nalozeno', null); if (!bil || typeof bil !== 'object' || bil.v !== v) bil = { v: v, n: 0, t: 0 };
-      if (bil.n >= 3 || Date.now() - bil.t < 10 * 60000 || !rfMiruje()) return;   // največ 3-krat na različico, vsaj 10 min narazen (predpomnilnik lahko vrne staro kodo): brez zanke
+      if (bil.n >= 3 || Math.abs(Date.now() - bil.t) < 10 * 60000 || !rfMiruje()) return;   // največ 3-krat na različico, vsaj 10 min narazen (predpomnilnik lahko vrne staro kodo): brez zanke
       LS.pisi('sc-rfa-nalozeno', { v: v, n: bil.n + 1, t: Date.now() }); location.reload();
     } catch (e) {}
   }

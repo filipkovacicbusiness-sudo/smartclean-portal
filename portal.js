@@ -2,6 +2,8 @@
 (function () {
 
   const $ = id => document.getElementById(id);
+  // različica strani (index.html naloži portal.js?v=…): primerja se z APP_VERZIJA — stara stran z novo kodo se enkrat naloži znova
+  var _STRAN_V = (function () { try { var m = /[?&]v=([^&#]+)/.exec((document.currentScript && document.currentScript.src) || ''); return m ? decodeURIComponent(m[1]) : ''; } catch (e) { return ''; } })();
   // Stara ikona na začetnem zaslonu (»black-translucent«): trak na vrhu je višji od 12 px (sega pod uro).
   try { var _vrh = document.getElementById('sc-vrh'); if (_vrh && _vrh.getBoundingClientRect().height > 20) document.documentElement.classList.add('sc-pod-uro'); } catch (e) {}
   const cfg = window.SC_CONFIG || {};
@@ -275,7 +277,7 @@
     const box = document.createElement('div');
     box.innerHTML = '<div class="field"><label for="kUrl">Naslov projekta</label>' + '<input type="text" id="kUrl" value="' + escape_(URL_ || '') + '" placeholder="https://….supabase.co"/></div>' + '<div class="field"><label for="kKey">Publishable key</label>' + '<input type="text" id="kKey" placeholder="sb_publishable_…"/></div>' + '<button type="button" class="btn" id="kSave">Shrani in nadaljuj</button>';
     $('loginForm').parentNode.insertBefore(box, $('loginMsg'));
-    document.querySelector('.sub').textContent = 'Portal še ne ve, kje je vaša baza. Vpišite podatke iz Supabase → Project Settings → API Keys.';
+    { const _sub = document.querySelector('.sub'); if (_sub) _sub.textContent = 'Portal še ne ve, kje je vaša baza. Vpišite podatke iz Supabase → Project Settings → API Keys.'; }
     $('kSave').addEventListener('click', () => {
       const u = document.getElementById('kUrl').value.trim();
       const k = document.getElementById('kKey').value.trim();
@@ -483,8 +485,7 @@
      po e-pošti → račun z vlogo iz povabila → prijava → fotografija (neobvezno) → portal.
      Pozabljeno geslo: e-naslov → koda po e-pošti in novo geslo → prijava. */
   // starejša stran (predpomnilnik, med objavo) nima obrazcev: brez tega bi se ustavil ves portal
-  var REG_IMA = !!($('regForm') && $('gesloForm') && $('regOdpri'));
-  if (!REG_IMA) { try { if (!sessionStorage.getItem('sc-stara-stran')) { sessionStorage.setItem('sc-stara-stran', '1'); location.reload(); } } catch (e) {} }   // enkrat znova: sveža stran
+  var REG_IMA = !!($('regForm') && $('gesloForm') && $('regOdpri'));   // starejša stran: brez registracije (ponovna naložitev: glej APP_VERZIJA)
   var REG = { korak: 'koda', koda: '', povabilo: null, ime: '', email: '', geslo: '', znovaDo: 0, slika: false };
   var REG_KORAKI = ['koda', 'podatki', 'potrdi', 'slika'];
   async function regKlic(telo) {
@@ -558,11 +559,13 @@
         if (ime.length < 2) { authMsg('Vpišite ime in priimek.', true); $('regIme').focus(); return; }
         if (!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(email)) { authMsg('E-naslov ni veljaven.', true); $('regEmail').focus(); return; }
         var gn = gesloNapaka(geslo); if (gn) { authMsg(gn, true); $('regGeslo').focus(); return; }
-        if (email === REG.email && ime === REG.ime && Date.now() - (REG.poslanoOb || 0) < 14 * 60000) { REG.geslo = geslo; regKorak('potrdi'); znovaOdstevaj($('regZnova'), REG); return; }
+        if (email === REG.email && ime === REG.ime && REG.koda === REG.kodaZacni && Date.now() - (REG.poslanoOb || 0) < 14 * 60000) {
+          REG.geslo = geslo; $('regOtp').value = ''; $('regGeslo2Polje').classList.add('hidden'); regKorak('potrdi'); znovaOdstevaj($('regZnova'), REG); return;
+        }
         var r2 = await regKlic({ dejanje: 'zacni', koda: REG.koda, ime: ime, email: email, geslo: geslo });
         if (!ziv()) return;
         if (r2.napaka) { authMsg(r2.napaka, true); if (r2.polje) { var pf = { ime: 'regIme', email: 'regEmail', geslo: 'regGeslo' }[r2.polje]; if (pf) $(pf).focus(); } return; }
-        REG.ime = ime; REG.email = email; REG.geslo = geslo; REG.znovaDo = Date.now() + 60000; REG.poslanoOb = Date.now();
+        REG.ime = ime; REG.email = email; REG.geslo = geslo; REG.znovaDo = Date.now() + 60000; REG.poslanoOb = Date.now(); REG.kodaZacni = REG.koda;
         $('regPoslano').innerHTML = 'Koda je na poti na <b>' + escape_(email) + '</b>.';
         $('regGeslo2Polje').classList.add('hidden'); $('regOtp').value = '';
         regKorak('potrdi'); znovaOdstevaj($('regZnova'), REG);
@@ -574,7 +577,9 @@
           REG.geslo = g2;
         }
         var r3 = await regKlic({ dejanje: 'potrdi', email: REG.email, koda: otp, geslo: REG.geslo });
+        if (!r3.napaka && !ziv()) { pokaziPrijavo(REG.email, 'Račun je ustvarjen. Prijavite se.'); return; }   // oseba je vmes odšla: račun vseeno obstaja
         if (!ziv()) return;
+        if (r3.napaka && /ni več veljavna|ni več odprta/i.test(r3.napaka)) REG.poslanoOb = 0;   // Naprej znova pošlje kodo
         if (r3.napaka) {
           authMsg(r3.napaka, true);
           if (r3.polje === 'geslo') { $('regGeslo2Polje').classList.remove('hidden'); $('regGeslo2').value = ''; $('regGeslo2').focus(); }
@@ -772,7 +777,16 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.85 · BETA';
+  var APP_VERZIJA = '4.86 · BETA';
+  // stran in koda iste različice; sicer (objava v teku, star predpomnilnik) enkrat znova na različico — brez zanke
+  (function () {
+    var v = APP_VERZIJA.split(' ')[0], k = 'sc-stara-stran';
+    try {
+      if (_STRAN_V === v) { sessionStorage.removeItem(k); return; }
+      if (sessionStorage.getItem(k) === v) return;
+      sessionStorage.setItem(k, v); location.reload();
+    } catch (e) {}
+  })();
   var NALAGANJE = '<div class="sc-load" aria-hidden="true"><span class="sc-load-line"></span></div>';
   // Stale-while-revalidate: ob ponovnem obisku razdelka NE pobriši vsebine v nalagalnik —
   // obdrži prejšnjo (takojšen prikaz) in jo osveži v ozadju. Trak le ob prvem nalaganju.
@@ -8299,7 +8313,7 @@
      Če ga še ni, to tu tudi piše — namesto strani 404. */
   // ?v= ob vsaki novi različici aplikacije (aplikacija/zgradi.py): brskalnik in predpomnilnik vzameta nov paket.
   var APK_POT = 'tablica/Pralnica-sync.apk?v=11.9';
-  var RFID_APK_POT = 'rfid/SmartClean-RFID.apk?v=1.5';   // aplikacija-rfid/zgradi.py (VERZIJA)
+  var RFID_APK_POT = 'rfid/SmartClean-RFID.apk?v=1.6';   // aplikacija-rfid/zgradi.py (VERZIJA)
 
   function wirePwa(scope) {
     var pb = (scope || document).querySelector('#pwaInstall');
@@ -10247,7 +10261,7 @@
       if (!ok) return;
       var r = await sb.rpc('povabilo_preklici', { p_id: p.id });
       if (r.error) { toast(napakaBesedilo(r.error)); return; }
-      toast(r.data === false ? 'Povabilo je že uporabljeno' : 'Povabilo preklicano'); if (_okno) oknoZapri(); loadUsers();
+      toast(r.data === false ? 'Povabilo ni več aktivno' : 'Povabilo preklicano'); if (_okno) oknoZapri(); loadUsers();
     });
   }
   function povOdpri(btn) {
@@ -10256,7 +10270,8 @@
     var box = btn.nextElementSibling; box.innerHTML = povVsebina(p); povVezi(box, p);
     oknoOdpri(btn, box, function () { return document.querySelector('#usersList .row[data-pov="' + String(p.id).replace(/"/g, '\\"') + '"]'); }, {
       glava: function () { var h = document.createElement('h3'); h.className = 'sec-h'; h.textContent = p.opomba || 'Povabilo'; return h; },
-      osvezi: function (k) { var b = k.nextElementSibling; b.innerHTML = povVsebina(p); povVezi(b, p); return b; }   // seznam se je osvežil: novo kartico napolni
+      osvezi: function (k) { var b = k.nextElementSibling; b.innerHTML = povVsebina(p); povVezi(b, p); return b; },   // seznam se je osvežil: novo kartico napolni
+      obZaprtju: function () { document.querySelectorAll('#usersList .pov-vsebina').forEach(function (x) { x.innerHTML = ''; }); }
     });
   }
   // novo povabilo: vloga → (stranka | aplikacija RFID) → za koga → koda QR v istem oknu
@@ -11162,12 +11177,14 @@
   async function povabiloPriSeji(k) {
     var ok = await potrdiModal({ naslov: 'Povabilo', sporocilo: 'Prijavljeni ste kot ' + (JAZMAIL || 'drug uporabnik') + '. Za nov račun s tem povabilom se odjavite.', potrdi: 'Odjava', preklici: 'Ostani' });
     if (!ok) return;
-    try { await sb.auth.signOut({ scope: 'local' }); } catch (e) {}
-    location.href = location.pathname + '?koda=' + k;
+    try { sessionStorage.setItem('sc-povabilo-koda', k); } catch (e) {}   // odjava sama sproži ponovno nalaganje: koda počaka v seji
+    try { $('app').classList.remove('show'); await sb.auth.signOut({ scope: 'local' }); } catch (e) {}
+    location.href = location.pathname;
   }
   // povezava povabila (?koda=…, tudi iz kode QR): koda iz naslova takoj ven (zgodovina, posnetki zaslona)
   var _urlKoda = '';
   try { var _up = new URLSearchParams(location.search); _urlKoda = (_up.get('koda') || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10); if (_up.has('koda')) { _up.delete('koda'); history.replaceState(null, '', location.pathname + (_up.toString() ? '?' + _up : '') + location.hash); } } catch (e) {}
+  try { if (!_urlKoda) _urlKoda = (sessionStorage.getItem('sc-povabilo-koda') || '').slice(0, 10); sessionStorage.removeItem('sc-povabilo-koda'); } catch (e) {}   // po odjavi zaradi povabila
   (async function () {
     if (!sb) return;
     let recovery = false;

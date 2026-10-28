@@ -71,6 +71,7 @@ class Bralnik {
     private volatile long zadnjiNeuspeh;                              // zadnje neuspešno odpiranje (ponovno samo po premoru)
     private static RFIDWithUHFUrxNetwork ur4R;                         // en objekt UR4 na proces: vsak nov pusti v SDK dve niti
     private volatile boolean zamujen;                                 // pritisk med začetkom v teku: po njem začni znova
+    private volatile boolean koncan;                                  // aktivnost je končana: ta primerek ne sme več odpirati čitalca
 
     private final LinkedHashSet<String> seja = new LinkedHashSet<>();
     private final List<String> cakajo = new ArrayList<>();
@@ -112,11 +113,14 @@ class Bralnik {
 
     // ── upravljanje ──
     void samodejno() {
-        izvedi(() -> { if (akt == null && !odpiram) odpriVrsto(izbran); });
+        if (koncan) return;
+        izvedi(() -> { if (!koncan && akt == null && !odpiram) odpriVrsto(izbran); });
     }
 
     void izberi(String id) {
+        if (koncan) return;
         izvedi(() -> {
+            if (koncan) return;
             zapriAkt();
             izbran = id;
             nas.edit().putString("izbran", id).apply();
@@ -127,12 +131,19 @@ class Bralnik {
     // Začetek branja. Vgrajen čitalec se sam znova odpre (ob zagonu ni uspelo ali ga je vzel drug program),
     // a največ enkrat na pritisk in ne prej kot 3 s po neuspehu; R1 in UR4 le z »Poveži« (njuno odpiranje traja sekunde).
     void zacni() {
+        if (koncan) return;   // npr. tipka R1 (povratni klic SDK) po koncu aktivnosti
         zelim = true;
-        if (!zacetekVVrsti.compareAndSet(false, true)) { zamujen = true; return; }   // začetek že teče: po njem še enkrat (glej finally)
+        zamujen = true;       // pred poskusom: začetek, ki se ravno konča, ga vidi (glej finally)
+        zacniVrsta();
+    }
+
+    // v vrsto (en začetek naenkrat); želje (zelim) ne spreminja — spust sprožilca med tem ostane spust
+    private void zacniVrsta() {
+        if (!zacetekVVrsti.compareAndSet(false, true)) return;   // začetek že teče: po njem še enkrat (glej finally)
         zamujen = false;
         izvedi(() -> {
             try {
-                if (bere || !zelim) return;   // že bere ali je oseba medtem spustila sprožilec
+                if (koncan || bere || !zelim) return;   // konec, že bere ali je oseba medtem spustila sprožilec
                 boolean vgrajen = "vgrajen".equals(izbran);
                 boolean smeOdpreti = vgrajen && SystemClock.uptimeMillis() - zadnjiNeuspeh > 3000;
                 if (akt == null && !odpiram && smeOdpreti) odpriVrsto(izbran);
@@ -166,13 +177,14 @@ class Bralnik {
             } finally {
                 zacetekVVrsti.set(false);
                 // pritisk med tem začetkom (npr. med ustavljanjem po prezgodnjem spustu): oseba drži sprožilec, a nič ne bere
-                if (zamujen && zelim && !bere && akt != null) { zamujen = false; zacni(); }
+                if (zamujen && zelim && !bere && akt != null && !koncan) zacniVrsta();
             }
         });
     }
 
     void ustavi() {
         zelim = false;
+        zamujen = false;
         izvedi(() -> {
             if (zelim || akt == null || !bere) return;   // medtem znova pritisnjen: bere naprej
             try { akt.ustavi(); } catch (Throwable ignored) { }
@@ -182,13 +194,14 @@ class Bralnik {
     }
 
     void zapri() { izvedi(this::zapriAkt); }
-    void konec() { ui.removeCallbacksAndMessages(null); izvedi(this::zapriAkt); }
+    void konec() { koncan = true; zelim = false; ui.removeCallbacksAndMessages(null); izvedi(this::zapriAkt); }
 
     private void izvedi(Runnable r) {
         try { NIT.execute(r); } catch (java.util.concurrent.RejectedExecutionException ignored) { }
     }
 
     void nastaviMoc(int dbm) {
+        if (koncan) return;
         moc = Math.max(MOC_MIN, Math.min(MOC_MAX, dbm));
         nas.edit().putInt("moc", moc).apply();
         izvedi(() -> {
@@ -213,7 +226,7 @@ class Bralnik {
         } catch (Exception ignored) { }
     }
 
-    void usbPrikljucen() { if ("r1".equals(izbran) && !povezan) izberi("r1"); }
+    void usbPrikljucen() { if (!koncan && "r1".equals(izbran) && !povezan) izberi("r1"); }
 
     private void zapriAkt() {
         if (akt != null) { try { akt.zapri(); } catch (Throwable ignored) { } }
