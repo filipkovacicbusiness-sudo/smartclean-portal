@@ -142,7 +142,7 @@ body:has(> .app.show) .sc-hex [class*="hw"]{animation-play-state:paused}
       <button class="pp-pass hidden" id="ppPass" type="button">Vpiši geslo namesto tega</button>
     </div>
     <div class="auth-box hidden" id="authBox">
-      <h1>Dobrodošli nazaj</h1>
+      <h1 id="authNaslov">Dobrodošli nazaj</h1>
 
       <form id="loginForm" novalidate>
         <div class="field">
@@ -155,15 +155,76 @@ body:has(> .app.show) .sc-hex [class*="hw"]{animation-play-state:paused}
         </div>
         <button type="submit" class="btn" id="loginBtn">Prijavi se</button>
       </form>
-      <p class="under"><button type="button" class="link-btn" id="backToPickerBtn" style="display:none">Nazaj na profile</button> <button type="button" class="link-btn" id="forgotBtn">Pozabljeno geslo?</button></p>
+      <p class="under" id="loginPod"><button type="button" class="link-btn" id="backToPickerBtn" style="display:none">Nazaj na profile</button> <button type="button" class="link-btn" id="forgotBtn">Pozabljeno geslo?</button></p>
+      <button type="button" class="btn reg-vstop" id="regOdpri">Imam aktivacijsko kodo</button>
 
-      <form id="resetForm" class="hidden" novalidate>
-        <div class="field">
-          <label for="resetEmail">E-poštni naslov</label>
-          <input type="email" id="resetEmail" autocomplete="username" required/>
+      <!-- registracija s kodo povabila: koda → podatki → koda iz e-pošte → fotografija → dobrodošli -->
+      <form id="regForm" class="hidden reg" novalidate>
+        <div class="reg-koraki" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+        <div class="reg-korak" data-korak="koda">
+          <div class="field">
+            <label for="regKoda">Aktivacijska koda</label>
+            <input type="text" id="regKoda" class="reg-koda-vnos" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" maxlength="11" placeholder="XXXXX-XXXXX"/>
+          </div>
         </div>
-        <button type="submit" class="btn" id="resetBtn">Pošlji povezavo za ponastavitev</button>
-        <p class="under"><button type="button" class="link-btn" id="backBtn">Nazaj na prijavo</button></p>
+        <div class="reg-korak hidden" data-korak="podatki">
+          <p class="reg-povabilo" id="regPovabilo"></p>
+          <div class="field">
+            <label for="regIme">Ime in priimek</label>
+            <input type="text" id="regIme" autocomplete="name" maxlength="80"/>
+          </div>
+          <div class="field">
+            <label for="regEmail">E-poštni naslov</label>
+            <input type="email" id="regEmail" autocomplete="email" autocapitalize="off" spellcheck="false"/>
+          </div>
+          <div class="field">
+            <label for="regGeslo">Geslo</label>
+            <input type="password" id="regGeslo" autocomplete="new-password" maxlength="72"/>
+            <span class="reg-moc" id="regMoc" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+          </div>
+        </div>
+        <div class="reg-korak hidden" data-korak="potrdi">
+          <p class="reg-poslano" id="regPoslano"></p>
+          <div class="field">
+            <label for="regOtp">Koda iz e-pošte</label>
+            <input type="text" id="regOtp" class="reg-otp" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]*"/>
+          </div>
+          <div class="field hidden" id="regGeslo2Polje">
+            <label for="regGeslo2">Novo geslo</label>
+            <input type="password" id="regGeslo2" autocomplete="new-password" maxlength="72"/>
+          </div>
+        </div>
+        <div class="reg-korak hidden" data-korak="slika">
+          <button type="button" class="reg-av" id="regAv" aria-label="Dodaj fotografijo"></button>
+          <input type="file" id="regSlikaDat" accept="image/*" hidden/>
+        </div>
+        <div class="reg-korak hidden" data-korak="konec"></div>
+        <button type="submit" class="btn" id="regBtn">Naprej</button>
+        <p class="under"><button type="button" class="link-btn" id="regNazaj">Nazaj na prijavo</button> <button type="button" class="link-btn hidden" id="regZnova">Pošlji znova</button></p>
+      </form>
+
+      <!-- pozabljeno geslo: e-naslov → koda iz e-pošte in novo geslo -->
+      <form id="gesloForm" class="hidden reg" novalidate>
+        <div class="reg-korak" data-korak="email">
+          <div class="field">
+            <label for="gEmail">E-poštni naslov</label>
+            <input type="email" id="gEmail" autocomplete="username" autocapitalize="off" spellcheck="false"/>
+          </div>
+        </div>
+        <div class="reg-korak hidden" data-korak="koda">
+          <p class="reg-poslano" id="gPoslano"></p>
+          <div class="field">
+            <label for="gOtp">Koda iz e-pošte</label>
+            <input type="text" id="gOtp" class="reg-otp" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]*"/>
+          </div>
+          <div class="field">
+            <label for="gGeslo">Novo geslo</label>
+            <input type="password" id="gGeslo" autocomplete="new-password" maxlength="72"/>
+            <span class="reg-moc" id="gMoc" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+          </div>
+        </div>
+        <button type="submit" class="btn" id="gBtn">Pošlji kodo</button>
+        <p class="under"><button type="button" class="link-btn" id="gNazaj">Nazaj na prijavo</button> <button type="button" class="link-btn hidden" id="gZnova">Pošlji znova</button></p>
       </form>
 
       <form id="newPwForm" class="hidden" novalidate>
@@ -417,36 +478,8 @@ body:has(> .app.show) .sc-hex [class*="hw"]{animation-play-state:paused}
 
       <section class="sec hidden" id="sec-uporabniki">
         <div class="head"><div class="head-t"><h2>Uporabniki</h2></div>
-          <div class="head-akc"><button type="button" id="nuOdpri" aria-keyshortcuts="n" class="btn tb-prim hidden" title="Nov uporabnik"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span class="tb-lbl">Nov uporabnik</span></button></div></div>
+          <div class="head-akc"><button type="button" id="nuOdpri" aria-keyshortcuts="n" class="btn tb-prim hidden" title="Povabi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span class="tb-lbl">Povabi</span></button></div></div>
         <div id="usersList"></div>
-        <div class="panel nu-panel hidden" id="nuPanel">
-          <h3 class="sec-h">Nov uporabnik</h3>
-          <form id="addUserForm" class="add-row" novalidate>
-            <div class="field">
-              <label for="nuIme">Ime in priimek</label>
-              <input type="text" id="nuIme" autocomplete="off"/>
-            </div>
-            <div class="field">
-              <label for="nuEmail">E-naslov novega uporabnika</label>
-              <input type="email" id="nuEmail" autocomplete="off" required/>
-            </div>
-            <div class="field">
-              <label for="nuVloga">Vloga</label>
-              <select id="nuVloga">
-                <option value="osebje">Osebje</option>
-                <option value="admin">Admin</option>
-                <option value="zaposleni">Zaposleni</option>
-                <option value="stranka">Stranka</option>
-              </select>
-            </div>
-            <div class="field" id="nuOrgPolje" hidden>
-              <label for="nuOrg">Stranka</label>
-              <select id="nuOrg"></select>
-            </div>
-            <button type="submit" class="btn btn-narrow" id="nuBtn">Ustvari račun</button>
-          </form>
-          <div class="msg" id="usersMsg" role="status" aria-live="polite"></div>
-        </div>
       </section>
 
       <section class="sec hidden" id="sec-racun">

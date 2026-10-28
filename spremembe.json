@@ -1,5 +1,15 @@
 [
  {
+  "v": "4.84",
+  "d": "2026-10-28",
+  "c": "2026-10-28T19:55:00+01:00",
+  "t": [
+   "Povabila: Uporabniki → Povabi ustvari povabilo z vlogo (stranka, osebje, zaposleni, admin), kodo, povezavo in kodo QR. Velja 7 dni in samo enkrat; čakajoča povabila so na vrhu seznama (deli, kopiraj, prekliči). Nadomešča »Nov uporabnik«.",
+   "Registracija: na prijavi »Imam aktivacijsko kodo« (ali povezava oz. koda QR) — oseba sama vpiše ime, e-naslov in geslo, e-naslov potrdi s 6-mestno kodo in doda fotografijo. Pozabljeno geslo: koda po e-pošti in novo geslo (dokler e-pošta ni nastavljena, povezava kot doslej).",
+   "Uporabniki: sporočila dejanj so spet vidna; novo geslo se pokaže v oknu z gumbom Kopiraj."
+  ]
+ },
+ {
   "v": "4.83",
   "d": "2026-10-28",
   "c": "2026-10-28T19:25:00+01:00",

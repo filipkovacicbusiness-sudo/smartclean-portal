@@ -2735,12 +2735,6 @@ html[data-theme="dark"] .doc-stage{background:color-mix(in srgb,var(--ink) 6%,va
 }
 
 /* ── Uporabniki: obrazec za novega uporabnika v oknu ── */
-.v5 .nu-modal{position:relative;width:min(440px,calc(100vw - 32px));padding:24px;}
-.v5 .nu-modal .nu-panel{border:0;padding:0;margin:0;background:none;}
-.v5 .nu-modal .nu-panel h3.sec-h{margin:0 40px 18px 0;}
-.v5 .nu-modal .add-row{display:flex;flex-direction:column;gap:0;}
-.v5 .nu-modal .add-row .btn{width:100%;margin-top:6px;}
-.v5 .nu-modal .nu-x{position:absolute;top:16px;right:16px;}
 .v5 #usersList{margin:0;}
 
 /* ── telefon: dodelave orodnih vrstic ── */
@@ -2845,9 +2839,6 @@ html.v5 .okno .a-det .a-det-pad > ul:has(> li:nth-child(7)){columns:2;column-gap
 .v5[data-theme="dark"] .sc-toast-akc:hover{background:rgba(0,0,0,.16);}
 
 /* ── Nov uporabnik (okno): polja čez celo širino ── */
-.v5 .nu-modal .add-row{display:grid;grid-template-columns:1fr;gap:0;align-items:stretch;justify-items:stretch;}
-.v5 .nu-modal .add-row .field{width:100%;margin:0 0 14px;text-align:left;}
-.v5 .nu-modal .add-row .field input,.v5 .nu-modal .add-row .cs,.v5 .nu-modal .add-row select{width:100%;max-width:none;}
 
 /* ── Spletna aplikacija na začetnem zaslonu (iOS): nad vsem je trak #sc-vrh (12 px ali višina ure, glej index.html).
    Okna in plasti se začnejo POD njim, sicer jim trak odreže zgornji rob. --vrh = koliko vrha je zasedenega. ── */
@@ -2913,7 +2904,6 @@ html.sc-sam{--vrh:max(12px,env(safe-area-inset-top));}
   .v5 #sec-domov .stat:nth-child(even),.v5 #sec-domov .stat + .stat:nth-child(even){padding-left:0;}
   .v5 #sec-domov .stat-num{font-size:1.6rem;}
 }
-.v5 .nu-modal [hidden]{display:none!important;}
 
 /* ══════════ KARTICE Z NASLOVNICO (4.65) ══════════
    V mreži je kartica naslovnica: mehek preliv barve cenika stranke (--c1/--c2 iz naslovnica() v portal.js),
@@ -3543,3 +3533,52 @@ html.zm-brez-stekla .v5 .rf-akc,html.v5.zm-brez-stekla .rf-akc{background:var(--
 /* brez teksture: kartice ohranijo barvo stranke (prelivi), brez šuma SVG z mešanjem barv */
 html.v5.zm-brez-teksture{--cov-zrno:none;--cov-zrno-o:0;}
 
+/* ══════════ POVABILA IN REGISTRACIJA (4.84) ══════════
+   Prijava: »Imam aktivacijsko kodo« → koraki (trak zgoraj); pozabljeno geslo s kodo. Uporabniki: povabilo s kodo QR. */
+.v5 .auth .reg-vstop{width:100%;margin-top:26px;background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1px var(--line);}
+.v5 .auth .reg-vstop:hover{background:var(--green-m);}
+.reg-koraki{display:flex;gap:6px;margin:-14px 0 28px;}
+.reg-koraki i{flex:1;height:3px;border-radius:2px;background:var(--line);transition:background-color .35s ease;}
+.reg-koraki i.on{background:var(--ink);}
+.v5 .auth .reg-koda-vnos{font-size:var(--fs-20);font-weight:500;letter-spacing:.12em;text-transform:uppercase;font-variant-numeric:tabular-nums;}
+.v5 .auth .reg-koda-vnos::placeholder{letter-spacing:.12em;color:var(--line-strong);}
+.v5 .auth .reg-otp{font-size:var(--fs-24);font-weight:500;letter-spacing:.5em;text-align:center;font-variant-numeric:tabular-nums;padding-left:calc(14px + .5em);}
+.reg-povabilo{display:inline-flex;align-items:center;gap:8px;max-width:100%;margin:-10px 0 22px;padding:7px 14px 7px 10px;border-radius:var(--r-full);
+  background:color-mix(in srgb,var(--st-ok) 12%,transparent);color:var(--st-ok-ink);font-size:var(--fs-14);font-weight:500;line-height:1.3;}
+.reg-povabilo svg{flex:0 0 auto;width:16px;height:16px;}
+.reg-povabilo span{min-width:0;overflow-wrap:anywhere;}
+.reg-poslano{margin:-10px 0 20px;font-size:var(--fs-14);line-height:1.5;color:var(--mid);overflow-wrap:anywhere;}
+.reg-poslano b{color:var(--ink);font-weight:500;}
+.reg-moc{display:flex;gap:4px;margin-top:8px;transition:opacity .2s ease;}
+.reg-moc:not([data-m]),.reg-moc[data-m=""]{opacity:0;}
+.reg-moc i{flex:1;height:3px;border-radius:2px;background:var(--line);transition:background-color .2s ease;}
+.reg-moc[data-m="1"] i:first-child{background:var(--st-bad);}
+.reg-moc[data-m="2"] i:nth-child(-n+2){background:var(--st-warn);}
+.reg-moc[data-m="3"] i:nth-child(-n+3),.reg-moc[data-m="4"] i{background:var(--st-ok);}
+.reg-av{display:flex;align-items:center;justify-content:center;width:136px;height:136px;margin:0 auto 6px;padding:0;border-radius:50%;
+  border:1.5px dashed var(--line-strong);background:var(--green-m) center/cover no-repeat;color:var(--mid);font:500 var(--fs-24)/1 var(--sans);cursor:pointer;
+  transition:transform .25s ease,border-color .2s ease;}
+.reg-av:hover{border-color:var(--ink);color:var(--ink);}
+.reg-av{position:relative;}
+.reg-av::after{content:"";position:absolute;right:4px;bottom:4px;width:34px;height:34px;border-radius:50%;background:var(--ink) center/16px no-repeat;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.6' stroke-linecap='round'%3E%3Cpath d='M12 5v14M5 12h14'/%3E%3C/svg%3E");
+  box-shadow:0 0 0 3px var(--bg);}
+.v5[data-theme="dark"] .reg-av::after{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round'%3E%3Cpath d='M12 5v14M5 12h14'/%3E%3C/svg%3E");}
+.reg-av.ima{border:0;color:transparent;}
+.reg-av.ima::after{display:none;}
+.reg-av.ima span{display:none;}
+.reg-av.nalaga{animation:nalagaPulz .7s ease-in-out infinite alternate;cursor:progress;}
+.v5 .auth .btn.nalaga{cursor:progress;animation:nalagaPulz .7s ease-in-out infinite alternate;}
+.v5 .pill-cak{background:color-mix(in srgb,var(--st-warn) 16%,transparent);color:var(--st-warn-ink);border-color:transparent;}
+.pov-okno{display:flex;flex-direction:column;align-items:center;text-align:center;padding:4px 0 2px;}
+.pov-qr{width:min(232px,64vw);aspect-ratio:1;padding:12px;border-radius:var(--radius);background:#fff;box-shadow:inset 0 0 0 1px var(--line);}
+.pov-qr svg{display:block;width:100%;height:100%;}
+.pov-koda{margin:18px 0 0;padding:6px 16px;border:0;border-radius:var(--r-full);background:none;color:var(--ink);cursor:pointer;
+  font:500 var(--fs-24)/1.2 var(--sans);letter-spacing:.08em;font-variant-numeric:tabular-nums;}
+.pov-koda:hover{background:var(--green-m);}
+.pov-meta{margin:6px 0 20px;font-size:var(--fs-13);line-height:1.5;color:var(--mid);overflow-wrap:anywhere;}
+.v5 .pov-okno{max-width:380px;margin:0 auto;}
+.v5 .pov-okno .pov-akc{justify-content:center;width:100%;}
+.v5 .pov-okno .pov-akc button.danger{order:3;flex:1 0 100%;margin:4px 0 0;background:none;border-color:transparent;}   /* preklic pod deljenjem, kot besedilo */
+.v5 .auth form.reg .under{display:flex;justify-content:center;flex-wrap:wrap;gap:6px 22px;}
+.pov-nov [hidden]{display:none!important;}
