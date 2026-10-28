@@ -40,6 +40,8 @@ import android.webkit.WebViewClient;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 
 /**
@@ -181,7 +183,7 @@ public class Glavna extends Activity implements Bralnik.Poslusalec {
         if (omrezje != null) { try { ((ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE)).unregisterNetworkCallback(omrezje); } catch (Exception ignored) { } }
         bralnik.konec();
         if (ton != null) { ton.release(); ton = null; }
-        if (web != null) web.destroy();
+        if (web != null) { web.destroy(); web = null; }
         if (tisk != null) { tisk.destroy(); tisk = null; }
         super.onDestroy();
     }
@@ -208,14 +210,18 @@ public class Glavna extends Activity implements Bralnik.Poslusalec {
         try { if (dpm.isLockTaskPermitted(getPackageName())) startLockTask(); } catch (Exception e) { Log.w("SmartCleanRFID", "zaklep", e); }
     }
 
-    // nastavi, ko aplikacija še ni dovoljena za zaklep (tudi, če je naprava postala kiosk, ko je aplikacija tekla)
+    // nastavi, ko aplikacija še ni dovoljena za zaklep ali se seznam dovoljenih razlikuje (posodobitev z novimi paketi za tisk;
+    // tudi, če je naprava postala kiosk, ko je aplikacija tekla)
     private void kioskNastavi() {
         if (!kiosk()) return;
-        try { if (dpm.isLockTaskPermitted(getPackageName())) return; } catch (Exception ignored) { }
+        String[] pak = new String[TISK_PAKETI.length + 1];
+        pak[0] = getPackageName();
+        System.arraycopy(TISK_PAKETI, 0, pak, 1, TISK_PAKETI.length);
         try {
-            String[] pak = new String[TISK_PAKETI.length + 1];
-            pak[0] = getPackageName();
-            System.arraycopy(TISK_PAKETI, 0, pak, 1, TISK_PAKETI.length);
+            String[] zdaj = dpm.getLockTaskPackages(skrbnik);
+            if (zdaj != null && new HashSet<>(Arrays.asList(zdaj)).equals(new HashSet<>(Arrays.asList(pak))) && dpm.isLockTaskPermitted(getPackageName())) return;
+        } catch (Exception ignored) { }
+        try {
             dpm.setLockTaskPackages(skrbnik, pak);
             if (Build.VERSION.SDK_INT >= 28) {   // ura in baterija vidni, gumb za izklop deluje
                 dpm.setLockTaskFeatures(skrbnik, DevicePolicyManager.LOCK_TASK_FEATURE_SYSTEM_INFO | DevicePolicyManager.LOCK_TASK_FEATURE_GLOBAL_ACTIONS);
@@ -276,6 +282,7 @@ public class Glavna extends Activity implements Bralnik.Poslusalec {
     @Override
     public void stanje(String json, boolean bere) {
         ui.post(() -> {
+            if (isDestroyed()) return;   // nit čitalca lahko javi še po koncu aktivnosti
             if (bere) getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
             else getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
             dogodek(json);
@@ -317,6 +324,7 @@ public class Glavna extends Activity implements Bralnik.Poslusalec {
     }
 
     private void tiskaj(String html, String ime) {
+        if (isDestroyed() || isFinishing()) return;
         final String naslov = ime == null || ime.trim().isEmpty() ? "SmartClean" : ime;
         if (tisk != null) { tisk.destroy(); tisk = null; }
         final WebView t = new WebView(this);

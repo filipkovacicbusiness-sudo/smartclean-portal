@@ -20,8 +20,8 @@ import subprocess
 import sys
 import zipfile
 
-VERZIJA = "1.3"
-KODA = 4
+VERZIJA = "1.4"
+KODA = 5
 
 KOREN = pathlib.Path(__file__).resolve().parent.parent
 IZVOR = KOREN / "aplikacija-rfid"
@@ -85,7 +85,7 @@ def main():
     osnova = GRADNJA / "osnova.apk"
     zazeni(bt / "aapt2", "link", "-o", osnova, "-I", android_jar, "--manifest", GRADNJA / "AndroidManifest.xml",
            "--java", GRADNJA / "gen", "--min-sdk-version", "26", "--target-sdk-version", "34",
-           "--version-code", str(KODA), "--version-name", VERZIJA + ("-preizkus" if preizkus else ""),
+           "--version-code", str(KODA), "--version-name", VERZIJA + ("-preizkus" if preizkus else ""), "--replace-version",   # sicer obvelja različica iz AndroidManifest.xml
            "--rename-manifest-package", "si.smartclean.rfid" + (".preizkus" if preizkus else ""),
            "-A", IZVOR / "assets", "--auto-add-overlay", GRADNJA / "res/viri.zip")
     # 2. Java → razredi → dex (lambde razgradi d8)

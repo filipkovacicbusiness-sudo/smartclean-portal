@@ -582,7 +582,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.82 · BETA';
+  var APP_VERZIJA = '4.83 · BETA';
   var NALAGANJE = '<div class="sc-load" aria-hidden="true"><span class="sc-load-line"></span></div>';
   // Stale-while-revalidate: ob ponovnem obisku razdelka NE pobriši vsebine v nalagalnik —
   // obdrži prejšnjo (takojšen prikaz) in jo osveži v ozadju. Trak le ob prvem nalaganju.
@@ -8109,7 +8109,7 @@
      Če ga še ni, to tu tudi piše — namesto strani 404. */
   // ?v= ob vsaki novi različici aplikacije (aplikacija/zgradi.py): brskalnik in predpomnilnik vzameta nov paket.
   var APK_POT = 'tablica/Pralnica-sync.apk?v=11.9';
-  var RFID_APK_POT = 'rfid/SmartClean-RFID.apk?v=1.3';   // aplikacija-rfid/zgradi.py (VERZIJA)
+  var RFID_APK_POT = 'rfid/SmartClean-RFID.apk?v=1.4';   // aplikacija-rfid/zgradi.py (VERZIJA)
 
   function wirePwa(scope) {
     var pb = (scope || document).querySelector('#pwaInstall');

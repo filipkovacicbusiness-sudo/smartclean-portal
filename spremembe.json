@@ -1,5 +1,14 @@
 [
  {
+  "v": "4.83",
+  "d": "2026-10-28",
+  "c": "2026-10-28T19:25:00+01:00",
+  "t": [
+   "Aplikacija za C72 1.4 (Nastavitve → Aplikacije → Prenesi): hitri pritiski sprožilca med počasnim odpiranjem čitalca se ne izgubijo več in branje ne ostane vklopljeno po spustu; po neuspelem odpiranju vgrajenega čitalca pritisk ne čaka znova; R1/UR4 brez povezave pokažeta »Poveži«.",
+   "C72 v načinu kiosk: ob posodobitvi se seznam dovoljenih programov za tisk osveži sam; varnejše zapiranje aplikacije."
+  ]
+ },
+ {
   "v": "4.82",
   "d": "2026-10-28",
   "c": "2026-10-28T19:10:00+01:00",

@@ -66,6 +66,7 @@ class Bralnik {
     private volatile String ur4;
     private Vmesnik akt;
     private final AtomicBoolean zacetekVVrsti = new AtomicBoolean();   // en začetek naenkrat: pritiski med počasnim odpiranjem se ne nalagajo
+    private volatile boolean zelim;                                   // oseba želi brati (drži sprožilec, Beri): zastareli začetki in ustavitve v vrsti se preskočijo
     private volatile long zadnjiNeuspeh;                              // zadnje neuspešno odpiranje (ponovno samo po premoru)
     private RFIDWithUHFUrxNetwork ur4R;                                // en objekt UR4: vsak nov pusti v SDK dve niti
 
@@ -124,14 +125,19 @@ class Bralnik {
     // Začetek branja. Vgrajen čitalec se sam znova odpre (ob zagonu ni uspelo ali ga je vzel drug program),
     // a največ enkrat na pritisk in ne prej kot 3 s po neuspehu; R1 in UR4 le z »Poveži« (njuno odpiranje traja sekunde).
     void zacni() {
-        if (!zacetekVVrsti.compareAndSet(false, true)) return;
+        zelim = true;
+        if (!zacetekVVrsti.compareAndSet(false, true)) return;   // začetek že teče: upošteva novo željo (zelim)
         izvedi(() -> {
             try {
-                if (bere) return;
+                if (bere || !zelim) return;   // že bere ali je oseba medtem spustila sprožilec
                 boolean vgrajen = "vgrajen".equals(izbran);
                 boolean smeOdpreti = vgrajen && SystemClock.uptimeMillis() - zadnjiNeuspeh > 3000;
                 if (akt == null && !odpiram && smeOdpreti) odpriVrsto(izbran);
-                if (akt == null) { if (!vgrajen || !smeOdpreti) obvesti(); return; }   // napako je že sporočil odpriVrsto
+                if (akt == null) {   // napako odpiranja je že sporočil odpriVrsto; R1/UR4 brez nje: »Poveži« na strani
+                    if (!vgrajen && napaka.isEmpty()) napaka = "Čitalec ni povezan.";
+                    if (!vgrajen || !smeOdpreti) obvesti();
+                    return;
+                }
                 synchronized (seja) { seja.clear(); cakajo.clear(); }
                 boolean ok;
                 try { ok = akt.zacni(); } catch (Throwable e) { ok = false; }
@@ -141,6 +147,7 @@ class Bralnik {
                     odpriVrsto(izbran);
                     if (akt != null) { try { ok = akt.zacni(); } catch (Throwable e) { ok = false; } }
                 }
+                if (ok && !zelim) { try { akt.ustavi(); } catch (Throwable ignored) { } ok = false; napaka = ""; obvesti(); return; }   // spuščen med odpiranjem
                 bere = ok;
                 if (!ok) {
                     boolean bilOdprt = akt != null;
@@ -154,8 +161,9 @@ class Bralnik {
     }
 
     void ustavi() {
+        zelim = false;
         izvedi(() -> {
-            if (akt == null || !bere) return;
+            if (zelim || akt == null || !bere) return;   // medtem znova pritisnjen: bere naprej
             try { akt.ustavi(); } catch (Throwable ignored) { }
             bere = false;
             obvesti();
@@ -223,6 +231,7 @@ class Bralnik {
         } else {
             try { v.zapri(); } catch (Throwable ignored) { }
             akt = null;
+            zadnjiNeuspeh = SystemClock.uptimeMillis();   // tudi ob zagonu: pritisk takoj za tem ne čaka na novo odpiranje
             if (napaka.isEmpty()) napaka = sporocilo(id);
         }
         odpiram = false;
