@@ -154,10 +154,10 @@
     document.querySelectorAll('.pogled-seg .seg-b').forEach(b => b.addEventListener('click', () => nastaviPogled(b.dataset.view)));
     uporabiPogled(); osveziPogledSege();
   })();
-  /* ── Zmogljivost (le na tej napravi, ne sinhronizira se): Samodejno / Polno / Varčno ali po meri ──
+  /* ── Zmogljivost (le na tej napravi, ne sinhronizira se): drsnik Varčno / Uravnoteženo / Zmogljivo ──
      Varčno izklopi animacije, zameglitev (backdrop-filter je za šibke grafične čipe najdražji), teksturo
      kartic (šum SVG z mešanjem barv na vsaki kartici) in nalaganje razdelkov vnaprej (podatki ob zagonu).
-     Samodejno: šibka naprava (≤ 1 GB pomnilnika, 2–3 GB s ≤ 4 jedri ali ≤ 2 jedri) vse izklopi; varčevanje s podatki
+     Uravnoteženo (prej Samodejno): šibka naprava (≤ 1 GB pomnilnika, 2–3 GB s ≤ 4 jedri ali ≤ 2 jedri) vse izklopi; varčevanje s podatki
      izklopi le nalaganje vnaprej, želja po manj gibanja le animacije. Jedra na napravah Apple ne štejejo (iOS jih
      skriva in vrne 2), Chrome pomnilnik zaokroži navzdol (3 GB → 2). */
   var ZM_KLJUCI = ['anim', 'steklo', 'tekstura', 'vnaprej'];
@@ -177,7 +177,7 @@
   }
   function zmBeri() {
     var z = null; try { z = JSON.parse(localStorage.getItem('sc-zmogljivost') || 'null'); } catch (e) {}
-    if (!z || ['auto', 'polno', 'varcno', 'meri'].indexOf(z.nacin) < 0) z = { nacin: 'auto' };
+    if (!z || ['auto', 'polno', 'varcno'].indexOf(z.nacin) < 0) z = { nacin: 'auto' };   // »po meri« (stikala do 4.80) → Uravnoteženo
     var vse = z.nacin === 'polno' ? true : z.nacin === 'varcno' ? false : null, sam = z.nacin === 'auto' ? zmSamodejno() : null;
     var r = { nacin: z.nacin };
     ZM_KLJUCI.forEach(function (k) { r[k] = sam ? sam[k] : vse != null ? vse : z[k] !== false; });
@@ -192,28 +192,20 @@
   }
   // manj gibanja: sistemska želja ali Zmogljivost → Animacije izklopljene (vse animacije v JS to preverijo)
   function manjGibanja() { try { return document.documentElement.classList.contains('zm-brez-anim') || !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) { return false; } }
-  var ZM_STOPNJE = ['varcno', 'auto', 'polno'], ZM_IMENA = ['Varčno', 'Uravnoteženo', 'Zmogljivo'];   // drsnik: Uravnoteženo = samodejno po napravi
+  // drsnik: Varčno = vse izklopljeno, Uravnoteženo = vse, kar naprava zmore (zmSamodejno), Zmogljivo = vse vklopljeno
+  var ZM_STOPNJE = ['varcno', 'auto', 'polno'], ZM_IMENA = ['Varčno', 'Uravnoteženo', 'Zmogljivo'];
   function zmOznaci() {
-    var z = zmBeri();
+    var z = zmBeri(), i = ZM_STOPNJE.indexOf(z.nacin), dr = document.getElementById('zmDrsnik');
     document.querySelectorAll('[data-zm]').forEach(function (b) { b.classList.toggle('on', b.dataset.zm === z.nacin); });
-    var dr = document.getElementById('zmDrsnik'), i = ZM_STOPNJE.indexOf(z.nacin);
-    if (dr) {
-      dr.classList.toggle('zm-meri', i < 0); dr.style.setProperty('--zm-x', i < 0 ? 0 : i / 2);
-      dr.setAttribute('aria-valuenow', i < 0 ? 1 : i); dr.setAttribute('aria-valuetext', i < 0 ? 'Po meri' : ZM_IMENA[i]);
-    }
-    var mt = document.querySelector('.zm-meri-t'); if (mt) mt.hidden = i >= 0;
-    document.querySelectorAll('.zm-chk input').forEach(function (c) { c.checked = !!z[c.dataset.zk]; });
+    if (dr) { dr.style.setProperty('--zm-x', i / 2); dr.setAttribute('aria-valuenow', i); dr.setAttribute('aria-valuetext', ZM_IMENA[i]); }
   }
-  function zmNastavi(nacin, kljuc, vrednost) {
-    var z = zmBeri(), nov = { nacin: nacin || 'meri' };
-    if (kljuc) { ZM_KLJUCI.forEach(function (k) { nov[k] = z[k]; }); nov[kljuc] = !!vrednost; }
-    try { localStorage.setItem('sc-zmogljivost', JSON.stringify(nov)); } catch (e) {}
+  function zmNastavi(nacin) {
+    try { localStorage.setItem('sc-zmogljivost', JSON.stringify({ nacin: nacin })); } catch (e) {}
     zmUporabi(); zmOznaci();
   }
   (function initZmogljivost() {
     zmUporabi();
     document.querySelectorAll('[data-zm]').forEach(function (b) { b.addEventListener('click', function () { zmNastavi(b.dataset.zm); }); });
-    document.querySelectorAll('.zm-chk input').forEach(function (c) { c.addEventListener('change', function () { zmNastavi(null, c.dataset.zk, c.checked); }); });
     var dr = document.getElementById('zmDrsnik');
     if (dr) {   // vleka po drsniku skoči na najbližjo stopnjo; puščice, Home in End s tipkovnico
       var izberi = function (i) { i = Math.max(0, Math.min(2, i)); if (ZM_STOPNJE[i] !== zmBeri().nacin) zmNastavi(ZM_STOPNJE[i]); };
@@ -223,7 +215,7 @@
       dr.addEventListener('pointermove', function (e) { if (vlecem) izberi(izX(e.clientX)); });
       dr.addEventListener('pointerup', konec); dr.addEventListener('pointercancel', konec);
       dr.addEventListener('keydown', function (e) {
-        var i = ZM_STOPNJE.indexOf(zmBeri().nacin); if (i < 0) i = 1;
+        var i = ZM_STOPNJE.indexOf(zmBeri().nacin);
         var k = { ArrowLeft: i - 1, ArrowDown: i - 1, ArrowRight: i + 1, ArrowUp: i + 1, Home: 0, End: 2 }[e.key];
         if (k != null) { e.preventDefault(); izberi(k); }
       });
@@ -573,7 +565,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.80 · BETA';
+  var APP_VERZIJA = '4.81 · BETA';
   var NALAGANJE = '<div class="sc-load" aria-hidden="true"><span class="sc-load-line"></span></div>';
   // Stale-while-revalidate: ob ponovnem obisku razdelka NE pobriši vsebine v nalagalnik —
   // obdrži prejšnjo (takojšen prikaz) in jo osveži v ozadju. Trak le ob prvem nalaganju.

@@ -3512,13 +3512,10 @@ html.pov-vidno .scrim{top:calc(64px + var(--pov-h) + env(safe-area-inset-top));}
 
 /* ══════════ ZMOGLJIVOST (4.78) — Nastavitve → Zmogljivost (na tej napravi) ══════════ */
 /* drsnik Varčno · Uravnoteženo · Zmogljivo (4.80): tri stopnje, vleka ali dotik, puščice na tipkovnici */
-.zm-glava{display:flex;align-items:baseline;justify-content:space-between;gap:12px;}
-.zm-meri-t{font-size:var(--fs-13);color:var(--mid);}
-.zm-drsnik{--zm-x:.5;--zm-rob:36px;position:relative;height:90px;margin:8px 0 12px;touch-action:pan-y;-webkit-user-select:none;user-select:none;outline:none;cursor:pointer;}
+.zm-drsnik{--zm-x:.5;--zm-rob:36px;position:relative;height:90px;margin:10px 0 0;touch-action:pan-y;-webkit-user-select:none;user-select:none;outline:none;cursor:pointer;}
 .zm-pot{position:absolute;left:var(--zm-rob);right:var(--zm-rob);top:21px;height:4px;border-radius:2px;background:var(--line);}
 .zm-polnilo{position:absolute;left:0;top:0;bottom:0;width:calc(var(--zm-x) * 100%);border-radius:2px;background:var(--ink);transition:width .32s cubic-bezier(.2,.8,.2,1);}
 .zm-drsnik.vlecem .zm-polnilo{transition-duration:.14s;}
-.zm-drsnik.zm-meri .zm-polnilo{width:0;}
 .zm-st{appearance:none;-webkit-appearance:none;position:absolute;top:0;left:calc(var(--zm-rob) + (100% - 2 * var(--zm-rob)) * var(--i));transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:9px;
   margin:0;padding:0;border:0;background:none;color:var(--mid);font:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;}
 .zm-ik{display:flex;align-items:center;justify-content:center;width:46px;height:46px;border-radius:50%;background:var(--surface);border:1.5px solid var(--line);color:var(--mid);
@@ -3530,11 +3527,6 @@ html.pov-vidno .scrim{top:calc(64px + var(--pov-h) + env(safe-area-inset-top));}
 .zm-drsnik:focus-visible .zm-st.on .zm-ik{box-shadow:0 0 0 3px var(--bg),0 0 0 5px var(--ink);}
 @media (hover:hover){ .zm-st:not(.on):hover .zm-ik{border-color:var(--line-strong);color:var(--ink);} }
 @media(max-width:359px){ .zm-drsnik{--zm-rob:32px;} .zm-ime{font-size:var(--fs-12);} .zm-ik{width:42px;height:42px;} .zm-pot{top:19px;} }
-.zm-sez{display:flex;flex-direction:column;border-top:1px solid var(--line);}
-.zm-v{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:48px;padding:6px 2px;border-bottom:1px solid var(--line);font-size:var(--fs-15);color:var(--ink);cursor:pointer;}
-.zm-v:last-child{border-bottom:0;}
-.zm-v > span:first-child{min-width:0;overflow-wrap:anywhere;}
-.zm-v .adm-chk{flex:0 0 auto;position:relative;}
 /* Animacije izklopljene: vse se zgodi takoj (konec animacije in prehoda se še sproži — logika ostane ista) */
 html.zm-brez-anim *,html.zm-brez-anim *::before,html.zm-brez-anim *::after{animation-duration:.001ms!important;animation-delay:0s!important;animation-iteration-count:1!important;
   transition-duration:.001ms!important;transition-delay:0s!important;scroll-behavior:auto!important;}

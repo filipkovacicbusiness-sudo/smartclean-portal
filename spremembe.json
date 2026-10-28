@@ -1,5 +1,13 @@
 [
  {
+  "v": "4.81",
+  "d": "2026-10-28",
+  "c": "2026-10-28T18:25:00+01:00",
+  "t": [
+   "Nastavitve → Zmogljivost: ostal je le drsnik, posamezna stikala so odstranjena — vsaka stopnja ima nastavitve vgrajene. Varčno izklopi animacije, zameglitev, teksturo kartic in nalaganje razdelkov vnaprej; Uravnoteženo vklopi vse, kar naprava zmore; Zmogljivo vklopi vse. Ročno nastavljena stikala so postala Uravnoteženo."
+  ]
+ },
+ {
   "v": "4.80",
   "d": "2026-10-28",
   "c": "2026-10-28T18:15:00+01:00",
