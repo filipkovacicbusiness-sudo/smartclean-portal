@@ -1261,9 +1261,9 @@ html[data-view="grid"] .row.has-sc > span:first-child,html[data-view="grid"] .ro
 /* konteksti */
 .ur-form .cs-trigger{padding:9px 12px;font-size:var(--fs-14);}
 .filtri .cs{max-width:230px;}
-.rf-izb-str{padding:40px 24px;}
-.rf-izb-str .cs{max-width:340px;margin:0 auto;}
-.rf-izb-str .cs-trigger{min-height:48px;font-size:var(--fs-16);}
+.cs.cs-dis .cs-trigger{opacity:.5;cursor:default;}   /* onemogočen izbirnik (npr. med klicem) */
+/* Čipi: brez izbrane stranke iskanje (mreža strank), z izbrano menjava v izbirniku */
+.filtri.rf-izbira .cs,.filtri.rf-izbira > select,.filtri:not(.rf-izbira) #rfIsciStr{display:none;}
 .filtri .cs-trigger{height:44px;}
 
 /* ── iPhone / iOS PWA: varna območja (Dynamic Island, home indikator) ──── */
@@ -2591,7 +2591,7 @@ html[data-theme="dark"] .doc-stage{background:color-mix(in srgb,var(--ink) 6%,va
    stanju, uporabniki vsak svojo); stranke, fakture in dokumenti ostanejo nevtralno sivi */
 .v5{--sez-a1:15%;--sez-a2:9%;}
 .v5[data-theme="dark"]{--sez-a1:20%;--sez-a2:8%;}
-.v5[data-view="list"] .lcell :is(.row,.a-row){background-image:
+.v5:not(.zm-brez-teksture)[data-view="list"] .lcell :is(.row,.a-row){background-image:
   radial-gradient(46% 160% at 0% 40%,color-mix(in oklab,var(--c1,#8f979e) calc(var(--sez-a1) * var(--j,1)),transparent),transparent 72%),
   radial-gradient(28% 130% at 13% 112%,color-mix(in oklab,var(--c2,#cdd3d8) calc(var(--sez-a2) * var(--j,1)),transparent),transparent 76%);}
 .v5[data-view="list"] .lcell .row{grid-template-columns:minmax(0,1fr) auto 96px 16px;grid-template-areas:"main pct num chev";gap:14px;}
@@ -2601,6 +2601,8 @@ html[data-theme="dark"] .doc-stage{background:color-mix(in srgb,var(--ink) 6%,va
 .v5[data-view="list"] .lcell .row .chev{grid-area:chev;}
 .v5[data-view="list"] .lcell .row .row-name{font-size:var(--fs-16);font-weight:500;letter-spacing:-.01em;}
 .v5[data-view="list"] .lcell .row .row-legal{font-size:var(--fs-13);line-height:1.4;}
+.v5[data-view="list"] .rf-stranke .lcell .row{grid-template-columns:minmax(0,1fr) auto 16px;grid-template-areas:"main num chev";}
+.v5 .rf-stranke .row .num{white-space:nowrap;}
 @media(max-width:560px){
   .v5[data-view="list"] .lcell .row{grid-template-columns:minmax(0,1fr) auto 16px;grid-template-areas:"main num chev";gap:6px 12px;}
   .v5[data-view="list"] .lcell .row .row-pct{display:none;}
@@ -3015,6 +3017,7 @@ html.sc-sam{--vrh:max(12px,env(safe-area-inset-top));}
 .v5[data-view="grid"] .lcell:not(.open) .row .row-cenik[hidden]{display:none;}
 .v5[data-view="grid"] .lcell:not(.open) .row .num{grid-area:kg;justify-self:start;}
 .v5[data-view="grid"] #content .lcell:not(.open) .row:not(:has(.row-cenik:not([hidden]))) .num{grid-column:1 / -1;}
+.v5[data-view="grid"] .rf-stranke .lcell:not(.open) .row .num{grid-column:1 / -1;}
 .v5[data-view="grid"] .lcell:not(.open) .row .row-legal{grid-area:leg;display:-webkit-box!important;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
 .v5[data-view="grid"] .lcell:not(.open) .row :is(.row-pct,.chev),.v5[data-view="grid"] .lcell:not(.open) .row > span:first-child > br{display:none!important;}
 .v5[data-view="grid"] #usersList .lcell:not(.open) .row .u-znacke{flex-wrap:wrap;gap:4px;}
@@ -3327,6 +3330,7 @@ html.sc-tema-anim *,html.sc-tema-anim *::before,html.sc-tema-anim *::after{trans
    Kosi: povzetek (kosov, pranj, pogrešani) in seznam artiklov; kos v oknu. */
 .v5 .rf-nacini{display:flex;width:100%;max-width:560px;margin:0 0 16px;}
 .v5 .rf-nacini .pris-tab{flex:1 1 0;}
+.v5 .rf-nacini .pris-tab:disabled{cursor:default;}.v5 .rf-nacini .pris-tab:disabled:not(.on){opacity:.45;color:var(--mid);}   /* med pošiljanjem */
 /* najožji telefoni (320): zavihki v vrstici se stisnejo, nič ne sega čez trak */
 @media(max-width:359px){.v5 .pris-tabs:not(.adm-tabs) > .pris-tab{min-width:0;padding-left:6px;padding-right:6px;font-size:var(--fs-13);}.v5 .rf-nacini .pris-tab{padding-left:4px;padding-right:4px;}}
 .v5 .rf-sken{display:flex;flex-direction:column;gap:16px;padding:20px 22px 22px;}
@@ -3433,6 +3437,7 @@ html.sc-tema-anim *,html.sc-tema-anim *::before,html.sc-tema-anim *::after{trans
 .v5 .rf-str-ze{display:flex;align-items:center;gap:8px;margin:6px 0 2px;font-size:var(--fs-13);font-weight:600;color:var(--st-warn-ink);}
 .v5 .rf-str-ze::before{content:"";flex:0 0 auto;width:7px;height:7px;border-radius:50%;background:var(--st-warn);}
 .v5 .rf-akc button:disabled:not(.nalaga){opacity:.38;cursor:default;}
+.v5 .rf-akc button.nalaga{cursor:progress;animation:nalagaPulz .7s ease-in-out infinite alternate;}
 @media(max-width:359px){ .v5 .rf-akc .rf-akc-dod{display:none;} }   /* najožji: »Potrdi«, število listov pove okno potrditve */
 .v5 .rf-okno-p{max-width:440px;}
 .v5 .rf-pv{display:flex;flex-direction:column;margin:10px 0 18px;border-top:1px solid var(--line);}
@@ -3525,6 +3530,7 @@ html.pov-vidno .scrim{top:calc(64px + var(--pov-h) + env(safe-area-inset-top));}
 .zm-st.on .zm-ik{background:var(--ink);border-color:var(--ink);color:var(--bg);transform:scale(1.08);box-shadow:0 6px 18px rgba(0,0,0,.16);}
 .zm-st.on .zm-ime{color:var(--ink);font-weight:600;}
 .zm-drsnik:focus-visible .zm-st.on .zm-ik{box-shadow:0 0 0 3px var(--bg),0 0 0 5px var(--ink);}
+@media (forced-colors:active){ .zm-drsnik:focus-visible{outline:2px solid CanvasText;outline-offset:4px;} }
 @media (hover:hover){ .zm-st:not(.on):hover .zm-ik{border-color:var(--line-strong);color:var(--ink);} }
 @media(max-width:359px){ .zm-drsnik{--zm-rob:32px;} .zm-ime{font-size:var(--fs-12);} .zm-ik{width:42px;height:42px;} .zm-pot{top:19px;} }
 /* Animacije izklopljene: vse se zgodi takoj (konec animacije in prehoda se še sproži — logika ostane ista) */

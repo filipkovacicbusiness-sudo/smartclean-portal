@@ -24,7 +24,7 @@ self.addEventListener('fetch', function (e) {
   if (url.origin !== self.location.origin || /\.apk$/i.test(url.pathname)) return;
   if (/\/spremembe\.json$/.test(url.pathname)) return;   // različica le z mreže: brez povezave ni odgovora (ne star)
   if (/\.(woff2?|png|svg|ico)$/i.test(url.pathname)) {
-    e.respondWith(caches.match(req).then(function (h) { return h || fetch(req).then(function (r) { var c = r.clone(); caches.open(CACHE).then(function (k) { k.put(req, c); }); return r; }); }));
+    e.respondWith(caches.match(req).then(function (h) { return h || fetch(req).then(function (r) { if (r.ok) { var c = r.clone(); caches.open(CACHE).then(function (k) { k.put(req, c); }).catch(function () {}); } return r; }); }));
     return;
   }
   var nav = req.mode === 'navigate';

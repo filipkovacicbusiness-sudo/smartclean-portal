@@ -1,5 +1,19 @@
 [
  {
+  "v": "4.82",
+  "d": "2026-10-28",
+  "c": "2026-10-28T19:10:00+01:00",
+  "t": [
+   "Čipi: brez izbrane stranke se pokažejo stranke kot kartice (mreža ali seznam, po nastavitvi Pogled) z iskanjem in številom kosov s čipi; klik odpre stranko. Prej je bila tu prazna kartica z izbirnikom.",
+   "Čipi in aplikacija RFID: Potrdi ustvari liste točno iz kosov, ki jih pokaže okno — čipi, prebrani medtem, ostanejo za naslednje skeniranje. Pred potrditvijo in označevanjem se vsi čipi preverijo znova; če se je stanje vmes spremenilo (npr. kos označen pri drugi stranki), Označi ne pošlje ničesar in pokaže novo stanje.",
+   "Čipi in aplikacija RFID: med pošiljanjem so zavihki, Počisti, Odstrani, Vrni ter izbira stranke in artikla zaklenjeni; »Razveljavi« se ob Potrdi in Označi skrije; sporočilo o označenih kosih stoji nad gumbi.",
+   "Aplikacija RFID: na C72 tipka Enter (čitalec v načinu tipkovnice) ne sproži več gumba v fokusu; zaslon z ustvarjenimi listi ostane, tudi če je bil med potrditvijo prebran nov čip; ob novi različici se aplikacija naloži znova sama, a le, ko miruje; vrstica čitalca UR4 je krajša (naslov je v oknu čitalca); brez odgovora v 30 s jasno sporočilo.",
+   "Uporabniki: vsak uporabnik ima značko vloge (tudi Osebje in Stranka z imenom podjetja), zato so kartice enako visoke; pri sebi le »vi«.",
+   "Nastavitve → Zmogljivost: drsnik se na telefonu ne premakne več ob pomikanju strani — stopnja se izbere z dotikom ali vodoravno vleko; z miško kot prej. Varčno izklopi tudi barvni sij v seznamu.",
+   "Izbirniki: onemogočen izbirnik se ne odpre več (npr. med pošiljanjem). Izpis spremnih listov ni nikoli prazen, tudi če se list med branjem spreminja."
+  ]
+ },
+ {
   "v": "4.81",
   "d": "2026-10-28",
   "c": "2026-10-28T18:25:00+01:00",
