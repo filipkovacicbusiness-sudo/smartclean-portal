@@ -1,5 +1,15 @@
 [
  {
+  "v": "4.80",
+  "d": "2026-10-28",
+  "c": "2026-10-28T18:15:00+01:00",
+  "t": [
+   "Nastavitve → Zmogljivost: namesto treh gumbov drsnik s tremi stopnjami — Varčno (list), Uravnoteženo (tehtnica) in Zmogljivo (merilnik hitrosti). Uravnoteženo se prilagodi napravi (prej »Samodejno«), Zmogljivo vklopi vse. Drsnik se premika z dotikom, vleko ali puščicami; ob ročni spremembi posameznega stikala piše »Po meri«.",
+   "Pogled Seznam: kartice imajo spet barvo s pomenom, kot naslovnice v Mreži — spremni listi zeleno, oranžno ali rdeče po stanju, uporabniki vsak svojo barvo, mehko ob levem robu. Stranke, fakture in dokumenti ostanejo nevtralno sivi.",
+   "Čipi (Kosi, Označi): izbira stranke je zdaj v kartici sami — prej je bil tam le napis »Izberi stranko«, ki je bil videti kot gumb, a ni naredil nič."
+  ]
+ },
+ {
   "v": "4.79",
   "d": "2026-10-28",
   "c": "2026-10-28T12:00:00+01:00",

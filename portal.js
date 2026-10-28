@@ -192,9 +192,16 @@
   }
   // manj gibanja: sistemska želja ali Zmogljivost → Animacije izklopljene (vse animacije v JS to preverijo)
   function manjGibanja() { try { return document.documentElement.classList.contains('zm-brez-anim') || !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) { return false; } }
+  var ZM_STOPNJE = ['varcno', 'auto', 'polno'], ZM_IMENA = ['Varčno', 'Uravnoteženo', 'Zmogljivo'];   // drsnik: Uravnoteženo = samodejno po napravi
   function zmOznaci() {
     var z = zmBeri();
     document.querySelectorAll('[data-zm]').forEach(function (b) { b.classList.toggle('on', b.dataset.zm === z.nacin); });
+    var dr = document.getElementById('zmDrsnik'), i = ZM_STOPNJE.indexOf(z.nacin);
+    if (dr) {
+      dr.classList.toggle('zm-meri', i < 0); dr.style.setProperty('--zm-x', i < 0 ? 0 : i / 2);
+      dr.setAttribute('aria-valuenow', i < 0 ? 1 : i); dr.setAttribute('aria-valuetext', i < 0 ? 'Po meri' : ZM_IMENA[i]);
+    }
+    var mt = document.querySelector('.zm-meri-t'); if (mt) mt.hidden = i >= 0;
     document.querySelectorAll('.zm-chk input').forEach(function (c) { c.checked = !!z[c.dataset.zk]; });
   }
   function zmNastavi(nacin, kljuc, vrednost) {
@@ -207,6 +214,20 @@
     zmUporabi();
     document.querySelectorAll('[data-zm]').forEach(function (b) { b.addEventListener('click', function () { zmNastavi(b.dataset.zm); }); });
     document.querySelectorAll('.zm-chk input').forEach(function (c) { c.addEventListener('change', function () { zmNastavi(null, c.dataset.zk, c.checked); }); });
+    var dr = document.getElementById('zmDrsnik');
+    if (dr) {   // vleka po drsniku skoči na najbližjo stopnjo; puščice, Home in End s tipkovnico
+      var izberi = function (i) { i = Math.max(0, Math.min(2, i)); if (ZM_STOPNJE[i] !== zmBeri().nacin) zmNastavi(ZM_STOPNJE[i]); };
+      var izX = function (x) { var r = dr.getBoundingClientRect(), rob = 36; return Math.round(Math.max(0, Math.min(1, (x - r.left - rob) / Math.max(1, r.width - 2 * rob))) * 2); };
+      var vlecem = false, konec = function () { vlecem = false; dr.classList.remove('vlecem'); };
+      dr.addEventListener('pointerdown', function (e) { if (e.button) return; vlecem = true; dr.classList.add('vlecem'); try { dr.setPointerCapture(e.pointerId); } catch (x) {} izberi(izX(e.clientX)); });
+      dr.addEventListener('pointermove', function (e) { if (vlecem) izberi(izX(e.clientX)); });
+      dr.addEventListener('pointerup', konec); dr.addEventListener('pointercancel', konec);
+      dr.addEventListener('keydown', function (e) {
+        var i = ZM_STOPNJE.indexOf(zmBeri().nacin); if (i < 0) i = 1;
+        var k = { ArrowLeft: i - 1, ArrowDown: i - 1, ArrowRight: i + 1, ArrowUp: i + 1, Home: 0, End: 2 }[e.key];
+        if (k != null) { e.preventDefault(); izberi(k); }
+      });
+    }
     zmOznaci();
   })();
   // ── Sinhronizacija nastavitev med napravami (shranjeno v profil uporabnika) ──
@@ -552,7 +573,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.79 · BETA';
+  var APP_VERZIJA = '4.80 · BETA';
   var NALAGANJE = '<div class="sc-load" aria-hidden="true"><span class="sc-load-line"></span></div>';
   // Stale-while-revalidate: ob ponovnem obisku razdelka NE pobriši vsebine v nalagalnik —
   // obdrži prejšnjo (takojšen prikaz) in jo osveži v ozadju. Trak le ob prvem nalaganju.
@@ -8968,7 +8989,7 @@
 
   async function risiCipe(prednalozi) {
     var sel = $('rfOrg'), telo = $('cipiVsebina'); if (!sel || !telo) return;
-    var opt = '<option value="">Izberi stranko</option>' + ORGSEZNAM.map(function (o) { return '<option value="' + escape_(o.id) + '"' + (o.id === RF.org ? ' selected' : '') + '>' + escape_(o.name) + '</option>'; }).join('');
+    var opt = rfOrgOpcije();
     if (sel.innerHTML !== opt) sel.innerHTML = opt;
     if (RF.org && !ORGSEZNAM.some(function (o) { return o.id === RF.org; })) RF.org = null;
     if (!telo.dataset.zgr) {
@@ -8988,7 +9009,9 @@
       catch (e) { var t0 = $('rfTelo'); if (t0) t0.innerHTML = '<div class="rows"><div class="empty"><h3>Nalaganje ni uspelo</h3><p class="u-sub">' + escape_(napakaBesedilo(e)) + '</p></div></div>'; }
     }
   }
-  function rfFiltri() { var f = $('rfOrg') && $('rfOrg').closest('.filtri'); if (f) f.hidden = !rfStranka(); }
+  // izbira stranke v glavi le, ko je stranka že izbrana (menjava); brez nje je izbira v kartici (rfRisi)
+  function rfFiltri() { var f = $('rfOrg') && $('rfOrg').closest('.filtri'); if (f) f.hidden = !rfStranka() || !RF.org; }
+  function rfOrgOpcije() { return '<option value="">Izberi stranko</option>' + ORGSEZNAM.map(function (o) { return '<option value="' + escape_(o.id) + '"' + (o.id === RF.org ? ' selected' : '') + '>' + escape_(o.name) + '</option>'; }).join(''); }
   function rfPod() {
     var p = $('cipiPod'); if (!p) return;
     if (rfStranka() && RF.org && RF.kosi) { var akt = RF.kosi.filter(function (k) { return k.stanje === 'aktiven'; }).length; p.textContent = akt ? sklonKosov(akt) + ' s čipi' : 'Brez označenega perila'; }
@@ -8997,6 +9020,7 @@
   async function rfIzberiStranko(org) {
     RF.org = org || null; RF.kosi = null; RF.arts = []; RF.art = '';
     try { if (RF.org) localStorage.setItem('sc-rfid-org', RF.org); else localStorage.removeItem('sc-rfid-org'); } catch (e) {}
+    var so = $('rfOrg'); if (so && so.value !== (RF.org || '')) { so.value = RF.org || ''; var ev = new Event('change'); ev.rfTiho = true; so.dispatchEvent(ev); }   // izbrano v kartici: tudi napis v glavi
     rfRisi(); rfPod();
     if (!RF.org) return;
     try { if (await rfNalozi(RF.org)) { rfRisi(); rfPod(); } } catch (e) { toast(napakaBesedilo(e)); }
@@ -9015,8 +9039,13 @@
 
   function rfRisi() {
     var t = $('rfTelo'); if (!t) return;
+    rfFiltri();
     if (RF.rezultat) { rfRisiRezultat(t); return; }
-    if (rfStranka() && !RF.org) { t.innerHTML = '<div class="rows"><div class="empty"><h3>Izberi stranko</h3></div></div>'; return; }
+    if (rfStranka() && !RF.org) {   // izbira stranke kar v kartici (prej le napis, ki je bil videti kot gumb)
+      t.innerHTML = '<div class="rows"><div class="empty rf-izb-str"><select id="rfOrgIzb" aria-label="Stranka">' + rfOrgOpcije() + '</select></div></div>';
+      var s2 = $('rfOrgIzb'); s2.addEventListener('change', function () { if (s2.value) rfIzberiStranko(s2.value); });
+      return;
+    }
     if (RF.nacin === 'kosi') { rfRisiKosi(t); return; }
     rfRisiSken(t);
   }

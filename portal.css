@@ -1261,6 +1261,9 @@ html[data-view="grid"] .row.has-sc > span:first-child,html[data-view="grid"] .ro
 /* konteksti */
 .ur-form .cs-trigger{padding:9px 12px;font-size:var(--fs-14);}
 .filtri .cs{max-width:230px;}
+.rf-izb-str{padding:40px 24px;}
+.rf-izb-str .cs{max-width:340px;margin:0 auto;}
+.rf-izb-str .cs-trigger{min-height:48px;font-size:var(--fs-16);}
 .filtri .cs-trigger{height:44px;}
 
 /* ── iPhone / iOS PWA: varna območja (Dynamic Island, home indikator) ──── */
@@ -2583,7 +2586,14 @@ html[data-theme="dark"] .doc-stage{background:color-mix(in srgb,var(--ink) 6%,va
 
 /* ── seznam: enotne vrstice ── */
 .v5[data-view="list"] .lcell :is(.row,.a-row){padding:14px 18px;margin-bottom:8px;border-radius:var(--r-md);border-color:var(--line);transition:border-color .18s ease,background-color .18s ease;}
-.v5[data-view="list"] .lcell :is(.row,.a-row):hover{background:var(--surface);border-color:var(--line-strong);}
+.v5[data-view="list"] .lcell :is(.row,.a-row):hover{background-color:var(--surface);border-color:var(--line-strong);}
+/* SEZNAM (4.80): barva kartice kot mehak sij ob levem robu — isti pomen kot naslovnica v mreži (spremni listi po
+   stanju, uporabniki vsak svojo); stranke, fakture in dokumenti ostanejo nevtralno sivi */
+.v5{--sez-a1:15%;--sez-a2:9%;}
+.v5[data-theme="dark"]{--sez-a1:20%;--sez-a2:8%;}
+.v5[data-view="list"] .lcell :is(.row,.a-row){background-image:
+  radial-gradient(46% 160% at 0% 40%,color-mix(in oklab,var(--c1,#8f979e) calc(var(--sez-a1) * var(--j,1)),transparent),transparent 72%),
+  radial-gradient(28% 130% at 13% 112%,color-mix(in oklab,var(--c2,#cdd3d8) calc(var(--sez-a2) * var(--j,1)),transparent),transparent 76%);}
 .v5[data-view="list"] .lcell .row{grid-template-columns:minmax(0,1fr) auto 96px 16px;grid-template-areas:"main pct num chev";gap:14px;}
 .v5[data-view="list"] .lcell .row > span:first-child{grid-area:main;padding-right:0;min-height:0;position:static;}
 .v5[data-view="list"] .lcell .row .row-pct{grid-area:pct;}
@@ -2601,8 +2611,8 @@ html[data-theme="dark"] .doc-stage{background:color-mix(in srgb,var(--ink) 6%,va
   font-family:var(--sans);font-size:var(--fs-12);font-weight:500;letter-spacing:0;line-height:1.4;white-space:nowrap;}
 
 /* ── Spremni listi: brez barvnih podlag in robov; stanje pove le kljukica ── */
-.v5 :is(.arh-green,.arh-yellow,.arh-red) .a-row{border-left:1px solid var(--line);background:var(--surface);}
-.v5 :is(.arh-green,.arh-yellow,.arh-red) .a-row:hover{background:var(--surface);}
+.v5 :is(.arh-green,.arh-yellow,.arh-red) .a-row{border-left:1px solid var(--line);background-color:var(--surface);}
+.v5 :is(.arh-green,.arh-yellow,.arh-red) .a-row:hover{background-color:var(--surface);}
 .v5 .arh-chk{width:24px;height:24px;border-width:1.5px;border-radius:7px;background:var(--surface);}
 .v5 .arh-chk.on{background:var(--st-ok);border-color:var(--st-ok);color:#fff;}
 .v5[data-theme="dark"] .arh-chk.on{color:#0a0a0a;}
@@ -3501,7 +3511,25 @@ html.pov-vidno .scrim{top:calc(64px + var(--pov-h) + env(safe-area-inset-top));}
 }
 
 /* ══════════ ZMOGLJIVOST (4.78) — Nastavitve → Zmogljivost (na tej napravi) ══════════ */
-.zm-seg{margin:0 0 14px;}
+/* drsnik Varčno · Uravnoteženo · Zmogljivo (4.80): tri stopnje, vleka ali dotik, puščice na tipkovnici */
+.zm-glava{display:flex;align-items:baseline;justify-content:space-between;gap:12px;}
+.zm-meri-t{font-size:var(--fs-13);color:var(--mid);}
+.zm-drsnik{--zm-x:.5;--zm-rob:36px;position:relative;height:90px;margin:8px 0 12px;touch-action:pan-y;-webkit-user-select:none;user-select:none;outline:none;cursor:pointer;}
+.zm-pot{position:absolute;left:var(--zm-rob);right:var(--zm-rob);top:21px;height:4px;border-radius:2px;background:var(--line);}
+.zm-polnilo{position:absolute;left:0;top:0;bottom:0;width:calc(var(--zm-x) * 100%);border-radius:2px;background:var(--ink);transition:width .32s cubic-bezier(.2,.8,.2,1);}
+.zm-drsnik.vlecem .zm-polnilo{transition-duration:.14s;}
+.zm-drsnik.zm-meri .zm-polnilo{width:0;}
+.zm-st{appearance:none;-webkit-appearance:none;position:absolute;top:0;left:calc(var(--zm-rob) + (100% - 2 * var(--zm-rob)) * var(--i));transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:9px;
+  margin:0;padding:0;border:0;background:none;color:var(--mid);font:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+.zm-ik{display:flex;align-items:center;justify-content:center;width:46px;height:46px;border-radius:50%;background:var(--surface);border:1.5px solid var(--line);color:var(--mid);
+  transition:background-color .22s ease,color .22s ease,border-color .22s ease,transform .22s cubic-bezier(.2,.8,.2,1),box-shadow .22s ease;}
+.zm-ik svg{width:22px;height:22px;}
+.zm-ime{font-size:var(--fs-13);font-weight:500;line-height:1.2;white-space:nowrap;transition:color .22s ease;}
+.zm-st.on .zm-ik{background:var(--ink);border-color:var(--ink);color:var(--bg);transform:scale(1.08);box-shadow:0 6px 18px rgba(0,0,0,.16);}
+.zm-st.on .zm-ime{color:var(--ink);font-weight:600;}
+.zm-drsnik:focus-visible .zm-st.on .zm-ik{box-shadow:0 0 0 3px var(--bg),0 0 0 5px var(--ink);}
+@media (hover:hover){ .zm-st:not(.on):hover .zm-ik{border-color:var(--line-strong);color:var(--ink);} }
+@media(max-width:359px){ .zm-drsnik{--zm-rob:32px;} .zm-ime{font-size:var(--fs-12);} .zm-ik{width:42px;height:42px;} .zm-pot{top:19px;} }
 .zm-sez{display:flex;flex-direction:column;border-top:1px solid var(--line);}
 .zm-v{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:48px;padding:6px 2px;border-bottom:1px solid var(--line);font-size:var(--fs-15);color:var(--ink);cursor:pointer;}
 .zm-v:last-child{border-bottom:0;}
