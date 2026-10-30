@@ -777,7 +777,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.86 · BETA';
+  var APP_VERZIJA = '4.87 · BETA';
   // stran in koda iste različice; sicer (objava v teku, star predpomnilnik) enkrat znova na različico — brez zanke
   (function () {
     var v = APP_VERZIJA.split(' ')[0], k = 'sc-stara-stran';
@@ -978,6 +978,7 @@
   var IKO_T_SVINC = ikoT('<path d="M4 20h4L18.5 9.5a2.1 2.1 0 0 0-3-3L5 17z"/><path d="m13.5 8.5 3 3"/>');
   var IKO_T_PLUS = ikoT('<path d="M12 5v14M5 12h14"/>');
   var IKO_ZAPRI = '<svg class="iko-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M17 7 7 17M7 7l10 10"/></svg>';
+  var IKO_NAZAJ = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18 9 12l6-6"/></svg>';
   function ikoG(pot) { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + pot + '</svg>'; }
   var IKO_TISK = ikoG('<path d="M7 8.5V3.5h10v5"/><rect x="3.5" y="8.5" width="17" height="8.5" rx="2"/><path d="M7 14h10v6.5H7z"/><path d="M17 11.5h.01"/>');
   var IKO_UREDI = ikoG('<path d="M4 20h4L18.5 9.5a2.1 2.1 0 0 0-3-3L5 17z"/><path d="m13.5 8.5 3 3"/>');
@@ -1371,6 +1372,101 @@
       clearTimeout(ura);
       ura = setTimeout(function () { if (!jePolje(document.activeElement) || !a.contains(document.activeElement)) a.classList.remove('auth-tipk'); }, 300);
     });
+  })();
+  // ── Prijava: naslovnica je svila, ki počasi valovi (WebGL), v tonih teme. Riše le, ko je vidna (po prijavi
+  // sprosti sliko); manj gibanja (Varčno, sistemska želja) → en mirujoč posnetek; brez WebGL ostane podlaga. ──
+  (function () {
+    var cv = document.querySelector('.auth-svila'); if (!cv) return;
+    // senca, sredina, luč, odsev, zastor pod sloganom; moč odseva, sijaj pobočij, vinjeta, moč zastora — temna in svetla tema
+    var TEMI = [
+      [[1, 2, 2], [14, 17, 16], [74, 81, 78], [226, 238, 232], [1, 2, 2], .7, .1, .2, .62],
+      [[180, 186, 183], [228, 231, 230], [250, 251, 251], [255, 255, 255], [248, 249, 249], .4, .1, .1, .66]
+    ];
+    var FS = [
+      '#ifdef GL_FRAGMENT_PRECISION_HIGH', 'precision highp float;', '#else', 'precision mediump float;', '#endif',
+      'uniform vec2 uR;uniform float uT,uI,uB,uV,uZa;uniform vec3 uS,uM,uL,uH,uZ;',
+      // višina tkanine: gube čez smer u, vzdolž v počasi vijugajo
+      'float vis(vec2 p,float t){',
+      '  float u=p.x*.80+p.y*.60, v=-p.x*.60+p.y*.80;',
+      '  float w=sin(v*1.05+t*.9)*.55+sin(v*.42-t*.6+1.3)*.95;',
+      '  return sin(u*2.2+w)*.5+sin(u*1.0-w*.7+t*.35)*.85+sin(u*4.4+w*1.6-t*.5)*.07;',
+      '}',
+      'void main(){',
+      '  vec2 du=vec2(.80,.60), dv=vec2(-.60,.80);',
+      '  vec2 p=(gl_FragCoord.xy-.5*uR)/max(uR.x,uR.y)*6.;',
+      '  float e=.003, h=vis(p,uT);',
+      '  float hu=(vis(p+du*e,uT)-h)/e, hv=(vis(p+dv*e,uT)-h)/e;',
+      // odsev raztegnjen vzdolž gub (kot pri svili): naklon vzdolž gube šteje manj
+      '  vec3 m=normalize(vec3(-hu*2.2,-hv*.55,1.));',
+      '  vec3 n=vec3(m.x*du+m.y*dv,m.z);',
+      '  vec3 L=normalize(vec3(-.45,.62,.64));',
+      '  float d=dot(n,L)*.5+.5; d=d*d*(3.-2.*d);',
+      '  float nh=max(dot(n,normalize(L+vec3(0.,0.,1.))),0.);',
+      '  vec3 c=mix(uS,uM,d); c=mix(c,uL,smoothstep(.55,1.,d)*.7+pow(1.-n.z,2.)*uB);',
+      '  c+=uH*(pow(nh,60.)*uI+pow(nh,10.8)*.12);',
+      '  vec2 g=gl_FragCoord.xy/uR; c*=1.-uV+uV*smoothstep(1.25,.15,length(g-vec2(.62,.70)));',
+      // zastor spodaj levo, da je slogan berljiv tudi, ko čezenj zdrsne odsev
+      '  c=mix(c,uZ,(1.-smoothstep(0.,.66,g.y))*(1.-.5*smoothstep(.3,1.,g.x))*uZa);',
+      // tresenje proti stopnicam v prelivih
+      '  c+=(fract(sin(dot(gl_FragCoord.xy,vec2(12.9898,78.233)))*43758.5453)-.5)/255.;',
+      '  gl_FragColor=vec4(c,1.);',
+      '}'].join('\n');
+    var gl = null, U = {}, zanka = 0, zadnji = 0, t0 = 0, tema = null, vidna = false, sw = 0, sh = 0;
+    var svetla = function () { return document.documentElement.getAttribute('data-theme') === 'light' ? 1 : 0; };
+    function zacni() {
+      try { gl = cv.getContext('webgl', { alpha: false, antialias: false, depth: false, stencil: false, powerPreference: 'low-power' }); } catch (e) { gl = null; }
+      if (!gl) return false;
+      var senc = function (vrsta, izv) { var o = gl.createShader(vrsta); gl.shaderSource(o, izv); gl.compileShader(o); return gl.getShaderParameter(o, gl.COMPILE_STATUS) ? o : null; };
+      var vs = senc(gl.VERTEX_SHADER, 'attribute vec2 a;void main(){gl_Position=vec4(a,0.,1.);}'), fs = senc(gl.FRAGMENT_SHADER, FS);
+      if (!vs || !fs) { gl = null; return false; }
+      var pr = gl.createProgram(); gl.attachShader(pr, vs); gl.attachShader(pr, fs); gl.linkProgram(pr);
+      if (!gl.getProgramParameter(pr, gl.LINK_STATUS)) { gl = null; return false; }
+      gl.useProgram(pr);
+      gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);   // en trikotnik čez celo platno
+      var a = gl.getAttribLocation(pr, 'a'); gl.enableVertexAttribArray(a); gl.vertexAttribPointer(a, 2, gl.FLOAT, false, 0, 0);
+      ['uR', 'uT', 'uI', 'uB', 'uV', 'uZa', 'uS', 'uM', 'uL', 'uH', 'uZ'].forEach(function (k) { U[k] = gl.getUniformLocation(pr, k); });
+      sw = sh = 0;
+      return true;
+    }
+    function narisi(zdaj) {
+      if (!gl || gl.isContextLost()) return;
+      var w = cv.clientWidth, h = cv.clientHeight; if (w < 2 || h < 2) return;
+      var k = Math.max(1, Math.min(2, window.devicePixelRatio || 1) * .65);   // svila je mehka: manjša ločljivost zadošča
+      var W = Math.round(w * k), H = Math.round(h * k);
+      if (W !== sw || H !== sh) { cv.width = sw = W; cv.height = sh = H; gl.viewport(0, 0, W, H); }
+      // prehod teme sledi žetonom (.32 s), brez skoka
+      var cilj = svetla(), dt = zadnji ? Math.min(.1, (zdaj - zadnji) / 1000) : 1;
+      tema = tema == null || manjGibanja() ? cilj : tema + Math.max(-dt / .32, Math.min(dt / .32, cilj - tema));
+      var m = function (i) { var A = TEMI[0][i], B = TEMI[1][i]; return typeof A === 'number' ? A + (B - A) * tema : [0, 1, 2].map(function (j) { return (A[j] + (B[j] - A[j]) * tema) / 255; }); };
+      gl.uniform2f(U.uR, W, H);
+      gl.uniform1f(U.uT, 1 + (manjGibanja() ? 0 : ((zdaj - t0) / 1000) * .07 % 600));
+      gl.uniform3fv(U.uS, m(0)); gl.uniform3fv(U.uM, m(1)); gl.uniform3fv(U.uL, m(2)); gl.uniform3fv(U.uH, m(3)); gl.uniform3fv(U.uZ, m(4));
+      gl.uniform1f(U.uI, m(5)); gl.uniform1f(U.uB, m(6)); gl.uniform1f(U.uV, m(7)); gl.uniform1f(U.uZa, m(8));
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+      zadnji = zdaj;
+      if (!cv.classList.contains('ziva')) cv.classList.add('ziva');
+    }
+    function korak(zdaj) {
+      zanka = 0;
+      if (!vidna || !gl) return;
+      if (zdaj - zadnji >= 30 || tema !== svetla()) narisi(zdaj);   // ~30 sličic na sekundo zadošča za počasno valovanje
+      if (!manjGibanja() || tema !== svetla()) zanka = requestAnimationFrame(korak);
+    }
+    function pozeni() { if (!zanka && vidna && gl) zanka = requestAnimationFrame(korak); }
+    if (!zacni()) return;
+    t0 = performance.now();
+    cv.addEventListener('webglcontextlost', function (e) { e.preventDefault(); if (zanka) cancelAnimationFrame(zanka); zanka = 0; });
+    cv.addEventListener('webglcontextrestored', function () { if (zacni()) { zadnji = 0; pozeni(); } });
+    if (window.IntersectionObserver) {
+      new IntersectionObserver(function (v) {
+        vidna = v[v.length - 1].isIntersecting;
+        if (vidna) { zadnji = 0; pozeni(); }
+        else if ($('auth').style.display === 'none') { cv.width = cv.height = 1; sw = sh = 0; }   // portal odprt: sprosti sliko
+      }).observe(cv);
+    } else { vidna = true; pozeni(); }
+    if (window.ResizeObserver) new ResizeObserver(function () { if (manjGibanja()) { zadnji = 0; pozeni(); } }).observe(cv);
+    new MutationObserver(pozeni).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
   })();
   // ── Različica v meniju: pritisk pokaže vse posodobitve (spremembe.json, ob objavi dodaj vnos) ──
   var _spremembeOdpiram = false;
@@ -4199,7 +4295,10 @@
       chk.addEventListener('click', klik);
       chk.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') klik(e); });
     }
-    o.glava.innerHTML = ''; o.glava.appendChild(kop); o.glava.appendChild(o.x);
+    // telefon: naslovnica kartice kot pasica na vrhu okna (okno čez cel zaslon, × v pasici levo zgoraj)
+    var pas = document.createElement('div'); pas.className = 'okno-pasica'; pas.setAttribute('aria-hidden', 'true');
+    var st = k.getAttribute('style'); if (st) pas.setAttribute('style', st);
+    o.glava.innerHTML = ''; o.glava.appendChild(pas); o.glava.appendChild(kop); o.glava.appendChild(o.nz); o.glava.appendChild(o.x);
     var nasl = k.querySelector('.a-num, .row-nm');
     o.panel.setAttribute('aria-label', nasl ? nasl.textContent.trim() : 'Podrobnosti');
   }
@@ -4315,8 +4414,11 @@
     var glava = document.createElement('div');
     var telo = document.createElement('div'); telo.className = 'okno-telo';
     var x = document.createElement('button'); x.type = 'button'; x.className = 'doc-x okno-x'; x.setAttribute('aria-label', 'Zapri'); x.innerHTML = IKO_ZAPRI;
+    // telefon: Nazaj levo (iz urejanja na podrobnosti, sicer zapre), × desno
+    var nz = document.createElement('button'); nz.type = 'button'; nz.className = 'doc-x okno-nazaj'; nz.setAttribute('aria-label', 'Nazaj'); nz.innerHTML = IKO_NAZAJ;
+    nz.addEventListener('click', function () { var p = telo.querySelector('[data-preklici]'); if (p && p.offsetParent) p.click(); else oknoZapri(); });
     notr.appendChild(glava); notr.appendChild(telo); panel.appendChild(notr); back.appendChild(panel);
-    var o = _okno = { back: back, panel: panel, notr: notr, glava: glava, telo: telo, x: x, kartica: kartica, vsebina: vsebina, najdi: najdi,
+    var o = _okno = { back: back, panel: panel, notr: notr, glava: glava, telo: telo, x: x, nz: nz, kartica: kartica, vsebina: vsebina, najdi: najdi,
       id: kartica.dataset.id, dom: { parent: vsebina.parentNode, next: vsebina.nextSibling, id: vsebina.id },
       glavaFn: moznosti.glava || null, obZaprtju: moznosti.obZaprtju || null, osvezi: moznosti.osvezi || null };
     oknoGlava();
@@ -4346,7 +4448,7 @@
       o.ro.observe(vsebina);
     }
     void back.offsetWidth; back.classList.add('show');   // zatemnitev začne takoj (brez čakanja na naslednji okvir)
-    if (oknoMirno() || !panel.animate) { kartica.classList.add('okno-vir'); oknoFokus(o); return; }
+    if (oknoMirno() || !panel.animate) { kartica.classList.add('okno-vir'); back.classList.add('okno-cel'); oknoFokus(o); return; }
     o.morf = true;
     var kl = oknoKljuci(o, OKNO_ODPRI, false);
     var duh = oknoDuh(o);
@@ -4356,7 +4458,7 @@
     duh.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 170, delay: 60, easing: 'ease', fill: 'forwards' });
     notr.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 190, delay: 110, easing: 'ease', fill: 'backwards' });
     notr.animate(kl.notr, { duration: 380, easing: 'linear' });
-    var konecRasti = function () { duh.remove(); o.morf = false; o.visina = panel.offsetHeight; };
+    var konecRasti = function () { duh.remove(); o.morf = false; o.visina = panel.offsetHeight; back.classList.add('okno-cel'); };   // odprto: telefon — polno ozadje (Safari po njem pobarva pasova)
     panel.animate(kl.okno, { duration: 380, easing: 'linear' }).finished.then(konecRasti, konecRasti);
     oknoFokus(o);
   }
@@ -4372,6 +4474,7 @@
   function oknoZapri(takoj) {
     var o = _okno; if (!o || o.zapiram) return;
     o.zapiram = true;
+    o.back.classList.remove('okno-cel');
     document.removeEventListener('keydown', oknoTipka, true);
     if (o.ro) o.ro.disconnect();
     var k = (o.najdi && o.najdi()) || null;   // po ponovnem izrisu je kartica nov element

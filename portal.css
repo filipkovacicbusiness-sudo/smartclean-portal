@@ -3156,24 +3156,33 @@ html.sc-tema-anim{transition:--green .32s cubic-bezier(.4,0,.2,1),--green-l .32s
 html.sc-tema-anim *,html.sc-tema-anim *::before,html.sc-tema-anim *::after{transition:none!important;}
 
 /* ══════════ PRIJAVA (4.67): naslovnica v slogu ikone + obrazec ══════════
-   Računalnik: levo velika naslovnica (siva mat podlaga z zrnom, mehki barvni madeži, ki počasi plavajo), slogan spodaj levo;
+   Računalnik: levo velika naslovnica (4.87: svila, ki počasi valovi, v tonih teme, z zrnom), slogan spodaj levo;
    desno obrazec na sredini. Telefon: naslovnica je pas na vrhu, obrazec pod njim. */
 .v5 .auth-top{border-bottom:0;}
+/* Safari 26 obarva pasova (ura zgoraj, orodna vrstica spodaj) po pritrjenih elementih ob robu. Prijava se ne pomika,
+   zato po menjavi teme pasova ne bi znova vzorčil → trajna trakova v barvi strani (ne v aplikaciji z začetnega
+   zaslona: tam je zgoraj #sc-vrh). Pod okni in obvestili, ki ju ob odprtju prekrijejo. */
+html.v5:not(.sc-sam) .auth::before,html.v5:not(.sc-sam) .auth::after{content:"";position:fixed;left:0;right:0;z-index:1;height:12px;background:var(--bg);pointer-events:none;}
+html.v5:not(.sc-sam) .auth::before{top:0;}
+html.v5:not(.sc-sam) .auth::after{bottom:0;}
 .v5 .auth-main{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(340px,.85fr);grid-template-rows:minmax(0,1fr);gap:clamp(28px,5vw,88px);
   align-items:stretch;justify-items:stretch;padding:4px clamp(16px,2.2vw,32px) clamp(16px,2.2vw,32px);}
 .v5 .auth-hero{position:relative;isolation:isolate;overflow:hidden;align-self:stretch;display:flex;align-items:flex-end;justify-content:flex-start;
-  min-height:420px;max-height:none;padding:clamp(28px,4vw,60px);border-radius:28px;text-align:left;background:var(--cov-base);box-shadow:inset 0 0 0 1px var(--cov-rob);}
-.v5 .auth-hero::after{content:"";position:absolute;inset:0;z-index:-1;background-image:var(--cov-zrno);opacity:var(--cov-zrno-o,.4);mix-blend-mode:soft-light;pointer-events:none;}
-.v5 .auth-hero-luci{position:absolute;inset:0;z-index:-2;filter:blur(8px);}
-.v5 .auth-hero-luci i{position:absolute;border-radius:50%;opacity:.9;will-change:transform;animation:authLuc 26s ease-in-out infinite alternate;}
-.v5 .auth-hero-luci i:nth-child(1){width:70%;height:80%;left:-12%;top:-18%;background:radial-gradient(closest-side,color-mix(in oklab,#1f8f5f calc(var(--cov-a1) * 1.2),transparent),transparent);}
-.v5 .auth-hero-luci i:nth-child(2){width:60%;height:70%;right:-14%;top:-10%;background:radial-gradient(closest-side,color-mix(in oklab,#2a78d6 var(--cov-a1),transparent),transparent);animation-duration:31s;animation-delay:-6s;}
-.v5 .auth-hero-luci i:nth-child(3){width:64%;height:72%;right:-8%;bottom:-24%;background:radial-gradient(closest-side,color-mix(in oklab,#7a5ae0 var(--cov-a1),transparent),transparent);animation-duration:29s;animation-delay:-14s;}
-.v5 .auth-hero-luci i:nth-child(4){width:46%;height:52%;left:6%;bottom:-20%;background:radial-gradient(closest-side,color-mix(in oklab,#6ed3a1 calc(var(--cov-a2) * 1.6),transparent),transparent);animation-duration:23s;animation-delay:-3s;}
-@keyframes authLuc{0%{transform:translate3d(0,0,0) scale(1);}50%{transform:translate3d(6%,4%,0) scale(1.08);}100%{transform:translate3d(-5%,6%,0) scale(.96);}}
-@media(prefers-reduced-motion:reduce){ .v5 .auth-hero-luci i{animation:none;} }
+  min-height:420px;max-height:none;padding:clamp(28px,4vw,60px);border-radius:28px;text-align:left;background:var(--cov-base);
+  box-shadow:inset 0 0 0 1px var(--cov-rob),inset 0 1px 0 rgba(255,255,255,.55);}
+.v5[data-theme="dark"] .auth-hero{box-shadow:inset 0 0 0 1px var(--cov-rob),inset 0 1px 0 rgba(255,255,255,.09);}
+.v5 .auth-hero::after{content:"";position:absolute;inset:0;z-index:-1;border-radius:inherit;background-image:var(--cov-zrno);opacity:var(--cov-zrno-o,.4);mix-blend-mode:soft-light;pointer-events:none;}
+/* svila (WebGL, portal.js): platno se pokaže ob prvi sliki; brez WebGL ostane podlaga --cov-base.
+   Safari platna WebGL ne obreže z zaobljenimi robovi starša → platno ima svoje. */
+.v5 .auth-svila{position:absolute;inset:0;z-index:-2;display:block;width:100%;height:100%;border-radius:inherit;opacity:0;transition:opacity .9s ease;}
+.v5 .auth-svila.ziva{opacity:1;}
 .v5 .auth-claim{max-width:14ch;font-family:var(--sans);font-size:clamp(2.6rem,5.2vw,5rem);font-weight:600;line-height:1;letter-spacing:-.04em;color:var(--cov-ink);text-wrap:balance;}
-.v5 .auth-claim em{display:block;color:inherit;opacity:.55;}
+/* »blestite.«: čez besedo občasno zdrsne odsev */
+.v5 .auth-claim em{display:block;width:max-content;max-width:100%;color:color-mix(in srgb,var(--cov-ink) 52%,transparent);
+  background:linear-gradient(105deg,transparent 0 40%,var(--cov-ink) 50%,transparent 60% 100%) 100% 0/280% 100% no-repeat;
+  -webkit-background-clip:text;background-clip:text;animation:authSij 9s cubic-bezier(.45,0,.25,1) 2s infinite;}
+@keyframes authSij{0%{background-position:100% 0}24%,100%{background-position:0 0}}
+@media(prefers-reduced-motion:reduce){ .v5 .auth-claim em{animation:none;} }
 .v5 .auth-slot{align-self:center;justify-self:center;width:100%;max-width:380px;display:flex;flex-direction:column;align-items:stretch;}
 .v5 .auth-box{max-width:none;}
 .v5 .auth-box h1{font-family:var(--sans);font-size:clamp(1.9rem,2.4vw,2.4rem);font-weight:500;letter-spacing:-.03em;line-height:1.1;margin:0 0 32px;}
@@ -3591,3 +3600,37 @@ html.v5.zm-brez-teksture{--cov-zrno:none;--cov-zrno-o:0;}
 .v5 #usersList .u-znacke{flex-wrap:wrap;}
 .v5 #usersList .u-znacke .pill{white-space:normal;overflow-wrap:anywhere;border-radius:10px;}
 #usersList .lcell > .pov-vsebina{display:none;}   /* vsebina povabila le v oknu */
+
+/* ══════════ iOS: VRH ZLIT Z URO, OKNA ČEZ ZASLON (4.87) ══════════
+   Telefon (aplikacija na začetnem zaslonu in Safari): ena barva od ure do vsebine — vrstica na vrhu brez črte in brez
+   zamegljenega prehoda. Okno kartice je stran čez cel zaslon v barvi ozadja; naslovnica kartice je pasica, ki se proti uri
+   prelije v barvo ozadja (brez roba pod uro); Nazaj levo, × desno. Trak #sc-vrh ostane edini element na vrhnjem robu. */
+.okno-nazaj{display:none;}
+.okno-pasica{display:none;position:relative;flex:0 0 auto;height:clamp(124px,36vw,156px);overflow:hidden;isolation:isolate;
+  background:linear-gradient(var(--bg) 0%,color-mix(in srgb,var(--bg) 0%,transparent) 62%),
+             radial-gradient(var(--r1,72% 95%) at var(--p1,28% 22%),color-mix(in oklab,var(--c1,#8f979e) calc(var(--cov-a1) * var(--j,1)),transparent),transparent 72%),
+             radial-gradient(var(--r2,85% 100%) at var(--p2,78% 88%),color-mix(in oklab,var(--c2,#cdd3d8) calc(var(--cov-a2) * var(--j,1)),transparent),transparent 74%),
+             var(--cov-base);}
+.okno-pasica::after{content:"";position:absolute;inset:0;z-index:-1;background-image:var(--cov-zrno);opacity:var(--cov-zrno-o,.4);mix-blend-mode:soft-light;pointer-events:none;}
+@media(max-width:900px){
+  .v5 .topbar{border-bottom-color:transparent;}
+  .v5 .pg-mini{border-bottom-color:transparent;box-shadow:none;}   /* naslov razdelka ob pomiku: ista barva, brez meje */
+}
+@media(max-width:560px){
+  .v5 .okno-back{padding:var(--vrh) 0 0;align-items:stretch;}
+  /* odprto okno: polno ozadje v barvi teme — Safari 26 barvo pasov (ura, spodnja vrstica) vzame iz fiksnega elementa ob robu */
+  .v5 .okno-back.okno-cel .okno-zatemni{background:var(--bg);-webkit-backdrop-filter:none;backdrop-filter:none;transition:none;}
+  .v5 .okno{width:100%;height:calc(100dvh - var(--vrh));max-height:none;border:0;border-radius:0;box-shadow:none;background:var(--bg);}
+  .v5 .okno-telo{padding-bottom:env(safe-area-inset-bottom);}
+  .v5 .okno-pasica{display:block;}
+  .v5 .okno-nazaj{display:flex;}
+  .v5 .okno-x,.v5 .okno-nazaj{position:absolute;top:10px;z-index:3;width:40px;height:40px;align-items:center;justify-content:center;padding:0;border:0;border-radius:50%;
+    color:var(--ink);background:color-mix(in srgb,var(--bg) 86%,transparent);box-shadow:0 1px 2px rgba(0,0,0,.06),0 6px 16px rgba(0,0,0,.08);}
+  .v5[data-theme="dark"] .okno-x,.v5[data-theme="dark"] .okno-nazaj{background:color-mix(in srgb,#fff 12%,transparent);box-shadow:none;}
+  .v5 .okno-x{right:12px;left:auto;transform:none;}
+  .v5 .okno-nazaj{left:12px;}
+  .v5 .okno-x svg,.v5 .okno-nazaj svg{width:18px;height:18px;}
+  .v5 .okno-glava .okno-kartica{padding:14px 16px 14px;border-left-width:0!important;}   /* stanje pove pasica */
+  .v5 .okno-glava-naslov{padding:16px 64px 14px 16px;}
+  .v5 .okno-glava-naslov .okno-x{top:50%;transform:translateY(-50%);}
+}
