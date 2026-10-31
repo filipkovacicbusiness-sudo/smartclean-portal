@@ -288,7 +288,7 @@
     pokazi('osebe');
     var m = $('osebeMreza');
     m.innerHTML = OSEBE.map(function (o) {
-      return '<div class="pp-tile-wrap"><button type="button" class="pp-tile" data-uid="' + esc(o.uid) + '"><span class="pp-av rfa-ini">' + esc(zacetnice(o.ime)) + '</span><span class="pp-nm">' + esc(o.ime) + '</span></button>' +
+      return '<div class="pp-tile-wrap"><button type="button" class="pp-tile" data-uid="' + esc(o.uid) + '"><span class="pp-av av-ini rfa-ini">' + esc(zacetnice(o.ime)) + '</span><span class="pp-nm">' + esc(o.ime) + '</span></button>' +
         '<button type="button" class="pp-tile-x" data-odstrani="' + esc(o.uid) + '" aria-label="Odstrani ' + esc(o.ime) + '"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>';
     }).join('') + '<div class="pp-tile-wrap"><button type="button" class="pp-tile pp-add" id="osebaNova"><span class="pp-av">+</span><span class="pp-nm">Nova oseba</span></button></div>';
     $('osebeMsg').textContent = msg || '';
@@ -414,7 +414,7 @@
     if ((o.napake || 0) >= PIN_GESLO) { prijavaPokazi('Preveč napačnih kod.', o.email); return; }
     var el = document.createElement('div'); el.className = 'rfa-pin'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', 'PIN · ' + o.ime);
     var tipke = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'nazaj', '0', 'brisi'];
-    el.innerHTML = '<div class="rfa-pin-in"><span class="pp-av rfa-ini">' + esc(zacetnice(o.ime)) + '</span><div class="rfa-pin-ime">' + esc(o.ime) + '</div>' +
+    el.innerHTML = '<div class="rfa-pin-in"><span class="pp-av av-ini rfa-ini">' + esc(zacetnice(o.ime)) + '</span><div class="rfa-pin-ime">' + esc(o.ime) + '</div>' +
       '<div class="rfa-pin-pike">' + new Array(PIN_DOLZ + 1).join('<i></i>') + '</div><p class="rfa-pin-msg" aria-live="polite"></p>' +
       '<div class="rfa-pin-tipke">' + tipke.map(function (t) {
         if (t === 'nazaj') return '<button type="button" class="tiho" data-t="nazaj">Nazaj</button>';
@@ -1309,7 +1309,7 @@
   /* ══════════ NOVA RAZLIČICA ══════════
      C72 je lahko odprt ves dan: ko je objavljena nova različica, se aplikacija naloži znova, a le, ko miruje
      (brez skeniranja, okna, rezultata in branja) — nič se ne izgubi. */
-  var RF_VER = '4.87';   // ob objavi enako kot APP_VERZIJA v portalu (prvi »v« v spremembe.json)
+  var RF_VER = '4.88';   // ob objavi enako kot APP_VERZIJA v portalu (prvi »v« v spremembe.json)
   async function rfPreveriRazlicico() {
     try {
       var r = await _izvFetch('../spremembe.json?v=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;

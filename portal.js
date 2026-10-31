@@ -594,7 +594,11 @@
       }
     } finally { b.disabled = false; b.classList.remove('nalaga'); }
   }
-  function zacetnice(ime) { return String(ime || '').trim().split(/\s+/).slice(0, 2).map(function (x) { return x.charAt(0).toUpperCase(); }).join(''); }
+  // privzeta profilna slika: prva črka imena in priimka (enako v aplikaciji RFID in aplikaciji za spremne liste)
+  function zacetnice(ime) {
+    var d = String(ime || '').trim().split(/\s+/).filter(Boolean);
+    return ((d[0] || '?').charAt(0) + (d.length > 1 ? d[d.length - 1].charAt(0) : '')).toUpperCase();
+  }
   if (REG_IMA) $('regForm').addEventListener('submit', function (e) { e.preventDefault(); regNaprej(); });
   if (REG_IMA) $('regOdpri').addEventListener('click', function () { regOdpri(''); });
   if (REG_IMA) $('regNazaj').addEventListener('click', function () {
@@ -777,7 +781,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.87 · BETA';
+  var APP_VERZIJA = '4.88 · BETA';
   // stran in koda iste različice; sicer (objava v teku, star predpomnilnik) enkrat znova na različico — brez zanke
   (function () {
     var v = APP_VERZIJA.split(' ')[0], k = 'sc-stara-stran';
@@ -8415,7 +8419,7 @@
      Namestitveni paket leži poleg spletne različice, ne v kodi portala.
      Če ga še ni, to tu tudi piše — namesto strani 404. */
   // ?v= ob vsaki novi različici aplikacije (aplikacija/zgradi.py): brskalnik in predpomnilnik vzameta nov paket.
-  var APK_POT = 'tablica/Pralnica-sync.apk?v=11.9';
+  var APK_POT = 'tablica/Pralnica-sync.apk?v=11.10';
   var RFID_APK_POT = 'rfid/SmartClean-RFID.apk?v=1.6';   // aplikacija-rfid/zgradi.py (VERZIJA)
 
   function wirePwa(scope) {
@@ -9857,13 +9861,13 @@
     var url = MOJPROFIL && MOJPROFIL.avatar_url;
     if (url) {
       box.style.backgroundImage = 'url(' + encodeURI(url).replace(/"/g, '%22') + ')';
-      box.classList.add('has-img'); box.classList.remove('av-sc');
+      box.classList.add('has-img'); box.classList.remove('av-ini');
       var ini = $('profAvInit'); if (ini) ini.style.display = 'none';
       if (del) del.style.display = '';
     } else {
       box.style.backgroundImage = '';
-      box.classList.remove('has-img'); box.classList.add('av-sc');
-      var ini2 = $('profAvInit'); if (ini2) { ini2.style.display = ''; ini2.innerHTML = scMarkHtml(); }
+      box.classList.remove('has-img'); box.classList.add('av-ini');
+      var ini2 = $('profAvInit'); if (ini2) { ini2.style.display = ''; ini2.textContent = zacetnice(JAZIME); }
       if (del) del.style.display = 'none';
     }
   }
@@ -9889,6 +9893,7 @@
     JAZIME = ime;
     MOJPROFIL.full_name = ime; MOJPROFIL.phone = tel || null; MOJPROFIL.contact_email = kmail || null;
     nastaviWho(ime);
+    narisiProfAvatar();   // začetnice sledijo imenu
     zapomniProfil({ email: JAZMAIL, name: ime, avatar: MOJPROFIL.avatar_url || '', uid: JAZ });
     if ($('domovNaslov') && !$('sec-domov').classList.contains('hidden')) $('domovNaslov').textContent = OSEBJE ? (pozdrav() + ', ' + prvoIme()) : $('domovNaslov').textContent;
     m.className = 'msg show'; m.textContent = 'Profil shranjen.';
@@ -10525,32 +10530,31 @@
     var a = beriProfile().filter(function (x) { return (x.email || '').toLowerCase() !== (email || '').toLowerCase(); });
     shraniProfile(a);
   }
-  function ppIniciale(ime) {
-    var d = (ime || '').trim().split(/\s+/).filter(Boolean);
-    if (!d.length) return '?';
-    return (d[0][0] + (d.length > 1 ? d[d.length - 1][0] : '')).toUpperCase();
-  }
-  // Znak »SC« v pisavi in barvah logotipa (S = temna, C = zelena) — enotna placeholder ikona povsod.
-  function scMarkHtml() { return '<span class="sc-s">S</span><span class="sc-c">C</span>'; }
   function ppAvatarHtml(p, cls) {
     if (p && p.avatar) return '<span class="' + cls + '" style="background-image:url(' + encodeURI(p.avatar).replace(/"/g, '%22') + ')"></span>';
-    return '<span class="' + cls + ' av-sc">' + scMarkHtml() + '</span>';
+    return '<span class="' + cls + ' av-ini" aria-hidden="true">' + escape_(zacetnice(p && (p.name || p.email))) + '</span>';   // privzeta profilna slika
   }
   function narisiIzbirnik() {
     var grid = $('ppGrid'); if (!grid) return;
     var prof = beriProfile();
-    var BIO_IKONA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 11a2 2 0 0 0-2 2v2"/><path d="M12 7a6 6 0 0 1 6 6v1"/><path d="M6 13a6 6 0 0 1 3-5.2"/><path d="M8 17.5a8 8 0 0 0 .5 2"/><path d="M15.5 20a10 10 0 0 0 .5-6 4 4 0 0 0-6.5-3"/></svg>';
+    // znak biometrije na kartici: obraz (Face ID, Windows Hello) ali prstni odtis
+    var BIO_IKONA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      ({ ios: 1, win: 1 }[bioNaprava()]
+        ? '<path d="M4 8.5v-2A2.5 2.5 0 0 1 6.5 4h2M15.5 4h2A2.5 2.5 0 0 1 20 6.5v2M20 15.5v2a2.5 2.5 0 0 1-2.5 2.5h-2M8.5 20h-2A2.5 2.5 0 0 1 4 17.5v-2"/><path d="M9 9.5v1.2M15 9.5v1.2"/><path d="M12.2 9.5v3.6h-1"/><path d="M9.3 15.6a4 4 0 0 0 5.4 0"/>'
+        : '<path d="M5.6 6.8A9.4 9.4 0 0 1 12 4.3a9.4 9.4 0 0 1 7.3 3.4"/><path d="M4.8 16.5c.3-1 .5-2 .5-3a6.7 6.7 0 0 1 12-4.1"/><path d="M18.7 12c.1.5.1 1 .1 1.5 0 2.2-.3 4.3-.8 6.2"/><path d="M7.5 19.5c.6-1.8 1-3.8 1-6a3.5 3.5 0 0 1 7 0c0 1.3-.1 2.6-.3 3.8"/><path d="M12 13.5c0 2.7-.3 5.2-1 7.5"/>') + '</svg>';
+    // kartica z naslovnico kot drugod (siva z zrnom, vzorec po osebi): v njej profilna slika, pod njo ime
     var html = prof.map(function (p) {
       var imaBio = bioPodprt() && p.uid && bioVklopljen(p.uid);
       var badge = imaBio ? '<span class="pp-bio" title="' + bioIme() + '">' + BIO_IKONA + '</span>' : '';
       return '<div class="pp-tile-wrap">' +
         '<button type="button" class="pp-tile" data-email="' + escape_(p.email) + '">' +
-        ppAvatarHtml(p, 'pp-av') + badge +
-        '<span class="pp-nm">' + escape_(p.name || p.email) + '</span></button>' +
+        '<span class="pp-cov" style="' + naslovnica(null, p.uid || p.email) + '">' +
+        ppAvatarHtml(p, 'pp-av') + badge + '<span class="pp-nm">' + escape_(p.name || p.email) + '</span></span></button>' +
         '<button type="button" class="pp-tile-x" data-forget="' + escape_(p.email) + '" aria-label="Odstrani profil" title="Odstrani profil">' + IKO_ZAPRI + '</button>' +
         '</div>';
     }).join('');
-    html += '<button type="button" class="pp-tile pp-add" id="ppAdd"><span class="pp-av pp-plus">+</span><span class="pp-nm">Drug uporabnik</span></button>';
+    html += '<button type="button" class="pp-tile pp-add" id="ppAdd"><span class="pp-cov" style="' + naslovnica(null, 'drug-uporabnik') + '">' +
+      '<span class="pp-plus">' + IKO_T_PLUS + '</span><span class="pp-nm">Drug uporabnik</span></span></button>';
     grid.innerHTML = html;
     grid.querySelectorAll('.pp-tile[data-email]').forEach(function (b) {
       b.addEventListener('click', function () { izberiProfil(b.dataset.email); });

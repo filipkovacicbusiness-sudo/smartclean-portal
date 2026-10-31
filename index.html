@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover"/>
 <title>SmartClean Portal</title>
 <!-- Tema pred prvim izrisom + zagonski zaslon (zunanja datoteka — CSP dovoli le 'self'). -->
-<script src="boot.js?v=4.87"></script>
+<script src="boot.js?v=4.88"></script>
 <!-- Pisava logotipa takoj (vzporedno s CSS), da se logotip na zagonskem zaslonu ne izriše najprej v nadomestni pisavi. -->
 <link rel="preload" href="fonts/playfair-display-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin/>
 <!-- Zagonski zaslon (splash): pokrije nalaganje in se gladko pretopi v portal. -->
@@ -18,11 +18,12 @@ html.sc-booting,html.sc-booting body{overflow:hidden!important;overscroll-behavi
 /* Logotip = isti razred .wordmark kot v zgornjem levem kotu portala (pisava, velikost, barve iz portal.css). */
 #scBoot .scBoot-bar{width:132px;height:3px;border-radius:3px;background:rgba(255,255,255,.14);overflow:hidden;}
 :root[data-theme="light"] #scBoot .scBoot-bar{background:rgba(10,10,10,.10);}
-#scBoot .scBoot-bar i{display:block;height:100%;width:40%;border-radius:3px;background:#6ed3a1;transform:translateX(-120%);animation:scBootBar 1.15s cubic-bezier(.65,0,.35,1) infinite;}
+/* Trak pove, da aplikacija dela (ni okras): !important, da teče tudi ob »Zmanjšaj gibanje« in v načinu Varčno; odsek je vedno vsaj delno viden. */
+#scBoot .scBoot-bar i{display:block;height:100%;width:40%;border-radius:3px;background:#6ed3a1;animation:scBootBar 1.2s cubic-bezier(.45,.05,.55,.95) -.3s infinite!important;}
 :root[data-theme="light"] #scBoot .scBoot-bar i{background:#1a6644;}
 @keyframes scBootIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-@keyframes scBootBar{0%{transform:translateX(-120%)}100%{transform:translateX(330%)}}
-@media(prefers-reduced-motion:reduce){#scBoot .scBoot-bar i{animation:none;transform:none;width:100%;opacity:.5}#scBoot .scBoot-in{animation:none}}
+@keyframes scBootBar{0%{transform:translateX(-100%)}100%{transform:translateX(250%)}}
+@media(prefers-reduced-motion:reduce){#scBoot .scBoot-in{animation:none}}
 /* iOS 26/27, aplikacija na začetnem zaslonu: sistem vzame barvo s pritrjenega elementa na vrhu strani.
    Ko se ta element PRVIČ zamenja (npr. zagonski zaslon → zgornja vrstica), vrh do zaprtja aplikacije
    zamegljuje in tega ni mogoče več popraviti. Zato EN trak, od prvega izrisa nad vsem in nikoli
@@ -50,7 +51,7 @@ html.sc-sam.sc-pod-uro[data-theme="light"] #sc-vrh{background:#0a0a0a;}
 <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png?v=4"/>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230a0a0a'/%3E%3Ctext x='32' y='42' font-family='Georgia,%27Times New Roman%27,serif' font-size='36' font-weight='700' text-anchor='middle'%3E%3Ctspan fill='%23e8f1eb'%3ES%3C/tspan%3E%3Ctspan fill='%236ed3a1'%3EC%3C/tspan%3E%3C/text%3E%3C/svg%3E"/>
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https://anrhtgbckxrccnafcmsz.supabase.co; connect-src 'self' https://anrhtgbckxrccnafcmsz.supabase.co wss://anrhtgbckxrccnafcmsz.supabase.co; base-uri 'none'; form-action 'none'; object-src 'none'"/>
-<link rel="stylesheet" href="portal.css?v=4.87"/>
+<link rel="stylesheet" href="portal.css?v=4.88"/>
 <style id="hexfx">
 .sc-hex{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;opacity:1}
 .auth,.app{position:relative;z-index:1}
@@ -595,10 +596,10 @@ body:has(> .app.show) .sc-hex [class*="hw"]{animation-play-state:paused}
     <div class="msg" id="bioPromoMsg" role="status" aria-live="polite"></div>
   </div>
 </div>
-<script defer src="start.js?v=4.87"></script>
+<script defer src="start.js?v=4.88"></script>
 <script defer src="config.js"></script>
-<script defer src="supabase.js?v=4.87"></script>
+<script defer src="supabase.js?v=4.88"></script>
 <!-- pdfgen.js se naloži šele ob prvi izdelavi PDF-ja (glej zagotoviPdf() v portal.js). -->
-<script defer src="portal.js?v=4.87"></script>
+<script defer src="portal.js?v=4.88"></script>
 </body>
 </html>

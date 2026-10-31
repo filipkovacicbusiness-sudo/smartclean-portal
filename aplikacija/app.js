@@ -1333,9 +1333,13 @@ function showAccountLogin(msg, email){
   if(email) $("acctEmail").value = email;
   $("acctBack").hidden = !savedProfs.length;
 }
+function zacetnice(ime){
+  var d = String(ime || "").trim().split(/\s+/).filter(Boolean);
+  return ((d[0] || "?").charAt(0) + (d.length > 1 ? d[d.length - 1].charAt(0) : "")).toUpperCase();
+}
 function avatarHtml(p){
   if(p && p.avatar && /^https:\/\//.test(p.avatar)) return '<span class="pp-av" style="background-image:url(\'' + encodeURI(p.avatar).replace(/'/g, "%27") + '\')"></span>';
-  return '<span class="pp-av av-sc"><span class="sc-s">S</span><span class="sc-c">C</span></span>';
+  return '<span class="pp-av av-ini" aria-hidden="true">' + esc(zacetnice(p && (p.name || p.email))) + '</span>';
 }
 function prikaziProfile(msg){
   if(SPLET){ prikaziSpletnoPrijavo(msg || ""); return; }
