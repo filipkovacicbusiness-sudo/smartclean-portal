@@ -781,7 +781,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.89 · BETA';
+  var APP_VERZIJA = '4.90 · BETA';
   // stran in koda iste različice; sicer (objava v teku, star predpomnilnik) enkrat znova na različico — brez zanke
   (function () {
     var v = APP_VERZIJA.split(' ')[0], k = 'sc-stara-stran';
@@ -1326,7 +1326,7 @@
     nast = _ns.length > 1 ? [[_ns[0][0], 'Nastavitve', 'nastavitve']] : [['racun', 'Moj račun']];
     const veja = ([k, l, ik]) => `<a data-go="${k}">${ikona(ik || k)}${l}</a>`;
     $('side').innerHTML = '<span class="side-slider" aria-hidden="true"></span>' + glavni.map(veja).join('') + '<div class="side-sep"></div>' + nast.map(veja).join('') +
-      '<div class="side-foot"><button type="button" class="side-ver" title="Kaj je novega — vse posodobitve">Različica ' + escape_(APP_VERZIJA) + '</button><a class="side-eflitte" href="https://eflitte.si" target="_blank" rel="noopener">Izdelava <b>eflitte</b></a></div>';
+      '<div class="side-foot"><button type="button" class="side-ver" title="Kaj je novega — vse posodobitve">Različica ' + escape_(APP_VERZIJA) + '</button><a class="side-eflitte" href="https://eflitte.si" target="_blank" rel="noopener" aria-label="Izdelava eflitte">Izdelava <svg class="ef-logo" viewBox="0 0 437.86 136.56" aria-hidden="true"><use href="#efLogo"/></svg></a></div>';
     const _side = $('side');
     const _sl = _side.querySelector('.side-slider');
     const premakniDrsnik = a => {

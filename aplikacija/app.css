@@ -132,7 +132,7 @@ html.sc-booting,html.sc-booting body{overflow:hidden!important;}
 .auth-box h1{font-size:1.9rem;font-weight:450;letter-spacing:-.028em;line-height:1.1;margin-bottom:28px;}
 /* noga v toku (ne pritrjena na dno), da je nikoli ne prekrije obrazec ali »Nazaj na profile« */
 .auth-foot{display:block;flex:none;text-align:center;font-size:.82rem;color:var(--mid);text-decoration:none;padding:8px 0 max(18px,env(safe-area-inset-bottom));}
-.auth-foot b{color:var(--wm-green);font-weight:600;}
+.ef-logo{display:inline-block;height:14px;width:auto;aspect-ratio:437.86/136.56;margin-left:3px;vertical-align:-2px;color:var(--ink);}   /* logotip eflitte v barvi besedila */
 .profile-picker{text-align:center;width:100%;max-width:620px;}
 .pp-grid{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;animation:fadeIn .34s ease both;}
 .pp-tile-wrap{position:relative;width:110px;display:flex;}
