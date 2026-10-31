@@ -74,6 +74,7 @@ public class Glavna extends Activity implements Bralnik.Poslusalec {
     private ComponentName skrbnik;
     private WebView tisk;       // okno za tisk živi, dokler ga ne zamenja naslednji tisk (sicer ga lahko pobere zbiralnik smeti)
     private boolean tiskam;     // odprt je sistemski dialog za tisk: časovnikov oken ne ustavljaj (predogled bi obstal)
+    private Tiskalnik tiskalnik;   // neposreden tisk na omrežni tiskalnik
 
     @Override
     protected void onCreate(Bundle shranjeno) {
@@ -81,6 +82,7 @@ public class Glavna extends Activity implements Bralnik.Poslusalec {
         barvaPasov("#ffffff");
         try { ton = new ToneGenerator(AudioManager.STREAM_MUSIC, 60); } catch (Exception e) { ton = null; }
         bralnik = new Bralnik(this, this);
+        tiskalnik = new Tiskalnik(this);
         dpm = (DevicePolicyManager) getSystemService(Context.DEVICE_POLICY_SERVICE);
         skrbnik = new ComponentName(this, Skrbnik.class);
         kioskNastavi();
@@ -182,6 +184,7 @@ public class Glavna extends Activity implements Bralnik.Poslusalec {
         ui.removeCallbacksAndMessages(null);
         if (omrezje != null) { try { ((ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE)).unregisterNetworkCallback(omrezje); } catch (Exception ignored) { } }
         bralnik.konec();
+        tiskalnik.ustavi();
         if (ton != null) { ton.release(); ton = null; }
         if (web != null) { web.destroy(); web = null; }
         if (tisk != null) { tisk.destroy(); tisk = null; }
@@ -353,6 +356,21 @@ public class Glavna extends Activity implements Bralnik.Poslusalec {
         t.loadDataWithBaseURL(Nastavitve.PORTAL, html, "text/html", "utf-8", null);
     }
 
+    // PDF naravnost na tiskalnik; izid gre v stran kot dogodek »tisk« (ob neuspehu stran odpre sistemski dialog)
+    private void tiskajPdf(String b64, String ime) {
+        byte[] pdf;
+        try { pdf = android.util.Base64.decode(b64, android.util.Base64.DEFAULT); }
+        catch (IllegalArgumentException e) { izidTiska(false, "format", ""); return; }
+        tiskalnik.natisni(pdf, ime, this::izidTiska);
+    }
+
+    private void izidTiska(boolean ok, String napaka, String ime) {
+        try {
+            String json = new JSONObject().put("tip", "tisk").put("ok", ok).put("napaka", napaka).put("tiskalnik", ime).toString();
+            ui.post(() -> { if (!isDestroyed()) dogodek(json); });
+        } catch (Exception ignored) { }
+    }
+
     /** window.ScRfid — vse metode delujejo le, ko je odprt portal. */
     private class Most {
         @JavascriptInterface public String stanje() { return mostDovoljen() ? bralnik.stanjeJson() : "{}"; }
@@ -364,6 +382,9 @@ public class Glavna extends Activity implements Bralnik.Poslusalec {
         @JavascriptInterface public void preizkus(String epci) { if (mostDovoljen()) bralnik.nastaviPreizkus(epci); }
         @JavascriptInterface public void barva(String hex) { if (mostDovoljen()) ui.post(() -> barvaPasov(hex)); }
         @JavascriptInterface public void natisni(String html, String ime) { if (mostDovoljen()) ui.post(() -> tiskaj(html, ime)); }
+        @JavascriptInterface public void natisniPdf(String b64, String ime) { if (mostDovoljen()) tiskajPdf(b64, ime); }
+        @JavascriptInterface public String tiskalnik() { return mostDovoljen() ? tiskalnik.stanje() : "{}"; }
+        @JavascriptInterface public void tiskalnikNastavi(String naslov) { if (mostDovoljen()) tiskalnik.nastavi(naslov); }
         @JavascriptInterface public boolean kiosk() { return mostDovoljen() && Glavna.this.kiosk(); }
         @JavascriptInterface public void nastavitve() { if (mostDovoljen()) ui.post(Glavna.this::nastavitveNaprave); }
         @JavascriptInterface public void kioskIzklopi() { if (mostDovoljen()) ui.post(Glavna.this::kioskIzklopi); }

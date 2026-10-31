@@ -4,8 +4,8 @@
      kot lastnik naprave (adb shell dpm set-device-owner si.smartclean.rfid/.Skrbnik). -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="si.smartclean.rfid"
-    android:versionCode="7"
-    android:versionName="1.6">
+    android:versionCode="8"
+    android:versionName="1.7">
 
     <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="34" />
 

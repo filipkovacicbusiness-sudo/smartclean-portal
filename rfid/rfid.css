@@ -100,4 +100,7 @@ html.rfa,html.rfa body{background:var(--bg);}
 }
 /* okno potrditve dobi fokus (bralnik zaslona), ne gumb — Enter s čitalca ne sme potrditi */
 .rfa .rf-okno-p:focus{outline:none;}
+.rfa .rf-okno-p .rf-pv{max-height:calc(100vh - 230px);max-height:calc(100dvh - 230px);overflow-y:auto;}   /* veliko strank: gumba ostaneta na zaslonu */
+.rfa .rf-tisk-st{margin:12px 0 0;font-size:var(--fs-13);color:var(--mid);}
+.rfa .rf-tisk-st:empty{display:none;}
 

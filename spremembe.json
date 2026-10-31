@@ -1,5 +1,16 @@
 [
  {
+  "v": "4.89",
+  "d": "2026-10-31",
+  "c": "2026-10-31T21:18:00+01:00",
+  "t": [
+   "Aplikacija RFID: vse za odvoz se poskenira naenkrat, en dotik na Potrdi ustvari spremne liste za vse stranke in jih pošlje na tisk. Tri sekunde je še mogoče preklicati z Nazaj ali sprožilcem; pri neoznačenih ali že oddanih kosih odloči delavec.",
+   "Oddaja in Prevzem berejo z največjo močjo. Branje z držanjem sprožilca se ne ustavi po minuti, dokler prihajajo novi čipi.",
+   "Aplikacija za C72 1.7: neposreden tisk na omrežni tiskalnik brez okna Androida (meni skrbnika → Tiskalnik, poskusna stran). Če tiskalnik ni dosegljiv, se odpre okno Androida.",
+   "Prijava: znak + na kartici Drug uporabnik je na sredini kroga."
+  ]
+ },
+ {
   "v": "4.88",
   "d": "2026-10-31",
   "c": "2026-10-31T20:10:00+01:00",

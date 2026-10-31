@@ -3,7 +3,7 @@
    APK vedno z mreže. Preverjanje različice (spremembe.json) in naslovi z ?… se ne shranjujejo: vsak bi bil
    nov zapis, brez povezave pa bi aplikacija dobila najstarejšo različico in se po nepotrebnem naložila znova. */
 var CACHE = 'sc-rfid';
-var JEDRO = ['./', './index.html', './rfid.js', './rfid.css', './tema.js', '../portal.css', '../supabase.js', '../config.js',
+var JEDRO = ['./', './index.html', './rfid.js', './rfid.css', './tema.js', '../portal.css', '../supabase.js', '../config.js', '../pdfgen.js', '../spremni-pdf.js',
   '../fonts/archivo-latin-wght-normal.woff2', '../fonts/archivo-latin-ext-wght-normal.woff2', '../fonts/playfair-display-latin-700-normal.woff2'];
 function brezShrambe(url) { return !!url.search || /\/spremembe\.json$/.test(url.pathname); }
 self.addEventListener('install', function (e) {

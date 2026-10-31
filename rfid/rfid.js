@@ -130,6 +130,7 @@
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function stevilo(n) { return Number(n || 0).toLocaleString('sl-SI'); }
   function sklonKosov(n) { var m = n % 100; return stevilo(n) + ' ' + (m === 1 ? 'kos' : m === 2 ? 'kosa' : (m === 3 || m === 4) ? 'kosi' : 'kosov'); }
+  function sklonStrank(n) { var m = n % 100; return stevilo(n) + ' ' + (m === 1 ? 'stranka' : m === 2 ? 'stranki' : (m === 3 || m === 4) ? 'stranke' : 'strank'); }
   function sklonListov(n) { var m = n % 100; return stevilo(n) + ' ' + (m === 1 ? 'spremni list' : m === 2 ? 'spremna lista' : (m === 3 || m === 4) ? 'spremni listi' : 'spremnih listov'); }
   function datumCas(ts) { return ts ? new Date(ts).toLocaleDateString('sl-SI', { day: '2-digit', month: '2-digit', year: 'numeric' }) : ''; }
   function datumDan(d) { return d ? new Date(String(d).slice(0, 10) + 'T00:00:00').toLocaleDateString('sl-SI', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'; }
@@ -478,6 +479,7 @@
     if (document.querySelector('.dk-meni')) { zapriMeni(); return; }
     var it = [['zamenjaj', 'Zamenjaj osebo'], ['tema', temaJe() === 'dark' ? 'Svetla tema' : 'Temna tema'], ['zvok', ZV.vkl ? 'Izklopi zvok' : 'Vklopi zvok'], ['varcno', rfaVarcno() ? 'Polni prikaz' : 'Varčni prikaz']];
     if (rfZadnjiListi()) it.unshift(['zadnji', 'Natisni zadnje']);
+    if (JAZ && JAZ.skrbnik && rfTiskNaVoljo()) it.push(['tiskalnik', 'Tiskalnik']);
     if (JAZ && JAZ.skrbnik && kiosk()) it.push(['naprava', 'Nastavitve naprave'], ['kiosk', 'Izklopi kiosk']);
     var m = document.createElement('div'); m.className = 'dk-meni'; m.setAttribute('role', 'menu');
     m.innerHTML = it.map(function (a) { return '<button type="button" role="menuitem" data-a="' + a[0] + '">' + esc(a[1]) + '</button>'; }).join('');
@@ -494,6 +496,7 @@
         else if (b.dataset.a === 'tema') temaNastavi(temaJe() === 'dark' ? 'light' : 'dark');
         else if (b.dataset.a === 'zvok') { ZV.vkl = !ZV.vkl; LS.pisi('sc-rfa-zvok', ZV.vkl); if (ZV.vkl) zvTik(); }
         else if (b.dataset.a === 'varcno') { LS.pisi('sc-rfa-varcno', !rfaVarcno()); rfaVarcnoUporabi(); }
+        else if (b.dataset.a === 'tiskalnik') rfTiskalnik();
         else if (b.dataset.a === 'naprava') { try { window.ScRfid.nastavitve(); } catch (e) {} }
         else if (b.dataset.a === 'kiosk') {
           potrdiModal({ naslov: 'Izklopi kiosk?', potrdi: 'Izklopi', nevarno: true }).then(function (da) { if (da) { try { window.ScRfid.kioskIzklopi(); } catch (e) {} } });
@@ -807,7 +810,7 @@
     } else {
       var r = rfRazvrsti(), odd = RF.nacin === 'oddaja';
       rfStevec(nEl, r.znanih);
-      lab.textContent = (r.znanih % 100 === 1 ? 'kos' : r.znanih % 100 === 2 ? 'kosa' : (r.znanih % 100 === 3 || r.znanih % 100 === 4) ? 'kosi' : 'kosov') + (r.stranke.length > 1 ? ' · ' + r.stranke.length + ' stranke' : '');
+      lab.textContent = (r.znanih % 100 === 1 ? 'kos' : r.znanih % 100 === 2 ? 'kosa' : (r.znanih % 100 === 3 || r.znanih % 100 === 4) ? 'kosi' : 'kosov') + (r.stranke.length > 1 ? ' · ' + sklonStrank(r.stranke.length) : '');
       r.stranke.forEach(function (g) {
         var arti = Object.keys(g.art).sort(function (a, b) { return g.art[b] - g.art[a] || a.localeCompare(b, 'sl'); });
         var ze = odd && g.ze ? '<div class="rf-str-ze">' + esc(rfZeBesedilo(g)) + '</div>' : '';
@@ -889,7 +892,7 @@
       back.innerHTML = '<div class="sc-modal rf-okno-p" role="dialog" aria-modal="true"><h4></h4><div class="rf-pv"></div><div class="sc-modal-acts"></div></div>';
       back.querySelector('h4').textContent = o.naslov || '';
       back.querySelector('.rf-pv').innerHTML = (o.vrstice || []).map(function (v) {
-        return '<div class="rf-pv-v' + (v.cls ? ' ' + v.cls : '') + '"><span class="rf-pv-t"><span class="rf-pv-ime">' + esc(v.ime) + '</span>' + (v.opis ? '<span class="rf-pv-op">' + esc(v.opis) + '</span>' : '') + '</span><b>' + stevilo(v.n) + '</b></div>';
+        return '<div class="rf-pv-v' + (v.cls ? ' ' + v.cls : '') + '"><span class="rf-pv-t"><span class="rf-pv-ime">' + esc(v.ime) + '</span>' + (v.opis ? '<span class="rf-pv-op">' + esc(v.opis) + '</span>' : '') + '</span>' + (v.n != null ? '<b>' + stevilo(v.n) + '</b>' : '') + '</div>';
       }).join('');
       var akc = back.querySelector('.sc-modal-acts'), gumbi = o.gumbi || [], prvi = gumbi.length ? gumbi[0].v : false;
       gumbi.forEach(function (g) {
@@ -899,18 +902,27 @@
       document.body.appendChild(back);
       requestAnimationFrame(function () { back.classList.add('show'); });
       var done = false, t0 = Date.now();
-      function zapri(v) { if (done) return; done = true; back.classList.remove('show'); document.removeEventListener('keydown', tipka); setTimeout(function () { back.remove(); }, 180); resolve(v); }
+      function zapri(v) { if (done) return; done = true; clearInterval(ura); RF.ustaviOdstevanje = null; back.classList.remove('show'); document.removeEventListener('keydown', tipka); setTimeout(function () { back.remove(); }, 180); resolve(v); }
       // Enter ne potrdi nikoli (čitalec kot tipkovnica pošlje EPC + Enter) — ustvari se le z dotikom gumba
       function tipka(e) { if (e.key === 'Escape') zapri(prvi); else if (e.key === 'Enter') e.preventDefault(); }
+      // čist pregled se potrdi sam: glavni gumb odšteva, ustavi ga Nazaj, nov pritisk na sprožilec ali nov čip
+      if (o.samodejno) {
+        var glavni = gumbi.filter(function (g) { return g.glavni; })[0], gb = akc.querySelector('.primary'), konec = Date.now() + o.samodejno;
+        var tik = function () { var ost = konec - Date.now(); if (ost <= 0) zapri(glavni.v); else gb.textContent = glavni.t + ' (' + Math.ceil(ost / 1000) + ')'; };
+        var ura = setInterval(tik, 200); tik();
+        RF.ustaviOdstevanje = function () { zapri(prvi); };
+      }
       back.addEventListener('click', function (e) { if (Date.now() - t0 < 350) { e.stopPropagation(); return; } if (e.target === back) zapri(prvi); }, true);   // drugi dotik dvojnega pritiska na Potrdi
       document.addEventListener('keydown', tipka);
       setTimeout(function () { var m = back.querySelector('.sc-modal'); m.setAttribute('tabindex', '-1'); m.focus({ preventScroll: true }); }, 60);
     });
   }
-  // Potrdi: pregled po strankah → baza zabeleži in pri oddaji ustvari spremne liste
+  // Potrdi: pregled po strankah → baza zabeleži in pri oddaji ustvari spremne liste, ti se natisnejo sami
+  var RF_SAMO_MS = 3000;
   async function rfPotrdi() {
     if (RF.potrjujem || RF.oznacujem) return;   // drugi dotik, osvežitev med klicem: en sam
     rfMostKlic('ustavi'); toastSkrij();   // pregled naj ostane, kot je; »Razveljavi« ne sme ostati nad oknom
+    if (RF.nacin === 'oddaja' && rfTiskNaVoljo()) rfPdfModuli().catch(function () {});   // da je PDF pripravljen, ko je list ustvarjen
     RF.potrjujem = true; rfOsvezi();
     try {
       rfPozabi(RF.sken);   // vsi čipi znova (vmes označeni pri drugi stranki, izbrisana stranka …); prikaz ostane do novih podatkov
@@ -921,7 +933,9 @@
       var vrst = r.stranke.map(function (g) { var z = odd && g.ze; return { ime: g.ime, n: g.n, opis: z ? rfZeBesedilo(g) : '', cls: z ? 'opoz' : '' }; });
       if (r.nezn.length + r.dvo.length) vrst.push({ ime: 'Ne šteje se', n: r.nezn.length + r.dvo.length, cls: 'tiho',
         opis: [r.nezn.length ? stevilo(r.nezn.length) + ' neoznačenih' : '', r.dvo.length ? stevilo(r.dvo.length) + ' pri več strankah' : ''].filter(Boolean).join(' · ') });
-      var ok = await rfOkno({ naslov: odd ? 'Ustvari ' + sklonListovToz(r.stranke.length) : 'Zabeleži prevzem', vrstice: vrst,
+      // delavec je s Potrdi označil konec; če ni česa odločiti, gre naprej samo (neoznačeni kosi, že oddano: odloči človek)
+      var cisto = !r.nezn.length && !r.dvo.length && !(odd && r.stranke.some(function (g) { return g.ze; }));
+      var ok = await rfOkno({ naslov: odd ? 'Ustvari ' + sklonListovToz(r.stranke.length) : 'Zabeleži prevzem', vrstice: vrst, samodejno: cisto ? RF_SAMO_MS : 0,
         gumbi: [{ t: 'Nazaj', v: false }, { t: odd ? 'Ustvari' : 'Zabeleži', v: true, glavni: true }] });
       if (ok) await rfPotrdiIzvedi(true, 0, izbor);
     } finally { RF.potrjujem = false; if (!RF.rezultat) rfOsvezi(); else rfZaklep(); }
@@ -949,7 +963,7 @@
     }
     rfOdstraniPoslane(posnetek);
     zvUspeh();
-    if (odd) { RF.rezultat = { listi: d.listi || [] }; rfZapomniListe(RF.rezultat.listi); rfRisi(); }
+    if (odd) { RF.rezultat = { listi: d.listi || [] }; rfZapomniListe(RF.rezultat.listi); rfRisi(); rfTiskajRezultat(); }
     else { toast('Prevzem zabeležen: ' + sklonKosov(d.kosov || 0)); rfOsvezi(); }
   }
   // šteje kose po strankah le v izboru (ne v vsem, kar je bilo prebrano pozneje)
@@ -990,9 +1004,23 @@
     var naslov = ze ? 'Že oddano' : listi.length === 1 ? 'Spremni list ustvarjen' : 'Ustvarjeni spremni listi';
     t.innerHTML = '<div class="uc-card rf-rezultat' + (ze ? ' ze' : '') + '"><div class="rf-uspeh"><span class="rf-uspeh-i" aria-hidden="true">' + (ze ? IKO_ZE : IKO_KLJUKA) + '</span><h3 class="sec-h">' + naslov + '</h3></div>' +
       '<div class="rf-listi">' + listi.map(function (l) { return '<div class="rf-list"><b>' + esc(l.stevilka || '') + '</b><span>' + esc(IME[l.org] || '') + '</span><span class="u-sub">' + (l.kosov != null ? sklonKosov(l.kosov) : '') + '</span></div>'; }).join('') + '</div>' +
-      '<div class="rf-rez-akc"><button type="button" class="ur-save" data-rf-tisk>' + IKO_TISK + 'Natisni</button><button type="button" data-rf-nova>Novo skeniranje</button></div></div>';
+      '<p class="rf-tisk-st" data-rf-tisk-st role="status"></p><div class="rf-rez-akc"><button type="button" class="ur-save" data-rf-tisk>' + IKO_TISK + '<span>Natisni</span></button><button type="button" data-rf-nova>Novo skeniranje</button></div></div>';
     t.querySelector('[data-rf-nova]').addEventListener('click', function () { RF.rezultat = null; rfRisi(); });
-    t.querySelector('[data-rf-tisk]').addEventListener('click', function () { rfNatisni(listi.map(function (l) { return l.note; }).filter(Boolean), this); });
+    t.querySelector('[data-rf-tisk]').addEventListener('click', rfTiskajRezultat);
+    rfTiskStanje();
+  }
+  // ustvarjeni listi se natisnejo sami; gumb ostane za ponovitev
+  function rfTiskajRezultat() {
+    var rez = RF.rezultat, g = document.querySelector('[data-rf-tisk]'); if (!rez) return;
+    var ids = rez.listi.map(function (l) { return l.note; }).filter(Boolean);
+    if (!ids.length || (g && g.disabled)) return;
+    rez.tisk = 'tiskam'; rfTiskStanje();
+    rfNatisni(ids, g).then(function (izid) { rez.tisk = izid; rfTiskStanje(); });
+  }
+  function rfTiskStanje() {
+    var st = document.querySelector('[data-rf-tisk-st]'), g = document.querySelector('[data-rf-tisk] span'), t = RF.rezultat && RF.rezultat.tisk; if (!st) return;
+    st.textContent = t === 'tiskam' ? 'Tiskam …' : t === 'natisnjeno' ? 'Poslano na tiskalnik' : '';
+    if (g) g.textContent = t === 'natisnjeno' ? 'Natisni znova' : 'Natisni';
   }
   var IKO_TISK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M6 14h12v7H6z"/></svg>';
 
@@ -1107,14 +1135,73 @@
       if (r.error) throw r.error;
       var listi = Array.isArray(r.data) ? r.data : [];
       if (!listi.length) { toast('Spremnih listov ni bilo mogoče naložiti.'); return; }
-      var telesa = []; listi.forEach(function (n) { telesa.push(listTelo(n), listTelo(n)); });   // dva izvoda, kot na tablici
       var naslov = listi.length === 1 ? 'Spremni list ' + listi[0].number : sklonListov(listi.length);
-      var html = dokHtml(naslov, telesa);
       _tiskamDo = Date.now() + 3500;
+      var izid = await rfTiskNaravnost(listi, naslov);
+      if (izid && izid.ok) return 'natisnjeno';
+      // brez neposrednega tiska (starejša aplikacija, tiskalnik ni dosegljiv): okno Androida
+      var telesa = []; listi.forEach(function (n) { telesa.push(listTelo(n), listTelo(n)); });   // dva izvoda, kot na tablici
+      var html = dokHtml(naslov, telesa);
       if (window.ScRfid && typeof window.ScRfid.natisni === 'function') window.ScRfid.natisni(html, naslov);
       else natisniPrekIframe(html);
-    } catch (e) { toast(napakaBesedilo(e)); }
+      return 'okno';
+    } catch (e) { toast(napakaBesedilo(e)); return 'napaka'; }
     finally { if (gumb) { gumb.disabled = false; gumb.classList.remove('nalaga'); } }
+  }
+  // ── Neposreden tisk (aplikacija za C72 od 1.7): isti PDF kot v portalu, dva izvoda kot na tablici; izid pride z dogodkom »tisk« ──
+  var _pdfModuli = null, _tiskIzid = null;
+  function rfTiskNaVoljo() { return !!(window.ScRfid && typeof window.ScRfid.natisniPdf === 'function'); }
+  function rfNaloziSkript(pot) { return new Promise(function (ok, ne) { var s = document.createElement('script'); s.src = pot; s.onload = ok; s.onerror = ne; document.head.appendChild(s); }); }
+  function rfPdfModuli() {
+    if (!_pdfModuli) _pdfModuli = rfNaloziSkript('../pdfgen.js').then(function () { return rfNaloziSkript('../spremni-pdf.js'); }).catch(function (e) { _pdfModuli = null; throw e; });
+    return _pdfModuli;
+  }
+  function rfListPdf(n) {
+    var post = Array.isArray(n.postavke) ? n.postavke : [];
+    return { stevilka: n.number || '', naziv: n.podjetje || n.stranka || '—', nazivSek: (n.podjetje && n.stranka && n.stranka !== n.podjetje) ? n.stranka : '',
+      oddaja: 'Oddaja: ' + datumDan(n.doc_date) + (n.issued_name ? '  ·  Izdal: ' + n.issued_name : '') + '  ·  ' + (n.transport === 'izredni' ? 'Izredni prevoz' : 'Redni prevoz'),
+      postavke: post.map(function (p) { return { naziv: p.naziv, kosov: stevilo(p.kosov) }; }),
+      kg: Number(n.weight_kg) > 0 ? tezaFmt(n.weight_kg) : '', opomba: n.opomba_stranka || '' };
+  }
+  function rfPdfBase64(doc) { var u = doc.build(), s = ''; for (var i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(s); }
+  function rfTiskPoslji(b64, naslov, strani) {
+    return new Promise(function (res) {
+      var rok = setTimeout(function () { konec({ ok: false, napaka: 'cas' }); }, 45000 + (strani || 1) * 8000);   // tiskalnik brez PDF: vsako stran izriše aplikacija
+      function konec(d) { clearTimeout(rok); _tiskIzid = null; res(d); }
+      _tiskIzid = konec;
+      try { window.ScRfid.natisniPdf(b64, naslov); } catch (e) { konec({ ok: false, napaka: 'most' }); }
+    });
+  }
+  async function rfTiskNaravnost(listi, naslov) {
+    if (!rfTiskNaVoljo()) return null;
+    try {
+      await rfPdfModuli();
+      window.SpremniPdf.BIZ = DOK_BIZ;
+      var doc = new PDFDoc();
+      listi.forEach(function (n) { var p = rfListPdf(n); [0, 1].forEach(function () { doc.addPage(); window.SpremniPdf.stran(doc, p); }); });
+      return await rfTiskPoslji(rfPdfBase64(doc), naslov, doc.pages.length);
+    } catch (e) { return null; }
+  }
+  function rfTiskNapaka(k) { return { 'ni-najden': 'Tiskalnik ni najden v omrežju.', 'ne-sprejema': 'Tiskalnik trenutno ne sprejema nalog.', 'format': 'Tiskalnik ne sprejme dokumenta.' }[k] || 'Povezava s tiskalnikom ni uspela.'; }
+  // Skrbnik: naslov tiskalnika (prazno = poišče ga v omrežju) in poskusna stran
+  async function rfTiskalnik() {
+    var t = {}; try { t = JSON.parse(window.ScRfid.tiskalnik()) || {}; } catch (e) {}
+    var izb = await rfOkno({ naslov: 'Tiskalnik', vrstice: [{ ime: t.ime || (t.naslov ? 'Tiskalnik' : 'Samodejno v omrežju'), opis: t.naslov || '' }],
+      gumbi: [{ t: 'Zapri', v: 0 }, { t: 'Naslov', v: 2 }, { t: 'Poskusna stran', v: 1, glavni: true }] });
+    if (izb === 2) {
+      var v = await vnesiModal({ naslov: 'Naslov tiskalnika', privzeto: t.rocni ? t.naslov : '', placeholder: '192.168.1.50', potrdi: 'Shrani' });
+      if (v != null) { window.ScRfid.tiskalnikNastavi(v.trim()); rfTiskalnik(); }
+    } else if (izb === 1) {
+      try {
+        await rfPdfModuli();
+        var doc = new PDFDoc(); doc.addPage(); doc.logo(34, 40, 24);
+        doc.text(34, 92, 'Poskusna stran', { size: 18, bold: true });
+        doc.text(34, 118, new Date().toLocaleString('sl-SI') + (JAZ ? '  ·  ' + JAZ.ime : ''), { size: 11 });
+        toast('Pošiljam …');
+        var d = await rfTiskPoslji(rfPdfBase64(doc), 'Poskusna stran');
+        if (d.ok) { zvUspeh(); toast('Poslano: ' + (d.tiskalnik || 'tiskalnik')); } else { zvNapaka(); toast(rfTiskNapaka(d.napaka)); }
+      } catch (e) { zvNapaka(); toast(rfTiskNapaka('')); }
+    }
   }
   function natisniPrekIframe(doc) {
     var star = $('rfaTisk'); if (star) star.remove();
@@ -1137,10 +1224,10 @@
   function rfMostStanje() { if (!RF.most && RF_MOST) { try { RF.most = JSON.parse(RF_MOST.stanje()) || {}; } catch (e) { RF.most = {}; } } return RF.most || {}; }
   // most Android ujema metodo po imenu IN številu argumentov: zacni()/ustavi() brez argumenta (z »undefined« tiho ne deluje)
   function rfMostKlic(fn, arg) { try { if (RF_MOST) { if (arguments.length > 1) RF_MOST[fn](arg); else RF_MOST[fn](); } } catch (e) {} }
-  // doseg po načinu: označevanje in iskanje blizu (le kos v roki), oddaja srednje (cel voziček, manj čipov s sosednjih), prevzem daleč
-  function rfMocNacin() { var m = LS.beri('sc-rfid-moc', {}) || {}; return RF_MOC[m[RF.nacin]] ? m[RF.nacin] : (rfBliza() ? 'blizu' : RF.nacin === 'oddaja' ? 'srednje' : 'dalec'); }
+  // doseg po načinu: označevanje in iskanje blizu (le kos v roki), oddaja in prevzem največ (kup perila duši signal)
+  function rfMocNacin() { var m = LS.beri('sc-rfid-moc2', {}) || {}; return RF_MOC[m[RF.nacin]] ? m[RF.nacin] : (rfBliza() ? 'blizu' : 'dalec'); }
   function rfMocNastavi(st, shrani) {
-    if (shrani) { var m = LS.beri('sc-rfid-moc', {}) || {}; m[RF.nacin] = st; LS.pisi('sc-rfid-moc', m); }
+    if (shrani) { var m = LS.beri('sc-rfid-moc2', {}) || {}; m[RF.nacin] = st; LS.pisi('sc-rfid-moc2', m); }
     rfMostKlic('moc', RF_MOC[st]);
   }
   function rfMocStopnja(dbm) { return dbm <= 14 ? 'blizu' : dbm <= 24 ? 'srednje' : 'dalec'; }
@@ -1250,7 +1337,8 @@
       if (v.length && !$('app').hidden) { if (RF.rezultat) rfDodajVec(v); else rfDodajNaRezultat(v); }   // prebrani pred potrditvijo: listi ostanejo na zaslonu, čipi čakajo na naslednje skeniranje
     }, 400);
   }
-  // čuvaj: branje z gumba Beri se ustavi po 6 s brez novih čipov, vsako branje po 60 s (baterija, toplota pri 1 W)
+  // čuvaj (baterija, toplota pri 1 W, zataknjen sprožilec): branje z gumba Beri se ustavi po 6 s brez novih čipov;
+  // pri vsem za odvoz sme teči dolgo: po 60 s se ustavi šele, ko 15 s ni novih čipov, najpozneje po 10 min
   var _rfCuvaj = { zacetek: 0, zadnji: 0, t: null, gumb: false };
   function rfBeriZiv(novih) { if (novih) _rfCuvaj.zadnji = Date.now(); }
   function rfCuvajStanje(bere) {
@@ -1258,8 +1346,8 @@
     if (!bere) { _rfCuvaj.gumb = false; return; }
     _rfCuvaj.zacetek = _rfCuvaj.zadnji = Date.now();
     _rfCuvaj.t = setInterval(function () {
-      var n = Date.now();
-      if (n - _rfCuvaj.zacetek > 60000 || (_rfCuvaj.gumb && n - _rfCuvaj.zadnji > 6000)) { clearInterval(_rfCuvaj.t); rfMostKlic('ustavi'); }
+      var n = Date.now(), tece = n - _rfCuvaj.zacetek, tiho = n - _rfCuvaj.zadnji;
+      if (tece > 600000 || (tece > 60000 && tiho > 15000) || (_rfCuvaj.gumb && tiho > 6000)) { clearInterval(_rfCuvaj.t); rfMostKlic('ustavi'); }
     }, 1000);
   }
   document.addEventListener('visibilitychange', function () { if (document.hidden) rfMostKlic('ustavi'); });
@@ -1274,9 +1362,11 @@
       var d = ev.detail || {};
       if (d.tip === 'stanje') {
         var prej = RF.most || {}; RF.most = d; rfCitOsvezi();
+        if (d.bere && !prej.bere && RF.ustaviOdstevanje) RF.ustaviOdstevanje();   // skeniranje še ni končano
         if (!!d.bere !== !!prej.bere) rfCuvajStanje(!!d.bere);
         if (d.bere && !prej.bere && RF.rezultat && !$('app').hidden && !modalOdprt()) { RF.rezultat = null; rfRisi(); }   // nov pritisk po ustvarjenih listih = novo skeniranje
-      } else if (d.tip === 'epc' && Array.isArray(d.epc)) rfMostEpci(d.epc);
+      } else if (d.tip === 'epc' && Array.isArray(d.epc)) { if (RF.ustaviOdstevanje) RF.ustaviOdstevanje(); rfMostEpci(d.epc); }
+      else if (d.tip === 'tisk' && _tiskIzid) _tiskIzid(d);
     });
     rfMocNastavi(rfMocNacin());
   }
@@ -1309,7 +1399,7 @@
   /* ══════════ NOVA RAZLIČICA ══════════
      C72 je lahko odprt ves dan: ko je objavljena nova različica, se aplikacija naloži znova, a le, ko miruje
      (brez skeniranja, okna, rezultata in branja) — nič se ne izgubi. */
-  var RF_VER = '4.88';   // ob objavi enako kot APP_VERZIJA v portalu (prvi »v« v spremembe.json)
+  var RF_VER = '4.89';   // ob objavi enako kot APP_VERZIJA v portalu (prvi »v« v spremembe.json)
   async function rfPreveriRazlicico() {
     try {
       var r = await _izvFetch('../spremembe.json?v=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;

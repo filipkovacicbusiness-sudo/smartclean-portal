@@ -3673,4 +3673,4 @@ html.v5.zm-brez-teksture{--cov-zrno:none;--cov-zrno-o:0;}
 @media(hover:none){ .v5:not(.rfa) .pp-tile-x{opacity:1;top:8px;right:8px;width:30px;height:30px;} }
 .v5:not(.rfa) .pp-bio{left:8px;top:8px;width:30px;height:30px;}
 .v5:not(.rfa) .pp-bio svg{width:15px;height:15px;}
-.v5:not(.rfa) .pp-plus svg{width:22px;height:22px;}
+.v5:not(.rfa) .pp-plus svg{width:22px;height:22px;margin:0;}

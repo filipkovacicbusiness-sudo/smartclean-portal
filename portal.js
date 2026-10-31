@@ -781,7 +781,7 @@
     OSEBJE = false,
     MOJEPODJETJE = null;
   var MOJPROFIL = {};
-  var APP_VERZIJA = '4.88 · BETA';
+  var APP_VERZIJA = '4.89 · BETA';
   // stran in koda iste različice; sicer (objava v teku, star predpomnilnik) enkrat znova na različico — brez zanke
   (function () {
     var v = APP_VERZIJA.split(' ')[0], k = 'sc-stara-stran';
@@ -8420,7 +8420,7 @@
      Če ga še ni, to tu tudi piše — namesto strani 404. */
   // ?v= ob vsaki novi različici aplikacije (aplikacija/zgradi.py): brskalnik in predpomnilnik vzameta nov paket.
   var APK_POT = 'tablica/Pralnica-sync.apk?v=11.10';
-  var RFID_APK_POT = 'rfid/SmartClean-RFID.apk?v=1.6';   // aplikacija-rfid/zgradi.py (VERZIJA)
+  var RFID_APK_POT = 'rfid/SmartClean-RFID.apk?v=1.7';   // aplikacija-rfid/zgradi.py (VERZIJA)
 
   function wirePwa(scope) {
     var pb = (scope || document).querySelector('#pwaInstall');
